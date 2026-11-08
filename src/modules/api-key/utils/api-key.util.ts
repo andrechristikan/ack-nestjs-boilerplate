@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type {
     IApiKey,
     IApiKeyActivityLogSubject,
@@ -14,25 +13,6 @@ export class ApiKeyUtil {
             ...apiKey,
             secret,
         };
-    }
-
-    isActive(apiKey: IApiKey): boolean {
-        return apiKey.isActive;
-    }
-
-    isExpired(endAt: Date | null, currentDate: Date): boolean {
-        return endAt !== null && currentDate > endAt;
-    }
-
-    isNotYetActive(startAt: Date | null, currentDate: Date): boolean {
-        return startAt !== null && currentDate < startAt;
-    }
-
-    validateType(
-        apiKey: { type: EnumApiKeyType },
-        allowed: EnumApiKeyType[]
-    ): boolean {
-        return allowed.includes(apiKey.type);
     }
 
     mapActivityLogMetadata(

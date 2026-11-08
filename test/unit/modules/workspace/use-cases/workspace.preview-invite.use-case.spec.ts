@@ -13,14 +13,12 @@ import type {
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
 
 describe('WorkspacePreviewInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -67,7 +65,6 @@ describe('WorkspacePreviewInviteUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
             ],
         }).compile();
 
@@ -90,7 +87,7 @@ describe('WorkspacePreviewInviteUseCase', () => {
                 workspace
             );
             userService.getNameById.mockResolvedValue(inviter);
-            workspaceUtil.mapInvitePreview.mockReturnValue(preview);
+            workspaceInviteService.mapInvitePreview.mockReturnValue(preview);
 
             const result = await useCase.execute({
                 inviteToken: 'raw-token',
@@ -104,11 +101,9 @@ describe('WorkspacePreviewInviteUseCase', () => {
                 workspaceInviteService.getWorkspaceOfInvite
             ).toHaveBeenCalledWith(invite);
             expect(userService.getNameById).toHaveBeenCalledWith('user-1');
-            expect(workspaceUtil.mapInvitePreview).toHaveBeenCalledWith(
-                workspace,
-                invite,
-                inviter
-            );
+            expect(
+                workspaceInviteService.mapInvitePreview
+            ).toHaveBeenCalledWith(workspace, invite, inviter);
         });
 
         it('throws WorkspaceInviteInvalidException when the invite workspace is not active', async () => {
@@ -123,7 +118,9 @@ describe('WorkspacePreviewInviteUseCase', () => {
             await expect(
                 useCase.execute({ inviteToken: 'raw-token' })
             ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
-            expect(workspaceUtil.mapInvitePreview).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteService.mapInvitePreview
+            ).not.toHaveBeenCalled();
         });
     });
 });

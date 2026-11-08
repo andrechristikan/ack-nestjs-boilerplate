@@ -38,6 +38,8 @@ import { ConfigService } from '@nestjs/config';
 export class UserProfileService {
     private readonly logger = new Logger(UserProfileService.name);
     private readonly photoFilenameRandomLength: number;
+    private readonly uploadPhotoProfilePath: string;
+    private readonly photoMaxSizeInBytes: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -51,6 +53,26 @@ export class UserProfileService {
         this.photoFilenameRandomLength = this.configService.get<number>(
             'user.photo.filenameRandomLength'
         )!;
+        this.uploadPhotoProfilePath = this.configService.get<string>(
+            'user.uploadPhotoProfilePath'
+        )!;
+        this.photoMaxSizeInBytes = this.configService.get<number>(
+            'user.photo.maxSizeInBytes'
+        )!;
+    }
+
+    private buildPhotoProfilePath(userId: string): string {
+        return this.uploadPhotoProfilePath.replace('{userId}', () => userId);
+    }
+
+    private isPhotoProfileKeyOwned(userId: string, key: string): boolean {
+        const photoPath = this.buildPhotoProfilePath(userId);
+
+        return key.startsWith(`${photoPath}/`);
+    }
+
+    private isPhotoSizeAllowed(size: number): boolean {
+        return size <= this.photoMaxSizeInBytes;
     }
 
     private async deletePreviousPhoto(
@@ -74,7 +96,7 @@ export class UserProfileService {
             return;
         }
 
-        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, photo.key);
+        const isOwned = this.isPhotoProfileKeyOwned(userId, photo.key);
         if (!isOwned) {
             return;
         }
@@ -86,7 +108,7 @@ export class UserProfileService {
         user: string,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path = this.userUtil.buildPhotoProfilePath(user);
+        const path = this.buildPhotoProfilePath(user);
 
         return this.fileService.createRandomFilename({
             path,
@@ -135,7 +157,7 @@ export class UserProfileService {
         userId: string,
         { extension, size }: IUserGeneratePhotoProfile
     ): Promise<IAwsS3Presign> {
-        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(size);
+        const isSizeAllowed = this.isPhotoSizeAllowed(size);
         if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
         }
@@ -170,12 +192,13 @@ export class UserProfileService {
         userId: string,
         { key }: IUserUpdatePhotoProfile
     ): Promise<void> {
-        const isOwned = this.userUtil.isPhotoProfileKeyOwned(userId, key);
+        const isOwned = this.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
             throw new UserPhotoKeyInvalidException();
         }
 
         try {
+            // Sequential by design: gate before the work it guards
             const aws: IAwsS3 | null = await this.awsS3Service.checkItem(key, {
                 access: EnumAwsS3Accessibility.public,
             });
@@ -183,12 +206,11 @@ export class UserProfileService {
                 throw new AwsS3NotConfiguredException();
             }
 
-            const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(aws.size);
+            const isSizeAllowed = this.isPhotoSizeAllowed(aws.size);
             if (!isSizeAllowed) {
                 throw new UserPhotoSizeExceededException();
             }
 
-            // Sequential by design: gate before the work it guards
             const user = await this.userRepository.findOneById(userId);
             if (!user) {
                 throw new UserNotFoundException();
@@ -211,7 +233,7 @@ export class UserProfileService {
     }
 
     async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
-        const isSizeAllowed = this.userUtil.isPhotoSizeAllowed(file.size);
+        const isSizeAllowed = this.isPhotoSizeAllowed(file.size);
         if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
         }

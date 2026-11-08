@@ -1,7 +1,7 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DeviceService } from '@modules/device/services/device.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
@@ -19,7 +19,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly roleService: RoleService,
         private readonly sessionQueue: SessionQueue,
-        private readonly deviceUtil: DeviceUtil
+        private readonly deviceService: DeviceService
     ) {}
 
     async execute(
@@ -38,7 +38,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
                 user.id
             );
 
-        const actorMetadata = this.deviceUtil.mapActivityLogActorMetadata(
+        const actorMetadata = this.deviceService.mapActivityLogActorMetadata(
             deviceOwnership,
             revokedSessions.length
         );
@@ -49,11 +49,12 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
             }),
         ];
         if (userId !== user.id) {
-            const targetMetadata = this.deviceUtil.mapActivityLogTargetMetadata(
-                deviceOwnership,
-                user.id,
-                revokedSessions.length
-            );
+            const targetMetadata =
+                this.deviceService.mapActivityLogTargetMetadata(
+                    deviceOwnership,
+                    user.id,
+                    revokedSessions.length
+                );
             const targetActivityLog = this.activityLogService.prepare({
                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                 userId,

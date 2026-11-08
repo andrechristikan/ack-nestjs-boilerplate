@@ -52,6 +52,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async verifyTwoFactorIfRequired(
         user: IUser,
         input: IUserTwoFactorVerifyInput
@@ -87,10 +88,9 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         method,
     }: UserForgotPasswordResetRequestDto): Promise<IResponseReturn<void>> {
         const reset = await this.userPasswordService.getOneActiveReset(token);
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.passwordHistoryService.assertNew(reset.userId, newPassword);
 
-        // Sequential by design: gate before the work it guards
         const twoFactorVerified = await this.verifyTwoFactorIfRequired(
             reset.user,
             {
@@ -122,7 +122,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
             activityLogs.push(verifyTwoFactorActivityLog);
         }
 
-        // Sequential by design: write must not run if an earlier step throws
         let revoked: ISessionRef[];
         try {
             revoked = await this.databaseService.withTransaction(async tx => {

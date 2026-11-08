@@ -1,28 +1,16 @@
-import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
 import type { IFirebasePushResult } from '@common/firebase/interfaces/firebase.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import {
-    EnumNotificationChannel,
-    EnumNotificationType,
-} from '@generated/prisma-client/client';
-import type {
-    NotificationUserSetting,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import type {
-    INotificationPushCleanupStaleTokensResult,
-    INotificationPushCleanupTokensResult,
     INotificationPushSendOutcome,
     INotificationPushTokenPair,
     INotificationRecipient,
     INotificationStepFailure,
     INotificationStepOutcomes,
     INotificationStepResult,
-    INotificationTermPolicyBatchRecipientEncryptedPayload,
-    INotificationTermPolicyRecipientState,
     INotificationUserSettingPreference,
 } from '@modules/notification/interfaces/notification.interface';
 import {
@@ -35,7 +23,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
-import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 
 @Injectable()
 export class NotificationUtil {
@@ -60,38 +47,7 @@ export class NotificationUtil {
             .map(pair => pair.encrypted);
     }
 
-    toStepFailure(
-        step: EnumNotificationStep,
-        reason: unknown
-    ): INotificationStepFailure {
-        const rawError =
-            reason instanceof Error ? reason : new Error(String(reason));
-
-        return { step, rawError };
-    }
-
-    toStepSummary(failedSteps: INotificationStepFailure[]): string {
-        const steps = failedSteps.map(({ step }) => step);
-
-        return this.messageService.setMessage(
-            'notification.queue.error.stepsFailed',
-            { properties: { steps: steps.join(', ') } }
-        );
-    }
-
-    listConfigurableSettings(
-        settings: NotificationUserSetting[]
-    ): NotificationUserSetting[] {
-        return settings.filter(setting =>
-            NotificationSettingContract.some(
-                contract =>
-                    contract.type === setting.type &&
-                    contract.channels.includes(setting.channel)
-            )
-        );
-    }
-
-    resolveChannels(
+    private resolveChannels(
         kind: EnumNotificationKind,
         settings: INotificationUserSettingPreference[]
     ): EnumNotificationChannel[] {
@@ -122,6 +78,25 @@ export class NotificationUtil {
         );
 
         return hasUserFacingChannel ? surviving : [];
+    }
+
+    toStepFailure(
+        step: EnumNotificationStep,
+        reason: unknown
+    ): INotificationStepFailure {
+        const rawError =
+            reason instanceof Error ? reason : new Error(String(reason));
+
+        return { step, rawError };
+    }
+
+    toStepSummary(failedSteps: INotificationStepFailure[]): string {
+        const steps = failedSteps.map(({ step }) => step);
+
+        return this.messageService.setMessage(
+            'notification.queue.error.stepsFailed',
+            { properties: { steps: steps.join(', ') } }
+        );
     }
 
     toStepResponse({
@@ -158,15 +133,6 @@ export class NotificationUtil {
             this.encryptionSecretKey,
             NotificationPayloadEncryptionPurpose,
             context
-        );
-    }
-
-    decryptFailureTokens(
-        userId: string,
-        encryptedFailureTokens: string[]
-    ): string[] {
-        return encryptedFailureTokens.map(encrypted =>
-            this.decryptPayload(encrypted, userId)
         );
     }
 
@@ -208,37 +174,6 @@ export class NotificationUtil {
         };
     }
 
-    toCleanupTokensResult(
-        countRequestedTokens: number,
-        countRemovedTokens: number
-    ): INotificationPushCleanupTokensResult {
-        const message = this.messageService.setMessage(
-            'notification.queue.push.cleanupTokens'
-        );
-
-        return { message, countRequestedTokens, countRemovedTokens };
-    }
-
-    toCleanupStaleTokensResult(
-        countRemovedTokens: number
-    ): INotificationPushCleanupStaleTokensResult {
-        const message = this.messageService.setMessage(
-            'notification.queue.push.cleanupStaleTokens'
-        );
-
-        return { message, countRemovedTokens };
-    }
-
-    toBulkDestination({
-        userId,
-        encryptedEmail,
-        username,
-    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSESSendBulkRecipient {
-        const recipient = this.decryptPayload(encryptedEmail, userId);
-
-        return { recipient, templateData: { username } };
-    }
-
     toNoChannelResult(
         process: EnumNotificationProcess,
         completedSteps: EnumNotificationStep[]
@@ -249,33 +184,6 @@ export class NotificationUtil {
         );
 
         return { message, completedSteps, failedSteps: [] };
-    }
-
-    toDeliveryUnknownMessage(batchId: string, unknownCount: number): string {
-        return this.messageService.setMessage(
-            'notification.queue.email.error.deliveryUnknown',
-            { properties: { batchId, unknownCount } }
-        );
-    }
-
-    listPendingBatchIds(
-        users: IUserRecipient[],
-        markers: INotificationTermPolicyRecipientState[]
-    ): string[] {
-        const batchIdByUserId = new Map(
-            markers
-                .filter(
-                    marker =>
-                        marker.sentAt === null && marker.claimedAt === null
-                )
-                .map(marker => [marker.userId, marker.batchId])
-        );
-
-        return [
-            ...new Set(
-                users.flatMap(({ id }) => batchIdByUserId.get(id) ?? [])
-            ),
-        ];
     }
 
     mapRecipient(
@@ -292,61 +200,6 @@ export class NotificationUtil {
         const channels = this.resolveChannels(kind, settings);
 
         return { userId: id, email, username, notificationTokens, channels };
-    }
-
-    listMutedInAppTypes(
-        settings: INotificationUserSettingPreference[]
-    ): EnumNotificationType[] {
-        return settings
-            .filter(
-                setting =>
-                    setting.channel === EnumNotificationChannel.inApp &&
-                    !setting.isActive
-            )
-            .map(setting => setting.type);
-    }
-
-    toMessageProperties(metadata: Prisma.JsonValue): IMessageProperties {
-        const properties: IMessageProperties = {};
-        if (
-            metadata === null ||
-            typeof metadata !== 'object' ||
-            Array.isArray(metadata)
-        ) {
-            return properties;
-        }
-
-        for (const [key, value] of Object.entries(metadata)) {
-            if (
-                typeof value === 'string' ||
-                typeof value === 'number' ||
-                typeof value === 'boolean'
-            ) {
-                properties[key] = value;
-            }
-        }
-
-        return properties;
-    }
-
-    toRejectReasonProperties(
-        properties: IMessageProperties,
-        language: string | null
-    ): IMessageProperties {
-        const code = properties.rejectReasonCode;
-        if (typeof code !== 'string') {
-            return properties;
-        }
-
-        const options = {
-            ...(language !== null && { customLanguage: language }),
-        };
-        const rejectReasonLabel = this.messageService.setMessage(
-            `notification.rejectReason.${code}`,
-            options
-        );
-
-        return { ...properties, rejectReasonLabel };
     }
 
     toTemplateLabel(process: EnumNotificationProcess): string {

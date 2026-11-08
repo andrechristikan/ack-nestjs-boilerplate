@@ -13,7 +13,7 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
-import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DeviceService } from '@modules/device/services/device.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
@@ -29,7 +29,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
         mock<ActivityLogService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
@@ -132,7 +132,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: RoleService, useValue: roleService },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: DeviceUtil, useValue: deviceUtil },
+                { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
 
@@ -186,10 +186,10 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
         it('checks the rank, removes attributed to the admin, purges, and stages the actor and target rows', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
-            deviceUtil.mapActivityLogActorMetadata.mockReturnValue(
+            deviceService.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
             );
-            deviceUtil.mapActivityLogTargetMetadata.mockReturnValue(
+            deviceService.mapActivityLogTargetMetadata.mockReturnValue(
                 targetMetadata
             );
             activityLogService.prepare
@@ -214,7 +214,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 'admin-1'
             );
             expect(
-                deviceUtil.mapActivityLogTargetMetadata
+                deviceService.mapActivityLogTargetMetadata
             ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminDeviceRemove,
@@ -241,7 +241,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 ...userRole,
                 type: EnumRoleType.admin,
             });
-            deviceUtil.mapActivityLogActorMetadata.mockReturnValue(
+            deviceService.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
             );
             activityLogService.prepare.mockReturnValue(actorActivityLog);
@@ -250,7 +250,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
             expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
             expect(
-                deviceUtil.mapActivityLogTargetMetadata
+                deviceService.mapActivityLogTargetMetadata
             ).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 actorActivityLog,

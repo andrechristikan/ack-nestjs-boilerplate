@@ -19,6 +19,7 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService
     ) {}
 
+    /** Temporary: recordEffect inside the transaction (phase 3D). */
     private prepareInviteActivityLogs(
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,

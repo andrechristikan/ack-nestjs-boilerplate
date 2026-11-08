@@ -1,13 +1,8 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { Duration } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { MessageService } from '@common/message/services/message.service';
 import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
@@ -18,42 +13,14 @@ import {
 import type {
     Workspace,
     WorkspaceInvite,
-    WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
-import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceUtil', () => {
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-
-    const configValues: Record<string, unknown> = {
-        'home.url': 'https://app.example.com',
-        'workspace.slugRegex': /^[a-z0-9-]+$/,
-        'workspace.slugPrefix': 'ws-',
-        'workspace.slugMaxLength': 12,
-        'workspace.slugMaxAttempts': 3,
-        'workspace.invite.expiredInDays': 7,
-        'workspace.invite.tokenLength': 40,
-        'workspace.invite.referencePrefix': 'WIN',
-        'workspace.invite.referenceRandomLength': 6,
-        'workspace.invite.linkPattern':
-            '{homeUrl}/workspace/invites?inviteToken={token}',
-        'workspace.invite.signUpLinkPattern': '{homeUrl}/sign-up/{token}',
-        'workspace.joinRequest.reviewLinkPattern':
-            '{homeUrl}/workspace/join-requests/{joinRequestId}',
-    };
 
     let util: WorkspaceUtil;
 
@@ -90,18 +57,6 @@ describe('WorkspaceUtil', () => {
         acceptedAt: null,
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    };
-
-    const member: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
     const personalInput: IUserCreateWithWorkspaceInput = {
@@ -145,169 +100,15 @@ describe('WorkspaceUtil', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceUtil,
-                { provide: ConfigService, useValue: configService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: MessageService, useValue: messageService },
             ],
         }).compile();
 
         util = module.get(WorkspaceUtil);
-    });
-
-    describe('mapInvitePreview', () => {
-        it('uses the inviter name when present', () => {
-            const inviter: IWorkspaceInviteInviter = {
-                name: 'Jane Doe',
-                username: 'jane',
-            };
-
-            const result = util.mapInvitePreview(workspace, invite, inviter);
-
-            expect(result).toEqual({
-                workspaceName: 'Acme',
-                inviterName: 'Jane Doe',
-                workspaceRole: EnumWorkspaceMemberRole.member,
-                expiredAt: invite.expiredAt,
-            });
-        });
-
-        it('falls back to the inviter username when the name is null', () => {
-            const inviter: IWorkspaceInviteInviter = {
-                name: null,
-                username: 'jane',
-            };
-
-            const result = util.mapInvitePreview(workspace, invite, inviter);
-
-            expect(result.inviterName).toBe('jane');
-        });
-
-        it('falls back to the workspace name when the inviter is null', () => {
-            const result = util.mapInvitePreview(workspace, invite, null);
-
-            expect(result.inviterName).toBe('Acme');
-        });
-    });
-
-    describe('resolveInviterName', () => {
-        it('returns the inviter name', () => {
-            expect(
-                util.resolveInviterName(
-                    { name: 'Jane Doe', username: 'jane' },
-                    workspace
-                )
-            ).toBe('Jane Doe');
-        });
-
-        it('falls back to the inviter username when the name is null', () => {
-            expect(
-                util.resolveInviterName(
-                    { name: null, username: 'jane' },
-                    workspace
-                )
-            ).toBe('jane');
-        });
-
-        it('falls back to the workspace name when the inviter is missing', () => {
-            expect(util.resolveInviterName(null, workspace)).toBe('Acme');
-        });
-    });
-
-    describe('resolveRequesterName', () => {
-        it('returns the requester name', () => {
-            expect(
-                util.resolveRequesterName({
-                    name: 'Jane Doe',
-                    username: 'jane',
-                })
-            ).toBe('Jane Doe');
-        });
-
-        it('falls back to the requester username when the name is null', () => {
-            expect(
-                util.resolveRequesterName({ name: null, username: 'jane' })
-            ).toBe('jane');
-        });
-
-        it('falls back to the translated generic label when the requester is missing', () => {
-            messageService.setMessage.mockReturnValue('Translated user');
-
-            expect(util.resolveRequesterName(null)).toBe('Translated user');
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'workspace.joinRequest.requesterFallbackName'
-            );
-        });
-    });
-
-    describe('createInviteTokenData', () => {
-        beforeEach(() => {
-            helperStringService.random
-                .mockReturnValueOnce('token-value')
-                .mockReturnValueOnce('reference-suffix');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            helperDateService.forward.mockReturnValue(
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            helperStringService.fillPattern
-                .mockReturnValueOnce(
-                    'https://app.example.com/workspace/invites?inviteToken=token-value'
-                )
-                .mockReturnValueOnce(
-                    'https://app.example.com/sign-up/token-value'
-                );
-        });
-
-        it('builds token data with the default expiry when none is given', () => {
-            const result = util.createInviteTokenData(null);
-
-            expect(result).toEqual({
-                token: 'token-value',
-                hashedToken: 'hashed-token',
-                reference: 'WIN-reference-suffix',
-                expiredAt: new Date('2026-01-08T00:00:00.000Z'),
-                claimLink:
-                    'https://app.example.com/workspace/invites?inviteToken=token-value',
-                signUpLink: 'https://app.example.com/sign-up/token-value',
-            });
-            expect(helperStringService.random).toHaveBeenNthCalledWith(1, 40);
-            expect(helperStringService.random).toHaveBeenNthCalledWith(2, 6);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'token-value'
-            );
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 7 })
-            );
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                1,
-                '{homeUrl}/workspace/invites?inviteToken={token}',
-                { homeUrl: 'https://app.example.com', token: 'token-value' }
-            );
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                2,
-                '{homeUrl}/sign-up/{token}',
-                { homeUrl: 'https://app.example.com', token: 'token-value' }
-            );
-        });
-
-        it('builds token data with the given expiry duration', () => {
-            util.createInviteTokenData(14);
-
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 14 })
-            );
-        });
     });
 
     describe('mapInviteNotificationPayload', () => {
@@ -333,139 +134,6 @@ describe('WorkspaceUtil', () => {
             expect(helperDateService.formatToIso).toHaveBeenCalledWith(
                 invite.expiredAt
             );
-        });
-    });
-
-    describe('buildJoinRequestReviewLink', () => {
-        it('fills the review link pattern with the home url and join request id', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/workspace/join-requests/join-1'
-            );
-
-            const result = util.buildJoinRequestReviewLink('join-1');
-
-            expect(result).toBe(
-                'https://app.example.com/workspace/join-requests/join-1'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{homeUrl}/workspace/join-requests/{joinRequestId}',
-                { homeUrl: 'https://app.example.com', joinRequestId: 'join-1' }
-            );
-        });
-    });
-
-    describe('isInviteEmailMatch', () => {
-        it('returns true for the same email in a different case', () => {
-            expect(
-                util.isInviteEmailMatch(
-                    'Invitee@Example.com',
-                    'invitee@example.com'
-                )
-            ).toBe(true);
-        });
-
-        it('returns false for a different email', () => {
-            expect(
-                util.isInviteEmailMatch(
-                    'invitee@example.com',
-                    'other@example.com'
-                )
-            ).toBe(false);
-        });
-    });
-
-    describe('isPeerActionAllowed', () => {
-        it('returns false when the target is an owner', () => {
-            expect(
-                util.isPeerActionAllowed(
-                    EnumWorkspaceMemberRole.owner,
-                    EnumWorkspaceMemberRole.owner
-                )
-            ).toBe(false);
-        });
-
-        it('returns false when an admin acts on an admin', () => {
-            expect(
-                util.isPeerActionAllowed(
-                    EnumWorkspaceMemberRole.admin,
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).toBe(false);
-        });
-
-        it('returns true when an admin acts on a member', () => {
-            expect(
-                util.isPeerActionAllowed(
-                    EnumWorkspaceMemberRole.admin,
-                    EnumWorkspaceMemberRole.member
-                )
-            ).toBe(true);
-        });
-
-        it('returns true when an owner acts on an admin', () => {
-            expect(
-                util.isPeerActionAllowed(
-                    EnumWorkspaceMemberRole.owner,
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).toBe(true);
-        });
-    });
-
-    describe('hasRole', () => {
-        it('returns true for an owner whatever the allowed roles', () => {
-            expect(
-                util.hasRole(
-                    { ...member, role: EnumWorkspaceMemberRole.owner },
-                    []
-                )
-            ).toBe(true);
-        });
-
-        it('returns true when the member role is allowed', () => {
-            expect(
-                util.hasRole(
-                    { ...member, role: EnumWorkspaceMemberRole.admin },
-                    [EnumWorkspaceMemberRole.admin]
-                )
-            ).toBe(true);
-        });
-
-        it('returns false when the member role is not allowed', () => {
-            expect(util.hasRole(member, [EnumWorkspaceMemberRole.admin])).toBe(
-                false
-            );
-        });
-    });
-
-    describe('drawSlugCandidates', () => {
-        it('draws one slug candidate per configured attempt', () => {
-            helperStringService.generateSlugCandidates.mockReturnValue([
-                'ws-aaa',
-                'ws-bbb',
-                'ws-ccc',
-            ]);
-
-            const result = util.drawSlugCandidates();
-
-            expect(result).toEqual(['ws-aaa', 'ws-bbb', 'ws-ccc']);
-            expect(
-                helperStringService.generateSlugCandidates
-            ).toHaveBeenCalledWith('ws-', 12, 3);
-        });
-    });
-
-    describe('isSlugAllowed', () => {
-        it('returns true for a slug matching the pattern and length', () => {
-            expect(util.isSlugAllowed('acme-team')).toBe(true);
-        });
-
-        it('returns false for a slug breaking the pattern', () => {
-            expect(util.isSlugAllowed('Not Allowed!')).toBe(false);
-        });
-
-        it('returns false for a slug exceeding the max length', () => {
-            expect(util.isSlugAllowed('a'.repeat(13))).toBe(false);
         });
     });
 

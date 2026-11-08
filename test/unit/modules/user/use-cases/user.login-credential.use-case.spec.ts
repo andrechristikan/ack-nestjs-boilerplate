@@ -238,7 +238,6 @@ describe('UserLoginCredentialUseCase', () => {
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        userUtil.requiresTwoFactorSetup.mockReturnValue(false);
         notificationService.getRecipient.mockResolvedValue(recipient);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
@@ -378,7 +377,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledBefore(
                 userPasswordService.assertAttemptCounted
             );
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'stagePrepared',
                 'createTokenAndSession',
@@ -490,7 +488,6 @@ describe('UserLoginCredentialUseCase', () => {
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
 
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',

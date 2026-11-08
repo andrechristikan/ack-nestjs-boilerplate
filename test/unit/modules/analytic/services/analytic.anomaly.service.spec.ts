@@ -2,6 +2,7 @@ import { chunk } from 'lodash-es';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
@@ -30,7 +31,10 @@ import { DeviceAnalyticService } from '@modules/device/services/device.analytic.
 import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
-import { createAnalyticAnomalyService } from '@test/unit/helpers/test.unit.analytic.helper';
+import {
+    buildAnalyticSession,
+    createAnalyticAnomalyService,
+} from '@test/unit/helpers/test.unit.analytic.helper';
 import type { IAnalyticAnomalyServiceDoubles } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticAnomalyService', () => {
@@ -55,6 +59,8 @@ describe('AnalyticAnomalyService', () => {
         mock<HelperArrayService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
     const sessionAnalyticService: MockProxy<SessionAnalyticService> =
         mock<SessionAnalyticService>();
     const userAnalyticService: MockProxy<UserAnalyticService> =
@@ -117,6 +123,7 @@ describe('AnalyticAnomalyService', () => {
         configService,
         helperArrayService,
         helperDateService,
+        helperNumberService,
         sessionAnalyticService,
         userAnalyticService,
         activityLogAnalyticService,
@@ -154,9 +161,13 @@ describe('AnalyticAnomalyService', () => {
         });
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(startDate);
-        analyticAnomalyUtil.findImpossibleTravel.mockReturnValue([]);
+        helperDateService.getHour.mockImplementation(date =>
+            date.getUTCHours()
+        );
+        helperNumberService.percent.mockImplementation((part, total) =>
+            total === 0 ? 0 : (part / total) * 100
+        );
         analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
-        analyticAnomalyUtil.findLoginTimeAnomaly.mockReturnValue(null);
         helperArrayService.chunk.mockImplementation((rows, size) =>
             chunk(rows, size)
         );
@@ -629,34 +640,31 @@ describe('AnalyticAnomalyService', () => {
     describe('getImpossibleTravelUserIds', () => {
         it('returns the distinct users with an impossible-travel pair', async () => {
             const sessions = [
-                {
-                    id: 'session-1',
-                    userId: 'user-1',
-                    ipAddress: null,
-                    createdAt: startDate,
-                    geoLocation: nyc,
-                    userAgent: emptyAgent,
-                },
+                buildAnalyticSession(
+                    'session-1',
+                    'user-1',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'session-2',
+                    'user-1',
+                    new Date('2026-01-01T00:10:00.000Z'),
+                    london,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'session-3',
+                    'user-1',
+                    new Date('2026-01-01T00:20:00.000Z'),
+                    nyc,
+                    emptyAgent
+                ),
             ];
             sessionAnalyticService.getActiveWithGeoInRange.mockResolvedValue(
                 sessions
             );
-            analyticAnomalyUtil.findImpossibleTravel.mockReturnValue([
-                {
-                    userId: 'user-1',
-                    fromSessionId: 'session-1',
-                    toSessionId: 'session-2',
-                    distanceKm: 800,
-                    deltaMs: 1000,
-                },
-                {
-                    userId: 'user-1',
-                    fromSessionId: 'session-2',
-                    toSessionId: 'session-3',
-                    distanceKm: 900,
-                    deltaMs: 2000,
-                },
-            ]);
 
             const result = await service.getImpossibleTravelUserIds(
                 startDate,
@@ -667,9 +675,6 @@ describe('AnalyticAnomalyService', () => {
             expect(
                 sessionAnalyticService.getActiveWithGeoInRange
             ).toHaveBeenCalledWith(startDate, endDate, now);
-            expect(
-                analyticAnomalyUtil.findImpossibleTravel
-            ).toHaveBeenCalledWith(sessions, 500, 3600000);
         });
     });
 
@@ -686,7 +691,7 @@ describe('AnalyticAnomalyService', () => {
             ).toHaveBeenCalledWith(null, null, now);
         });
 
-        it('returns the pairs the anomaly util flags with the configured limits', async () => {
+        it('returns the pairs flagged with the configured limits', async () => {
             const sessions = [
                 {
                     id: 'session-1',
@@ -705,29 +710,23 @@ describe('AnalyticAnomalyService', () => {
                     userAgent: emptyAgent,
                 },
             ];
-            const flagged = [
-                {
-                    userId: 'user-1',
-                    fromSessionId: 'session-1',
-                    toSessionId: 'session-2',
-                    distanceKm: 800,
-                    deltaMs: 600000,
-                },
-            ];
             sessionAnalyticService.getActiveWithGeoInRange.mockResolvedValue(
                 sessions
             );
-            analyticAnomalyUtil.findImpossibleTravel.mockReturnValue(flagged);
 
             const result = await service['computeImpossibleTravel'](
                 startDate,
                 endDate
             );
 
-            expect(result).toBe(flagged);
-            expect(
-                analyticAnomalyUtil.findImpossibleTravel
-            ).toHaveBeenCalledWith(sessions, 500, 3600000);
+            expect(result).toHaveLength(1);
+            expect(result[0]).toMatchObject({
+                userId: 'user-1',
+                fromSessionId: 'session-1',
+                toSessionId: 'session-2',
+                deltaMs: 600000,
+            });
+            expect(result[0]!.distanceKm).toBeGreaterThan(500);
         });
     });
 
@@ -779,13 +778,16 @@ describe('AnalyticAnomalyService', () => {
             );
         });
 
-        it('reads each narrowed user history in chunks of analytic.anomaly.concurrency and keeps the anomalies the util finds', async () => {
-            const firstHistory = [startDate, endDate];
-            const secondHistory = [startDate];
+        it('reads each narrowed user history in chunks of analytic.anomaly.concurrency and keeps the anomalies it finds', async () => {
+            const firstHistory = [
+                startDate,
+                new Date('2026-01-01T03:00:00.000Z'),
+            ];
+            const secondHistory = [startDate, startDate];
             const anomaly = {
                 userId: 'user-1',
                 lastHour: 3,
-                historicalFrequencyPercent: 5,
+                historicalFrequencyPercent: 0,
             };
             activityLogAnalyticService.getGroupUserByActions.mockResolvedValue([
                 { userId: 'user-1', count: 6 },
@@ -794,9 +796,6 @@ describe('AnalyticAnomalyService', () => {
             activityLogAnalyticService.getCreatedAtByUserActionsInRange
                 .mockResolvedValueOnce(firstHistory)
                 .mockResolvedValueOnce(secondHistory);
-            analyticAnomalyUtil.findLoginTimeAnomaly
-                .mockReturnValueOnce(anomaly)
-                .mockReturnValueOnce(null);
 
             const result = await service['computeLoginTimeAnomalies'](
                 startDate,
@@ -820,12 +819,16 @@ describe('AnalyticAnomalyService', () => {
                 endDate,
                 1000
             );
-            expect(
-                analyticAnomalyUtil.findLoginTimeAnomaly
-            ).toHaveBeenNthCalledWith(1, 'user-1', firstHistory, 20);
-            expect(
-                analyticAnomalyUtil.findLoginTimeAnomaly
-            ).toHaveBeenNthCalledWith(2, 'user-2', secondHistory, 20);
+            expect(helperNumberService.percent).toHaveBeenNthCalledWith(
+                1,
+                0,
+                1
+            );
+            expect(helperNumberService.percent).toHaveBeenNthCalledWith(
+                2,
+                1,
+                1
+            );
         });
 
         it('passes analytic.anomaly.loginTimeAnomaly.historyLimit to the history read', async () => {
@@ -835,7 +838,6 @@ describe('AnalyticAnomalyService', () => {
             activityLogAnalyticService.getCreatedAtByUserActionsInRange.mockResolvedValue(
                 [startDate]
             );
-            analyticAnomalyUtil.findLoginTimeAnomaly.mockReturnValue(null);
 
             await service['computeLoginTimeAnomalies'](startDate, endDate);
 
@@ -848,6 +850,258 @@ describe('AnalyticAnomalyService', () => {
                 endDate,
                 1000
             );
+        });
+    });
+
+    describe('findImpossibleTravel', () => {
+        const tenMinutesLater = new Date('2026-01-01T00:10:00.000Z');
+        const nextDay = new Date('2026-01-02T00:00:00.000Z');
+        const nearNyc: GeoLocation = {
+            ...nyc,
+            latitude: 40.8,
+            longitude: -74.1,
+        };
+
+        it('flags consecutive sessions that travel too far too fast', () => {
+            const sessions = [
+                buildAnalyticSession(
+                    'session-1',
+                    'user-1',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'session-2',
+                    'user-1',
+                    tenMinutesLater,
+                    london,
+                    emptyAgent
+                ),
+            ];
+
+            const result = service['findImpossibleTravel'](
+                sessions,
+                500,
+                3600000
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]).toMatchObject({
+                userId: 'user-1',
+                fromSessionId: 'session-1',
+                toSessionId: 'session-2',
+                deltaMs: 600000,
+            });
+            expect(result[0]!.distanceKm).toBeGreaterThan(5000);
+        });
+
+        it('pairs sessions per user and never across users', () => {
+            const sessions = [
+                buildAnalyticSession(
+                    'a1',
+                    'user-a',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'b1',
+                    'user-b',
+                    tenMinutesLater,
+                    london,
+                    emptyAgent
+                ),
+            ];
+
+            expect(
+                service['findImpossibleTravel'](sessions, 500, 3600000)
+            ).toEqual([]);
+        });
+
+        it('skips a pair when either session has no geo', () => {
+            const sessions = [
+                buildAnalyticSession(
+                    'a1',
+                    'user-a',
+                    startDate,
+                    null,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'a2',
+                    'user-a',
+                    tenMinutesLater,
+                    london,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'b1',
+                    'user-b',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'b2',
+                    'user-b',
+                    tenMinutesLater,
+                    null,
+                    emptyAgent
+                ),
+            ];
+
+            expect(
+                service['findImpossibleTravel'](sessions, 500, 3600000)
+            ).toEqual([]);
+        });
+
+        it('skips a pair when the distance is not above the minimum', () => {
+            const sessions = [
+                buildAnalyticSession(
+                    'c1',
+                    'user-c',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'c2',
+                    'user-c',
+                    tenMinutesLater,
+                    nearNyc,
+                    emptyAgent
+                ),
+            ];
+
+            expect(
+                service['findImpossibleTravel'](sessions, 500, 3600000)
+            ).toEqual([]);
+        });
+
+        it('skips a pair when the delta is not below the maximum', () => {
+            const sessions = [
+                buildAnalyticSession(
+                    'd1',
+                    'user-d',
+                    startDate,
+                    nyc,
+                    emptyAgent
+                ),
+                buildAnalyticSession(
+                    'd2',
+                    'user-d',
+                    nextDay,
+                    london,
+                    emptyAgent
+                ),
+            ];
+
+            expect(
+                service['findImpossibleTravel'](sessions, 500, 3600000)
+            ).toEqual([]);
+        });
+
+        it('returns nothing for a single session or none', () => {
+            expect(
+                service['findImpossibleTravel'](
+                    [
+                        buildAnalyticSession(
+                            'solo',
+                            'user-solo',
+                            startDate,
+                            nyc,
+                            emptyAgent
+                        ),
+                    ],
+                    500,
+                    3600000
+                )
+            ).toEqual([]);
+            expect(service['findImpossibleTravel']([], 500, 3600000)).toEqual(
+                []
+            );
+        });
+    });
+
+    describe('findLoginTimeAnomaly', () => {
+        const eightAm = new Date('2026-01-01T08:00:00.000Z');
+        const threeAm = new Date('2026-01-01T03:00:00.000Z');
+
+        it('flags a last hour absent from the prior logins using a histogram that excludes the last login', () => {
+            const logins = [
+                eightAm,
+                eightAm,
+                eightAm,
+                eightAm,
+                eightAm,
+                threeAm,
+            ];
+
+            const result = service['findLoginTimeAnomaly'](
+                'user-1',
+                logins,
+                20
+            );
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                lastHour: 3,
+                historicalFrequencyPercent: 0,
+            });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 5);
+        });
+
+        it('buckets logins by the hour HelperDateService returns in the configured timezone', () => {
+            const beforeMidnight = new Date('2026-01-01T16:00:00.000Z');
+            const afterMidnight = new Date('2026-01-01T17:00:00.000Z');
+            helperDateService.getHour.mockImplementation(date =>
+                date.getTime() === afterMidnight.getTime() ? 0 : 23
+            );
+            const logins = [
+                beforeMidnight,
+                beforeMidnight,
+                beforeMidnight,
+                beforeMidnight,
+                afterMidnight,
+            ];
+
+            const result = service['findLoginTimeAnomaly'](
+                'user-1',
+                logins,
+                20
+            );
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                lastHour: 0,
+                historicalFrequencyPercent: 0,
+            });
+            expect(helperDateService.getHour).toHaveBeenCalledWith(
+                afterMidnight
+            );
+            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 4);
+        });
+
+        it('returns null when the last hour frequency reaches the threshold', () => {
+            const logins = [eightAm, eightAm, eightAm, eightAm, eightAm];
+
+            expect(
+                service['findLoginTimeAnomaly']('user-keep', logins, 20)
+            ).toBeNull();
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 4);
+        });
+    });
+
+    describe('distanceKm', () => {
+        it('returns 0 when both points are the same', () => {
+            expect(
+                service['distanceKm'](40.7128, -74.006, 40.7128, -74.006)
+            ).toBe(0);
+        });
+
+        it('returns half the earth circumference for antipodal longitudes at the equator', () => {
+            expect(service['distanceKm'](0, 0, 0, 180)).toBeCloseTo(20015.1, 1);
         });
     });
 });

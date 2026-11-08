@@ -14,7 +14,6 @@ import {
 } from '@generated/prisma-client/client';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import {
     NotificationDefaultAvailableOrderBy,
     NotificationSharedListCursorScope,
@@ -29,8 +28,6 @@ describe('NotificationGetListCursorUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     let useCase: NotificationGetListCursorUseCase;
 
     const cursorParams = {
@@ -60,7 +57,6 @@ describe('NotificationGetListCursorUseCase', () => {
                     useValue: requestStoreService,
                 },
                 { provide: MessageService, useValue: messageService },
-                { provide: NotificationUtil, useValue: notificationUtil },
             ],
         }).compile();
         useCase = module.get(NotificationGetListCursorUseCase);
@@ -93,7 +89,7 @@ describe('NotificationGetListCursorUseCase', () => {
             expect(result).toEqual(cursorPage);
         });
 
-        it('translates title and body in the request language with the properties NotificationUtil shapes from the metadata', async () => {
+        it('translates title and body in the request language with the properties NotificationService shapes from the metadata', async () => {
             const stored: Notification = {
                 id: 'notification-id',
                 userId: 'user-id',
@@ -126,10 +122,10 @@ describe('NotificationGetListCursorUseCase', () => {
                 data: [stored],
             });
             requestStoreService.get.mockReturnValue('en');
-            notificationUtil.toMessageProperties.mockReturnValue(
+            notificationService.toMessageProperties.mockReturnValue(
                 metadataProperties
             );
-            notificationUtil.toRejectReasonProperties.mockReturnValue(
+            notificationService.toRejectReasonProperties.mockReturnValue(
                 properties
             );
             messageService.setMessage.mockImplementation(
@@ -141,11 +137,11 @@ describe('NotificationGetListCursorUseCase', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestLanguageStoreKey
             );
-            expect(notificationUtil.toMessageProperties).toHaveBeenCalledWith(
-                stored.metadata
-            );
             expect(
-                notificationUtil.toRejectReasonProperties
+                notificationService.toMessageProperties
+            ).toHaveBeenCalledWith(stored.metadata);
+            expect(
+                notificationService.toRejectReasonProperties
             ).toHaveBeenCalledWith(metadataProperties, 'en');
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.workspaceJoinRejected.title',
@@ -189,8 +185,8 @@ describe('NotificationGetListCursorUseCase', () => {
                 data: [stored],
             });
             requestStoreService.get.mockReturnValue(null);
-            notificationUtil.toMessageProperties.mockReturnValue({});
-            notificationUtil.toRejectReasonProperties.mockReturnValue({});
+            notificationService.toMessageProperties.mockReturnValue({});
+            notificationService.toRejectReasonProperties.mockReturnValue({});
             messageService.setMessage.mockImplementation(
                 (path: string) => path
             );
@@ -198,7 +194,7 @@ describe('NotificationGetListCursorUseCase', () => {
             await useCase.execute('user-id', query);
 
             expect(
-                notificationUtil.toRejectReasonProperties
+                notificationService.toRejectReasonProperties
             ).toHaveBeenCalledWith({}, null);
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.changePassword.title',

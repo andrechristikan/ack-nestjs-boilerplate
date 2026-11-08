@@ -91,7 +91,6 @@ export class UserSignUpUseCase implements IAppUseCase<
             try {
                 const users = await this.databaseService.withTransaction(
                     async tx => {
-                        // Sequential by design: gate before the work it guards
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
                             UserTermPolicyContract.requiredTypes

@@ -1,3 +1,5 @@
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -15,6 +17,12 @@ describe('AnalyticWorkspaceUserService', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
+    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     const workspaceMemberAnalyticService: MockProxy<WorkspaceMemberAnalyticService> =
         mock<WorkspaceMemberAnalyticService>();
     const workspaceInviteAnalyticService: MockProxy<WorkspaceInviteAnalyticService> =
@@ -34,9 +42,15 @@ describe('AnalyticWorkspaceUserService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        analyticDateUtil.workspaceWindowToken.mockReturnValue(
-            'workspace-window'
+        configGet.mockImplementation((key: string) =>
+            key === 'analytic.cache.workspaceWindowTokenPattern'
+                ? 'Workspace:{workspaceId}:{start}:{end}'
+                : undefined
         );
+        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
+            date ? date.toISOString() : '_'
+        );
+        helperStringService.fillPattern.mockReturnValue('workspace-window');
         analyticCache.getDashboard.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -44,6 +58,8 @@ describe('AnalyticWorkspaceUserService', () => {
                 AnalyticWorkspaceUserService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperStringService, useValue: helperStringService },
                 {
                     provide: WorkspaceMemberAnalyticService,
                     useValue: workspaceMemberAnalyticService,
@@ -217,6 +233,26 @@ describe('AnalyticWorkspaceUserService', () => {
             expect(
                 activityLogAnalyticService.getCountByWorkspaceInRange
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
+        });
+    });
+
+    describe('workspaceWindowToken', () => {
+        it('fills the workspace window pattern with workspace id and cache tokens', () => {
+            const result = service['workspaceWindowToken'](
+                'workspace-1',
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe('workspace-window');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'Workspace:{workspaceId}:{start}:{end}',
+                {
+                    workspaceId: 'workspace-1',
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString(),
+                }
+            );
         });
     });
 });

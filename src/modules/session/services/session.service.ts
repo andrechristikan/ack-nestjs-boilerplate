@@ -17,6 +17,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
@@ -30,11 +31,11 @@ import type {
     ISessionList,
     ISessionPurgeLoginsPayload,
     ISessionRef,
+    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 
@@ -43,7 +44,6 @@ export class SessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
-        private readonly sessionUtil: SessionUtil,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService,
         private readonly deviceService: DeviceService,
@@ -51,6 +51,22 @@ export class SessionService {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
+
+    private groupRefsByUser(
+        sessions: ISessionUserRef[]
+    ): ISessionPurgeLoginsPayload[] {
+        const grouped = new Map<string, ISessionRef[]>();
+        for (const { id, userId } of sessions) {
+            const refs = grouped.get(userId) ?? [];
+            refs.push({ id });
+            grouped.set(userId, refs);
+        }
+
+        return Array.from(grouped, ([userId, refs]) => ({
+            userId,
+            sessions: refs,
+        }));
+    }
 
     async getListOffsetByAdmin(
         userId: string,
@@ -88,9 +104,9 @@ export class SessionService {
         sessionId: string,
         jti: string
     ): Promise<void> {
+        // Sequential by design: side effects whose order is part of the contract (the re-read follows the write it checks)
         await this.sessionCache.setLogin(userId, sessionId, jti);
 
-        // Sequential by design: the re-read follows the write it checks
         const isActive = await this.sessionRepository.existsActiveById(
             userId,
             sessionId
@@ -288,7 +304,7 @@ export class SessionService {
                 revokedAt
             );
 
-        return this.sessionUtil.groupRefsByUser(sessions);
+        return this.groupRefsByUser(sessions);
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
@@ -386,5 +402,29 @@ export class SessionService {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    mapActivityLogActorMetadata(
+        session: ISession,
+        timestamp: Date
+    ): IActivityLogMetadata {
+        return {
+            targetUserId: session.userId,
+            targetUsername: session.user.username,
+            sessionId: session.id,
+            timestamp,
+        };
+    }
+
+    mapActivityLogTargetMetadata(
+        session: ISession,
+        actorUserId: string,
+        timestamp: Date
+    ): IActivityLogMetadata {
+        return {
+            actorUserId,
+            sessionId: session.id,
+            timestamp,
+        };
     }
 }

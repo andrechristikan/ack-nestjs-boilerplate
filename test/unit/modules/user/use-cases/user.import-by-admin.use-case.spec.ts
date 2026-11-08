@@ -313,7 +313,7 @@ describe('UserImportByAdminUseCase', () => {
                 passwordHasheds: [password],
                 passwordStrings: ['random-password'],
             });
-            userCreateUtil.buildImportByAdminStages.mockReturnValue([
+            userImportService.buildImportByAdminStages.mockReturnValue([
                 stageInput,
             ]);
         });
@@ -351,7 +351,7 @@ describe('UserImportByAdminUseCase', () => {
                 [input]
             );
             expect(
-                userCreateUtil.buildImportByAdminStages
+                userImportService.buildImportByAdminStages
             ).toHaveBeenCalledWith([input], [committedUser]);
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,

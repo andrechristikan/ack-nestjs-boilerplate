@@ -1,4 +1,4 @@
-New names in this example, not in the checkout: the plan in `example-plan.md` and its paths, the brief `.superpowers/sdd/2026-11-05-country-inactive/task-1-brief.md`, and the report path.
+New names in this example, not in the checkout: the plan in `example-plan.md` and its paths, and the brief `.superpowers/sdd/2026-11-05-country-inactive/task-1-brief.md`.
 
 # Example: a Coder and a Reviewer dispatch
 
@@ -49,8 +49,7 @@ Rules to read:
 .claude/rules/testing.md
 .claude/rules/use-case.md
 Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the decisive
-  test and typecheck lines; open items; on a plan task, also written to
-  generated/docs/report-2026-11-05-country-inactive-task-1.md.
+  test and typecheck lines; open items.
 Decisions to honour:
 - 0004 · Use case, service, repository · chosen: one use case per action, rules in services shared downward on a declared order · rejected: domains as orchestrators, domain events for orchestration, grouped multi-method use cases, a separate `src/application/` tier
 The working tree is the source, including unstaged and untracked files; read files from

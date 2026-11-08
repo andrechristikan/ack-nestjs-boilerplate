@@ -1,11 +1,18 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import {
+    AuthGoogleCertificateErrorPrefix,
+    AuthJwksErrorName,
+    AuthProviderNetworkErrorCodes,
+} from '@modules/auth/constants/auth.constant';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
+import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
 import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtPayloadIdentified,
@@ -13,7 +20,6 @@ import type {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialService } from '@modules/auth/services/auth.social.service';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { Injectable } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
@@ -22,8 +28,58 @@ import type { TokenPayload } from 'google-auth-library';
 export class AuthService {
     constructor(
         private readonly authSocialService: AuthSocialService,
-        private readonly authUtil: AuthUtil
+        private readonly helperHashService: HelperHashService
     ) {}
+
+    private isTokenPayloadValid<
+        T extends { sub?: string; jti?: string; sessionId: string },
+    >(payload: T): payload is IAuthJwtPayloadIdentified<T> {
+        const { sub, sessionId, jti } = payload;
+
+        return (
+            !!sub &&
+            !!sessionId &&
+            typeof sub === 'string' &&
+            !!jti &&
+            typeof jti === 'string'
+        );
+    }
+
+    private isJtiMatch(sessionJtiDigest: string, jti: string): boolean {
+        const jtiHash = this.helperHashService.sha256Hash(jti);
+
+        return this.helperHashService.sha256Compare(sessionJtiDigest, jtiHash);
+    }
+
+    private toProviderUnavailableException(
+        error: unknown
+    ): AuthProviderUnavailableException | null {
+        if (!(error instanceof Error)) {
+            return null;
+        }
+
+        const isFlagged =
+            'isEndpointUnavailable' in error &&
+            error.isEndpointUnavailable === true;
+        const isJwksError = error.name === AuthJwksErrorName;
+        const isGoogleCertificateError = error.message.startsWith(
+            AuthGoogleCertificateErrorPrefix
+        );
+        const isNetworkError =
+            'code' in error &&
+            typeof error.code === 'string' &&
+            AuthProviderNetworkErrorCodes.includes(error.code);
+        if (
+            isFlagged ||
+            isJwksError ||
+            isGoogleCertificateError ||
+            isNetworkError
+        ) {
+            return new AuthProviderUnavailableException(error);
+        }
+
+        return null;
+    }
 
     private assertJwtGuardError(err: Error | null, info: Error | null): void {
         if (err instanceof AppBaseException) {
@@ -37,7 +93,7 @@ export class AuthService {
             );
         }
 
-        const unavailable = this.authUtil.toProviderUnavailableException(info);
+        const unavailable = this.toProviderUnavailableException(info);
         if (unavailable instanceof AppBaseException) {
             throw unavailable;
         }
@@ -46,7 +102,7 @@ export class AuthService {
     validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
     ): IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload> {
-        const isValid = this.authUtil.isTokenPayloadValid(payload);
+        const isValid = this.isTokenPayloadValid(payload);
         if (!isValid) {
             throw new AuthJwtAccessTokenInvalidException();
         }
@@ -63,7 +119,7 @@ export class AuthService {
             throw new SessionRevokedException();
         }
 
-        const isMatch = this.authUtil.isJtiMatch(sessionJtiDigest, payload.jti);
+        const isMatch = this.isJtiMatch(sessionJtiDigest, payload.jti);
         if (!isMatch) {
             throw new SessionRevokedException();
         }
@@ -88,7 +144,7 @@ export class AuthService {
     async validateJwtRefreshStrategy(
         payload: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {
-        const isValid = this.authUtil.isTokenPayloadValid(payload);
+        const isValid = this.isTokenPayloadValid(payload);
         if (!isValid) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
@@ -126,8 +182,7 @@ export class AuthService {
                 throw err;
             }
 
-            const unavailable =
-                this.authUtil.toProviderUnavailableException(err);
+            const unavailable = this.toProviderUnavailableException(err);
 
             throw unavailable ?? new AuthSocialAppleInvalidException(err);
         }
@@ -150,8 +205,7 @@ export class AuthService {
                 throw err;
             }
 
-            const unavailable =
-                this.authUtil.toProviderUnavailableException(err);
+            const unavailable = this.toProviderUnavailableException(err);
 
             throw unavailable ?? new AuthSocialGoogleInvalidException(err);
         }

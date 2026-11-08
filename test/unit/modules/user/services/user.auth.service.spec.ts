@@ -32,7 +32,6 @@ import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -71,7 +70,6 @@ describe('UserAuthService', () => {
         mock<AuthTwoFactorService>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -154,7 +152,6 @@ describe('UserAuthService', () => {
                 },
                 { provide: AuthUtil, useValue: authUtil },
                 { provide: SessionUtil, useValue: sessionUtil },
-                { provide: UserUtil, useValue: userUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -1051,6 +1048,10 @@ describe('UserAuthService', () => {
             updatedBy: null,
         };
         const twoFactorUser: IUserTwoFactorEnabled = { ...baseUser, twoFactor };
+        const setupUser: IUserTwoFactorEnabled = {
+            ...baseUser,
+            twoFactor: { ...twoFactor, requiredSetup: true },
+        };
 
         beforeEach(() => {
             authTwoFactorService.createChallenge.mockResolvedValue({
@@ -1060,7 +1061,6 @@ describe('UserAuthService', () => {
         });
 
         it('returns the setup challenge after saving the pending secret when setup is required', async () => {
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
             userTwoFactorService.setup.mockResolvedValue({
                 encryptedSecret: 'encrypted-secret',
                 otpauthUrl: 'otpauth://totp/secret',
@@ -1069,7 +1069,7 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.createTwoFactorChallenge(
-                    twoFactorUser,
+                    setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential
@@ -1089,9 +1089,7 @@ describe('UserAuthService', () => {
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
             });
-            expect(userTwoFactorService.setup).toHaveBeenCalledWith(
-                twoFactorUser
-            );
+            expect(userTwoFactorService.setup).toHaveBeenCalledWith(setupUser);
             expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
                 'user-halcyon',
                 'encrypted-secret'
@@ -1100,7 +1098,6 @@ describe('UserAuthService', () => {
 
         it('writes no secret when the challenge fails during setup', async () => {
             const failure = new Error('challenge failed');
-            userUtil.requiresTwoFactorSetup.mockReturnValue(true);
             authTwoFactorService.createChallenge.mockRejectedValue(failure);
             userTwoFactorService.setup.mockResolvedValue({
                 encryptedSecret: 'encrypted-secret',
@@ -1110,7 +1107,7 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.createTwoFactorChallenge(
-                    twoFactorUser,
+                    setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential
@@ -1120,8 +1117,6 @@ describe('UserAuthService', () => {
         });
 
         it('returns the verify challenge without a setup when setup is not required', async () => {
-            userUtil.requiresTwoFactorSetup.mockReturnValue(false);
-
             await expect(
                 service.createTwoFactorChallenge(
                     twoFactorUser,
@@ -1138,6 +1133,44 @@ describe('UserAuthService', () => {
 
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
             expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('requiresTwoFactorSetup', () => {
+        const enabled: TwoFactor = {
+            id: 'two-factor-halcyon',
+            userId: 'user-halcyon',
+            secret: 'encrypted-secret',
+            pendingSecret: null,
+            backupCodes: [],
+            enabled: true,
+            requiredSetup: false,
+            confirmedAt: null,
+            lastUsedAt: null,
+            lastUsedStep: null,
+            attempt: 0,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+        };
+
+        it('returns true when the enabled row still requires setup', () => {
+            expect(
+                service['requiresTwoFactorSetup']({
+                    ...baseUser,
+                    twoFactor: { ...enabled, requiredSetup: true },
+                })
+            ).toBe(true);
+        });
+
+        it('returns false when the enabled row requires no setup', () => {
+            expect(
+                service['requiresTwoFactorSetup']({
+                    ...baseUser,
+                    twoFactor: { ...enabled, requiredSetup: false },
+                })
+            ).toBe(false);
         });
     });
 });

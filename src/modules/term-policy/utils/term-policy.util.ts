@@ -1,18 +1,12 @@
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IAnalyticTermPolicyTimeToAccept } from '@modules/analytic/interfaces/analytic.interface';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
-import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
-    ITermPolicyAcceptanceAnalytic,
     ITermPolicyActivityLogSubject,
     ITermPolicyContent,
-    ITermPolicyContentUpload,
-    ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,7 +21,6 @@ export class TermPolicyUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService,
         private readonly helperStringService: HelperStringService
     ) {
         this.uploadContentPath = this.configService.get<string>(
@@ -39,12 +32,6 @@ export class TermPolicyUtil {
         this.contentMaxSizeInBytes = this.configService.get<number>(
             'termPolicy.content.maxSizeInBytes'
         )!;
-    }
-
-    validateUniqueLanguages(contents: TermPolicyContentRequestDto[]): boolean {
-        const languages = contents.map(content => content.language);
-        const uniqueLanguages = this.helperArrayService.unique(languages);
-        return uniqueLanguages.length === languages.length;
     }
 
     isContentSizeAllowed(size: number): boolean {
@@ -119,19 +106,6 @@ export class TermPolicyUtil {
         });
     }
 
-    mapPublicContentKeys(
-        { type, version }: ITermPolicyRef,
-        contents: ITermPolicyContent[]
-    ): ITermPolicyContentUpload[] {
-        const destination = this.getContentPublicPath(type, version);
-
-        return contents.map(({ language, size, key }) => ({
-            language,
-            size,
-            key: `${destination}/${key.slice(key.lastIndexOf('/') + 1)}`,
-        }));
-    }
-
     mapActivityLogMetadata(
         termPolicy: ITermPolicyActivityLogSubject,
         timestamp: Date
@@ -142,29 +116,5 @@ export class TermPolicyUtil {
             termPolicyVersion: termPolicy.version,
             timestamp,
         };
-    }
-
-    getContentByLanguage(
-        contents: ITermPolicyContent[],
-        language: EnumMessageLanguage
-    ): ITermPolicyContent | null {
-        return contents.find(c => c.language === language) ?? null;
-    }
-
-    averageAcceptanceMs(
-        rows: ITermPolicyAcceptanceAnalytic[]
-    ): IAnalyticTermPolicyTimeToAccept {
-        const deltas = rows.flatMap(row =>
-            row.publishedAt === null
-                ? []
-                : [row.acceptedAt.getTime() - row.publishedAt.getTime()]
-        );
-        if (deltas.length === 0) {
-            return { count: 0, averageMs: 0 };
-        }
-
-        const averageMs = deltas.reduce((s, d) => s + d, 0) / deltas.length;
-
-        return { count: deltas.length, averageMs };
     }
 }

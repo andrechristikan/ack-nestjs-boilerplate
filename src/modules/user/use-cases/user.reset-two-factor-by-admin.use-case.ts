@@ -38,7 +38,7 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
     async execute(userId: string, user: IUser): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, user.id);
 
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(user.role.type, target.role.type);
         this.userService.assertUnblocked(target);
@@ -63,7 +63,6 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
             }),
         ];
 
-        // Sequential by design: write must not run if an earlier step throws
         const recipient = await this.notificationService.getRecipient(
             target,
             EnumNotificationKind.resetTwoFactorByAdmin

@@ -14,7 +14,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -34,25 +36,28 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
-import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { Duration } from 'luxon';
 
 describe('UserPasswordService', () => {
     const userPasswordRepository: MockProxy<UserPasswordRepository> =
         mock<UserPasswordRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userPasswordUtil: MockProxy<UserPasswordUtil> =
-        mock<UserPasswordUtil>({ forgotResendInMinutes: 7 });
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const configGet = vi.fn<(key: string) => boolean | number | undefined>();
+    const configGet =
+        vi.fn<(key: string) => boolean | number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -61,6 +66,19 @@ describe('UserPasswordService', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const usedAt = new Date('2026-03-01T00:00:00.000Z');
+    const now = new Date('2026-03-01T00:00:00.000Z');
+
+    const configValues: Record<string, boolean | number | string> = {
+        'auth.password.attempt': true,
+        'auth.password.maxAttempt': 5,
+        'home.url': 'https://example.com',
+        'forgotPassword.reference.prefix': 'FGT',
+        'forgotPassword.reference.length': 8,
+        'forgotPassword.expiredInMinutes': 15,
+        'forgotPassword.tokenLength': 32,
+        'forgotPassword.resendInMinutes': 5,
+        'forgotPassword.linkPattern': '{homeUrl}/reset?token={token}',
+    };
 
     const baseTwoFactor: TwoFactor = {
         id: 'two-factor-hollow',
@@ -145,14 +163,12 @@ describe('UserPasswordService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation(key => {
-            const values: Record<string, boolean | number> = {
-                'auth.password.attempt': true,
-                'auth.password.maxAttempt': 5,
-            };
-
-            return values[key];
-        });
+        configGet.mockImplementation(key => configValues[key]);
+        helperDateService.create.mockReturnValue(now);
+        helperDateService.forward.mockImplementation(
+            (date, duration: Duration) =>
+                new Date(date.getTime() + duration.as('milliseconds'))
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -163,8 +179,12 @@ describe('UserPasswordService', () => {
                 },
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: UserPasswordUtil, useValue: userPasswordUtil },
                 { provide: HelperHashService, useValue: helperHashService },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserService, useValue: userService },
                 { provide: UserQueue, useValue: userQueue },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
@@ -230,7 +250,7 @@ describe('UserPasswordService', () => {
 
         it('returns true without counting when attempt tracking is off', async () => {
             configGet.mockImplementation(key =>
-                key === 'auth.password.attempt' ? false : 5
+                key === 'auth.password.attempt' ? false : configValues[key]
             );
             const module: TestingModule = await Test.createTestingModule({
                 providers: [
@@ -241,8 +261,15 @@ describe('UserPasswordService', () => {
                     },
                     { provide: UserRepository, useValue: userRepository },
                     { provide: UserUtil, useValue: userUtil },
-                    { provide: UserPasswordUtil, useValue: userPasswordUtil },
                     { provide: HelperHashService, useValue: helperHashService },
+                    {
+                        provide: HelperStringService,
+                        useValue: helperStringService,
+                    },
+                    {
+                        provide: HelperDateService,
+                        useValue: helperDateService,
+                    },
                     { provide: UserService, useValue: userService },
                     { provide: UserQueue, useValue: userQueue },
                     { provide: AuthPasswordUtil, useValue: authPasswordUtil },
@@ -266,7 +293,6 @@ describe('UserPasswordService', () => {
 
     describe('countPasswordAttempt', () => {
         it('returns null without counting when the user has no password', async () => {
-            userUtil.hasPassword.mockReturnValue(false);
             const passwordless: IUser = { ...baseUser, password: null };
 
             await expect(
@@ -279,7 +305,6 @@ describe('UserPasswordService', () => {
         });
 
         it('returns the counted attempt without enqueueing a lockout within the budget', async () => {
-            userUtil.hasPassword.mockReturnValue(true);
             userRepository.incrementPasswordAttempt.mockResolvedValue(1);
 
             await expect(
@@ -290,8 +315,6 @@ describe('UserPasswordService', () => {
                 isAttemptCounted: true,
                 lockoutStages: [],
             });
-            expect(userUtil.hasPassword).toHaveBeenCalledWith(baseUser);
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(
                 userRepository.incrementPasswordAttempt
             ).toHaveBeenCalledWith('user-hollow', 5);
@@ -312,9 +335,7 @@ describe('UserPasswordService', () => {
                         createdBy: 'user-hollow',
                     },
                 ];
-            userUtil.hasPassword.mockReturnValue(true);
             userRepository.incrementPasswordAttempt.mockResolvedValue(null);
-            userUtil.buildPasswordLockoutStages.mockReturnValue(lockoutStages);
 
             await expect(
                 service.countPasswordAttempt(baseUser)
@@ -326,9 +347,6 @@ describe('UserPasswordService', () => {
             });
             expect(userQueue.lockout).toHaveBeenCalledTimes(1);
             expect(userQueue.lockout).toHaveBeenCalledWith('user-hollow');
-            expect(userUtil.buildPasswordLockoutStages).toHaveBeenCalledWith(
-                'user-hollow'
-            );
         });
     });
 
@@ -354,6 +372,15 @@ describe('UserPasswordService', () => {
         } as Awaited<
             ReturnType<UserPasswordRepository['findOneLatestByForgotPassword']>
         >;
+
+        beforeEach(() => {
+            helperStringService.random
+                .mockReturnValueOnce('raw-token')
+                .mockReturnValueOnce('hollow');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperStringService.fillPattern.mockReturnValue(forgot.link);
+            helperDateService.forward.mockReturnValue(forgot.expiredAt);
+        });
 
         it('validates changePassword.forgotAllowed before the read', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(null);
@@ -388,7 +415,6 @@ describe('UserPasswordService', () => {
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 null
             );
-            userPasswordUtil.createForgot.mockReturnValue(forgot);
 
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
@@ -403,7 +429,6 @@ describe('UserPasswordService', () => {
                 lastForgot
             );
             userUtil.isInsideResendWindow.mockReturnValue(false);
-            userPasswordUtil.createForgot.mockReturnValue(forgot);
 
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
@@ -411,7 +436,7 @@ describe('UserPasswordService', () => {
 
             expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
                 lastForgot!.createdAt,
-                7
+                5
             );
         });
 
@@ -425,7 +450,7 @@ describe('UserPasswordService', () => {
             expect(
                 userPasswordRepository.findOneLatestByForgotPassword
             ).not.toHaveBeenCalled();
-            expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
+            expect(helperStringService.random).not.toHaveBeenCalled();
         });
 
         it('returns null inside the resend window', async () => {
@@ -441,9 +466,9 @@ describe('UserPasswordService', () => {
 
             expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
                 lastForgot!.createdAt,
-                7
+                5
             );
-            expect(userPasswordUtil.createForgot).not.toHaveBeenCalled();
+            expect(helperStringService.random).not.toHaveBeenCalled();
         });
     });
 
@@ -573,6 +598,92 @@ describe('UserPasswordService', () => {
             expect(
                 userPasswordRepository.markUnusedUsedByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow');
+        });
+    });
+
+    describe('hasPassword', () => {
+        it('returns true when the user holds a password hash', () => {
+            expect(
+                service['hasPassword']({ ...baseUser, password: 'hash' })
+            ).toBe(true);
+        });
+
+        it('returns false when the user has no password', () => {
+            expect(
+                service['hasPassword']({ ...baseUser, password: null })
+            ).toBe(false);
+        });
+    });
+
+    describe('buildPasswordLockoutStages', () => {
+        it('returns the revoke-all-sessions and max-password-attempt stages owned by the user', () => {
+            expect(service['buildPasswordLockoutStages']('user-1')).toEqual([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+            ]);
+        });
+    });
+
+    describe('createReference', () => {
+        it('builds a prefixed random reference', () => {
+            helperStringService.random.mockReturnValue('random-ref');
+
+            expect(service['createReference']()).toBe('FGT-random-ref');
+            expect(helperStringService.random).toHaveBeenCalledWith(8);
+        });
+    });
+
+    describe('createToken', () => {
+        it('builds a random token of the configured length', () => {
+            helperStringService.random.mockReturnValue('random-token');
+
+            expect(service['createToken']()).toBe('random-token');
+            expect(helperStringService.random).toHaveBeenCalledWith(32);
+        });
+    });
+
+    describe('createExpiredAt', () => {
+        it('forwards now by the configured expiry', () => {
+            expect(service['createExpiredAt']()).toEqual(
+                new Date(now.getTime() + 15 * 60 * 1000)
+            );
+        });
+    });
+
+    describe('createForgot', () => {
+        it('builds the reset link, hashed token, reference, and windows', () => {
+            helperStringService.random
+                .mockReturnValueOnce('random-token')
+                .mockReturnValueOnce('random-ref');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperStringService.fillPattern.mockReturnValue(
+                'https://example.com/reset?token=random-token'
+            );
+
+            expect(service['createForgot']()).toEqual({
+                reference: 'FGT-random-ref',
+                expiredAt: new Date(now.getTime() + 15 * 60 * 1000),
+                token: 'random-token',
+                hashedToken: 'hashed-token',
+                expiredInMinutes: 15,
+                resendInMinutes: 5,
+                link: 'https://example.com/reset?token=random-token',
+            });
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'random-token'
+            );
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{homeUrl}/reset?token={token}',
+                { homeUrl: 'https://example.com', token: 'random-token' }
+            );
         });
     });
 });

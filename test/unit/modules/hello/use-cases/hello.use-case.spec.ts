@@ -5,11 +5,11 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { HelloUtil } from '@modules/hello/utils/hello.util';
+import { HelloService } from '@modules/hello/services/hello.service';
 import { HelloUseCase } from '@modules/hello/use-cases/hello.use-case';
 
 describe('HelloUseCase', () => {
-    const helloUtil: MockProxy<HelloUtil> = mock<HelloUtil>();
+    const helloService: MockProxy<HelloService> = mock<HelloService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -23,7 +23,7 @@ describe('HelloUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HelloUseCase,
-                { provide: HelloUtil, useValue: helloUtil },
+                { provide: HelloService, useValue: helloService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -38,12 +38,12 @@ describe('HelloUseCase', () => {
                 '2026-01-01T00:00:00.000Z'
             );
             helperDateService.getTimestamp.mockReturnValue(date.getTime());
-            helloUtil.getApp.mockReturnValue({
+            helloService.getApp.mockReturnValue({
                 name: 'Ack NestJS Boilerplate',
                 env: EnumAppEnvironment.development,
                 timezone: 'UTC',
             });
-            helloUtil.getMessage.mockReturnValue({
+            helloService.getMessage.mockReturnValue({
                 availableLanguage: Object.values(EnumMessageLanguage),
                 defaultLanguage: EnumMessageLanguage.en,
             });

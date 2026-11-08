@@ -141,13 +141,13 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         }));
         const emails = rows.map(item => item.email);
         const usernames = rows.map(item => item.username);
+        // Sequential by design: gate before the work it guards
         const [existingEmails, usernameChecks] = await Promise.all([
             this.userImportService.getExistingEmails(emails),
             this.userImportService.getUsernameChecks(usernames),
         ]);
         this.userImportService.assertEmailsAvailable(existingEmails);
 
-        // Sequential by design: gate before the work it guards
         const [role, countryId] = await Promise.all([
             this.roleService.getByName(this.userRoleName),
             this.countryService.getIdByAlpha2Code(this.userCountryName),
@@ -165,7 +165,7 @@ export class UserImportByAdminUseCase implements IAppUseCase<
             inputs,
             this.createBulkTimeoutInMs
         );
-        const stages = this.userCreateUtil.buildImportByAdminStages(
+        const stages = this.userImportService.buildImportByAdminStages(
             inputs,
             users
         );

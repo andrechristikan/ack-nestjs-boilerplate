@@ -33,7 +33,6 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('WorkspaceMemberService', () => {
@@ -41,7 +40,6 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     let service: WorkspaceMemberService;
@@ -77,7 +75,6 @@ describe('WorkspaceMemberService', () => {
         workspaceMemberRepository.removeMemberInTx.mockResolvedValue(true);
         workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(true);
         workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(true);
-        workspaceUtil.isPeerActionAllowed.mockReturnValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -87,7 +84,6 @@ describe('WorkspaceMemberService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 {
@@ -140,26 +136,20 @@ describe('WorkspaceMemberService', () => {
         });
     });
     describe('validateWorkspaceRoleGuard', () => {
-        it('returns the member when the util reports the role as allowed', () => {
+        it('returns the member when the role is allowed', () => {
             const admin = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.admin,
             };
-            workspaceUtil.hasRole.mockReturnValue(true);
 
             const result = service.validateWorkspaceRoleGuard(admin, [
                 EnumWorkspaceMemberRole.admin,
             ]);
 
             expect(result).toBe(admin);
-            expect(workspaceUtil.hasRole).toHaveBeenCalledWith(admin, [
-                EnumWorkspaceMemberRole.admin,
-            ]);
         });
 
-        it('throws WorkspaceRoleForbiddenException when the util reports the role as not allowed', () => {
-            workspaceUtil.hasRole.mockReturnValue(false);
-
+        it('throws WorkspaceRoleForbiddenException when the role is not allowed', () => {
             let thrown: unknown;
             try {
                 service.validateWorkspaceRoleGuard(baseMember, [
@@ -653,15 +643,14 @@ describe('WorkspaceMemberService', () => {
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(workspaceUtil.isPeerActionAllowed).not.toHaveBeenCalled();
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the util forbids the peer action', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
-            workspaceUtil.isPeerActionAllowed.mockReturnValue(false);
+        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                role: EnumWorkspaceMemberRole.admin,
+            });
 
             await expect(
                 service.updateMemberRole(
@@ -676,10 +665,6 @@ describe('WorkspaceMemberService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
-            expect(workspaceUtil.isPeerActionAllowed).toHaveBeenCalledWith(
-                EnumWorkspaceMemberRole.admin,
-                EnumWorkspaceMemberRole.member
-            );
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
@@ -774,11 +759,11 @@ describe('WorkspaceMemberService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the util forbids the peer action', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
-            workspaceUtil.isPeerActionAllowed.mockReturnValue(false);
+        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                role: EnumWorkspaceMemberRole.admin,
+            });
 
             await expect(
                 service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
@@ -887,6 +872,70 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceMemberRepository.findWithPaginationOffset
             ).toHaveBeenCalledWith('workspace-1', pagination, null);
+        });
+    });
+
+    describe('isPeerActionAllowed', () => {
+        it('returns false when the target is an owner', () => {
+            expect(
+                service['isPeerActionAllowed'](
+                    EnumWorkspaceMemberRole.owner,
+                    EnumWorkspaceMemberRole.owner
+                )
+            ).toBe(false);
+        });
+
+        it('returns false when an admin acts on an admin', () => {
+            expect(
+                service['isPeerActionAllowed'](
+                    EnumWorkspaceMemberRole.admin,
+                    EnumWorkspaceMemberRole.admin
+                )
+            ).toBe(false);
+        });
+
+        it('returns true when an admin acts on a member', () => {
+            expect(
+                service['isPeerActionAllowed'](
+                    EnumWorkspaceMemberRole.admin,
+                    EnumWorkspaceMemberRole.member
+                )
+            ).toBe(true);
+        });
+
+        it('returns true when an owner acts on an admin', () => {
+            expect(
+                service['isPeerActionAllowed'](
+                    EnumWorkspaceMemberRole.owner,
+                    EnumWorkspaceMemberRole.admin
+                )
+            ).toBe(true);
+        });
+    });
+
+    describe('hasRole', () => {
+        it('returns true for an owner whatever the allowed roles', () => {
+            expect(
+                service['hasRole'](
+                    { ...baseMember, role: EnumWorkspaceMemberRole.owner },
+                    []
+                )
+            ).toBe(true);
+        });
+
+        it('returns true when the member role is allowed', () => {
+            expect(
+                service['hasRole'](
+                    { ...baseMember, role: EnumWorkspaceMemberRole.admin },
+                    [EnumWorkspaceMemberRole.admin]
+                )
+            ).toBe(true);
+        });
+
+        it('returns false when the member role is not allowed', () => {
+            expect(
+                service['hasRole'](baseMember, [EnumWorkspaceMemberRole.admin])
+            ).toBe(false);
         });
     });
 });

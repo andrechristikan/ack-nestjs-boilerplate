@@ -683,4 +683,49 @@ describe('NotificationEmailTermPolicyService', () => {
             );
         });
     });
+
+    describe('toBulkDestination', () => {
+        it('decrypts the recipient email with the user id and carries the username as template data', () => {
+            helperEncryptionService.aes256Decrypt.mockReturnValue(
+                'nadia@example.com'
+            );
+
+            expect(
+                service['toBulkDestination']({
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    encryptedEmail: 'cipher',
+                    username: 'nadia',
+                })
+            ).toEqual({
+                recipient: 'nadia@example.com',
+                templateData: { username: 'nadia' },
+            });
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+        });
+    });
+
+    describe('toDeliveryUnknownMessage', () => {
+        it('names the batch and the unknown count in the delivery-unknown message', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string, options) =>
+                    `${path}|${String(options?.properties?.batchId)}|${String(options?.properties?.unknownCount)}`
+            );
+
+            const message = service['toDeliveryUnknownMessage']('batch-id', 2);
+
+            expect(message).toBe(
+                'notification.queue.email.error.deliveryUnknown|batch-id|2'
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.email.error.deliveryUnknown',
+                { properties: { batchId: 'batch-id', unknownCount: 2 } }
+            );
+        });
+    });
 });

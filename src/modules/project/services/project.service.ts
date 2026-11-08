@@ -1,6 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
     IPaginationQueryCursorParams,
@@ -19,14 +20,45 @@ import type {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectService {
+    private readonly slugRegex: RegExp;
+    private readonly slugPrefix: string;
+    private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
+
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperStringService: HelperStringService,
+        private readonly configService: ConfigService
+    ) {
+        this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
+        this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
+        this.slugMaxLength = this.configService.get<number>(
+            'project.slugMaxLength'
+        )!;
+        this.slugMaxAttempts = this.configService.get<number>(
+            'project.slugMaxAttempts'
+        )!;
+    }
+
+    private drawSlugCandidates(): string[] {
+        return this.helperStringService.generateSlugCandidates(
+            this.slugPrefix,
+            this.slugMaxLength,
+            this.slugMaxAttempts
+        );
+    }
+
+    private isSlugAllowed(slug: string): boolean {
+        const isPatternValid = this.slugRegex.test(slug);
+
+        return slug.length <= this.slugMaxLength && isPatternValid;
+    }
 
     async validateProjectGuard(
         workspaceId: string,
@@ -78,7 +110,7 @@ export class ProjectService {
         workspaceId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const slugCandidates = this.projectUtil.drawSlugCandidates();
+        const slugCandidates = this.drawSlugCandidates();
 
         return this.projectRepository.create(
             workspaceId,
@@ -95,7 +127,7 @@ export class ProjectService {
     }
 
     async updateProjectSlug(project: Project, slug: string): Promise<Project> {
-        const isSlugAllowed = this.projectUtil.isSlugAllowed(slug);
+        const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
             throw new ProjectSlugInvalidException();
         }

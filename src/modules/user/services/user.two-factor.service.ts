@@ -4,8 +4,12 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { EnumUserStatus } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumUserStatus,
+} from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
@@ -33,7 +37,6 @@ import type {
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -48,7 +51,6 @@ export class UserTwoFactorService {
         private readonly sentryService: SentryService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly userQueue: UserQueue,
-        private readonly userUtil: UserUtil,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
@@ -146,6 +148,23 @@ export class UserTwoFactorService {
         return user;
     }
 
+    private buildTwoFactorLockoutStages(
+        userId: string
+    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+        return [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId,
+                createdBy: userId,
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                userId,
+                createdBy: userId,
+            },
+        ];
+    }
+
     async getOneForLoginVerify(userId: string): Promise<IUser> {
         const user = await this.getOneEnabledForLogin(userId);
         if (user.twoFactor?.requiredSetup) {
@@ -179,9 +198,7 @@ export class UserTwoFactorService {
         );
         if (attempt === null) {
             await this.userQueue.lockout(user.id);
-            const lockoutStages = this.userUtil.buildTwoFactorLockoutStages(
-                user.id
-            );
+            const lockoutStages = this.buildTwoFactorLockoutStages(user.id);
 
             return { isAttemptCounted: false, lockoutStages };
         }
@@ -219,7 +236,7 @@ export class UserTwoFactorService {
         }
 
         if (checked.totpStep !== null) {
-            // Sequential by design: the attempt resets only after the step is accepted
+            // Sequential by design: a write that must not happen if an earlier step throws (the attempt resets only after the step is accepted)
             const isStepAccepted =
                 await this.userTwoFactorRepository.markTotpUsed(
                     user.id,
@@ -247,7 +264,7 @@ export class UserTwoFactorService {
             throw new AuthTwoFactorInvalidException();
         }
 
-        // Sequential by design: the attempt resets only after the step is accepted
+        // Sequential by design: a write that must not happen if an earlier step throws (the attempt resets only after the step is accepted)
         const isStepAccepted = await this.userTwoFactorRepository.markTotpUsed(
             user.id,
             totpStep

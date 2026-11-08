@@ -1,5 +1,5 @@
 import { DeviceService } from '@modules/device/services/device.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -12,7 +12,7 @@ export class NotificationPushProcessCleanupStaleTokensUseCase implements IAppUse
 > {
     constructor(
         private readonly deviceService: DeviceService,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationService: NotificationService,
         private readonly configService: ConfigService
     ) {}
 
@@ -25,7 +25,7 @@ export class NotificationPushProcessCleanupStaleTokensUseCase implements IAppUse
                 thresholdInMs
             );
 
-        return this.notificationUtil.toCleanupStaleTokensResult(
+        return this.notificationService.toCleanupStaleTokensResult(
             countRemovedTokens
         );
     }

@@ -12,7 +12,6 @@ import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indi
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
-import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheckService } from '@nestjs/terminus';
 import type {
@@ -24,7 +23,6 @@ import type {
 export class HealthService {
     constructor(
         private readonly health: HealthCheckService,
-        private readonly healthUtil: HealthUtil,
         private readonly healthInstanceIndicator: HealthInstanceIndicator,
         private readonly awsS3BucketIndicator: HealthAwsS3BucketIndicator,
         private readonly awsSESIndicator: HealthAwsSESIndicator,
@@ -38,6 +36,36 @@ export class HealthService {
         private readonly queueIndicator: HealthQueueIndicator
     ) {}
 
+    private isIndicatorMap(value: unknown): boolean {
+        return typeof value === 'object' && value !== null;
+    }
+
+    private isHealthCheckResult(
+        value: string | object
+    ): value is HealthCheckResult {
+        if (typeof value !== 'object') {
+            return false;
+        }
+
+        if (!('status' in value) || typeof value.status !== 'string') {
+            return false;
+        }
+
+        if (
+            !('info' in value) ||
+            !('error' in value) ||
+            !('details' in value)
+        ) {
+            return false;
+        }
+
+        const isInfoMap = this.isIndicatorMap(value.info);
+        const isErrorMap = this.isIndicatorMap(value.error);
+        const isDetailsMap = this.isIndicatorMap(value.details);
+
+        return isInfoMap && isErrorMap && isDetailsMap;
+    }
+
     private async check(
         indicators: HealthIndicatorFunction[]
     ): Promise<HealthCheckResult> {
@@ -48,8 +76,7 @@ export class HealthService {
         } catch (error: unknown) {
             if (error instanceof ServiceUnavailableException) {
                 const response = error.getResponse();
-                const isHealthCheckResult =
-                    this.healthUtil.isHealthCheckResult(response);
+                const isHealthCheckResult = this.isHealthCheckResult(response);
                 if (isHealthCheckResult) {
                     return response;
                 }

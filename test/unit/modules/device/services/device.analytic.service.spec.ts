@@ -6,14 +6,12 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceAnalyticService } from '@modules/device/services/device.analytic.service';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 
 describe('DeviceAnalyticService', () => {
     const deviceOwnershipAnalyticRepository: MockProxy<DeviceOwnershipAnalyticRepository> =
         mock<DeviceOwnershipAnalyticRepository>();
     const deviceAnalyticRepository: MockProxy<DeviceAnalyticRepository> =
         mock<DeviceAnalyticRepository>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const helperNumberService: MockProxy<HelperNumberService> =
         mock<HelperNumberService>();
 
@@ -36,7 +34,6 @@ describe('DeviceAnalyticService', () => {
                     provide: DeviceAnalyticRepository,
                     useValue: deviceAnalyticRepository,
                 },
-                { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: HelperNumberService, useValue: helperNumberService },
             ],
         }).compile();
@@ -172,21 +169,73 @@ describe('DeviceAnalyticService', () => {
     });
 
     describe('getProliferationOutliers', () => {
-        it('reads the per-user counts and scores them through the util', async () => {
+        it('reads the per-user counts and scores them', async () => {
             const counts = [{ userId: 'user-1', count: 3 }];
-            const outliers = { count: 0, avg: 3, stdDev: 0, rows: [] };
             deviceOwnershipAnalyticRepository.countPerUser.mockResolvedValue(
                 counts
             );
-            deviceUtil.findProliferationOutliers.mockReturnValue(outliers);
 
             const result = await service.getProliferationOutliers(2);
 
-            expect(result).toBe(outliers);
-            expect(deviceUtil.findProliferationOutliers).toHaveBeenCalledWith(
-                counts,
-                2
+            expect(result).toEqual({ count: 0, avg: 3, stdDev: 0, rows: [] });
+            expect(
+                deviceOwnershipAnalyticRepository.countPerUser
+            ).toHaveBeenCalled();
+        });
+    });
+
+    describe('findProliferationOutliers', () => {
+        it('returns a zero result when no user carries a device', () => {
+            const result = service['findProliferationOutliers']([], 2);
+
+            expect(result).toEqual({
+                count: 0,
+                avg: 0,
+                stdDev: 0,
+                rows: [],
+            });
+        });
+
+        it('flags and sorts users whose device count crosses the z-score threshold, highest first', () => {
+            const result = service['findProliferationOutliers'](
+                [
+                    { userId: 'user-1', count: 1 },
+                    { userId: 'user-2', count: 1 },
+                    { userId: 'user-3', count: 10 },
+                    { userId: 'user-4', count: 8 },
+                ],
+                0.5
             );
+
+            expect(result.count).toBe(2);
+            expect(result.avg).toBe(5);
+            expect(result.rows).toEqual([
+                {
+                    userId: 'user-3',
+                    deviceCount: 10,
+                    zScore: expect.any(Number),
+                },
+                {
+                    userId: 'user-4',
+                    deviceCount: 8,
+                    zScore: expect.any(Number),
+                },
+            ]);
+        });
+
+        it('scores every user zero when every user carries the same device count', () => {
+            const result = service['findProliferationOutliers'](
+                [
+                    { userId: 'user-1', count: 2 },
+                    { userId: 'user-2', count: 2 },
+                ],
+                -1
+            );
+
+            expect(result.rows).toEqual([
+                { userId: 'user-1', deviceCount: 2, zScore: 0 },
+                { userId: 'user-2', deviceCount: 2, zScore: 0 },
+            ]);
         });
     });
 });

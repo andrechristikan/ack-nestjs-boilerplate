@@ -9,14 +9,12 @@ import { TermPolicyAnalyticService } from '@modules/term-policy/services/term-po
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyAcceptanceAnalyticService', () => {
     const termPolicyAcceptanceAnalyticRepository: MockProxy<TermPolicyAcceptanceAnalyticRepository> =
         mock<TermPolicyAcceptanceAnalyticRepository>();
     const termPolicyAnalyticService: MockProxy<TermPolicyAnalyticService> =
         mock<TermPolicyAnalyticService>();
-    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
     const helperNumberService: MockProxy<HelperNumberService> =
         mock<HelperNumberService>();
 
@@ -38,10 +36,6 @@ describe('TermPolicyAcceptanceAnalyticService', () => {
                 {
                     provide: TermPolicyAnalyticService,
                     useValue: termPolicyAnalyticService,
-                },
-                {
-                    provide: TermPolicyUtil,
-                    useValue: termPolicyUtil,
                 },
                 { provide: HelperNumberService, useValue: helperNumberService },
             ],
@@ -127,7 +121,7 @@ describe('TermPolicyAcceptanceAnalyticService', () => {
     });
 
     describe('getTimeToAccept', () => {
-        it('maps the repository rows through the util average', async () => {
+        it('averages the repository rows', async () => {
             const rows: ITermPolicyAcceptanceAnalytic[] = [
                 {
                     id: 'acceptance-1',
@@ -140,10 +134,6 @@ describe('TermPolicyAcceptanceAnalyticService', () => {
             termPolicyAcceptanceAnalyticRepository.findAcceptances.mockResolvedValue(
                 rows
             );
-            termPolicyUtil.averageAcceptanceMs.mockReturnValue({
-                count: 1,
-                averageMs: 60000,
-            });
 
             const result = await service.getTimeToAccept(startDate, endDate);
 
@@ -151,9 +141,63 @@ describe('TermPolicyAcceptanceAnalyticService', () => {
             expect(
                 termPolicyAcceptanceAnalyticRepository.findAcceptances
             ).toHaveBeenCalledWith(startDate, endDate);
-            expect(termPolicyUtil.averageAcceptanceMs).toHaveBeenCalledWith(
-                rows
-            );
+        });
+    });
+
+    describe('averageAcceptanceMs', () => {
+        it('returns zero count and average when there are no rows', () => {
+            expect(service['averageAcceptanceMs']([])).toEqual({
+                count: 0,
+                averageMs: 0,
+            });
+        });
+
+        it('averages the delay from the policy publish time to the acceptance', () => {
+            const rows: ITermPolicyAcceptanceAnalytic[] = [
+                {
+                    id: 'acceptance-1',
+                    userId: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
+                },
+                {
+                    id: 'acceptance-2',
+                    userId: 'user-2',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
+                },
+            ];
+
+            expect(service['averageAcceptanceMs'](rows)).toEqual({
+                count: 2,
+                averageMs: 120000,
+            });
+        });
+
+        it('skips an acceptance whose policy has no publish time', () => {
+            const rows: ITermPolicyAcceptanceAnalytic[] = [
+                {
+                    id: 'acceptance-1',
+                    userId: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
+                },
+                {
+                    id: 'acceptance-2',
+                    userId: 'user-2',
+                    termPolicyId: 'term-policy-2',
+                    publishedAt: null,
+                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
+                },
+            ];
+
+            expect(service['averageAcceptanceMs'](rows)).toEqual({
+                count: 1,
+                averageMs: 60000,
+            });
         });
     });
 });

@@ -2,10 +2,12 @@
 
 ## What you may reach for in another module
 
+A use case stays inside its feature: `<Module>UseCaseModule` exports it to `src/router/` only, and no service, use case, or module file of another feature reaches it.
+
 | From another module | From a service | From a use case |
 | --- | --- | --- |
-| its exported service | yes when that module ranks lower (`layering.md`, Dependency order), through its `<Module>Module` | yes, through its `<Module>Module` |
-| its exported util | yes when that module ranks lower, through its `<Module>Module` | yes, through its `<Module>Module` |
+| its exported service | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
+| its exported util | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
 | its exported queue class | no | yes, through its `<Module>Module` |
 | its cache or repository | no | no; ask the owning service |
 | its use case, controller, or processor | no | no; those are leaves the router consumes |
@@ -31,10 +33,10 @@ A repository does not inject or call another repository. Work spanning one modul
 
 ## Composition follows the dependency order
 
-Use cases compose features; services share downward. A `<Module>Module` imports only lower-ranked `<Module>Module`s, and only `src/router/` imports a `<Module>UseCaseModule` (`layering.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: lint checks the declared module graph for cycles (`ts/module-cycle`), and `forwardRef` hides one and is forbidden (`eslint.md`, Config blocks). When a service needs a higher-ranked module, the ways out:
+Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`layering.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: lint checks the declared module graph for cycles (`ts/module-cycle`), and `forwardRef` hides one and is forbidden (`eslint.md`, Config blocks). When a service needs a higher module, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
-2. A shared piece: it moves down into the lower-ranked module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
+2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
 3. A fire-and-forget hand-off: a queue job, enqueued by the use case after commit (`queue.md`).
 
 ## An exception names the subject that failed

@@ -32,6 +32,7 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const attempt = await this.userTwoFactorService.countAttempt(user);
         const lockoutLogs = attempt.lockoutStages.map(stage =>
@@ -49,9 +50,8 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
         this.userTwoFactorService.assertEnabled(user);
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.assertTwoFactorAttemptCounted(user);
-        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
@@ -66,7 +66,6 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         const now = this.helperDateService.create();
         let revoked: ISessionRef[];
         try {
-            // Sequential by design: write must not run if an earlier step throws
             revoked = await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorService.disableInTx(tx, user.id);
 

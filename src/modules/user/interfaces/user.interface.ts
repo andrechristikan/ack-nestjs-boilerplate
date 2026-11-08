@@ -119,19 +119,6 @@ export interface IUserVerificationEmailTarget {
     user: User;
 }
 
-export interface IUserVerificationMobileNumberCreate {
-    type: 'mobileNumber';
-    expiredAt: Date;
-    expiredInMinutes: number;
-    resendInMinutes: number;
-    reference: string;
-    token: string;
-    hashedToken: string;
-}
-
-export type IUserVerificationCreate =
-    IUserVerificationEmailCreate | IUserVerificationMobileNumberCreate;
-
 export interface IUserSignUpWorkspacePersonal {
     type: EnumUserSignUpWorkspaceContextType.personal;
     workspaceId: string;

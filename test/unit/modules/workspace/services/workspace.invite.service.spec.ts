@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { Duration } from 'luxon';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -61,7 +62,6 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceInviteService', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
@@ -75,7 +75,6 @@ describe('WorkspaceInviteService', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -90,6 +89,14 @@ describe('WorkspaceInviteService', () => {
 
     const configValues: Record<string, unknown> = {
         'workspace.invite.referenceMaxAttempts': 5,
+        'home.url': 'https://app.example.com',
+        'workspace.invite.expiredInDays': 7,
+        'workspace.invite.tokenLength': 40,
+        'workspace.invite.referencePrefix': 'WIN',
+        'workspace.invite.referenceRandomLength': 6,
+        'workspace.invite.linkPattern':
+            '{homeUrl}/workspace/invites?inviteToken={token}',
+        'workspace.invite.signUpLinkPattern': '{homeUrl}/sign-up/{token}',
     };
 
     const workspace: Workspace = {
@@ -153,6 +160,12 @@ describe('WorkspaceInviteService', () => {
         signUpLink: 'https://app.example.com/sign-up/token-value',
     };
 
+    const filledPatterns: Record<string, string> = {
+        [WorkspaceInviteNoncePattern]: 'workspace-1:invitee@example.com',
+        '{homeUrl}/workspace/invites?inviteToken={token}': tokenData.claimLink,
+        '{homeUrl}/sign-up/{token}': tokenData.signUpLink,
+    };
+
     const baseCreate: IWorkspaceInviteCreate = {
         email: 'invitee@example.com' as Lowercase<string>,
         workspaceRole: EnumWorkspaceMemberRole.member,
@@ -166,8 +179,8 @@ describe('WorkspaceInviteService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
-        helperStringService.fillPattern.mockReturnValue(
-            'workspace-1:invitee@example.com'
+        helperStringService.fillPattern.mockImplementation(
+            pattern => filledPatterns[pattern] ?? ''
         );
         helperHashService.sha256Hash.mockImplementation(value =>
             value === 'workspace-1:invitee@example.com'
@@ -190,7 +203,6 @@ describe('WorkspaceInviteService', () => {
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: UserService, useValue: userService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperHashService, useValue: helperHashService },
@@ -209,16 +221,11 @@ describe('WorkspaceInviteService', () => {
                 username: 'bramble',
             };
             userService.getNameById.mockResolvedValue(inviter);
-            workspaceUtil.resolveInviterName.mockReturnValue('Bramble');
 
             await expect(
                 service.getInviterName(workspace, 'user-1')
             ).resolves.toBe('Bramble');
             expect(userService.getNameById).toHaveBeenCalledWith('user-1');
-            expect(workspaceUtil.resolveInviterName).toHaveBeenCalledWith(
-                inviter,
-                workspace
-            );
         });
     });
 
@@ -386,15 +393,13 @@ describe('WorkspaceInviteService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
                 messagePath: 'workspace.error.inviteInvalid',
             });
-            expect(workspaceUtil.isInviteEmailMatch).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceInviteInvalidException when the util reports the invite email as a mismatch', async () => {
+        it('throws WorkspaceInviteInvalidException when the invite email does not match', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 { ...baseInvite, email: 'other@example.com' }
             );
-            workspaceUtil.isInviteEmailMatch.mockReturnValue(false);
 
             await expect(
                 service.validateInviteForEmail('raw-token', 'USER@example.com')
@@ -404,10 +409,6 @@ describe('WorkspaceInviteService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
                 messagePath: 'workspace.error.inviteInvalid',
             });
-            expect(workspaceUtil.isInviteEmailMatch).toHaveBeenCalledWith(
-                'other@example.com',
-                'USER@example.com'
-            );
         });
 
         it('returns the pending invite when its email matches', async () => {
@@ -415,7 +416,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 baseInvite
             );
-            workspaceUtil.isInviteEmailMatch.mockReturnValue(true);
 
             const result = await service.validateInviteForEmail(
                 'raw-token',
@@ -450,7 +450,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 baseInvite
             );
-            workspaceUtil.isInviteEmailMatch.mockReturnValue(true);
 
             const result = await service.getSignUpInvite(
                 'raw-token',
@@ -463,10 +462,6 @@ describe('WorkspaceInviteService', () => {
             ).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.invitationAllowed
-            );
-            expect(workspaceUtil.isInviteEmailMatch).toHaveBeenCalledWith(
-                'invitee@example.com',
-                'invitee@example.com'
             );
         });
     });
@@ -778,10 +773,15 @@ describe('WorkspaceInviteService', () => {
             hashedToken: 'hashed-token-2',
             reference: 'WIN-def456',
         };
+        const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
         beforeEach(() => {
             databaseUtil.createId.mockReturnValue('invite-new');
-            workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
+            helperStringService.random.mockImplementation(length =>
+                length === 40 ? 'token-value' : 'abc123'
+            );
+            helperDateService.create.mockReturnValue(createdAt);
+            helperDateService.forward.mockReturnValue(tokenData.expiredAt);
         });
 
         it('draws the token data and creates the pending invite with the hashed nonce of workspace and email', async () => {
@@ -797,8 +797,9 @@ describe('WorkspaceInviteService', () => {
             });
 
             expect(result).toEqual({ invite: baseInvite, tokenData });
-            expect(workspaceUtil.createInviteTokenData).toHaveBeenCalledWith(
-                14
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                createdAt,
+                Duration.fromObject({ days: 14 })
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 WorkspaceInviteNoncePattern,
@@ -850,9 +851,15 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('draws a fresh token and retries when the token collides, returning the stored token data', async () => {
-            workspaceUtil.createInviteTokenData
-                .mockReturnValueOnce(tokenData)
-                .mockReturnValueOnce(retriedTokenData);
+            helperStringService.random
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('abc123')
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('def456');
+            helperHashService.sha256Hash
+                .mockReturnValueOnce(pendingNonce)
+                .mockReturnValueOnce('hashed-token')
+                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.createPending
                 .mockRejectedValueOnce(tokenCollision)
                 .mockResolvedValueOnce(baseInvite);
@@ -882,9 +889,15 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('draws a fresh reference and retries when the reference collides', async () => {
-            workspaceUtil.createInviteTokenData
-                .mockReturnValueOnce(tokenData)
-                .mockReturnValueOnce(retriedTokenData);
+            helperStringService.random
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('abc123')
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('def456');
+            helperHashService.sha256Hash
+                .mockReturnValueOnce(pendingNonce)
+                .mockReturnValueOnce('hashed-token')
+                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.createPending
                 .mockRejectedValueOnce(referenceCollision)
                 .mockResolvedValueOnce(baseInvite);
@@ -898,7 +911,7 @@ describe('WorkspaceInviteService', () => {
                 baseCreate
             );
 
-            expect(result.tokenData).toBe(retriedTokenData);
+            expect(result.tokenData).toEqual(retriedTokenData);
             expect(
                 workspaceInviteRepository.createPending
             ).toHaveBeenCalledTimes(2);
@@ -1105,8 +1118,11 @@ describe('WorkspaceInviteService', () => {
         const resentAt = new Date('2026-01-15T00:00:00.000Z');
 
         beforeEach(() => {
-            workspaceUtil.createInviteTokenData.mockReturnValue(tokenData);
+            helperStringService.random.mockImplementation(length =>
+                length === 40 ? 'token-value' : 'abc123'
+            );
             helperDateService.create.mockReturnValue(resentAt);
+            helperDateService.forward.mockReturnValue(tokenData.expiredAt);
         });
 
         it('draws the token data, rotates the token, and returns the rotated invite with the stored token data', async () => {
@@ -1117,8 +1133,9 @@ describe('WorkspaceInviteService', () => {
             const result = await service.resendInvite('invite-1', 14);
 
             expect(result).toEqual({ invite: baseInvite, tokenData });
-            expect(workspaceUtil.createInviteTokenData).toHaveBeenCalledWith(
-                14
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                resentAt,
+                Duration.fromObject({ days: 14 })
             );
             expect(
                 workspaceInviteRepository.rotateForResend
@@ -1146,9 +1163,14 @@ describe('WorkspaceInviteService', () => {
 
         it('draws a fresh token and retries when the token or reference collides, returning the stored token data', async () => {
             const collision = new Error('token');
-            workspaceUtil.createInviteTokenData
-                .mockReturnValueOnce(tokenData)
-                .mockReturnValueOnce(retriedTokenData);
+            helperStringService.random
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('abc123')
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('def456');
+            helperHashService.sha256Hash
+                .mockReturnValueOnce('hashed-token')
+                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.rotateForResend
                 .mockRejectedValueOnce(collision)
                 .mockResolvedValueOnce(baseInvite);
@@ -1395,6 +1417,161 @@ describe('WorkspaceInviteService', () => {
             expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
                 'workspace-1'
             );
+        });
+    });
+
+    describe('mapInvitePreview', () => {
+        it('uses the inviter name when present', () => {
+            const inviter: IWorkspaceInviteInviter = {
+                name: 'Jane Doe',
+                username: 'jane',
+            };
+
+            const result = service.mapInvitePreview(
+                workspace,
+                baseInvite,
+                inviter
+            );
+
+            expect(result).toEqual({
+                workspaceName: 'Acme',
+                inviterName: 'Jane Doe',
+                workspaceRole: EnumWorkspaceMemberRole.member,
+                expiredAt: baseInvite.expiredAt,
+            });
+        });
+
+        it('falls back to the inviter username when the name is null', () => {
+            const inviter: IWorkspaceInviteInviter = {
+                name: null,
+                username: 'jane',
+            };
+
+            const result = service.mapInvitePreview(
+                workspace,
+                baseInvite,
+                inviter
+            );
+
+            expect(result.inviterName).toBe('jane');
+        });
+
+        it('falls back to the workspace name when the inviter is null', () => {
+            const result = service.mapInvitePreview(
+                workspace,
+                baseInvite,
+                null
+            );
+
+            expect(result.inviterName).toBe('Acme');
+        });
+    });
+
+    describe('resolveInviterName', () => {
+        it('returns the inviter name', () => {
+            expect(
+                service['resolveInviterName'](
+                    { name: 'Jane Doe', username: 'jane' },
+                    workspace
+                )
+            ).toBe('Jane Doe');
+        });
+
+        it('falls back to the inviter username when the name is null', () => {
+            expect(
+                service['resolveInviterName'](
+                    { name: null, username: 'jane' },
+                    workspace
+                )
+            ).toBe('jane');
+        });
+
+        it('falls back to the workspace name when the inviter is missing', () => {
+            expect(service['resolveInviterName'](null, workspace)).toBe('Acme');
+        });
+    });
+
+    describe('createInviteTokenData', () => {
+        beforeEach(() => {
+            helperStringService.random
+                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('reference-suffix');
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
+            helperDateService.forward.mockReturnValue(
+                new Date('2026-01-08T00:00:00.000Z')
+            );
+            helperStringService.fillPattern
+                .mockReturnValueOnce(
+                    'https://app.example.com/workspace/invites?inviteToken=token-value'
+                )
+                .mockReturnValueOnce(
+                    'https://app.example.com/sign-up/token-value'
+                );
+        });
+
+        it('builds token data with the default expiry when none is given', () => {
+            const result = service['createInviteTokenData'](null);
+
+            expect(result).toEqual({
+                token: 'token-value',
+                hashedToken: 'hashed-token',
+                reference: 'WIN-reference-suffix',
+                expiredAt: new Date('2026-01-08T00:00:00.000Z'),
+                claimLink:
+                    'https://app.example.com/workspace/invites?inviteToken=token-value',
+                signUpLink: 'https://app.example.com/sign-up/token-value',
+            });
+            expect(helperStringService.random).toHaveBeenNthCalledWith(1, 40);
+            expect(helperStringService.random).toHaveBeenNthCalledWith(2, 6);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'token-value'
+            );
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                new Date('2026-01-01T00:00:00.000Z'),
+                Duration.fromObject({ days: 7 })
+            );
+            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
+                1,
+                '{homeUrl}/workspace/invites?inviteToken={token}',
+                { homeUrl: 'https://app.example.com', token: 'token-value' }
+            );
+            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
+                2,
+                '{homeUrl}/sign-up/{token}',
+                { homeUrl: 'https://app.example.com', token: 'token-value' }
+            );
+        });
+
+        it('builds token data with the given expiry duration', () => {
+            service['createInviteTokenData'](14);
+
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                new Date('2026-01-01T00:00:00.000Z'),
+                Duration.fromObject({ days: 14 })
+            );
+        });
+    });
+
+    describe('isInviteEmailMatch', () => {
+        it('returns true for the same email in a different case', () => {
+            expect(
+                service['isInviteEmailMatch'](
+                    'Invitee@Example.com',
+                    'invitee@example.com'
+                )
+            ).toBe(true);
+        });
+
+        it('returns false for a different email', () => {
+            expect(
+                service['isInviteEmailMatch'](
+                    'invitee@example.com',
+                    'other@example.com'
+                )
+            ).toBe(false);
         });
     });
 });

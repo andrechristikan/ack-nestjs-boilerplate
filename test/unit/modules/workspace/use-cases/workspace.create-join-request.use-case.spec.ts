@@ -28,7 +28,6 @@ import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dt
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
 
@@ -44,7 +43,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         mock<ActivityLogService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -138,7 +136,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
             ],
         }).compile();
 
@@ -162,7 +159,9 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 name: 'Jane Doe',
                 username: 'jane',
             });
-            workspaceUtil.resolveRequesterName.mockReturnValue('Jane Doe');
+            workspaceJoinRequestService.resolveRequesterName.mockReturnValue(
+                'Jane Doe'
+            );
             workspaceMemberService.getReviewerUserIds.mockResolvedValue([
                 'reviewer-1',
             ]);
@@ -170,7 +169,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             notificationService.getRecipient.mockResolvedValue(
                 reviewerRecipient
             );
-            workspaceUtil.buildJoinRequestReviewLink.mockReturnValue(
+            workspaceJoinRequestService.buildJoinRequestReviewLink.mockReturnValue(
                 'https://app.example.com/review/join-request-1'
             );
         });
@@ -291,7 +290,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 notificationQueue.sendWorkspaceJoinRequestBulk
             ).not.toHaveBeenCalled();
             expect(
-                workspaceUtil.buildJoinRequestReviewLink
+                workspaceJoinRequestService.buildJoinRequestReviewLink
             ).not.toHaveBeenCalled();
         });
 

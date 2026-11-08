@@ -26,7 +26,6 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -37,7 +36,6 @@ export class WorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -47,11 +45,35 @@ export class WorkspaceMemberService {
         )!;
     }
 
+    private isPeerActionAllowed(
+        actorRole: EnumWorkspaceMemberRole,
+        targetRole: EnumWorkspaceMemberRole
+    ): boolean {
+        if (targetRole === EnumWorkspaceMemberRole.owner) {
+            return false;
+        }
+
+        return !(
+            actorRole === EnumWorkspaceMemberRole.admin &&
+            targetRole === EnumWorkspaceMemberRole.admin
+        );
+    }
+
+    private hasRole(
+        member: WorkspaceMember,
+        allowedRoles: EnumWorkspaceMemberRole[]
+    ): boolean {
+        return (
+            member.role === EnumWorkspaceMemberRole.owner ||
+            allowedRoles.includes(member.role)
+        );
+    }
+
     private assertPeerActionAllowed(
         actorMember: WorkspaceMember,
         targetMember: WorkspaceMember
     ): void {
-        const isAllowed = this.workspaceUtil.isPeerActionAllowed(
+        const isAllowed = this.isPeerActionAllowed(
             actorMember.role,
             targetMember.role
         );
@@ -132,7 +154,7 @@ export class WorkspaceMemberService {
         member: WorkspaceMember,
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember {
-        const hasRole = this.workspaceUtil.hasRole(member, allowedRoles);
+        const hasRole = this.hasRole(member, allowedRoles);
         if (!hasRole) {
             throw new WorkspaceRoleForbiddenException();
         }

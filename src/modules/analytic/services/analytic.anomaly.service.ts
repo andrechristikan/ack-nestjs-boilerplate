@@ -1,5 +1,6 @@
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -31,6 +32,7 @@ import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.ut
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticService } from '@modules/device/services/device.analytic.service';
+import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
 import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
@@ -64,6 +66,7 @@ export class AnalyticAnomalyService {
         private readonly configService: ConfigService,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService,
         private readonly sessionAnalyticService: SessionAnalyticService,
         private readonly userAnalyticService: UserAnalyticService,
         private readonly activityLogAnalyticService: ActivityLogAnalyticService,
@@ -108,6 +111,93 @@ export class AnalyticAnomalyService {
             )!;
     }
 
+    private distanceKm(
+        lat1: number,
+        lng1: number,
+        lat2: number,
+        lng2: number
+    ): number {
+        const toRad = (degree: number): number => (degree * Math.PI) / 180;
+        const earthRadiusKm = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLng / 2) ** 2;
+
+        return 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
+    }
+
+    private findImpossibleTravel(
+        sessions: ISessionAnalyticSession[],
+        minDistanceKm: number,
+        maxDeltaInMs: number
+    ): IAnalyticImpossibleTravel[] {
+        const byUser = new Map<string, ISessionAnalyticSession[]>();
+        for (const session of sessions) {
+            const list = byUser.get(session.userId) ?? [];
+            list.push(session);
+            byUser.set(session.userId, list);
+        }
+
+        const flagged: IAnalyticImpossibleTravel[] = [];
+        for (const [userId, list] of byUser) {
+            for (let i = 1; i < list.length; i++) {
+                const prev = list[i - 1]!;
+                const curr = list[i]!;
+                if (!prev.geoLocation || !curr.geoLocation) {
+                    continue;
+                }
+                const distanceKm = this.distanceKm(
+                    prev.geoLocation.latitude,
+                    prev.geoLocation.longitude,
+                    curr.geoLocation.latitude,
+                    curr.geoLocation.longitude
+                );
+                const deltaMs =
+                    curr.createdAt.getTime() - prev.createdAt.getTime();
+                if (distanceKm > minDistanceKm && deltaMs < maxDeltaInMs) {
+                    flagged.push({
+                        userId,
+                        fromSessionId: prev.id,
+                        toSessionId: curr.id,
+                        distanceKm,
+                        deltaMs,
+                    });
+                }
+            }
+        }
+
+        return flagged;
+    }
+
+    private findLoginTimeAnomaly(
+        userId: string,
+        loginDates: Date[],
+        thresholdPercent: number
+    ): IAnalyticLoginTimeAnomaly | null {
+        const hours = loginDates.map(loginDate =>
+            this.helperDateService.getHour(loginDate)
+        );
+        const lastHour = hours[hours.length - 1]!;
+        const history = hours.slice(0, -1);
+        const histogram = new Array<number>(24).fill(0);
+        for (const hour of history) {
+            histogram[hour]!++;
+        }
+        const frequency = this.helperNumberService.percent(
+            histogram[lastHour]!,
+            history.length
+        );
+        if (frequency >= thresholdPercent) {
+            return null;
+        }
+
+        return { userId, lastHour, historicalFrequencyPercent: frequency };
+    }
+
     private async computeImpossibleTravel(
         startDate: Date | null,
         endDate: Date | null
@@ -120,7 +210,7 @@ export class AnalyticAnomalyService {
                 now
             );
 
-        return this.analyticAnomalyUtil.findImpossibleTravel(
+        return this.findImpossibleTravel(
             sessions,
             this.impossibleTravelMinDistanceKm,
             this.impossibleTravelMaxDeltaInMs
@@ -186,7 +276,7 @@ export class AnalyticAnomalyService {
             );
             const historyPerUser = await Promise.all(historyPromises);
             for (const [index, user] of batch.entries()) {
-                const anomaly = this.analyticAnomalyUtil.findLoginTimeAnomaly(
+                const anomaly = this.findLoginTimeAnomaly(
                     user.userId,
                     historyPerUser[index]!,
                     this.loginTimeAnomalyHistoricalFrequencyPercent

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationQueryCursorParams,
@@ -21,19 +22,23 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import type {
+    IFeatureFlagMetadata,
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 
 describe('FeatureFlagService', () => {
     const featureFlagRepository: MockProxy<FeatureFlagRepository> =
         mock<FeatureFlagRepository>();
-    const featureFlagUtil: MockProxy<FeatureFlagUtil> = mock<FeatureFlagUtil>();
     const featureFlagCache: MockProxy<FeatureFlagCache> =
         mock<FeatureFlagCache>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
     let service: FeatureFlagService;
+
+    const hashForTenPercent = '0000000a'.padEnd(64, '0');
+    const hashForFiftyPercent = '00000032'.padEnd(64, '0');
 
     const baseFlag: FeatureFlag = {
         id: '507f1f77bcf86cd799439011',
@@ -58,8 +63,8 @@ describe('FeatureFlagService', () => {
                     provide: FeatureFlagRepository,
                     useValue: featureFlagRepository,
                 },
-                { provide: FeatureFlagUtil, useValue: featureFlagUtil },
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
+                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
         service = module.get(FeatureFlagService);
@@ -248,7 +253,7 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
         it('resolves for an authenticated caller whose bucket is under rollout', async () => {
@@ -257,7 +262,7 @@ describe('FeatureFlagService', () => {
                 rolloutPercent: 50,
                 targetUserIds: [],
             });
-            featureFlagUtil.isInRollout.mockReturnValue(true);
+            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -266,10 +271,8 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
-                50,
-                EnumFeatureFlagKey.loginWithGoogle,
-                'user-1'
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'loginWithGoogle:user-1'
             );
         });
 
@@ -279,7 +282,7 @@ describe('FeatureFlagService', () => {
                 rolloutPercent: 10,
                 targetUserIds: [],
             });
-            featureFlagUtil.isInRollout.mockReturnValue(false);
+            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -312,7 +315,7 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(featureFlagUtil.isInRollout).not.toHaveBeenCalled();
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and no anonymous id', async () => {
@@ -344,7 +347,7 @@ describe('FeatureFlagService', () => {
                 ...baseFlag,
                 rolloutPercent: 50,
             });
-            featureFlagUtil.isInRollout.mockReturnValue(true);
+            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -353,10 +356,8 @@ describe('FeatureFlagService', () => {
                     'anon-1'
                 )
             ).resolves.toBeUndefined();
-            expect(featureFlagUtil.isInRollout).toHaveBeenCalledWith(
-                50,
-                EnumFeatureFlagKey.loginWithGoogle,
-                'anon-1'
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'loginWithGoogle:anon-1'
             );
         });
 
@@ -365,7 +366,7 @@ describe('FeatureFlagService', () => {
                 ...baseFlag,
                 rolloutPercent: 10,
             });
-            featureFlagUtil.isInRollout.mockReturnValue(false);
+            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -681,13 +682,12 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.notFound',
             });
-            expect(featureFlagUtil.isMetadataValid).not.toHaveBeenCalled();
+            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', async () => {
-            const stored = { ...baseFlag, metadata: { enabled: true } };
+            const stored = { ...baseFlag, metadata: { label: 'a' } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
-            featureFlagUtil.isMetadataValid.mockReturnValue(false);
 
             await expect(
                 service.updateMetadataByAdmin(
@@ -703,16 +703,11 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.invalidMetadata',
             });
-            expect(featureFlagUtil.isMetadataValid).toHaveBeenCalledWith(
-                stored.metadata,
-                metadataUpdate.metadata
-            );
             expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(baseFlag);
-            featureFlagUtil.isMetadataValid.mockReturnValue(false);
 
             await expect(
                 service.updateMetadataByAdmin(
@@ -724,10 +719,6 @@ describe('FeatureFlagService', () => {
                 statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
                 messagePath: 'featureFlag.error.invalidMetadata',
             });
-            expect(featureFlagUtil.isMetadataValid).toHaveBeenCalledWith(
-                null,
-                metadataUpdate.metadata
-            );
             expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
         });
 
@@ -735,7 +726,6 @@ describe('FeatureFlagService', () => {
             const stored = { ...baseFlag, metadata: { enabled: false } };
             const updated = { ...baseFlag, metadata: { enabled: true } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
-            featureFlagUtil.isMetadataValid.mockReturnValue(true);
             featureFlagRepository.updateMetadata.mockResolvedValue(updated);
 
             const result = await service.updateMetadataByAdmin(
@@ -756,8 +746,8 @@ describe('FeatureFlagService', () => {
     });
 
     describe('assertRollout', () => {
-        it('resolves with no throw when the util puts the identifier in rollout', () => {
-            featureFlagUtil.isInRollout.mockReturnValue(true);
+        it('resolves with no throw when the identifier is in rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
 
             expect(() =>
                 service['assertRollout'](
@@ -768,8 +758,8 @@ describe('FeatureFlagService', () => {
             ).not.toThrow();
         });
 
-        it('throws FeatureFlagDisabledException when the util keeps the identifier out of rollout', () => {
-            featureFlagUtil.isInRollout.mockReturnValue(false);
+        it('throws FeatureFlagDisabledException when the identifier is out of rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
 
             let captured: unknown;
             try {
@@ -791,6 +781,163 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.disabled',
             });
+        });
+    });
+
+    describe('isInRollout', () => {
+        it('hashes "<key>:<identifier>" and returns true when the bucket is under the rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
+
+            const result = service['isInRollout'](
+                50,
+                'loginWithGoogle',
+                'user-1'
+            );
+
+            expect(result).toBe(true);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'loginWithGoogle:user-1'
+            );
+        });
+
+        it('returns false when the bucket is at or above the rollout', () => {
+            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
+
+            const result = service['isInRollout'](
+                50,
+                'loginWithGoogle',
+                'user-1'
+            );
+
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('isMetadataValid', () => {
+        it('returns true when keys match and every value keeps its type', () => {
+            const oldMetadata: IFeatureFlagMetadata = {
+                newFeature: true,
+                maxRetries: 3,
+            };
+            const newMetadata: IFeatureFlagMetadata = {
+                newFeature: false,
+                maxRetries: 5,
+            };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                true
+            );
+        });
+
+        it('returns false when the stored metadata is null', () => {
+            const newMetadata: IFeatureFlagMetadata = { newFeature: true };
+
+            expect(service['isMetadataValid'](null, newMetadata)).toBe(false);
+        });
+
+        it('returns false when the key sets differ', () => {
+            const oldMetadata: IFeatureFlagMetadata = { newFeature: true };
+            const newMetadata: IFeatureFlagMetadata = { maxRetries: 3 };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns false when a value changes primitive type', () => {
+            const oldMetadata: IFeatureFlagMetadata = { newFeature: true };
+            const newMetadata: IFeatureFlagMetadata = { newFeature: 'true' };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns false when an array value changes element type', () => {
+            const oldMetadata: IFeatureFlagMetadata = {
+                allowedRegions: ['sg', 'id'],
+            };
+            const newMetadata: IFeatureFlagMetadata = {
+                allowedRegions: [1, 2],
+            };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns true when an array value keeps its element type', () => {
+            const oldMetadata: IFeatureFlagMetadata = {
+                allowedRegions: ['sg'],
+            };
+            const newMetadata: IFeatureFlagMetadata = {
+                allowedRegions: ['sg', 'id'],
+            };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                true
+            );
+        });
+
+        it('returns false when a new value is undefined', () => {
+            const oldMetadata: IFeatureFlagMetadata = { label: 'a' };
+            const newMetadata = {
+                label: undefined,
+            } as unknown as IFeatureFlagMetadata;
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns false when a new value is null', () => {
+            const oldMetadata: IFeatureFlagMetadata = { label: 'a' };
+            const newMetadata = {
+                label: null,
+            } as unknown as IFeatureFlagMetadata;
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns false when a new value is an empty string', () => {
+            const oldMetadata: IFeatureFlagMetadata = { label: 'a' };
+            const newMetadata: IFeatureFlagMetadata = { label: '' };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+
+        it('returns false when a new array value is empty', () => {
+            const oldMetadata: IFeatureFlagMetadata = {
+                allowedRegions: ['sg'],
+            };
+            const newMetadata: IFeatureFlagMetadata = { allowedRegions: [] };
+
+            expect(service['isMetadataValid'](oldMetadata, newMetadata)).toBe(
+                false
+            );
+        });
+    });
+
+    describe('metadataValueType', () => {
+        it('returns "array" for an empty array', () => {
+            expect(service['metadataValueType']([])).toBe('array');
+        });
+
+        it('returns "array:<element type>" for a non-empty array', () => {
+            expect(service['metadataValueType'](['sg', 'id'])).toBe(
+                'array:string'
+            );
+            expect(service['metadataValueType']([1, 2])).toBe('array:number');
+        });
+
+        it('returns the primitive typeof for a non-array value', () => {
+            expect(service['metadataValueType']('a')).toBe('string');
+            expect(service['metadataValueType'](3)).toBe('number');
+            expect(service['metadataValueType'](true)).toBe('boolean');
         });
     });
 });

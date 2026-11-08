@@ -14,7 +14,7 @@ deny() {
     exit 0
 }
 
-skill_output="Under .superpowers/, a plan goes to plans/YYYY-MM-DD-<slug>.md, a design to specs/YYYY-MM-DD-<topic>-design.md, and the subagent-driven-development workspace to sdd/<plan-basename>/; nothing else goes under .superpowers/. generated/docs/ holds agent reports, the sweep log, and PR, comment, and version text."
+skill_output="Under .superpowers/, a plan goes to plans/YYYY-MM-DD-<slug>.md, a design to specs/YYYY-MM-DD-<topic>-design.md, and the subagent-driven-development workspace to sdd/<plan-basename>/; nothing else goes under .superpowers/. generated/docs/ holds the sweep log and PR, comment, and version text."
 
 case "$rel" in
     .env.example|*/.env.example) ;;
@@ -33,7 +33,7 @@ case "$rel" in
         ;;
     generated/docs/*) ;;
     generated/*|*/generated/*)
-        deny "src/generated/ is produced by pnpm generate; generated/swagger.json by src/swagger.ts and generated/vault/ by the Vault containers. Reports go to generated/docs/."
+        deny "src/generated/ is produced by pnpm generate; generated/swagger.json by src/swagger.ts and generated/vault/ by the Vault containers. The sweep log and PR text go to generated/docs/."
         ;;
     docs/superpowers/*|*/docs/superpowers/*)
         deny "docs/ is tracked project documentation. $skill_output"

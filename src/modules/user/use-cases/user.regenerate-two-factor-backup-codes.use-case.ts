@@ -19,6 +19,7 @@ export class UserRegenerateTwoFactorBackupCodesUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService
     ) {}
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const attempt = await this.userTwoFactorService.countAttempt(user);
         const lockoutLogs = attempt.lockoutStages.map(stage =>
@@ -38,7 +39,6 @@ export class UserRegenerateTwoFactorBackupCodesUseCase implements IAppUseCase<
         this.userTwoFactorService.assertEnabled(user);
         // Sequential by design: gate before the work it guards
         await this.assertTwoFactorAttemptCounted(user);
-        // Sequential by design: the attempt is counted before the code is checked
         await this.userTwoFactorService.verify(user, {
             method: EnumAuthTwoFactorMethod.code,
             code,

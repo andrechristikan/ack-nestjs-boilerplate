@@ -86,7 +86,6 @@ describe('TermPolicyContentService', () => {
         awsS3Service.isInitialized.mockReturnValue(true);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
         termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
-        termPolicyUtil.getContentByLanguage.mockReturnValue(existingContent);
         termPolicyUtil.isContentSizeAllowed.mockImplementation(
             size => size <= contentMaxSizeInBytes
         );
@@ -330,7 +329,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyContentNotFoundException and writes nothing when the language is absent', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
 
             const promise = service.updateContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
@@ -603,9 +602,6 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyContentExistException when the language is already present', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
 
             const promise = service.addContentByAdmin('term-policy-1', {
                 language: EnumMessageLanguage.en,
@@ -627,7 +623,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
             awsS3Service.isInitialized.mockReturnValue(false);
 
             const promise = service.addContentByAdmin('term-policy-1', {
@@ -653,7 +649,7 @@ describe('TermPolicyContentService', () => {
 
         it('adds the content and returns the draft term policy', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
             const mapped: IAwsS3 = {
                 ...existingContent,
                 key: 'term-policies/privacy/v1/fr.hbs',
@@ -676,7 +672,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyStatusInvalidException when the guarded write matches no draft', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
             termPolicyRepository.addContent.mockResolvedValue(false);
 
@@ -694,7 +690,7 @@ describe('TermPolicyContentService', () => {
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
             const rawError = new Error('write failed');
             termPolicyRepository.addContent.mockRejectedValue(rawError);
@@ -718,7 +714,7 @@ describe('TermPolicyContentService', () => {
 
         it('rethrows an AppBaseException raised while adding', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
             const error = new TermPolicyContentExistException();
             awsS3Service.mapPresign.mockImplementation(() => {
                 throw error;
@@ -790,7 +786,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyContentNotFoundException when the language is absent', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
 
             await expect(
                 service.removeContentByAdmin(
@@ -811,9 +807,6 @@ describe('TermPolicyContentService', () => {
 
         it('removes the content and returns the draft term policy', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             termPolicyRepository.removeContent.mockResolvedValue(true);
 
             const result = await service.removeContentByAdmin(
@@ -834,9 +827,6 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(
                 editedDraftTermPolicy
             );
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             termPolicyRepository.removeContent.mockResolvedValue(true);
 
             await service.removeContentByAdmin(
@@ -854,9 +844,6 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyStatusInvalidException when the guarded write misses', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             termPolicyRepository.removeContent.mockResolvedValue(false);
 
             const promise = service.removeContentByAdmin(
@@ -872,9 +859,6 @@ describe('TermPolicyContentService', () => {
 
         it('rethrows an AppBaseException raised while removing', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             const error = new TermPolicyContentNotFoundException();
             termPolicyRepository.removeContent.mockRejectedValue(error);
 
@@ -898,9 +882,6 @@ describe('TermPolicyContentService', () => {
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             const rawError = new Error('write failed');
             termPolicyRepository.removeContent.mockRejectedValue(rawError);
 
@@ -967,7 +948,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyContentNotFoundException when the language is absent', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(null);
+            termPolicyUtil.toContents.mockReturnValue([]);
 
             await expect(
                 service.getContentByAdmin(
@@ -988,9 +969,6 @@ describe('TermPolicyContentService', () => {
 
         it('throws AwsS3NotConfiguredException when the get presign fails', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             awsS3Service.presignGetItem.mockResolvedValue(null);
 
             await expect(
@@ -1012,9 +990,6 @@ describe('TermPolicyContentService', () => {
 
         it('returns the presign for the existing content', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getContentByLanguage.mockReturnValue(
-                existingContent
-            );
             const presign: IAwsS3Presign = {
                 key: existingContent.key,
                 mime: existingContent.mime,
@@ -1083,6 +1058,23 @@ describe('TermPolicyContentService', () => {
                     ],
                 messagePath: 'termPolicy.error.statusInvalid',
             });
+        });
+    });
+
+    describe('getContentByLanguage', () => {
+        it('returns the content matching the language', () => {
+            expect(
+                service['getContentByLanguage'](
+                    [existingContent],
+                    EnumMessageLanguage.en
+                )
+            ).toBe(existingContent);
+        });
+
+        it('returns null when no content matches the language', () => {
+            expect(
+                service['getContentByLanguage']([], EnumMessageLanguage.en)
+            ).toBeNull();
         });
     });
 });

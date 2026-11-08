@@ -30,8 +30,8 @@ The working tree is the source (`.claude/skills/ack-work/references/dispatch.md`
 
 `DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED`; files changed; the rule files read; every spec watched fail then pass, with the decisive test and typecheck lines; every run-surface file checked and whether it changed; every status code allocated; the schema delta as model, field, index, and `pnpm db:migrate`; every deviation from a plan step; open items; one line per thing noticed outside the scope.
 
-On a plan task, write this hand-back to `generated/docs/report-<plan-basename>-task-<N>.md` (shape: `.claude/skills/ack-work/references/example-report.md`) and reply with the same text. A pin writes no report file.
+The hand-back is the reply text; a plan task and a pin write no report file.
 
 ## Not this agent
 
-No file under `.superpowers/`; no file under `generated/docs/` but the task report; no `docs/`, root people files, `.claude/**`, or `.github/**` outside the step 4 run surface; no spec beyond the TDD spec and the test files the task's Files list names (coverage work is `tester`); no `--no-verify`; no owner database command (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`); no commit, no staging.
+No file under `.superpowers/`; no file under `generated/docs/`; no `docs/`, root people files, `.claude/**`, or `.github/**` outside the step 4 run surface; no spec beyond the TDD spec and the test files the task's Files list names (coverage work is `tester`); no `--no-verify`; no owner database command (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`); no commit, no staging.

@@ -22,11 +22,13 @@ const [role, email] = await Promise.all([readRole, readEmail, gateCountry]);
 // never: const [role, , email] = await Promise.all([readRole, gateCountry, readEmail]);
 ```
 
-A sequential `await` whose dependency is visible in the code carries no comment: the call takes an earlier result, or it acts on the subject an earlier step changed (the same container, app, client, or loop iteration, as in a poll on its own probe; the same `tx`, whose MongoDB session runs one operation at a time). Sequential awaits on different subjects whose order matters occur only in these cases, each named at the site in a one-line `// Sequential by design: <case>` comment, in a loop too:
+A sequential `await` whose dependency is visible in the code carries no comment: the call takes an earlier result, or it acts on the subject an earlier step changed (the same container, app, client, or loop iteration, as in a poll on its own probe; the same `tx`, whose MongoDB session runs one operation at a time). Sequential awaits on different subjects whose order matters occur only in these cases, each named in the method's `// Sequential by design: <case>` line:
 
 - a write that must not happen if an earlier step throws;
 - a gate that decides whether the request proceeds (a feature-flag gate, an existence or permission check) runs before the work it guards, so a closed gate starts no query and its exception is the one the caller sees;
 - side effects whose order is part of the contract (a reset before a boot, seeds that read rows an earlier seed wrote);
 - a fan-out over an unbounded collection: bounded chunks in turn, each concurrent; the size is a config key (`config.md`).
+
+A method carries at most one `// Sequential by design: <case>` line, above its first ordered `await`, naming every case the method has (`gate before the work it guards; write after the gate`); the later `await`s of the same method, a loop body included, carry none. A second marker in one method is a defect.
 
 `.catch()` belongs only to `bootstrap().catch` in `src/main.ts` and `src/migration.ts` and to a promise never awaited.

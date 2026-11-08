@@ -20,6 +20,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -46,6 +47,7 @@ import type {
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 
 describe('TermPolicyService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
@@ -56,6 +58,8 @@ describe('TermPolicyService', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
+    const helperArrayService: MockProxy<HelperArrayService> =
+        mock<HelperArrayService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -133,6 +137,7 @@ describe('TermPolicyService', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: TermPolicyQueue, useValue: termPolicyQueue },
+                { provide: HelperArrayService, useValue: helperArrayService },
             ],
         }).compile();
 
@@ -265,16 +270,14 @@ describe('TermPolicyService', () => {
                     ],
                 messagePath: 'termPolicy.error.exist',
             });
-            expect(
-                termPolicyUtil.validateUniqueLanguages
-            ).not.toHaveBeenCalled();
+            expect(helperArrayService.unique).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyLanguageDuplicateException when languages repeat', async () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(false);
+            helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
 
             await expect(
                 service.createByAdmin('term-policy-1', {
@@ -285,6 +288,11 @@ describe('TermPolicyService', () => {
                             language: EnumMessageLanguage.en,
                             size: 1024,
                             key: 'a.hbs',
+                        },
+                        {
+                            language: EnumMessageLanguage.en,
+                            size: 1024,
+                            key: 'b.hbs',
                         },
                     ],
                 })
@@ -305,7 +313,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             termPolicyUtil.isContentKeyInPath.mockReturnValueOnce(true);
             termPolicyUtil.isContentKeyInPath.mockReturnValueOnce(false);
 
@@ -346,7 +354,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             termPolicyUtil.isContentSizeAllowed.mockReturnValueOnce(true);
             termPolicyUtil.isContentSizeAllowed.mockReturnValueOnce(false);
 
@@ -388,7 +396,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             awsS3Service.isInitialized.mockReturnValue(false);
 
             const promise = service.createByAdmin('term-policy-1', {
@@ -421,7 +429,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             const mapped: IAwsS3 = { ...contentEn };
             awsS3Service.mapPresign.mockReturnValue(mapped);
             termPolicyRepository.create.mockResolvedValue(draftTermPolicy);
@@ -467,7 +475,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             const error = new TermPolicyExistException();
             awsS3Service.mapPresign.mockImplementation(() => {
                 throw error;
@@ -502,7 +510,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
             const collision = new Error('unique violation');
             termPolicyRepository.create.mockRejectedValue(collision);
@@ -540,7 +548,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+            helperArrayService.unique.mockImplementation(array => array);
             awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
             const cause = new Error('write failed');
             termPolicyRepository.create.mockRejectedValue(cause);
@@ -774,9 +782,6 @@ describe('TermPolicyService', () => {
                 termPolicyUtil.getContentPublicPath.mockReturnValue(
                     'public/term-policies/privacy/1'
                 );
-                termPolicyUtil.mapPublicContentKeys.mockReturnValue([
-                    publicEnKey,
-                ]);
                 awsS3Service.mapPresign.mockReturnValue(publicEnItem);
                 databaseService.withTransaction.mockImplementation(async fn =>
                     fn(tx)
@@ -921,8 +926,8 @@ describe('TermPolicyService', () => {
                     },
                 });
                 expect(
-                    termPolicyUtil.mapPublicContentKeys
-                ).toHaveBeenCalledWith(draftTermPolicy, [contentEn]);
+                    termPolicyUtil.getContentPublicPath
+                ).toHaveBeenCalledWith(EnumTermPolicyType.privacy, 1);
                 expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
                     { key: publicEnKey.key, size: 1024 },
                     { access: EnumAwsS3Accessibility.public }
@@ -1017,7 +1022,6 @@ describe('TermPolicyService', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const conflict = new Prisma.PrismaClientKnownRequestError(
                 'write conflict',
@@ -1048,7 +1052,6 @@ describe('TermPolicyService', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Prisma.PrismaClientKnownRequestError('other', {
                 code: 'P2002',
@@ -1071,7 +1074,6 @@ describe('TermPolicyService', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Prisma.PrismaClientKnownRequestError(
                 'unavailable',
@@ -1097,7 +1099,6 @@ describe('TermPolicyService', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -1149,7 +1150,6 @@ describe('TermPolicyService', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            termPolicyUtil.mapPublicContentKeys.mockReturnValue([publicEnKey]);
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Error('transaction failed');
             databaseService.withTransaction.mockRejectedValue(cause);
@@ -1249,6 +1249,66 @@ describe('TermPolicyService', () => {
             const result = await service.getPublishedByAdmin('term-policy-1');
 
             expect(result).toBe(publishedTermPolicy);
+        });
+    });
+
+    describe('validateUniqueLanguages', () => {
+        it('returns true when every language is unique', () => {
+            const contents: TermPolicyContentRequestDto[] = [
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                },
+            ];
+            helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
+
+            expect(service['validateUniqueLanguages'](contents)).toBe(true);
+            expect(helperArrayService.unique).toHaveBeenCalledWith([
+                EnumMessageLanguage.en,
+            ]);
+        });
+
+        it('returns false when a language repeats', () => {
+            const contents: TermPolicyContentRequestDto[] = [
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                },
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: 'term-policies/privacy/v1/en-2.hbs',
+                },
+            ];
+            helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
+
+            expect(service['validateUniqueLanguages'](contents)).toBe(false);
+        });
+    });
+
+    describe('mapPublicContentKeys', () => {
+        it('maps each content to its public key under the public path with no S3 call', () => {
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+
+            const result = service['mapPublicContentKeys'](
+                {
+                    id: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
+                [contentEn]
+            );
+
+            expect(result).toEqual([publicEnKey]);
+            expect(termPolicyUtil.getContentPublicPath).toHaveBeenCalledWith(
+                EnumTermPolicyType.privacy,
+                1
+            );
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
         });
     });
 });

@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import type { Algorithm } from 'jsonwebtoken';
 import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
+import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
@@ -17,6 +19,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
 import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
@@ -43,7 +46,8 @@ export class AuthJwtService {
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
-        private readonly authUtil: AuthUtil
+        private readonly authUtil: AuthUtil,
+        private readonly helperDateService: HelperDateService
     ) {
         this.jwtAccessTokenKid = this.configService.get<string>(
             'auth.jwt.accessToken.kid'
@@ -109,6 +113,72 @@ export class AuthJwtService {
         } catch (error) {
             throw new AuthJwtConfigInvalidException(configKey, expected, error);
         }
+    }
+
+    private createPayloadAccessToken(
+        data: User,
+        sessionId: string,
+        deviceOwnershipId: string,
+        loginAt: Date,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith
+    ): IAuthJwtAccessTokenPayload {
+        return {
+            userId: data.id,
+            roleId: data.roleId,
+            username: data.username,
+            email: data.email,
+            sessionId,
+            deviceOwnershipId,
+            loginAt,
+            loginFrom,
+            loginWith,
+        };
+    }
+
+    private createPayloadRefreshToken({
+        sessionId,
+        userId,
+        deviceOwnershipId,
+        loginFrom,
+        loginAt,
+        loginWith,
+    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
+        return {
+            loginAt,
+            loginFrom,
+            loginWith,
+            sessionId,
+            deviceOwnershipId,
+            userId,
+        };
+    }
+
+    private toToken(
+        user: IUser,
+        accessToken: string,
+        refreshToken: string,
+        expiresIn: number
+    ): IAuthToken {
+        return {
+            tokenType: AuthBearerScheme,
+            roleType: user.role.type,
+            expiresIn,
+            accessToken,
+            refreshToken,
+        };
+    }
+
+    private remainingSeconds(exp: number | null): number {
+        const today = this.helperDateService.create();
+        const expiredAt = this.helperDateService.createFromTimestamp(
+            (exp ?? 0) * 1000
+        );
+        const remaining = this.helperDateService.diff(expiredAt, today);
+
+        return remaining.seconds
+            ? remaining.seconds
+            : Math.floor(remaining.milliseconds / 1000);
     }
 
     createAccessToken(
@@ -201,7 +271,7 @@ export class AuthJwtService {
         loginWith: EnumUserLoginWith
     ): IAuthToken {
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.authUtil.createPayloadAccessToken(
+            this.createPayloadAccessToken(
                 user,
                 sessionId,
                 deviceOwnershipId,
@@ -216,14 +286,14 @@ export class AuthJwtService {
         );
 
         const payloadRefreshToken: IAuthJwtRefreshTokenPayload =
-            this.authUtil.createPayloadRefreshToken(payloadAccessToken);
+            this.createPayloadRefreshToken(payloadAccessToken);
         const refreshToken: string = this.createRefreshToken(
             user.id,
             jti,
             payloadRefreshToken
         );
 
-        return this.authUtil.toToken(
+        return this.toToken(
             user,
             accessToken,
             refreshToken,
@@ -249,7 +319,7 @@ export class AuthJwtService {
 
         const jti = this.authUtil.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
-            this.authUtil.createPayloadAccessToken(
+            this.createPayloadAccessToken(
                 user,
                 sessionId,
                 deviceOwnershipId,
@@ -264,9 +334,9 @@ export class AuthJwtService {
         );
 
         const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
-            this.authUtil.createPayloadRefreshToken(payloadAccessToken);
+            this.createPayloadRefreshToken(payloadAccessToken);
 
-        const newRefreshTokenExpireInSeconds = this.authUtil.remainingSeconds(
+        const newRefreshTokenExpireInSeconds = this.remainingSeconds(
             oldExp ?? null
         );
 
@@ -277,7 +347,7 @@ export class AuthJwtService {
             newRefreshTokenExpireInSeconds
         );
 
-        const tokens = this.authUtil.toToken(
+        const tokens = this.toToken(
             user,
             accessToken,
             newRefreshToken,

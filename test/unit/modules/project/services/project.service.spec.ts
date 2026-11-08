@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -11,6 +12,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
@@ -31,7 +33,20 @@ describe('ProjectService', () => {
         mock<ProjectRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configGet = vi.fn<(key: string) => unknown>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
     let service: ProjectService;
+
+    const configValues: Record<string, unknown> = {
+        'project.slugRegex': /^[0-9a-zA-Z-]+$/,
+        'project.slugPrefix': 'p-',
+        'project.slugMaxLength': 30,
+        'project.slugMaxAttempts': 5,
+    };
 
     const baseProject: Project = {
         id: '507f1f77bcf86cd799439011',
@@ -61,6 +76,7 @@ describe('ProjectService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => configValues[key]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,6 +84,8 @@ describe('ProjectService', () => {
                 { provide: ProjectRepository, useValue: projectRepository },
                 { provide: ProjectUtil, useValue: projectUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
         service = module.get(ProjectService);
@@ -229,10 +247,12 @@ describe('ProjectService', () => {
     });
 
     describe('createProject', () => {
-        it('draws slug candidates from the util and creates the project with them', async () => {
+        it('draws slug candidates and creates the project with them', async () => {
             const project = baseProject;
             const slugCandidates = ['p-abc123', 'p-def456'];
-            projectUtil.drawSlugCandidates.mockReturnValue(slugCandidates);
+            helperStringService.generateSlugCandidates.mockReturnValue(
+                slugCandidates
+            );
             projectRepository.create.mockResolvedValue(project);
             const create: IProjectCreate = {
                 name: 'Website Revamp',
@@ -274,9 +294,8 @@ describe('ProjectService', () => {
     });
 
     describe('updateProjectSlug', () => {
-        it('throws ProjectSlugInvalidException when the util refuses the slug', async () => {
+        it('throws ProjectSlugInvalidException when the slug is not allowed', async () => {
             const project = baseProject;
-            projectUtil.isSlugAllowed.mockReturnValue(false);
 
             await expect(
                 service.updateProjectSlug(project, 'invalid slug!')
@@ -289,16 +308,12 @@ describe('ProjectService', () => {
                     ],
                 messagePath: 'project.error.slugInvalid',
             });
-            expect(projectUtil.isSlugAllowed).toHaveBeenCalledWith(
-                'invalid slug!'
-            );
             expect(projectRepository.updateSlug).not.toHaveBeenCalled();
         });
 
         it('throws ProjectSlugAlreadyExistsException when the write collides on the slug index', async () => {
             const project = baseProject;
             const collision = new Error('slug collision');
-            projectUtil.isSlugAllowed.mockReturnValue(true);
             projectRepository.updateSlug.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
@@ -322,7 +337,6 @@ describe('ProjectService', () => {
         it('wraps a non-collision write error in AppUnknownException', async () => {
             const project = baseProject;
             const otherError = new Error('unexpected');
-            projectUtil.isSlugAllowed.mockReturnValue(true);
             projectRepository.updateSlug.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
@@ -337,7 +351,6 @@ describe('ProjectService', () => {
         it('updates the slug when it is allowed', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
-            projectUtil.isSlugAllowed.mockReturnValue(true);
             projectRepository.updateSlug.mockResolvedValue(updated);
 
             const result = await service.updateProjectSlug(
@@ -483,6 +496,36 @@ describe('ProjectService', () => {
             );
 
             expect(result).toBe(project);
+        });
+    });
+
+    describe('drawSlugCandidates', () => {
+        it('draws slugMaxAttempts candidates from the prefix and max length', () => {
+            const candidates = ['p-a', 'p-b', 'p-c', 'p-d', 'p-e'];
+            helperStringService.generateSlugCandidates.mockReturnValue(
+                candidates
+            );
+
+            const result = service['drawSlugCandidates']();
+
+            expect(result).toBe(candidates);
+            expect(
+                helperStringService.generateSlugCandidates
+            ).toHaveBeenCalledWith('p-', 30, 5);
+        });
+    });
+
+    describe('isSlugAllowed', () => {
+        it('returns true for a slug within length and matching the pattern', () => {
+            expect(service['isSlugAllowed']('p-valid-slug')).toBe(true);
+        });
+
+        it('returns false for a slug over the max length', () => {
+            expect(service['isSlugAllowed']('p-'.padEnd(31, 'a'))).toBe(false);
+        });
+
+        it('returns false for a slug failing the pattern', () => {
+            expect(service['isSlugAllowed']('invalid slug!')).toBe(false);
         });
     });
 });

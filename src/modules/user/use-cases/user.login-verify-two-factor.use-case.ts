@@ -40,6 +40,7 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -99,6 +100,7 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         return session.tokens;
     }
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const attempt = await this.userTwoFactorService.countAttempt(user);
         const lockoutLogs = attempt.lockoutStages.map(stage =>
@@ -125,15 +127,13 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         const user = await this.userTwoFactorService.getOneForLoginVerify(
             challenge.userId
         );
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.assertTwoFactorAttemptCounted(user);
-        // Sequential by design: the attempt is counted before the code is checked
         const verified = await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method,
         });
-        // Sequential by design: the claim follows a successful verification and precedes the session it guards
         await this.authTwoFactorService.consumeChallenge(challengeToken);
         const verifyLogs = [
             this.activityLogService.prepare({
@@ -142,7 +142,6 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
                 createdBy: user.id,
             }),
         ];
-        // Sequential by design: write must not run if an earlier step throws
         await this.userTwoFactorService.recordVerification(user, verified);
 
         this.activityLogService.stagePrepared(verifyLogs);

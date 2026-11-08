@@ -31,14 +31,12 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 
 describe('DeviceService', () => {
     const deviceOwnershipRepository: MockProxy<DeviceOwnershipRepository> =
         mock<DeviceOwnershipRepository>();
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -108,7 +106,6 @@ describe('DeviceService', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
-                { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -282,9 +279,6 @@ describe('DeviceService', () => {
         };
 
         it('creates or updates the device by fingerprint without token fields then the ownership with the token and reports newness', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(
-                EnumDeviceNotificationProvider.apns
-            );
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
                 deviceOwnership,
@@ -303,10 +297,6 @@ describe('DeviceService', () => {
                 deviceOwnership,
                 isNewDevice: true,
             });
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                EnumDevicePlatform.ios,
-                'token-1'
-            );
             expect(
                 deviceRepository.upsertByFingerprintInTx
             ).toHaveBeenCalledWith(tx, 'user-1', identity, now);
@@ -342,7 +332,6 @@ describe('DeviceService', () => {
         });
 
         it('passes a null token and a null provider to the ownership upsert when the login carries no token', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
                 deviceOwnership,
@@ -356,10 +345,6 @@ describe('DeviceService', () => {
                 now
             );
 
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                EnumDevicePlatform.ios,
-                null
-            );
             expect(
                 deviceOwnershipRepository.upsertActiveInTx
             ).toHaveBeenCalledWith(tx, device.id, 'user-1', null, null, now);
@@ -409,11 +394,9 @@ describe('DeviceService', () => {
             };
             const otherIdentity: IDeviceIdentity = {
                 ...identity,
+                platform: EnumDevicePlatform.android,
                 notificationToken: 'token-2',
             };
-            deviceUtil.resolveNotificationProvider
-                .mockReturnValueOnce(EnumDeviceNotificationProvider.apns)
-                .mockReturnValueOnce(EnumDeviceNotificationProvider.fcm);
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx
                 .mockResolvedValueOnce({
@@ -547,7 +530,6 @@ describe('DeviceService', () => {
         };
 
         it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
             databaseService.withTransaction.mockImplementation(
@@ -573,37 +555,36 @@ describe('DeviceService', () => {
         });
 
         it('refreshes the ownership token and the device on success', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(
-                EnumDeviceNotificationProvider.fcm
-            );
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await service.refresh('user-1', 'device-ownership-1', data);
+            const refreshed: IDeviceRefresh = {
+                ...data,
+                notificationToken: 'token-9',
+            };
+
+            await service.refresh('user-1', 'device-ownership-1', refreshed);
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
-                data,
+                refreshed,
                 EnumDeviceNotificationProvider.fcm,
                 now
             );
             expect(deviceRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'device-1',
-                data,
+                refreshed,
                 now
             );
         });
 
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(
-                EnumDeviceNotificationProvider.fcm
-            );
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             databaseService.withTransaction.mockImplementation(
@@ -621,7 +602,6 @@ describe('DeviceService', () => {
         });
 
         it('clears no other row when the refresh carries no token', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             databaseService.withTransaction.mockImplementation(
@@ -636,7 +616,6 @@ describe('DeviceService', () => {
         });
 
         it('resolves the notification provider from the platform and the token', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             databaseService.withTransaction.mockImplementation(
@@ -648,14 +627,17 @@ describe('DeviceService', () => {
                 notificationToken: 'token-9',
             });
 
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                EnumDevicePlatform.android,
-                'token-9'
+            expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                { ...data, notificationToken: 'token-9' },
+                EnumDeviceNotificationProvider.fcm,
+                now
             );
         });
 
         it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             databaseService.withTransaction.mockImplementation(
@@ -664,10 +646,6 @@ describe('DeviceService', () => {
 
             await service.refresh('user-1', 'device-ownership-1', data);
 
-            expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
-                EnumDevicePlatform.android,
-                null
-            );
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -693,7 +671,6 @@ describe('DeviceService', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const notFound = new DeviceNotFoundException();
             databaseService.withTransaction.mockRejectedValue(notFound);
@@ -704,7 +681,6 @@ describe('DeviceService', () => {
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const conflict = new Error('conflict');
             databaseService.withTransaction.mockRejectedValue(conflict);
@@ -728,7 +704,6 @@ describe('DeviceService', () => {
         });
 
         it('wraps a non-application error raised inside the transaction', async () => {
-            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
             helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
@@ -797,6 +772,96 @@ describe('DeviceService', () => {
                     ],
                 messagePath: 'device.error.notFound',
             });
+        });
+    });
+
+    describe('mapActivityLogMetadata', () => {
+        it('projects the ownership id, device id, and session count', () => {
+            const result = service.mapActivityLogMetadata(
+                deviceOwnershipDetail,
+                3
+            );
+
+            expect(result).toEqual({
+                deviceOwnershipId: 'device-ownership-1',
+                deviceId: 'device-1',
+                sessionCount: 3,
+            });
+        });
+    });
+
+    describe('mapActivityLogActorMetadata', () => {
+        it('extends the base metadata with the target user and timestamp', () => {
+            const result = service.mapActivityLogActorMetadata(
+                deviceOwnershipDetail,
+                3
+            );
+
+            expect(result).toEqual({
+                deviceOwnershipId: 'device-ownership-1',
+                deviceId: 'device-1',
+                sessionCount: 3,
+                targetUserId: 'user-1',
+                targetUsername: 'jane',
+                timestamp: now,
+            });
+        });
+    });
+
+    describe('mapActivityLogTargetMetadata', () => {
+        it('extends the base metadata with the actor user and timestamp', () => {
+            const result = service.mapActivityLogTargetMetadata(
+                deviceOwnershipDetail,
+                'admin-1',
+                3
+            );
+
+            expect(result).toEqual({
+                deviceOwnershipId: 'device-ownership-1',
+                deviceId: 'device-1',
+                sessionCount: 3,
+                actorUserId: 'admin-1',
+                timestamp: now,
+            });
+        });
+    });
+
+    describe('resolveNotificationProvider', () => {
+        it('maps android to fcm', () => {
+            expect(
+                service['resolveNotificationProvider'](
+                    EnumDevicePlatform.android,
+                    'token-1'
+                )
+            ).toBe(EnumDeviceNotificationProvider.fcm);
+        });
+
+        it('maps ios to apns', () => {
+            expect(
+                service['resolveNotificationProvider'](
+                    EnumDevicePlatform.ios,
+                    'token-1'
+                )
+            ).toBe(EnumDeviceNotificationProvider.apns);
+        });
+
+        it('maps web to null', () => {
+            expect(
+                service['resolveNotificationProvider'](
+                    EnumDevicePlatform.web,
+                    'token-1'
+                )
+            ).toBeNull();
+        });
+
+        it.each([
+            EnumDevicePlatform.android,
+            EnumDevicePlatform.ios,
+            EnumDevicePlatform.web,
+        ])('maps a null token on platform %s to null', platform => {
+            expect(
+                service['resolveNotificationProvider'](platform, null)
+            ).toBeNull();
         });
     });
 });

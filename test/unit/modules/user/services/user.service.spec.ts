@@ -1,9 +1,11 @@
 import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -17,6 +19,7 @@ import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type {
@@ -60,8 +63,19 @@ describe('UserService', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
 
     let service: UserService;
+
+    const configValues: Record<string, string> = {
+        'user.deleteSelf.emailPattern': 'removed.{id}.{email}',
+        'user.deleteSelf.usernamePattern': 'removed.{id}.{username}',
+    };
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -135,6 +149,7 @@ describe('UserService', () => {
         vi.resetAllMocks();
 
         helperDateService.create.mockReturnValue(now);
+        configGet.mockImplementation(key => configValues[key]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -157,6 +172,8 @@ describe('UserService', () => {
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperStringService, useValue: helperStringService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         service = module.get(UserService);
@@ -261,7 +278,6 @@ describe('UserService', () => {
 
         it('skips the password expiry check for a social session', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            userUtil.gatesPasswordExpiryOn.mockReturnValue(false);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             await expect(
@@ -273,9 +289,6 @@ describe('UserService', () => {
                     false
                 )
             ).resolves.toBe(baseUser);
-            expect(userUtil.gatesPasswordExpiryOn).toHaveBeenCalledWith(
-                EnumUserLoginWith.socialGoogle
-            );
             expect(
                 authPasswordUtil.checkPasswordExpired
             ).not.toHaveBeenCalled();
@@ -283,7 +296,6 @@ describe('UserService', () => {
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             const call = service.validateUserGuard(
@@ -310,7 +322,6 @@ describe('UserService', () => {
                 ...baseUser,
                 isVerified: false,
             });
-            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             const call = service.validateUserGuard(
@@ -335,7 +346,6 @@ describe('UserService', () => {
         it('returns the user when every check passes', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleById.mockResolvedValue(user);
-            userUtil.gatesPasswordExpiryOn.mockReturnValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
@@ -1075,17 +1085,17 @@ describe('UserService', () => {
     });
 
     describe('assertSelfDeletable', () => {
-        it('passes when the util does not refuse the user', () => {
-            userUtil.isDeleteSelfRefused.mockReturnValue(false);
-
+        it('passes for a user role', () => {
             expect(() => service.assertSelfDeletable(baseUser)).not.toThrow();
-            expect(userUtil.isDeleteSelfRefused).toHaveBeenCalledWith(baseUser);
         });
 
-        it('throws UserDeleteSelfForbiddenException when the util refuses the user', () => {
-            userUtil.isDeleteSelfRefused.mockReturnValue(true);
+        it('throws UserDeleteSelfForbiddenException for an admin role', () => {
+            const admin: IUser = {
+                ...baseUser,
+                role: { ...role, type: EnumRoleType.admin },
+            };
 
-            expect(() => service.assertSelfDeletable(baseUser)).toThrow(
+            expect(() => service.assertSelfDeletable(admin)).toThrow(
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.deleteSelfForbidden,
@@ -1232,22 +1242,165 @@ describe('UserService', () => {
                 email: 'deleted.user-cobalt.cobalt@example.com',
                 username: 'deleted.user-cobalt.cobaltReyes',
             };
-            userUtil.createDeletedIdentity.mockReturnValue(identity);
+            helperStringService.fillPattern
+                .mockReturnValueOnce(identity.email)
+                .mockReturnValueOnce(identity.username);
             userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
 
             await expect(
                 service.deleteSelfInTx(tx, baseUser, now)
             ).resolves.toBe(baseUser);
 
-            expect(userUtil.createDeletedIdentity).toHaveBeenCalledWith(
-                baseUser
-            );
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cobalt',
                 identity,
                 now
             );
+        });
+    });
+
+    describe('mapTwoFactor', () => {
+        it('maps an enabled two-factor row with a pending secret', () => {
+            const enabledTwoFactor: TwoFactor = {
+                ...twoFactor,
+                secret: 'secret',
+                pendingSecret: 'pending-secret',
+                backupCodes: ['code-one', 'code-two'],
+                enabled: true,
+                confirmedAt: new Date('2026-01-05T00:00:00.000Z'),
+                lastUsedAt: new Date('2026-01-06T00:00:00.000Z'),
+            };
+
+            expect(service.mapTwoFactor(enabledTwoFactor)).toEqual({
+                isEnabled: true,
+                isPendingConfirmation: true,
+                backupCodesRemaining: 2,
+                confirmedAt: enabledTwoFactor.confirmedAt,
+                lastUsedAt: enabledTwoFactor.lastUsedAt,
+            });
+        });
+
+        it('maps a disabled two-factor row with no pending secret', () => {
+            expect(service.mapTwoFactor(twoFactor)).toEqual({
+                isEnabled: false,
+                isPendingConfirmation: false,
+                backupCodesRemaining: 0,
+                confirmedAt: null,
+                lastUsedAt: null,
+            });
+        });
+
+        it('maps a missing two-factor row as disabled', () => {
+            expect(service.mapTwoFactor(null)).toEqual({
+                isEnabled: false,
+                isPendingConfirmation: false,
+                backupCodesRemaining: 0,
+                confirmedAt: null,
+                lastUsedAt: null,
+            });
+        });
+    });
+
+    describe('resolveStatusActivityLogAction', () => {
+        it('resolves userBlocked for blocked', () => {
+            expect(
+                service.resolveStatusActivityLogAction(EnumUserStatus.blocked)
+            ).toBe(EnumActivityLogAction.userBlocked);
+        });
+
+        it('resolves userUpdateStatus for inactive', () => {
+            expect(
+                service.resolveStatusActivityLogAction(EnumUserStatus.inactive)
+            ).toBe(EnumActivityLogAction.userUpdateStatus);
+        });
+
+        it('resolves userUpdateStatus for active', () => {
+            expect(
+                service.resolveStatusActivityLogAction(EnumUserStatus.active)
+            ).toBe(EnumActivityLogAction.userUpdateStatus);
+        });
+    });
+
+    describe('revokesSessionsOn', () => {
+        it('returns false for active', () => {
+            expect(service.revokesSessionsOn(EnumUserStatus.active)).toBe(
+                false
+            );
+        });
+
+        it('returns true for inactive', () => {
+            expect(service.revokesSessionsOn(EnumUserStatus.inactive)).toBe(
+                true
+            );
+        });
+
+        it('returns true for blocked', () => {
+            expect(service.revokesSessionsOn(EnumUserStatus.blocked)).toBe(
+                true
+            );
+        });
+    });
+
+    describe('createDeletedIdentity', () => {
+        it('fills the configured deleted email and username patterns from the row id', () => {
+            helperStringService.fillPattern
+                .mockReturnValueOnce('deleted.user-cobalt.cobalt@example.com')
+                .mockReturnValueOnce('deleted.user-cobalt.cobaltReyes');
+
+            expect(service['createDeletedIdentity'](baseUser)).toEqual({
+                email: 'deleted.user-cobalt.cobalt@example.com',
+                username: 'deleted.user-cobalt.cobaltReyes',
+            });
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'removed.{id}.{email}',
+                { id: 'user-cobalt', email: 'cobalt@example.com' }
+            );
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'removed.{id}.{username}',
+                { id: 'user-cobalt', username: 'cobaltReyes' }
+            );
+        });
+    });
+
+    describe('isDeleteSelfRefused', () => {
+        it('returns true for admin and superAdmin', () => {
+            expect(
+                service['isDeleteSelfRefused']({
+                    ...baseUser,
+                    role: { ...role, type: EnumRoleType.admin },
+                })
+            ).toBe(true);
+            expect(
+                service['isDeleteSelfRefused']({
+                    ...baseUser,
+                    role: { ...role, type: EnumRoleType.superAdmin },
+                })
+            ).toBe(true);
+        });
+
+        it('returns false for user', () => {
+            expect(service['isDeleteSelfRefused'](baseUser)).toBe(false);
+        });
+    });
+
+    describe('gatesPasswordExpiryOn', () => {
+        it('returns true for credential', () => {
+            expect(
+                service['gatesPasswordExpiryOn'](EnumUserLoginWith.credential)
+            ).toBe(true);
+        });
+
+        it('returns false for socialGoogle', () => {
+            expect(
+                service['gatesPasswordExpiryOn'](EnumUserLoginWith.socialGoogle)
+            ).toBe(false);
+        });
+
+        it('returns false for socialApple', () => {
+            expect(
+                service['gatesPasswordExpiryOn'](EnumUserLoginWith.socialApple)
+            ).toBe(false);
         });
     });
 });

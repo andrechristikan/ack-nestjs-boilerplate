@@ -1,7 +1,7 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import { Injectable } from '@nestjs/common';
@@ -16,7 +16,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionQueue: SessionQueue,
-        private readonly deviceUtil: DeviceUtil
+        private readonly deviceService: DeviceService
     ) {}
 
     async execute(
@@ -30,7 +30,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                 userId
             );
 
-        const metadata = this.deviceUtil.mapActivityLogMetadata(
+        const metadata = this.deviceService.mapActivityLogMetadata(
             deviceOwnership,
             revokedSessions.length
         );

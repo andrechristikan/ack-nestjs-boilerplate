@@ -112,16 +112,6 @@ describe('ActivityLogService', () => {
     });
 
     describe('prepare', () => {
-        beforeEach(() => {
-            activityLogUtil.getContract.mockReturnValue(targetContract);
-            activityLogUtil.parseMetadata.mockReturnValue({
-                success: true,
-                data: {},
-            });
-            activityLogUtil.isTargetOnlyFieldValid.mockReturnValue(true);
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
-        });
-
         it('stages the entry with the parsed metadata and its fields checked against the contract', () => {
             const input: IActivityLogStageInput<EnumActivityLogAction> = {
                 action: EnumActivityLogAction.userLoginCredential,
@@ -138,22 +128,6 @@ describe('ActivityLogService', () => {
                 createdBy: 'creator-1',
                 workspaceId: null,
             });
-            expect(activityLogUtil.parseMetadata).toHaveBeenCalledWith(
-                targetContract,
-                {}
-            );
-            expect(activityLogUtil.isTargetOnlyFieldValid).toHaveBeenCalledWith(
-                targetContract.user,
-                'user-1'
-            );
-            expect(activityLogUtil.isTargetOnlyFieldValid).toHaveBeenCalledWith(
-                targetContract.user,
-                'creator-1'
-            );
-            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
-                targetContract.workspace,
-                null
-            );
         });
 
         it('stages null userId, createdBy, and workspaceId when the input omits them', () => {
@@ -179,15 +153,9 @@ describe('ActivityLogService', () => {
             });
 
             expect(result.workspaceId).toBe('workspace-1');
-            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
-                targetContract.workspace,
-                'workspace-1'
-            );
         });
 
         it('throws when the action carries no contract', () => {
-            activityLogUtil.getContract.mockReturnValue(null);
-
             let thrown: unknown;
             try {
                 service.prepare({
@@ -204,7 +172,6 @@ describe('ActivityLogService', () => {
             const failedParse = ActivityLogEmptyMetadataSchema.safeParse({
                 unexpected: 'value',
             });
-            activityLogUtil.parseMetadata.mockReturnValue(failedParse);
 
             let thrown: unknown;
             try {
@@ -225,8 +192,6 @@ describe('ActivityLogService', () => {
         });
 
         it('throws when a user field breaks the contract', () => {
-            activityLogUtil.isTargetOnlyFieldValid.mockReturnValueOnce(false);
-
             let thrown: unknown;
             try {
                 service.prepare({
@@ -241,8 +206,6 @@ describe('ActivityLogService', () => {
         });
 
         it('throws when the workspace field breaks the contract', () => {
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(false);
-
             let thrown: unknown;
             try {
                 service.prepare({
@@ -315,13 +278,6 @@ describe('ActivityLogService', () => {
 
     describe('flushStaged', () => {
         beforeEach(() => {
-            activityLogUtil.getContract.mockReturnValue(targetContract);
-            activityLogUtil.parseMetadata.mockReturnValue({
-                success: true,
-                data: {},
-            });
-            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
             activityLogUtil.getDescription.mockReturnValue('Description');
         });
 
@@ -409,12 +365,6 @@ describe('ActivityLogService', () => {
                     return null;
                 }
             );
-            activityLogUtil.resolveUserId
-                .mockReturnValueOnce('user-1')
-                .mockReturnValueOnce('payload-user-1');
-            activityLogUtil.resolveCreatedBy
-                .mockReturnValueOnce('creator-1')
-                .mockReturnValueOnce('payload-user-1');
             databaseUtil.createId
                 .mockReturnValueOnce('aaaaaaaaaaaaaaaaaaaaaaaa')
                 .mockReturnValueOnce('bbbbbbbbbbbbbbbbbbbbbbbb');
@@ -422,11 +372,6 @@ describe('ActivityLogService', () => {
 
             await service.flushStaged({ payloadUserId: 'payload-user-1' });
 
-            expect(activityLogUtil.resolveUserId).toHaveBeenCalledWith(
-                targetContract.user,
-                null,
-                'payload-user-1'
-            );
             expect(activityLogQueue.createMany).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.createMany).toHaveBeenCalledWith([
                 {
@@ -486,10 +431,6 @@ describe('ActivityLogService', () => {
                     return null;
                 }
             );
-            activityLogUtil.resolveUserId
-                .mockReturnValueOnce(null)
-                .mockReturnValueOnce('user-1');
-            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
             databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
             helperDateService.create.mockReturnValue(createdAt);
 
@@ -532,7 +473,6 @@ describe('ActivityLogService', () => {
                     return null;
                 }
             );
-            activityLogUtil.resolveUserId.mockReturnValue(null);
             helperDateService.create.mockReturnValue(createdAt);
 
             await service.flushStaged({ payloadUserId: null });
@@ -567,8 +507,6 @@ describe('ActivityLogService', () => {
                     return null;
                 }
             );
-            activityLogUtil.resolveUserId.mockReturnValue('user-1');
-            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
             databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
             helperDateService.create.mockReturnValue(createdAt);
             activityLogQueue.createMany.mockRejectedValue(failure);
@@ -723,22 +661,15 @@ describe('ActivityLogService', () => {
     });
 
     describe('getContract', () => {
-        it('returns the contract the util resolves', () => {
-            activityLogUtil.getContract.mockReturnValue(targetContract);
-
+        it('returns the contract for a known action', () => {
             const result = service['getContract'](
                 EnumActivityLogAction.userLoginCredential
             );
 
             expect(result).toBe(targetContract);
-            expect(activityLogUtil.getContract).toHaveBeenCalledWith(
-                EnumActivityLogAction.userLoginCredential
-            );
         });
 
         it('throws when the action carries no contract', () => {
-            activityLogUtil.getContract.mockReturnValue(null);
-
             let thrown: unknown;
             try {
                 service['getContract']('notAnAction' as EnumActivityLogAction);
@@ -750,34 +681,41 @@ describe('ActivityLogService', () => {
         });
     });
 
-    describe('validateMetadata', () => {
-        beforeEach(() => {
-            activityLogUtil.getContract.mockReturnValue(targetContract);
+    describe('parseMetadata', () => {
+        it('returns a successful parse when metadata matches the contract', () => {
+            const result = service['parseMetadata'](targetContract, {});
+
+            expect(result).toEqual({ success: true, data: {} });
         });
 
-        it('returns the parsed metadata when it matches the contract', () => {
-            activityLogUtil.parseMetadata.mockReturnValue({
-                success: true,
-                data: { targetUserId: 'user-1' },
+        it('returns the failed parse with the zod error when metadata breaks the contract', () => {
+            const expectedError = ActivityLogEmptyMetadataSchema.safeParse({
+                unexpected: 'value',
+            }).error;
+
+            const result = service['parseMetadata'](targetContract, {
+                unexpected: 'value',
             });
 
+            expect(result.success).toBe(false);
+            expect(result.error).toEqual(expectedError);
+        });
+    });
+
+    describe('validateMetadata', () => {
+        it('returns the parsed metadata when it matches the contract', () => {
             const result = service['validateMetadata'](
-                EnumActivityLogAction.userLoginCredential,
+                EnumActivityLogAction.workspaceMemberRoleUpdated,
                 { targetUserId: 'user-1' }
             );
 
             expect(result).toEqual({ targetUserId: 'user-1' });
-            expect(activityLogUtil.parseMetadata).toHaveBeenCalledWith(
-                targetContract,
-                { targetUserId: 'user-1' }
-            );
         });
 
         it('throws with the zod error as the raw error when metadata breaks the contract', () => {
             const failedParse = ActivityLogEmptyMetadataSchema.safeParse({
                 unexpected: 'value',
             });
-            activityLogUtil.parseMetadata.mockReturnValue(failedParse);
 
             let thrown: unknown;
             try {
@@ -796,10 +734,111 @@ describe('ActivityLogService', () => {
         });
     });
 
-    describe('resolveUserId', () => {
-        it('returns the userId the util resolves', () => {
-            activityLogUtil.resolveUserId.mockReturnValue('user-1');
+    describe('isTargetOnlyFieldValid', () => {
+        it('accepts a target resolution with a value', () => {
+            expect(
+                service['isTargetOnlyFieldValid'](
+                    EnumActivityLogUser.target,
+                    'user-1'
+                )
+            ).toBe(true);
+        });
 
+        it('rejects a target resolution with no value', () => {
+            expect(
+                service['isTargetOnlyFieldValid'](
+                    EnumActivityLogUser.target,
+                    null
+                )
+            ).toBe(false);
+        });
+
+        it('rejects a target resolution with an empty value', () => {
+            expect(
+                service['isTargetOnlyFieldValid'](
+                    EnumActivityLogUser.target,
+                    ''
+                )
+            ).toBe(false);
+        });
+
+        it('accepts a payload resolution with no value', () => {
+            expect(
+                service['isTargetOnlyFieldValid'](
+                    EnumActivityLogUser.payload,
+                    null
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a payload resolution carrying a value', () => {
+            expect(
+                service['isTargetOnlyFieldValid'](
+                    EnumActivityLogUser.payload,
+                    'user-1'
+                )
+            ).toBe(false);
+        });
+    });
+
+    describe('isWorkspaceFieldValid', () => {
+        it('accepts a target resolution with a workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.target,
+                    'workspace-1'
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a target resolution with no workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.target,
+                    null
+                )
+            ).toBe(false);
+        });
+
+        it('accepts a none resolution with a null workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.none,
+                    null
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a none resolution carrying a workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.none,
+                    'workspace-1'
+                )
+            ).toBe(false);
+        });
+
+        it('accepts a payload resolution with a null workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.payload,
+                    null
+                )
+            ).toBe(true);
+        });
+
+        it('rejects a payload resolution carrying a workspaceId', () => {
+            expect(
+                service['isWorkspaceFieldValid'](
+                    EnumActivityLogWorkspace.payload,
+                    'workspace-1'
+                )
+            ).toBe(false);
+        });
+    });
+
+    describe('resolveUserId', () => {
+        it('returns the staged userId for a target resolution', () => {
             const result = service['resolveUserId'](
                 EnumActivityLogUser.target,
                 'user-1',
@@ -807,23 +846,37 @@ describe('ActivityLogService', () => {
             );
 
             expect(result).toBe('user-1');
-            expect(activityLogUtil.resolveUserId).toHaveBeenCalledWith(
-                EnumActivityLogUser.target,
-                'user-1',
-                null
-            );
         });
 
-        it('throws when the util resolves no userId', () => {
-            activityLogUtil.resolveUserId.mockReturnValue(null);
-
+        it('throws for a target resolution with no staged userId', () => {
             let thrown: unknown;
             try {
                 service['resolveUserId'](
                     EnumActivityLogUser.target,
                     null,
-                    null
+                    'payload-user-1'
                 );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject(contractInvalid);
+        });
+
+        it('returns the payload userId for a payload resolution', () => {
+            const result = service['resolveUserId'](
+                EnumActivityLogUser.payload,
+                null,
+                'payload-user-1'
+            );
+
+            expect(result).toBe('payload-user-1');
+        });
+
+        it('throws for a payload resolution with an empty payload userId', () => {
+            let thrown: unknown;
+            try {
+                service['resolveUserId'](EnumActivityLogUser.payload, null, '');
             } catch (error) {
                 thrown = error;
             }
@@ -833,9 +886,7 @@ describe('ActivityLogService', () => {
     });
 
     describe('resolveCreatedBy', () => {
-        it('returns the createdBy the util resolves', () => {
-            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
-
+        it('returns the staged createdBy for a target resolution', () => {
             const result = service['resolveCreatedBy'](
                 EnumActivityLogUser.target,
                 'creator-1',
@@ -843,16 +894,9 @@ describe('ActivityLogService', () => {
             );
 
             expect(result).toBe('creator-1');
-            expect(activityLogUtil.resolveCreatedBy).toHaveBeenCalledWith(
-                EnumActivityLogUser.target,
-                'creator-1',
-                'user-1'
-            );
         });
 
-        it('throws when the util resolves no createdBy', () => {
-            activityLogUtil.resolveCreatedBy.mockReturnValue(null);
-
+        it('throws for a target resolution with no staged createdBy', () => {
             let thrown: unknown;
             try {
                 service['resolveCreatedBy'](
@@ -866,39 +910,74 @@ describe('ActivityLogService', () => {
 
             expect(thrown).toMatchObject(contractInvalid);
         });
+
+        it('throws for a target resolution with an empty staged createdBy', () => {
+            let thrown: unknown;
+            try {
+                service['resolveCreatedBy'](
+                    EnumActivityLogUser.target,
+                    '',
+                    'user-1'
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject(contractInvalid);
+        });
+
+        it('returns the resolved userId for a payload resolution', () => {
+            const result = service['resolveCreatedBy'](
+                EnumActivityLogUser.payload,
+                null,
+                'user-1'
+            );
+
+            expect(result).toBe('user-1');
+        });
     });
 
     describe('resolveWorkspaceId', () => {
-        it('returns the workspaceId the util resolves once it passes the contract check', () => {
-            activityLogUtil.resolveWorkspaceId.mockReturnValue('workspace-1');
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
+        it('returns null for a none resolution', () => {
+            const result = service['resolveWorkspaceId'](
+                EnumActivityLogWorkspace.none,
+                'workspace-1'
+            );
 
+            expect(result).toBeNull();
+            expect(requestStoreService.get).not.toHaveBeenCalled();
+        });
+
+        it('returns the staged workspaceId for a target resolution', () => {
             const result = service['resolveWorkspaceId'](
                 EnumActivityLogWorkspace.target,
                 'workspace-1'
             );
 
             expect(result).toBe('workspace-1');
-            expect(activityLogUtil.resolveWorkspaceId).toHaveBeenCalledWith(
-                EnumActivityLogWorkspace.target,
-                'workspace-1'
-            );
-            expect(activityLogUtil.isWorkspaceFieldValid).toHaveBeenCalledWith(
-                EnumActivityLogWorkspace.target,
-                'workspace-1'
-            );
             expect(requestStoreService.get).not.toHaveBeenCalled();
         });
 
-        it('throws when the resolved workspaceId fails the contract check', () => {
-            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(false);
-
+        it('throws for a target resolution with no staged workspaceId', () => {
             let thrown: unknown;
             try {
                 service['resolveWorkspaceId'](
                     EnumActivityLogWorkspace.target,
                     null
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject(contractInvalid);
+        });
+
+        it('throws for a target resolution with an empty staged workspaceId', () => {
+            let thrown: unknown;
+            try {
+                service['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.target,
+                    ''
                 );
             } catch (error) {
                 thrown = error;
@@ -919,7 +998,6 @@ describe('ActivityLogService', () => {
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 WorkspaceStoreKey
             );
-            expect(activityLogUtil.resolveWorkspaceId).not.toHaveBeenCalled();
         });
 
         it('throws for a payload resolution with no workspace in the store', () => {
@@ -948,15 +1026,6 @@ describe('ActivityLogService', () => {
                 createdBy: 'creator-1',
                 workspaceId: null,
             };
-            activityLogUtil.getContract.mockReturnValue(targetContract);
-            activityLogUtil.parseMetadata.mockReturnValue({
-                success: true,
-                data: {},
-            });
-            activityLogUtil.resolveUserId.mockReturnValue('user-1');
-            activityLogUtil.resolveCreatedBy.mockReturnValue('creator-1');
-            activityLogUtil.resolveWorkspaceId.mockReturnValue(null);
-            activityLogUtil.isWorkspaceFieldValid.mockReturnValue(true);
             activityLogUtil.getDescription.mockReturnValue(
                 'User login with credential'
             );
@@ -980,11 +1049,6 @@ describe('ActivityLogService', () => {
                 metadata: {},
                 createdAt,
             });
-            expect(activityLogUtil.resolveCreatedBy).toHaveBeenCalledWith(
-                targetContract.user,
-                'creator-1',
-                'user-1'
-            );
             expect(activityLogUtil.getDescription).toHaveBeenCalledWith(
                 EnumActivityLogAction.userLoginCredential,
                 {}

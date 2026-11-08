@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class HelloUtil {
+export class HelloService {
     private readonly appName: string;
     private readonly appEnv: EnumAppEnvironment;
     private readonly appTimezone: string;

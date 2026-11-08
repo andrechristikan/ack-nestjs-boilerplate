@@ -64,6 +64,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         )!;
     }
 
+    /** Temporary: one UserPasswordService method recording the attempt through recordEffect (phase 3D). */
     private async assertPasswordMatched(
         user: IUser,
         password: string | null

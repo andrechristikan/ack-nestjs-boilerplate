@@ -5,9 +5,11 @@ import type {
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
+    EnumActivityLogAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -171,5 +173,24 @@ export class UserImportService {
         }
 
         return users;
+    }
+
+    buildImportByAdminStages(
+        inputs: IUserCreateWithWorkspaceInput[],
+        users: IUser[]
+    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+        const stages = this.userCreateUtil.buildStages(
+            UserCreateContract.admin,
+            inputs,
+            users
+        );
+
+        return [
+            {
+                action: EnumActivityLogAction.adminUserImport,
+                metadata: { userCount: users.length },
+            },
+            ...stages,
+        ];
     }
 }

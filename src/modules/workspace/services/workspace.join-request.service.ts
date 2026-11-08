@@ -7,6 +7,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { MessageService } from '@common/message/services/message.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -38,7 +39,10 @@ import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/excep
 import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/exceptions/workspace.join-request-not-found.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
-import type { IWorkspaceJoinRequestCreate } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceInviteInviter,
+    IWorkspaceJoinRequestCreate,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
@@ -49,6 +53,8 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class WorkspaceJoinRequestService {
     private readonly expiresInMs: number;
+    private readonly homeUrl: string;
+    private readonly joinRequestReviewLinkPattern: string;
 
     constructor(
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
@@ -63,10 +69,15 @@ export class WorkspaceJoinRequestService {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
+        private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
         this.expiresInMs = this.configService.get<number>(
             'workspace.joinRequest.expiresInMs'
+        )!;
+        this.homeUrl = this.configService.get<string>('home.url')!;
+        this.joinRequestReviewLinkPattern = this.configService.get<string>(
+            'workspace.joinRequest.reviewLinkPattern'
         )!;
     }
 
@@ -287,6 +298,24 @@ export class WorkspaceJoinRequestService {
             tx,
             workspaceId,
             userId
+        );
+    }
+
+    buildJoinRequestReviewLink(joinRequestId: string): string {
+        return this.helperStringService.fillPattern(
+            this.joinRequestReviewLinkPattern,
+            { homeUrl: this.homeUrl, joinRequestId }
+        );
+    }
+
+    resolveRequesterName(requester: IWorkspaceInviteInviter | null): string {
+        const name = requester?.name ?? requester?.username ?? null;
+        if (name !== null) {
+            return name;
+        }
+
+        return this.messageService.setMessage(
+            'workspace.joinRequest.requesterFallbackName'
         );
     }
 }

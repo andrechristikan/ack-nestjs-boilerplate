@@ -1,5 +1,7 @@
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -18,23 +20,80 @@ import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-
 import type {
     IApiKey,
     IApiKeyCreate,
+    IApiKeyGenerateCredential,
+    IApiKeyHeader,
     IApiKeyWithSecret,
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ApiKeyService {
     constructor(
         private readonly helperDateService: HelperDateService,
-        private readonly apiKeyUtil: ApiKeyUtil,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
         private readonly apiKeyCache: ApiKeyCache,
-        private readonly apiKeyRepository: ApiKeyRepository
+        private readonly apiKeyRepository: ApiKeyRepository,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService
     ) {}
+
+    private isActive(apiKey: IApiKey): boolean {
+        return apiKey.isActive;
+    }
+
+    private isExpired(endAt: Date | null, currentDate: Date): boolean {
+        return endAt !== null && currentDate > endAt;
+    }
+
+    private isNotYetActive(startAt: Date | null, currentDate: Date): boolean {
+        return startAt !== null && currentDate < startAt;
+    }
+
+    private validateType(
+        apiKey: { type: EnumApiKeyType },
+        allowed: EnumApiKeyType[]
+    ): boolean {
+        return allowed.includes(apiKey.type);
+    }
+
+    private createSecret(): string {
+        return this.helperStringService.random(50);
+    }
+
+    private generateCredential(): IApiKeyGenerateCredential {
+        const key = this.apiKeyCredentialUtil.createKey(null);
+        const secret = this.createSecret();
+        const hash: string = this.apiKeyCredentialUtil.createHash(key, secret);
+
+        return { key, secret, hash };
+    }
+
+    private parseHeader(header: string): IApiKeyHeader | null {
+        const [key, secret, ...rest] = header.split(':');
+        if (
+            key === undefined ||
+            secret === undefined ||
+            rest.length > 0 ||
+            key.trim() === '' ||
+            secret.trim() === ''
+        ) {
+            return null;
+        }
+
+        return { key, secret };
+    }
+
+    private validateCredential(
+        key: string,
+        secret: string,
+        apiKey: { hash: string }
+    ): boolean {
+        const expectedHash = this.apiKeyCredentialUtil.createHash(key, secret);
+        return this.helperHashService.sha256Compare(expectedHash, apiKey.hash);
+    }
 
     private getValidApiKey(
         apiKey: IApiKey | null,
@@ -45,7 +104,7 @@ export class ApiKeyService {
         }
 
         if (includeActive) {
-            const isActive = this.apiKeyUtil.isActive(apiKey);
+            const isActive = this.isActive(apiKey);
             if (!isActive) {
                 throw new ApiKeyInactiveException();
             }
@@ -83,8 +142,7 @@ export class ApiKeyService {
             this.validateStartAtIsFuture(startAt);
         }
 
-        const { key, secret, hash } =
-            this.apiKeyCredentialUtil.generateCredential();
+        const { key, secret, hash } = this.generateCredential();
         let dateWindow: { startAt: Date | null; endAt: Date | null } = {
             startAt: null,
             endAt: null,
@@ -113,13 +171,12 @@ export class ApiKeyService {
 
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<IApiKey> {
         const today = this.helperDateService.create();
-        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
 
-        const isExpired = this.apiKeyUtil.isExpired(apiKey.endAt, today);
+        const isExpired = this.isExpired(apiKey.endAt, today);
         if (isExpired) {
             throw new ApiKeyExpiredException();
         }
@@ -182,11 +239,10 @@ export class ApiKeyService {
     }
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
-        // Sequential by design: gate before the work it guards
         const found = await this.apiKeyRepository.findOneById(id);
         const apiKey = this.getValidApiKey(found, true);
 
-        const secret: string = this.apiKeyCredentialUtil.createSecret();
+        const secret: string = this.createSecret();
         const hash: string = this.apiKeyCredentialUtil.createHash(
             apiKey.key,
             secret
@@ -224,7 +280,7 @@ export class ApiKeyService {
             throw new ApiKeyXApiKeyRequiredException();
         }
 
-        const header = this.apiKeyCredentialUtil.parseHeader(xApiKeyTrimmed);
+        const header = this.parseHeader(xApiKeyTrimmed);
         if (!header) {
             throw new ApiKeyXApiKeyInvalidException();
         }
@@ -235,7 +291,7 @@ export class ApiKeyService {
         let apiKey = cached;
         let leaseToken: string | null = null;
         if (!apiKey) {
-            // Sequential by design: the lease is taken before the read it guards
+            // Sequential by design: side effects whose order is part of the contract (the lease is taken before the read it guards)
             leaseToken = await this.apiKeyCache.takeApiKeyLease(key);
             const found = await this.apiKeyRepository.findOneByKey(key);
             apiKey = found;
@@ -245,21 +301,14 @@ export class ApiKeyService {
             throw new ApiKeyXApiKeyInvalidException();
         }
 
-        const isCredentialValid = this.apiKeyCredentialUtil.validateCredential(
-            key,
-            secret,
-            apiKey
-        );
-        const isNotYetActive = this.apiKeyUtil.isNotYetActive(
-            apiKey.startAt,
-            today
-        );
-        const isActive = this.apiKeyUtil.isActive(apiKey);
+        const isCredentialValid = this.validateCredential(key, secret, apiKey);
+        const isNotYetActive = this.isNotYetActive(apiKey.startAt, today);
+        const isActive = this.isActive(apiKey);
         if (!isCredentialValid || !isActive || isNotYetActive) {
             throw new ApiKeyXApiKeyInvalidException();
         }
 
-        const isExpired = this.apiKeyUtil.isExpired(apiKey.endAt, today);
+        const isExpired = this.isExpired(apiKey.endAt, today);
         if (isExpired) {
             throw new ApiKeyExpiredException();
         }
@@ -275,7 +324,7 @@ export class ApiKeyService {
         apiKey: ApiKey,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
-        const isTypeAllowed = this.apiKeyUtil.validateType(apiKey, apiKeyTypes);
+        const isTypeAllowed = this.validateType(apiKey, apiKeyTypes);
         if (!isTypeAllowed) {
             throw new ApiKeyXApiKeyForbiddenException();
         }

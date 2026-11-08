@@ -29,7 +29,6 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                 action: EnumActivityLogAction.userUpdateMobileNumber,
             }),
         ];
-        // Sequential by design: gate before the work it guards
         const current = await this.userMobileNumberService.getOneMobileNumber(
             userId,
             mobileNumberId

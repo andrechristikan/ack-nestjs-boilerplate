@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { generateKeyPairSync } from 'node:crypto';
+import { Duration } from 'luxon';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
@@ -14,6 +15,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -47,6 +49,8 @@ describe('AuthJwtService', () => {
         mock<HelperEncryptionService>();
     const jwtService: MockProxy<JwtService> = mock<JwtService>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -140,6 +144,7 @@ describe('AuthJwtService', () => {
                 { provide: JwtService, useValue: jwtService },
                 { provide: ConfigService, useValue: configService },
                 { provide: AuthUtil, useValue: authUtil },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -351,9 +356,6 @@ describe('AuthJwtService', () => {
                 sessionId: 'session-1',
                 deviceOwnershipId: 'device-ownership-1',
             };
-            authUtil.createPayloadAccessToken.mockReturnValue(accessPayload);
-            authUtil.createPayloadRefreshToken.mockReturnValue(refreshPayload);
-            authUtil.toToken.mockReturnValue(tokens);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
@@ -370,24 +372,7 @@ describe('AuthJwtService', () => {
                 EnumUserLoginWith.credential
             );
 
-            expect(result).toBe(tokens);
-            expect(authUtil.toToken).toHaveBeenCalledWith(
-                user,
-                'signed-access-token',
-                'signed-refresh-token',
-                900
-            );
-            expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
-                user,
-                'session-1',
-                'device-ownership-1',
-                loginAt,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential
-            );
-            expect(authUtil.createPayloadRefreshToken).toHaveBeenCalledWith(
-                accessPayload
-            );
+            expect(result).toEqual(tokens);
             expect(jwtService.sign).toHaveBeenNthCalledWith(
                 1,
                 accessPayload,
@@ -404,7 +389,7 @@ describe('AuthJwtService', () => {
                     subject: user.id,
                 })
             );
-            expect(authUtil.remainingSeconds).not.toHaveBeenCalled();
+            expect(helperDateService.create).not.toHaveBeenCalled();
         });
     });
 
@@ -444,12 +429,13 @@ describe('AuthJwtService', () => {
                 sessionId: 'session-1',
                 deviceOwnershipId: 'device-ownership-1',
             };
-            authUtil.createPayloadAccessToken.mockReturnValue(newAccessPayload);
-            authUtil.createPayloadRefreshToken.mockReturnValue(
-                newRefreshPayload
+            const today = new Date('2026-01-02T00:00:00.000Z');
+            const expiredAt = new Date('2026-01-08T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.createFromTimestamp.mockReturnValue(expiredAt);
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ seconds: 518400 })
             );
-            authUtil.remainingSeconds.mockReturnValue(518400);
-            authUtil.toToken.mockReturnValue(tokens);
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
@@ -461,22 +447,20 @@ describe('AuthJwtService', () => {
                 jti: 'new-jti',
                 sessionId: 'session-1',
             });
-            expect(authUtil.toToken).toHaveBeenCalledWith(
-                user,
-                'signed-access-token',
-                'signed-refresh-token',
-                900
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                oldExpSeconds * 1000
             );
-            expect(authUtil.remainingSeconds).toHaveBeenCalledWith(
-                oldExpSeconds
+            expect(helperDateService.diff).toHaveBeenCalledWith(
+                expiredAt,
+                today
             );
-            expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
-                user,
-                decodedRefresh.sessionId,
-                decodedRefresh.deviceOwnershipId,
-                loginAt,
-                decodedRefresh.loginFrom,
-                decodedRefresh.loginWith
+            expect(jwtService.sign).toHaveBeenNthCalledWith(
+                1,
+                newAccessPayload,
+                expect.objectContaining({
+                    jwtid: 'new-jti',
+                    subject: user.id,
+                })
             );
             expect(jwtService.sign).toHaveBeenNthCalledWith(
                 2,
@@ -497,33 +481,24 @@ describe('AuthJwtService', () => {
             };
             jwtService.decode.mockReturnValue(decodedRefresh);
             authUtil.generateJti.mockReturnValue('new-jti');
-            authUtil.createPayloadAccessToken.mockReturnValue({
-                loginAt,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                email: user.email,
-                username: user.username,
-                userId: user.id,
-                sessionId: 'session-1',
-                deviceOwnershipId: 'device-ownership-1',
-                roleId: user.roleId,
-            });
-            authUtil.createPayloadRefreshToken.mockReturnValue({
-                loginAt,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                userId: user.id,
-                sessionId: 'session-1',
-                deviceOwnershipId: 'device-ownership-1',
-            });
-            authUtil.remainingSeconds.mockReturnValue(2);
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-02T00:00:00.000Z')
+            );
+            helperDateService.createFromTimestamp.mockReturnValue(
+                new Date('1970-01-01T00:00:00.000Z')
+            );
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ milliseconds: 2500 })
+            );
             jwtService.sign
                 .mockReturnValueOnce('signed-access-token')
                 .mockReturnValueOnce('signed-refresh-token');
 
             service.refreshToken(user, 'old-refresh-token');
 
-            expect(authUtil.remainingSeconds).toHaveBeenCalledWith(null);
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                0
+            );
             expect(jwtService.sign).toHaveBeenNthCalledWith(
                 2,
                 expect.anything(),
@@ -608,6 +583,129 @@ describe('AuthJwtService', () => {
             expect(helperEncryptionService.derBase64ToPem).toHaveBeenCalledWith(
                 accessPublicKeyBase64,
                 EnumHelperPemLabel.publicKey
+            );
+        });
+    });
+
+    describe('createPayloadAccessToken', () => {
+        it('assembles the access token payload from the user and login context', () => {
+            const loginAt = new Date('2026-01-01T00:00:00.000Z');
+
+            const result = service['createPayloadAccessToken'](
+                user,
+                'session-1',
+                'device-ownership-1',
+                loginAt,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential
+            );
+
+            expect(result).toEqual({
+                userId: user.id,
+                roleId: user.roleId,
+                username: user.username,
+                email: user.email,
+                sessionId: 'session-1',
+                deviceOwnershipId: 'device-ownership-1',
+                loginAt,
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+            });
+        });
+    });
+
+    describe('createPayloadRefreshToken', () => {
+        it('derives the minimal refresh token payload from an access token payload', () => {
+            const loginAt = new Date('2026-01-01T00:00:00.000Z');
+            const accessPayload: IAuthJwtAccessTokenPayload = {
+                loginAt,
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+                email: 'jane@example.com',
+                username: 'jane',
+                userId: 'user-1',
+                sessionId: 'session-1',
+                deviceOwnershipId: 'device-ownership-1',
+                roleId: 'role-1',
+            };
+
+            const result = service['createPayloadRefreshToken'](accessPayload);
+
+            expect(result).toEqual({
+                loginAt,
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+                sessionId: 'session-1',
+                deviceOwnershipId: 'device-ownership-1',
+                userId: 'user-1',
+            });
+        });
+    });
+
+    describe('toToken', () => {
+        it('shapes the bearer token pair with the role type and the access expiry', () => {
+            const result = service['toToken'](
+                user,
+                'signed-access-token',
+                'signed-refresh-token',
+                900
+            );
+
+            expect(result).toEqual({
+                tokenType: 'Bearer',
+                roleType: EnumRoleType.user,
+                expiresIn: 900,
+                accessToken: 'signed-access-token',
+                refreshToken: 'signed-refresh-token',
+            });
+        });
+    });
+
+    describe('remainingSeconds', () => {
+        it('returns the whole seconds between now and the expiry', () => {
+            const today = new Date('2026-01-02T00:00:00.000Z');
+            const expiredAt = new Date('2026-01-08T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.createFromTimestamp.mockReturnValue(expiredAt);
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ seconds: 518400 })
+            );
+
+            const result = service['remainingSeconds'](
+                Math.floor(expiredAt.getTime() / 1000)
+            );
+
+            expect(result).toBe(518400);
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                expiredAt.getTime()
+            );
+            expect(helperDateService.diff).toHaveBeenCalledWith(
+                expiredAt,
+                today
+            );
+        });
+
+        it('falls back to milliseconds when the duration carries no whole seconds', () => {
+            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ milliseconds: 2500 })
+            );
+
+            expect(service['remainingSeconds'](1)).toBe(2);
+        });
+
+        it('treats a missing expiry as the epoch', () => {
+            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.diff.mockReturnValue(
+                Duration.fromObject({ milliseconds: 0 })
+            );
+
+            service['remainingSeconds'](null);
+
+            expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
+                0
             );
         });
     });

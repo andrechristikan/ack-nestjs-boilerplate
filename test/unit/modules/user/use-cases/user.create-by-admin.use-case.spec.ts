@@ -305,7 +305,7 @@ describe('UserCreateByAdminUseCase', () => {
                 input,
                 passwordString: 'random-password',
             });
-            userCreateUtil.buildCreateByAdminStages.mockReturnValue([
+            userRegistrationService.buildCreateByAdminStages.mockReturnValue([
                 stageInput,
             ]);
         });
@@ -340,7 +340,7 @@ describe('UserCreateByAdminUseCase', () => {
                 [input]
             );
             expect(
-                userCreateUtil.buildCreateByAdminStages
+                userRegistrationService.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,

@@ -100,7 +100,7 @@ export class NotificationEmailSecurityService {
             this.helperDateService.createFromIso(passwordCreatedAt);
         const passwordCreatedAtFormatted =
             this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
@@ -137,7 +137,7 @@ export class NotificationEmailSecurityService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.changePassword,
@@ -171,7 +171,7 @@ export class NotificationEmailSecurityService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetPassword,
@@ -221,7 +221,7 @@ export class NotificationEmailSecurityService {
         const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
         const expiredAtFormatted =
             this.helperDateService.formatToRFC2822(expiredAtDate);
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.forgotPassword,
@@ -259,7 +259,7 @@ export class NotificationEmailSecurityService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
@@ -307,7 +307,7 @@ export class NotificationEmailSecurityService {
         const loginAtDate = this.helperDateService.createFromIso(loginAt);
         const loginAtFormatted =
             this.helperDateService.formatToRFC2822(loginAtDate);
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.newDeviceLogin,

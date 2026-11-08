@@ -233,7 +233,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        userUtil.requiresTwoFactorSetup.mockReturnValue(false);
         notificationService.getRecipient.mockResolvedValue(recipient);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
 
@@ -372,7 +371,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             expect(
                 userTwoFactorService.assertAttemptCounted
             ).toHaveBeenCalledWith(true);
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
                 1,
                 []
@@ -478,7 +476,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-bramble',

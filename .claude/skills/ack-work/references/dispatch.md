@@ -84,8 +84,7 @@ Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back 
 Seeds: a seed under src/migration/ follows `.claude/skills/ack-work/references/add-seed.md`.
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
 Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the decisive
-  test and typecheck lines; open items; on a plan task, also written to
-  generated/docs/report-<plan-basename>-task-<N>.md.
+  test and typecheck lines; open items.
 ```
 
 ## Reviewer

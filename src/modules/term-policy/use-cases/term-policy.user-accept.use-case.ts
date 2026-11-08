@@ -31,11 +31,11 @@ export class TermPolicyUserAcceptUseCase implements IAppUseCase<
                 action: EnumActivityLogAction.userAcceptTermPolicy,
             }),
         ];
+        // Sequential by design: write must not run if an earlier step throws
         const recipient = await this.notificationService.getRecipient(
             user,
             EnumNotificationKind.userAcceptTermPolicy
         );
-        // Sequential by design: write must not run if an earlier step throws
         const accepted = await this.termPolicyAcceptanceService.userAccept(
             user.id,
             type

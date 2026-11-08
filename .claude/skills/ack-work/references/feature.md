@@ -46,6 +46,6 @@ Every `feature` writes its design file. The step ends at the owner's approval of
 - Its `scripts/sdd-workspace <plan>` prints the workspace `.superpowers/sdd/<plan-basename>/`. Read `progress.md` there before the first dispatch and resume where it ends; a plan's `- [x]` tasks agree with it.
 - Its `scripts/task-brief <plan> <N>` writes `task-<N>-brief.md` in the workspace; pass its path, or its text pasted, as the Coder `Task:`.
 - One fresh `coder` per task, in order, one at a time. Its implementer prompt is not used: the Coder template is.
-- `coder` writes its report to `generated/docs/report-<plan-basename>-task-<N>.md`, hands back the same, and writes nothing under `.superpowers/`. After each hand-back the session reads that report and appends the task's line to `progress.md`, naming no commits.
+- `coder` hands back its report as reply text and writes nothing under `.superpowers/` or `generated/docs/`. After each hand-back the session reads it and appends the task's line to `progress.md`, naming no commits.
 - Its worktree, commit, and per-task review steps are not taken: `coder` builds in this working tree and does not commit, and `SKILL.md`, step 5, is the one review.
 - On `fix` and `change` (a pin, no plan), step 4 is one `coder` dispatch without it.

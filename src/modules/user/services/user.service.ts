@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -8,6 +9,8 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
+    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -15,7 +18,7 @@ import {
     EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import type { TwoFactor, User } from '@generated/prisma-client/client';
 import type {
     IAuthJwtAccessTokenPayloadUser,
     IAuthPassword,
@@ -46,9 +49,11 @@ import type {
     IUserCreateByAdminPrepared,
     IUserCreateRole,
     IUserCreateWithWorkspaceInput,
+    IUserDeletedIdentity,
     IUserList,
     IUserProfile,
     IUserRecipient,
+    IUserTwoFactorStatus,
 } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -58,9 +63,13 @@ import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
+    private readonly deleteSelfEmailPattern: string;
+    private readonly deleteSelfUsernamePattern: string;
+
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userVerificationService: UserVerificationService,
@@ -69,8 +78,45 @@ export class UserService {
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperStringService: HelperStringService,
+        private readonly configService: ConfigService
+    ) {
+        this.deleteSelfEmailPattern = this.configService.get<string>(
+            'user.deleteSelf.emailPattern'
+        )!;
+        this.deleteSelfUsernamePattern = this.configService.get<string>(
+            'user.deleteSelf.usernamePattern'
+        )!;
+    }
+
+    private createDeletedIdentity({
+        id,
+        email,
+        username,
+    }: IUser): IUserDeletedIdentity {
+        const deletedEmail = this.helperStringService.fillPattern(
+            this.deleteSelfEmailPattern,
+            { id, email }
+        );
+        const deletedUsername = this.helperStringService.fillPattern(
+            this.deleteSelfUsernamePattern,
+            { id, username }
+        );
+
+        return { email: deletedEmail, username: deletedUsername };
+    }
+
+    private isDeleteSelfRefused({ role }: IUser): boolean {
+        return (
+            role.type === EnumRoleType.admin ||
+            role.type === EnumRoleType.superAdmin
+        );
+    }
+
+    private gatesPasswordExpiryOn(loginWith: EnumUserLoginWith): boolean {
+        return loginWith === EnumUserLoginWith.credential;
+    }
 
     async validateUserGuard(
         payload: IAuthJwtAccessTokenPayloadUser,
@@ -91,7 +137,7 @@ export class UserService {
             throw new UserInactiveForbiddenException();
         }
 
-        const gatesPasswordExpiry = this.userUtil.gatesPasswordExpiryOn(
+        const gatesPasswordExpiry = this.gatesPasswordExpiryOn(
             payload.loginWith
         );
         if (gatesPasswordExpiry) {
@@ -355,7 +401,7 @@ export class UserService {
     }
 
     assertSelfDeletable(user: IUser): void {
-        const isRefused = this.userUtil.isDeleteSelfRefused(user);
+        const isRefused = this.isDeleteSelfRefused(user);
         if (isRefused) {
             throw new UserDeleteSelfForbiddenException();
         }
@@ -438,7 +484,7 @@ export class UserService {
         user: IUser,
         deletedAt: Date
     ): Promise<User> {
-        const identity = this.userUtil.createDeletedIdentity(user);
+        const identity = this.createDeletedIdentity(user);
 
         return this.userRepository.deleteSelfInTx(
             tx,
@@ -446,5 +492,38 @@ export class UserService {
             identity,
             deletedAt
         );
+    }
+
+    /** A null record maps to a disabled status; isPendingConfirmation is true while a pending secret is held. */
+    mapTwoFactor(twoFactor: TwoFactor | null): IUserTwoFactorStatus {
+        if (twoFactor === null) {
+            return {
+                isEnabled: false,
+                isPendingConfirmation: false,
+                backupCodesRemaining: 0,
+                confirmedAt: null,
+                lastUsedAt: null,
+            };
+        }
+
+        return {
+            isEnabled: twoFactor.enabled,
+            isPendingConfirmation: !!twoFactor.pendingSecret,
+            backupCodesRemaining: twoFactor.backupCodes.length,
+            confirmedAt: twoFactor.confirmedAt,
+            lastUsedAt: twoFactor.lastUsedAt,
+        };
+    }
+
+    revokesSessionsOn(status: EnumUserStatus): boolean {
+        return status !== EnumUserStatus.active;
+    }
+
+    resolveStatusActivityLogAction(
+        status: EnumUserStatus
+    ): EnumActivityLogAction {
+        return status === EnumUserStatus.blocked
+            ? EnumActivityLogAction.userBlocked
+            : EnumActivityLogAction.userUpdateStatus;
     }
 }

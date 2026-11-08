@@ -11,6 +11,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
@@ -21,6 +22,7 @@ import type {
     IActivityLogActionContract,
     IActivityLogFlushOptions,
     IActivityLogMetadata,
+    IActivityLogMetadataParseResult,
     IActivityLogStageInput,
     IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -49,7 +51,7 @@ export class ActivityLogService {
     private getContract(
         action: EnumActivityLogAction
     ): IActivityLogActionContract {
-        const contract = this.activityLogUtil.getContract(action);
+        const contract = ActivityLogActionContract[action] ?? null;
         if (!contract) {
             throw new ActivityLogContractInvalidException();
         }
@@ -57,12 +59,19 @@ export class ActivityLogService {
         return contract;
     }
 
+    private parseMetadata(
+        contract: IActivityLogActionContract,
+        metadata: IActivityLogMetadata
+    ): IActivityLogMetadataParseResult {
+        return contract.metadata.safeParse(metadata);
+    }
+
     private validateMetadata(
         action: EnumActivityLogAction,
         metadata: IActivityLogMetadata
     ): IActivityLogMetadata {
         const contract = this.getContract(action);
-        const parsed = this.activityLogUtil.parseMetadata(contract, metadata);
+        const parsed = this.parseMetadata(contract, metadata);
         if (!parsed.success) {
             throw new ActivityLogContractInvalidException(parsed.error);
         }
@@ -70,16 +79,38 @@ export class ActivityLogService {
         return parsed.data;
     }
 
+    private isTargetOnlyFieldValid(
+        resolution: EnumActivityLogUser,
+        value: string | null
+    ): boolean {
+        if (resolution === EnumActivityLogUser.target) {
+            return value !== null && value !== '';
+        }
+
+        return value === null;
+    }
+
+    private isWorkspaceFieldValid(
+        resolution: EnumActivityLogWorkspace,
+        workspaceId: string | null
+    ): boolean {
+        if (resolution === EnumActivityLogWorkspace.target) {
+            return workspaceId !== null && workspaceId !== '';
+        }
+
+        return workspaceId === null;
+    }
+
     private resolveUserId(
         resolution: EnumActivityLogUser,
         stagedUserId: string | null,
         payloadUserId: string | null
     ): string {
-        const userId = this.activityLogUtil.resolveUserId(
-            resolution,
-            stagedUserId,
-            payloadUserId
-        );
+        const resolvedUserId =
+            resolution === EnumActivityLogUser.target
+                ? stagedUserId
+                : payloadUserId;
+        const userId = resolvedUserId === '' ? null : resolvedUserId;
         if (userId === null) {
             throw new ActivityLogContractInvalidException();
         }
@@ -92,11 +123,11 @@ export class ActivityLogService {
         stagedCreatedBy: string | null,
         userId: string
     ): string {
-        const createdBy = this.activityLogUtil.resolveCreatedBy(
-            resolution,
-            stagedCreatedBy,
-            userId
-        );
+        if (resolution !== EnumActivityLogUser.target) {
+            return userId;
+        }
+
+        const createdBy = stagedCreatedBy === '' ? null : stagedCreatedBy;
         if (createdBy === null) {
             throw new ActivityLogContractInvalidException();
         }
@@ -118,11 +149,12 @@ export class ActivityLogService {
             return workspace.id;
         }
 
-        const workspaceId = this.activityLogUtil.resolveWorkspaceId(
-            resolution,
-            stagedWorkspaceId
-        );
-        const isWorkspaceIdValid = this.activityLogUtil.isWorkspaceFieldValid(
+        const workspaceId =
+            resolution !== EnumActivityLogWorkspace.target ||
+            stagedWorkspaceId === ''
+                ? null
+                : stagedWorkspaceId;
+        const isWorkspaceIdValid = this.isWorkspaceFieldValid(
             resolution,
             workspaceId
         );
@@ -191,15 +223,15 @@ export class ActivityLogService {
         const userId = input.userId ?? null;
         const createdBy = input.createdBy ?? null;
         const workspaceId = input.workspaceId ?? null;
-        const isUserIdValid = this.activityLogUtil.isTargetOnlyFieldValid(
+        const isUserIdValid = this.isTargetOnlyFieldValid(
             contract.user,
             userId
         );
-        const isCreatedByValid = this.activityLogUtil.isTargetOnlyFieldValid(
+        const isCreatedByValid = this.isTargetOnlyFieldValid(
             contract.user,
             createdBy
         );
-        const isWorkspaceIdValid = this.activityLogUtil.isWorkspaceFieldValid(
+        const isWorkspaceIdValid = this.isWorkspaceFieldValid(
             contract.workspace,
             workspaceId
         );

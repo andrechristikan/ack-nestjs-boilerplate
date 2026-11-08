@@ -80,7 +80,7 @@ export class NotificationEmailAccountService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.welcome,
@@ -114,7 +114,7 @@ export class NotificationEmailAccountService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.welcomeSocial,
@@ -167,7 +167,7 @@ export class NotificationEmailAccountService {
             this.helperDateService.createFromIso(passwordCreatedAt);
         const passwordCreatedAtFormatted =
             this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.welcomeByAdmin,
@@ -221,7 +221,7 @@ export class NotificationEmailAccountService {
             this.helperDateService.formatToRFC2822(expiredAtDate);
         const expiredInMinutesFormatted = String(expiredInMinutes);
 
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.verificationEmail,
@@ -262,7 +262,7 @@ export class NotificationEmailAccountService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.verifiedEmail,
@@ -307,7 +307,7 @@ export class NotificationEmailAccountService {
             encryptedMobileNumber,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.verifiedMobileNumber,

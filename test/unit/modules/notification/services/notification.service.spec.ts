@@ -109,7 +109,6 @@ describe('NotificationService', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 []
             );
-            notificationUtil.listMutedInAppTypes.mockReturnValue([]);
             notificationRepository.findWithPaginationCursor.mockResolvedValue(
                 paginationResult
             );
@@ -152,9 +151,6 @@ describe('NotificationService', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 settings
             );
-            notificationUtil.listMutedInAppTypes.mockReturnValue([
-                EnumNotificationType.userActivity,
-            ]);
             notificationRepository.findWithPaginationCursor.mockResolvedValue({
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -164,9 +160,6 @@ describe('NotificationService', () => {
 
             await service.getListCursor('user-id', pagination);
 
-            expect(notificationUtil.listMutedInAppTypes).toHaveBeenCalledWith(
-                settings
-            );
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
@@ -197,17 +190,9 @@ describe('NotificationService', () => {
                 settings
             );
 
-            const configurable = [settings[0]!];
-            notificationUtil.listConfigurableSettings.mockReturnValue(
-                configurable
-            );
-
             const result = await service.getListUserSetting('user-id');
 
-            expect(result).toBe(configurable);
-            expect(
-                notificationUtil.listConfigurableSettings
-            ).toHaveBeenCalledWith(settings);
+            expect(result).toEqual(settings);
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
@@ -228,13 +213,9 @@ describe('NotificationService', () => {
                 notificationTokens: ['token-1'],
                 channels: [EnumNotificationChannel.email],
             };
-            const configurable = [setting];
             deviceService.getNotificationTokens.mockResolvedValue(['token-1']);
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 [setting]
-            );
-            notificationUtil.listConfigurableSettings.mockReturnValue(
-                configurable
             );
             notificationUtil.mapRecipient.mockReturnValue(recipient);
 
@@ -250,14 +231,11 @@ describe('NotificationService', () => {
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
-            expect(
-                notificationUtil.listConfigurableSettings
-            ).toHaveBeenCalledWith([setting]);
             expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
                 user,
                 EnumNotificationKind.verificationEmail,
                 ['token-1'],
-                configurable
+                [setting]
             );
         });
     });
@@ -358,9 +336,6 @@ describe('NotificationService', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 settings
             );
-            notificationUtil.listMutedInAppTypes.mockReturnValue([
-                EnumNotificationType.userActivity,
-            ]);
             notificationRepository.markAllAsRead.mockResolvedValue({
                 count: 3,
             });
@@ -371,9 +346,6 @@ describe('NotificationService', () => {
             expect(
                 notificationUserSettingRepository.findUserSetting
             ).toHaveBeenCalledWith('user-id');
-            expect(notificationUtil.listMutedInAppTypes).toHaveBeenCalledWith(
-                settings
-            );
             expect(notificationRepository.markAllAsRead).toHaveBeenCalledWith(
                 'user-id',
                 [EnumNotificationType.userActivity]
@@ -540,6 +512,207 @@ describe('NotificationService', () => {
                     ],
                 messagePath: 'notification.error.invalidChannel',
             });
+        });
+    });
+
+    describe('decryptFailureTokens', () => {
+        it('decrypts each failure token with the user id', () => {
+            notificationUtil.decryptPayload.mockImplementation(
+                (encrypted: string) =>
+                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
+            );
+
+            expect(
+                service.decryptFailureTokens('user-id', [
+                    'cipher(token-1)',
+                    'cipher(token-2)',
+                ])
+            ).toEqual(['token-1', 'token-2']);
+            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
+                'cipher(token-2)',
+                'user-id'
+            );
+        });
+
+        it('rethrows a decryption failure', () => {
+            const failure = new Error('decrypt');
+            notificationUtil.decryptPayload.mockImplementation(() => {
+                throw failure;
+            });
+
+            expect(() =>
+                service.decryptFailureTokens('user-id', ['cipher(token-1)'])
+            ).toThrow(failure);
+        });
+    });
+
+    describe('toCleanupTokensResult', () => {
+        it('reports the requested and removed counts', () => {
+            expect(service.toCleanupTokensResult(2, 1)).toEqual({
+                message: 'notification.queue.push.cleanupTokens',
+                countRequestedTokens: 2,
+                countRemovedTokens: 1,
+            });
+        });
+    });
+
+    describe('toCleanupStaleTokensResult', () => {
+        it('reports the removed count', () => {
+            expect(service.toCleanupStaleTokensResult(5)).toEqual({
+                message: 'notification.queue.push.cleanupStaleTokens',
+                countRemovedTokens: 5,
+            });
+        });
+    });
+
+    describe('toMessageProperties', () => {
+        it('keeps only the primitive metadata values', () => {
+            expect(
+                service.toMessageProperties({
+                    username: 'ana',
+                    age: 3,
+                    isNew: true,
+                    nested: { a: 1 },
+                    list: [1],
+                    missing: null,
+                })
+            ).toEqual({ username: 'ana', age: 3, isNew: true });
+        });
+
+        it('returns empty properties for null metadata', () => {
+            expect(service.toMessageProperties(null)).toEqual({});
+        });
+
+        it('returns empty properties for array metadata', () => {
+            expect(service.toMessageProperties(['ana'])).toEqual({});
+        });
+
+        it('returns empty properties for primitive metadata', () => {
+            expect(service.toMessageProperties('ana')).toEqual({});
+        });
+    });
+
+    describe('toRejectReasonProperties', () => {
+        it('adds the reject reason label translated in the request language', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string) => `translated:${path}`
+            );
+
+            expect(
+                service.toRejectReasonProperties(
+                    { username: 'ana', rejectReasonCode: 'spam' },
+                    'en'
+                )
+            ).toEqual({
+                username: 'ana',
+                rejectReasonCode: 'spam',
+                rejectReasonLabel: 'translated:notification.rejectReason.spam',
+            });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.rejectReason.spam',
+                { customLanguage: 'en' }
+            );
+        });
+
+        it('translates the label with no custom language when none is given', () => {
+            service.toRejectReasonProperties(
+                { rejectReasonCode: 'spam' },
+                null
+            );
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.rejectReason.spam',
+                {}
+            );
+        });
+
+        it('returns the properties untouched when no reject reason code is a string', () => {
+            const properties = { username: 'ana', rejectReasonCode: 3 };
+
+            expect(service.toRejectReasonProperties(properties, 'en')).toBe(
+                properties
+            );
+            expect(messageService.setMessage).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('listConfigurableSettings', () => {
+        it('keeps the contract pairs and drops every other pair', () => {
+            const kept = [
+                {
+                    ...setting,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.inApp,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.push,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.push,
+                },
+            ];
+            const dropped = [
+                {
+                    ...setting,
+                    type: EnumNotificationType.userActivity,
+                    channel: EnumNotificationChannel.silent,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.securityAlert,
+                    channel: EnumNotificationChannel.email,
+                },
+                {
+                    ...setting,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.inApp,
+                },
+            ];
+
+            const result = service['listConfigurableSettings']([
+                ...dropped,
+                ...kept,
+            ]);
+
+            expect(result).toEqual(kept);
+        });
+    });
+
+    describe('listMutedInAppTypes', () => {
+        it('returns the types whose inApp setting is inactive', () => {
+            expect(
+                service['listMutedInAppTypes']([
+                    {
+                        type: EnumNotificationType.userActivity,
+                        channel: EnumNotificationChannel.inApp,
+                        isActive: false,
+                    },
+                    {
+                        type: EnumNotificationType.marketing,
+                        channel: EnumNotificationChannel.email,
+                        isActive: false,
+                    },
+                    {
+                        type: EnumNotificationType.securityAlert,
+                        channel: EnumNotificationChannel.inApp,
+                        isActive: true,
+                    },
+                ])
+            ).toEqual([EnumNotificationType.userActivity]);
         });
     });
 });

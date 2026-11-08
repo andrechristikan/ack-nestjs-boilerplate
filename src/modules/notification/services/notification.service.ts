@@ -19,7 +19,10 @@ import { NotificationNotFoundException } from '@modules/notification/exceptions/
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type {
+    INotificationPushCleanupStaleTokensResult,
+    INotificationPushCleanupTokensResult,
     INotificationRecipient,
+    INotificationUserSettingPreference,
     INotificationUserSettingUpdate,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -27,6 +30,8 @@ import { NotificationUserSettingRepository } from '@modules/notification/reposit
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
+import { MessageService } from '@common/message/services/message.service';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 
 @Injectable()
 export class NotificationService {
@@ -34,8 +39,33 @@ export class NotificationService {
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly notificationUtil: NotificationUtil,
-        private readonly deviceService: DeviceService
+        private readonly deviceService: DeviceService,
+        private readonly messageService: MessageService
     ) {}
+
+    private listConfigurableSettings(
+        settings: NotificationUserSetting[]
+    ): NotificationUserSetting[] {
+        return settings.filter(setting =>
+            NotificationSettingContract.some(
+                contract =>
+                    contract.type === setting.type &&
+                    contract.channels.includes(setting.channel)
+            )
+        );
+    }
+
+    private listMutedInAppTypes(
+        settings: INotificationUserSettingPreference[]
+    ): EnumNotificationType[] {
+        return settings
+            .filter(
+                setting =>
+                    setting.channel === EnumNotificationChannel.inApp &&
+                    !setting.isActive
+            )
+            .map(setting => setting.type);
+    }
 
     private async findMutedInAppTypes(
         userId: string
@@ -45,7 +75,7 @@ export class NotificationService {
                 userId
             );
 
-        return this.notificationUtil.listMutedInAppTypes(settings);
+        return this.listMutedInAppTypes(settings);
     }
 
     async getListCursor(
@@ -69,7 +99,7 @@ export class NotificationService {
                 userId
             );
 
-        return this.notificationUtil.listConfigurableSettings(settings);
+        return this.listConfigurableSettings(settings);
     }
 
     async getRecipient(
@@ -161,5 +191,78 @@ export class NotificationService {
         if (!validType.channels.includes(channel)) {
             throw new NotificationInvalidChannelException();
         }
+    }
+
+    decryptFailureTokens(
+        userId: string,
+        encryptedFailureTokens: string[]
+    ): string[] {
+        return encryptedFailureTokens.map(encrypted =>
+            this.notificationUtil.decryptPayload(encrypted, userId)
+        );
+    }
+
+    toCleanupTokensResult(
+        countRequestedTokens: number,
+        countRemovedTokens: number
+    ): INotificationPushCleanupTokensResult {
+        const message = this.messageService.setMessage(
+            'notification.queue.push.cleanupTokens'
+        );
+
+        return { message, countRequestedTokens, countRemovedTokens };
+    }
+
+    toCleanupStaleTokensResult(
+        countRemovedTokens: number
+    ): INotificationPushCleanupStaleTokensResult {
+        const message = this.messageService.setMessage(
+            'notification.queue.push.cleanupStaleTokens'
+        );
+
+        return { message, countRemovedTokens };
+    }
+
+    toMessageProperties(metadata: Prisma.JsonValue): IMessageProperties {
+        const properties: IMessageProperties = {};
+        if (
+            metadata === null ||
+            typeof metadata !== 'object' ||
+            Array.isArray(metadata)
+        ) {
+            return properties;
+        }
+
+        for (const [key, value] of Object.entries(metadata)) {
+            if (
+                typeof value === 'string' ||
+                typeof value === 'number' ||
+                typeof value === 'boolean'
+            ) {
+                properties[key] = value;
+            }
+        }
+
+        return properties;
+    }
+
+    toRejectReasonProperties(
+        properties: IMessageProperties,
+        language: string | null
+    ): IMessageProperties {
+        const code = properties.rejectReasonCode;
+        if (typeof code !== 'string') {
+            return properties;
+        }
+
+        const options = {
+            ...(language !== null && { customLanguage: language }),
+        };
+        const rejectReasonLabel = this.messageService.setMessage(
+            `notification.rejectReason.${code}`,
+            options
+        );
+
+        return { ...properties, rejectReasonLabel };
     }
 }

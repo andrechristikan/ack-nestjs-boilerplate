@@ -36,7 +36,6 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
 
@@ -55,10 +54,13 @@ export class UserAuthService {
         private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
-        private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService
     ) {}
+
+    private requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
+        return user.twoFactor.requiredSetup;
+    }
 
     /** Resolves the active credential user of an email, counts one password attempt, and enqueues the lockout job when the budget is spent; isAttemptCounted false with the lockout activity stages on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
     async countCredentialAttempt(
@@ -291,7 +293,7 @@ export class UserAuthService {
             loginFrom,
             loginWith,
         });
-        const requiresSetup = this.userUtil.requiresTwoFactorSetup(user);
+        const requiresSetup = this.requiresTwoFactorSetup(user);
         if (requiresSetup) {
             const [
                 { challengeToken, expiresInMs },

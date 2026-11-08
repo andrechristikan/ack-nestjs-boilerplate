@@ -8,7 +8,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import {
     NotificationDefaultAvailableOrderBy,
@@ -25,8 +24,7 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
-        private readonly messageService: MessageService,
-        private readonly notificationUtil: NotificationUtil
+        private readonly messageService: MessageService
     ) {}
 
     async execute(
@@ -51,13 +49,14 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
 
         const translated = data.map(notification => {
             const metadataProperties =
-                this.notificationUtil.toMessageProperties(
+                this.notificationService.toMessageProperties(
                     notification.metadata
                 );
-            const properties = this.notificationUtil.toRejectReasonProperties(
-                metadataProperties,
-                language
-            );
+            const properties =
+                this.notificationService.toRejectReasonProperties(
+                    metadataProperties,
+                    language
+                );
             const options = {
                 ...(language !== null && { customLanguage: language }),
                 properties,

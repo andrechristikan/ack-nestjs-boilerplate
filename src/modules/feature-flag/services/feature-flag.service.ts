@@ -1,3 +1,4 @@
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -11,12 +12,12 @@ import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/excepti
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
     IFeatureFlagMetadata,
+    IFeatureFlagMetadataValue,
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
-import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import type {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -27,20 +28,73 @@ import { Injectable } from '@nestjs/common';
 export class FeatureFlagService {
     constructor(
         private readonly featureFlagRepository: FeatureFlagRepository,
-        private readonly featureFlagUtil: FeatureFlagUtil,
-        private readonly featureFlagCache: FeatureFlagCache
+        private readonly featureFlagCache: FeatureFlagCache,
+        private readonly helperHashService: HelperHashService
     ) {}
+
+    private metadataValueType(value: IFeatureFlagMetadataValue): string {
+        if (Array.isArray(value)) {
+            return value.length > 0 ? `array:${typeof value[0]}` : 'array';
+        }
+
+        return typeof value;
+    }
+
+    private isMetadataValid(
+        oldMetadata: IFeatureFlagMetadata | null,
+        newMetadata: IFeatureFlagMetadata
+    ): boolean {
+        if (oldMetadata === null) {
+            return false;
+        }
+
+        const oldKeys = Object.keys(oldMetadata).sort();
+        const newKeys = Object.keys(newMetadata).sort();
+
+        const isValidStructure =
+            JSON.stringify(oldKeys) === JSON.stringify(newKeys);
+        if (!isValidStructure) {
+            return false;
+        }
+
+        for (const key of newKeys) {
+            const newVal = newMetadata[key]!;
+            const oldVal = oldMetadata[key]!;
+
+            const newValueType = this.metadataValueType(newVal);
+            const oldValueType = this.metadataValueType(oldVal);
+            if (newValueType !== oldValueType) {
+                return false;
+            } else if (
+                (newVal ?? null) === null ||
+                newVal === '' ||
+                (Array.isArray(newVal) && newVal.length === 0)
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private isInRollout(
+        rolloutPercent: number,
+        key: string,
+        identifier: string
+    ): boolean {
+        const hash = this.helperHashService.sha256Hash(`${key}:${identifier}`);
+        const num = Number.parseInt(hash.slice(0, 8), 16);
+        const percentage = num % 100;
+
+        return percentage < rolloutPercent;
+    }
 
     private assertRollout(
         rolloutPercent: number,
         key: EnumFeatureFlagKey,
         identifier: string
     ): void {
-        const isInRollout = this.featureFlagUtil.isInRollout(
-            rolloutPercent,
-            key,
-            identifier
-        );
+        const isInRollout = this.isInRollout(rolloutPercent, key, identifier);
         if (!isInRollout) {
             throw new FeatureFlagDisabledException();
         }
@@ -53,7 +107,7 @@ export class FeatureFlagService {
             return cached;
         }
 
-        // Sequential by design: the lease is taken before the read it guards
+        // Sequential by design: side effects whose order is part of the contract (the lease is taken before the read it guards)
         const leaseToken =
             await this.featureFlagCache.takeFeatureFlagLease(key);
         const featureFlag = await this.featureFlagRepository.findOneByKey(key);
@@ -169,7 +223,7 @@ export class FeatureFlagService {
             throw new FeatureFlagNotFoundException();
         }
 
-        const validated = this.featureFlagUtil.isMetadataValid(
+        const validated = this.isMetadataValid(
             featureFlag.metadata as IFeatureFlagMetadata | null,
             data.metadata
         );

@@ -9,6 +9,7 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -37,7 +38,6 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceService', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
@@ -46,7 +46,8 @@ describe('WorkspaceService', () => {
         mock<WorkspaceMemberRepository>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const configGet = vi.fn<(key: string) => unknown>();
@@ -56,6 +57,10 @@ describe('WorkspaceService', () => {
 
     const configValues: Record<string, unknown> = {
         'workspace.maxWorkspacesPerUser': 5,
+        'workspace.slugRegex': /^[a-z0-9-]+$/,
+        'workspace.slugPrefix': 'ws-',
+        'workspace.slugMaxLength': 12,
+        'workspace.slugMaxAttempts': 3,
     };
 
     const workspace: Workspace = {
@@ -88,7 +93,7 @@ describe('WorkspaceService', () => {
                 },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
+                { provide: HelperStringService, useValue: helperStringService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -286,7 +291,7 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         beforeEach(() => {
-            workspaceUtil.drawSlugCandidates.mockReturnValue([
+            helperStringService.generateSlugCandidates.mockReturnValue([
                 'ws-aaa',
                 'ws-bbb',
                 'ws-ccc',
@@ -446,9 +451,7 @@ describe('WorkspaceService', () => {
     });
 
     describe('updateWorkspaceSlug', () => {
-        it('throws WorkspaceSlugInvalidException before writing when the util rejects the slug', async () => {
-            workspaceUtil.isSlugAllowed.mockReturnValue(false);
-
+        it('throws WorkspaceSlugInvalidException before writing when the slug is not allowed', async () => {
             await expect(
                 service.updateWorkspaceSlug('workspace-1', 'Not Allowed!')
             ).rejects.toMatchObject({
@@ -461,14 +464,10 @@ describe('WorkspaceService', () => {
                     ],
                 messagePath: 'workspace.error.slugInvalid',
             });
-            expect(workspaceUtil.isSlugAllowed).toHaveBeenCalledWith(
-                'Not Allowed!'
-            );
             expect(workspaceRepository.updateSlug).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceSlugAlreadyExistsException when the write collides on the slug index', async () => {
-            workspaceUtil.isSlugAllowed.mockReturnValue(true);
             const collision = new Error('slug collision');
             workspaceRepository.updateSlug.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -492,7 +491,6 @@ describe('WorkspaceService', () => {
         });
 
         it('wraps a non-collision write error in AppUnknownException', async () => {
-            workspaceUtil.isSlugAllowed.mockReturnValue(true);
             const otherError = new Error('unexpected');
             workspaceRepository.updateSlug.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -506,7 +504,6 @@ describe('WorkspaceService', () => {
         });
 
         it('writes the slug when it is allowed', async () => {
-            workspaceUtil.isSlugAllowed.mockReturnValue(true);
             workspaceRepository.updateSlug.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspaceSlug(
@@ -759,6 +756,37 @@ describe('WorkspaceService', () => {
             const result = await service.previewWorkspace('acme-team');
 
             expect(result).toBe(workspace);
+        });
+    });
+
+    describe('drawSlugCandidates', () => {
+        it('draws one slug candidate per configured attempt', () => {
+            helperStringService.generateSlugCandidates.mockReturnValue([
+                'ws-aaa',
+                'ws-bbb',
+                'ws-ccc',
+            ]);
+
+            const result = service['drawSlugCandidates']();
+
+            expect(result).toEqual(['ws-aaa', 'ws-bbb', 'ws-ccc']);
+            expect(
+                helperStringService.generateSlugCandidates
+            ).toHaveBeenCalledWith('ws-', 12, 3);
+        });
+    });
+
+    describe('isSlugAllowed', () => {
+        it('returns true for a slug matching the pattern and length', () => {
+            expect(service['isSlugAllowed']('acme-team')).toBe(true);
+        });
+
+        it('returns false for a slug breaking the pattern', () => {
+            expect(service['isSlugAllowed']('Not Allowed!')).toBe(false);
+        });
+
+        it('returns false for a slug exceeding the max length', () => {
+            expect(service['isSlugAllowed']('a'.repeat(13))).toBe(false);
         });
     });
 });

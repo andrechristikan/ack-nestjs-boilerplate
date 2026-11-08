@@ -45,6 +45,7 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
         return { existingUser, recipient };
     }
 
+    /** Temporary: recordEffect inside the transaction (phase 3D). */
     private prepareInviteActivityLogs(
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
@@ -78,6 +79,7 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
         return activityLogs;
     }
 
+    /** Temporary: notificationService.notify inside the transaction (phase 3C). */
     private async sendInviteNotification(
         workspace: Workspace,
         invite: WorkspaceInvite,
@@ -114,6 +116,7 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const existing = await this.workspaceInviteService.getResendableById(
             workspaceInviteId,
             workspace.id
@@ -133,7 +136,6 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
             existingUser
         );
 
-        // Sequential by design: write must not run if an earlier step throws
         const { invite, tokenData } =
             await this.workspaceInviteService.resendInvite(
                 workspaceInviteId,

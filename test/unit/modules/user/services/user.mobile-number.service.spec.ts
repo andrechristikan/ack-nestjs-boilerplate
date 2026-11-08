@@ -14,14 +14,12 @@ import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mo
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
-import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserMobileNumberService', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
         mock<UserMobileNumberRepository>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let service: UserMobileNumberService;
@@ -71,7 +69,6 @@ describe('UserMobileNumberService', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: UserUtil, useValue: userUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -114,7 +111,6 @@ describe('UserMobileNumberService', () => {
 
     describe('addMobileNumber', () => {
         it('adds the mobile number', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
 
             const result = await service.addMobileNumber(
@@ -129,10 +125,6 @@ describe('UserMobileNumberService', () => {
             );
 
             expect(result).toBe(mobileNumber);
-            expect(userUtil.checkMobileNumber).toHaveBeenCalledWith(
-                country.phoneCode,
-                '+1'
-            );
             expect(userMobileNumberRepository.addInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin',
@@ -149,8 +141,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(false);
-
             await expect(
                 service.addMobileNumber(
                     'user-marlin',
@@ -174,8 +164,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('throws UserMobileNumberExistException when the mobile number already exists', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
-
             await expect(
                 service.addMobileNumber(
                     'user-marlin',
@@ -199,7 +187,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new UserMobileNumberExistException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -227,7 +214,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -253,7 +239,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('maps a unique collision to UserMobileNumberExistException', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const collision = new Error('unique');
             databaseService.withTransaction.mockRejectedValueOnce(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -317,7 +302,6 @@ describe('UserMobileNumberService', () => {
     describe('updateMobileNumber', () => {
         it('updates the mobile number, keeping verification when number and phone code are unchanged', async () => {
             const verified = { ...mobileNumber, isVerified: true };
-            userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.updateInTx.mockResolvedValue(verified);
 
             const result = await service.updateMobileNumber(
@@ -346,7 +330,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('resets verification when the number changes', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.updateInTx.mockResolvedValue(
                 mobileNumber
             );
@@ -403,8 +386,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(false);
-
             const call = service.updateMobileNumber(
                 'user-marlin',
                 mobileNumber,
@@ -429,7 +410,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new UserMobileNumberExistException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -458,7 +438,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -485,7 +464,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('maps a unique collision to UserMobileNumberExistException', async () => {
-            userUtil.checkMobileNumber.mockReturnValue(true);
             const collision = new Error('unique');
             databaseService.withTransaction.mockRejectedValueOnce(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -661,6 +639,20 @@ describe('UserMobileNumberService', () => {
             expect(
                 userMobileNumberRepository.deleteByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-marlin');
+        });
+    });
+
+    describe('checkMobileNumber', () => {
+        it('returns true when the phone code belongs to the country', () => {
+            expect(service['checkMobileNumber'](['+1', '+44'], '+1')).toBe(
+                true
+            );
+        });
+
+        it('returns false when the phone code does not belong to the country', () => {
+            expect(service['checkMobileNumber'](['+1', '+44'], '+33')).toBe(
+                false
+            );
         });
     });
 });

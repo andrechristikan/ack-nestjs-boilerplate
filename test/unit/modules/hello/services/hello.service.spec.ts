@@ -5,15 +5,15 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { HelloUtil } from '@modules/hello/utils/hello.util';
+import { HelloService } from '@modules/hello/services/hello.service';
 
-describe('HelloUtil', () => {
+describe('HelloService', () => {
     const configGet = vi.fn<(key: string) => unknown>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
 
-    let util: HelloUtil;
+    let service: HelloService;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -32,17 +32,17 @@ describe('HelloUtil', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                HelloUtil,
+                HelloService,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
-        util = module.get(HelloUtil);
+        service = module.get(HelloService);
     });
 
     describe('getApp', () => {
         it('returns the app identity and environment read at construction', () => {
-            expect(util.getApp()).toEqual({
+            expect(service.getApp()).toEqual({
                 name: 'Ack NestJS Boilerplate',
                 env: EnumAppEnvironment.development,
                 timezone: 'UTC',
@@ -52,7 +52,7 @@ describe('HelloUtil', () => {
 
     describe('getMessage', () => {
         it('returns the message language configuration read at construction', () => {
-            expect(util.getMessage()).toEqual({
+            expect(service.getMessage()).toEqual({
                 availableLanguage: Object.values(EnumMessageLanguage),
                 defaultLanguage: EnumMessageLanguage.en,
             });

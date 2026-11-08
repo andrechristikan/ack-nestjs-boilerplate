@@ -9,6 +9,7 @@ import type {
 import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -33,6 +34,7 @@ export interface IAnalyticAnomalyServiceDoubles {
     configService: MockProxy<ConfigService>;
     helperArrayService: MockProxy<HelperArrayService>;
     helperDateService: MockProxy<HelperDateService>;
+    helperNumberService: MockProxy<HelperNumberService>;
     sessionAnalyticService: MockProxy<SessionAnalyticService>;
     userAnalyticService: MockProxy<UserAnalyticService>;
     activityLogAnalyticService: MockProxy<ActivityLogAnalyticService>;
@@ -73,6 +75,10 @@ export async function createAnalyticAnomalyService(
                 useValue: doubles.helperArrayService,
             },
             { provide: HelperDateService, useValue: doubles.helperDateService },
+            {
+                provide: HelperNumberService,
+                useValue: doubles.helperNumberService,
+            },
             {
                 provide: SessionAnalyticService,
                 useValue: doubles.sessionAnalyticService,

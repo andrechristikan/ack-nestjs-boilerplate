@@ -4,9 +4,9 @@ import type {
     IAnalyticTermPolicyTimeToAccept,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
+import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyAnalyticService } from '@modules/term-policy/services/term-policy.analytic.service';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
-import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -14,9 +14,25 @@ export class TermPolicyAcceptanceAnalyticService {
     constructor(
         private readonly termPolicyAcceptanceAnalyticRepository: TermPolicyAcceptanceAnalyticRepository,
         private readonly termPolicyAnalyticService: TermPolicyAnalyticService,
-        private readonly termPolicyUtil: TermPolicyUtil,
         private readonly helperNumberService: HelperNumberService
     ) {}
+
+    private averageAcceptanceMs(
+        rows: ITermPolicyAcceptanceAnalytic[]
+    ): IAnalyticTermPolicyTimeToAccept {
+        const deltas = rows.flatMap(row =>
+            row.publishedAt === null
+                ? []
+                : [row.acceptedAt.getTime() - row.publishedAt.getTime()]
+        );
+        if (deltas.length === 0) {
+            return { count: 0, averageMs: 0 };
+        }
+
+        const averageMs = deltas.reduce((s, d) => s + d, 0) / deltas.length;
+
+        return { count: deltas.length, averageMs };
+    }
 
     async getAcceptanceRate(
         activeUserCount: number,
@@ -55,6 +71,6 @@ export class TermPolicyAcceptanceAnalyticService {
                 endDate
             );
 
-        return this.termPolicyUtil.averageAcceptanceMs(rows);
+        return this.averageAcceptanceMs(rows);
     }
 }

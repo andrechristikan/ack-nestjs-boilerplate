@@ -31,12 +31,10 @@ import type {
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
-    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-15T00:00:00.000Z');
@@ -84,13 +82,10 @@ describe('RoleService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        roleUtil.outranks.mockReturnValue(true);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleService,
                 { provide: RoleRepository, useValue: roleRepository },
-                { provide: RoleUtil, useValue: roleUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -349,8 +344,6 @@ describe('RoleService', () => {
         });
 
         it('throws RoleRankForbiddenException when an admin creates an admin-type role', async () => {
-            roleUtil.outranks.mockReturnValue(false);
-
             await expect(
                 service.createByAdmin(role.id, create, adminActor)
             ).rejects.toMatchObject({
@@ -363,10 +356,6 @@ describe('RoleService', () => {
                 httpStatus: HttpStatus.FORBIDDEN,
                 messagePath: 'role.error.rankForbidden',
             });
-            expect(roleUtil.outranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.admin
-            );
             expect(roleRepository.create).not.toHaveBeenCalled();
         });
 
@@ -448,7 +437,6 @@ describe('RoleService', () => {
 
         it('throws RoleRankForbiddenException when an admin updates a superAdmin role', async () => {
             roleRepository.findOneById.mockResolvedValue(superAdminRole);
-            roleUtil.outranks.mockReturnValue(false);
 
             await expect(
                 service.updateByAdmin(superAdminRole.id, update, adminActor)
@@ -467,7 +455,6 @@ describe('RoleService', () => {
 
         it('throws RoleRankForbiddenException when an admin updates an admin role', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
-            roleUtil.outranks.mockReturnValue(false);
 
             await expect(
                 service.updateByAdmin(role.id, update, adminActor)
@@ -489,9 +476,6 @@ describe('RoleService', () => {
                 ...role,
                 type: EnumRoleType.user,
             });
-            roleUtil.outranks
-                .mockReturnValueOnce(true)
-                .mockReturnValueOnce(false);
 
             await expect(
                 service.updateByAdmin(
@@ -514,7 +498,6 @@ describe('RoleService', () => {
 
         it('throws RoleImmutableException when the type of an immutable role changes', async () => {
             roleRepository.findOneById.mockResolvedValue(immutableRole);
-            roleUtil.changesImmutableType.mockReturnValue(true);
 
             await expect(
                 service.updateByAdmin(immutableRole.id, update, superAdminActor)
@@ -526,10 +509,6 @@ describe('RoleService', () => {
                 httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'role.error.immutable',
             });
-            expect(roleUtil.changesImmutableType).toHaveBeenCalledWith(
-                immutableRole,
-                update.type
-            );
             expect(roleRepository.update).not.toHaveBeenCalled();
         });
 
@@ -540,7 +519,6 @@ describe('RoleService', () => {
             };
             roleRepository.findOneById.mockResolvedValue(immutableRole);
             roleRepository.update.mockResolvedValue(roleWithPolicies);
-            roleUtil.changesImmutableType.mockReturnValue(false);
 
             const result = await service.updateByAdmin(
                 immutableRole.id,
@@ -549,10 +527,6 @@ describe('RoleService', () => {
             );
 
             expect(result).toBe(roleWithPolicies);
-            expect(roleUtil.changesImmutableType).toHaveBeenCalledWith(
-                immutableRole,
-                sameType.type
-            );
             expect(roleRepository.update).toHaveBeenCalledWith(
                 immutableRole.id,
                 immutableRole.type,
@@ -562,8 +536,6 @@ describe('RoleService', () => {
 
         it('answers the rank exception ahead of the immutable refusal', async () => {
             roleRepository.findOneById.mockResolvedValue(immutableRole);
-            roleUtil.outranks.mockReturnValue(false);
-            roleUtil.changesImmutableType.mockReturnValue(true);
 
             await expect(
                 service.updateByAdmin(immutableRole.id, update, adminActor)
@@ -713,7 +685,6 @@ describe('RoleService', () => {
 
         it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
             roleRepository.findOneById.mockResolvedValue(superAdminRole);
-            roleUtil.outranks.mockReturnValue(false);
 
             await expect(
                 service.deleteByAdmin(superAdminRole.id, adminActor)
@@ -816,7 +787,6 @@ describe('RoleService', () => {
 
         it('throws RoleRankForbiddenException when the actor does not outrank the role', async () => {
             roleRepository.findOneById.mockResolvedValue(superAdminRole);
-            roleUtil.outranks.mockReturnValue(false);
 
             await expect(
                 service.assertWritableByActor(superAdminRole.id, adminActor)
@@ -825,10 +795,6 @@ describe('RoleService', () => {
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
                 messagePath: 'role.error.rankForbidden',
             });
-            expect(roleUtil.outranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
-            );
         });
 
         it('resolves when the actor outranks a role it does not hold', async () => {
@@ -841,24 +807,16 @@ describe('RoleService', () => {
     });
 
     describe('assertActorOutranks', () => {
-        it('passes when the util says the actor outranks the target', () => {
-            roleUtil.outranks.mockReturnValue(true);
-
+        it('passes when the actor outranks the target', () => {
             expect(() =>
                 service.assertActorOutranks(
                     EnumRoleType.admin,
                     EnumRoleType.user
                 )
             ).not.toThrow();
-            expect(roleUtil.outranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
-            );
         });
 
-        it('throws RoleRankForbiddenException when the util says the actor does not outrank the target', () => {
-            roleUtil.outranks.mockReturnValue(false);
-
+        it('throws RoleRankForbiddenException when the actor does not outrank the target', () => {
             expect(() =>
                 service.assertActorOutranks(
                     EnumRoleType.admin,
@@ -978,6 +936,61 @@ describe('RoleService', () => {
             ]);
 
             expect(result).toBe(user.role.policies);
+        });
+    });
+
+    describe('outranks', () => {
+        it.each([
+            [EnumRoleType.superAdmin, EnumRoleType.superAdmin],
+            [EnumRoleType.superAdmin, EnumRoleType.admin],
+            [EnumRoleType.superAdmin, EnumRoleType.user],
+            [EnumRoleType.admin, EnumRoleType.user],
+        ])(
+            'returns true for a %s actor on a %s target',
+            (actorType, targetType) => {
+                expect(service['outranks'](actorType, targetType)).toBe(true);
+            }
+        );
+
+        it.each([
+            [EnumRoleType.admin, EnumRoleType.superAdmin],
+            [EnumRoleType.admin, EnumRoleType.admin],
+            [EnumRoleType.user, EnumRoleType.user],
+            [EnumRoleType.user, EnumRoleType.admin],
+        ])(
+            'returns false for a %s actor on a %s target',
+            (actorType, targetType) => {
+                expect(service['outranks'](actorType, targetType)).toBe(false);
+            }
+        );
+    });
+
+    describe('changesImmutableType', () => {
+        it('returns true for an immutable role and another type', () => {
+            expect(
+                service['changesImmutableType'](
+                    immutableRole,
+                    EnumRoleType.user
+                )
+            ).toBe(true);
+        });
+
+        it('returns false for an immutable role and the same type', () => {
+            expect(
+                service['changesImmutableType'](
+                    immutableRole,
+                    EnumRoleType.admin
+                )
+            ).toBe(false);
+        });
+
+        it('returns false for a mutable role and another type', () => {
+            expect(
+                service['changesImmutableType'](
+                    { ...immutableRole, isImmutable: false },
+                    EnumRoleType.user
+                )
+            ).toBe(false);
         });
     });
 });

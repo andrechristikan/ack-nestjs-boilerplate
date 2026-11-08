@@ -8,6 +8,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
+import { RoleRank } from '@modules/role/constants/role.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
@@ -24,7 +25,6 @@ import type {
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { RoleUtil } from '@modules/role/utils/role.util';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -33,9 +33,22 @@ import { Injectable } from '@nestjs/common';
 export class RoleService {
     constructor(
         private readonly roleRepository: RoleRepository,
-        private readonly roleUtil: RoleUtil,
         private readonly databaseUtil: DatabaseUtil
     ) {}
+
+    private outranks(
+        actorRoleType: EnumRoleType,
+        targetRoleType: EnumRoleType
+    ): boolean {
+        return (
+            actorRoleType === EnumRoleType.superAdmin ||
+            RoleRank[actorRoleType] > RoleRank[targetRoleType]
+        );
+    }
+
+    private changesImmutableType(role: IRole, type: EnumRoleType): boolean {
+        return role.isImmutable && role.type !== type;
+    }
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
@@ -118,7 +131,7 @@ export class RoleService {
         actorRoleType: EnumRoleType,
         targetRoleType: EnumRoleType
     ): void {
-        const outranks = this.roleUtil.outranks(actorRoleType, targetRoleType);
+        const outranks = this.outranks(actorRoleType, targetRoleType);
         if (!outranks) {
             throw new RoleRankForbiddenException();
         }
@@ -157,7 +170,6 @@ export class RoleService {
         data: IRoleUpdate,
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
-        // Sequential by design: gate before the work it guards
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
@@ -167,10 +179,7 @@ export class RoleService {
         this.assertActorOutranks(actor.roleType, role.type);
         this.assertActorOutranks(actor.roleType, data.type);
 
-        const changesImmutableType = this.roleUtil.changesImmutableType(
-            role,
-            data.type
-        );
+        const changesImmutableType = this.changesImmutableType(role, data.type);
         if (changesImmutableType) {
             throw new RoleImmutableException();
         }

@@ -6,7 +6,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
@@ -19,8 +18,6 @@ describe('UserVerificationUtil', () => {
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -35,7 +32,6 @@ describe('UserVerificationUtil', () => {
         'home.url': 'https://example.com',
         'verification.reference.prefix': 'VRF',
         'verification.reference.length': 8,
-        'verification.otpLength': 6,
         'verification.expiredInMinutes': 15,
         'verification.tokenLength': 32,
         'verification.resendInMinutes': 5,
@@ -62,64 +58,9 @@ describe('UserVerificationUtil', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
-                {
-                    provide: HelperNumberService,
-                    useValue: helperNumberService,
-                },
             ],
         }).compile();
         util = module.get(UserVerificationUtil);
-    });
-
-    describe('createReference', () => {
-        it('builds a prefixed random reference', () => {
-            helperStringService.random.mockReturnValue('random-ref');
-
-            expect(util.createReference()).toBe('VRF-random-ref');
-            expect(helperStringService.random).toHaveBeenCalledWith(8);
-        });
-    });
-
-    describe('createOtp', () => {
-        it('builds a random numeric code of the configured length', () => {
-            helperNumberService.randomDigits.mockReturnValue('123456');
-
-            expect(util.createOtp()).toBe('123456');
-            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
-        });
-    });
-
-    describe('createToken', () => {
-        it('builds a random token of the configured length', () => {
-            helperStringService.random.mockReturnValue('random-token');
-
-            expect(util.createToken()).toBe('random-token');
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
-        });
-    });
-
-    describe('createExpiredAt', () => {
-        it('forwards now by the configured expiry', () => {
-            expect(util.createExpiredAt()).toEqual(expiredAt);
-        });
-    });
-
-    describe('createMobile', () => {
-        it('builds an OTP verification for a mobile number', () => {
-            helperNumberService.randomDigits.mockReturnValue('654321');
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
-            helperStringService.random.mockReturnValue('random-ref');
-
-            expect(util.createMobile()).toEqual({
-                reference: 'VRF-random-ref',
-                expiredAt,
-                type: EnumVerificationType.mobileNumber,
-                token: '654321',
-                hashedToken: 'hashed-otp',
-                expiredInMinutes: 15,
-                resendInMinutes: 5,
-            });
-        });
     });
 
     describe('createEmail', () => {
@@ -192,6 +133,30 @@ describe('UserVerificationUtil', () => {
             expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
                 'random-token'
             );
+        });
+    });
+
+    describe('createReference', () => {
+        it('builds a prefixed random reference', () => {
+            helperStringService.random.mockReturnValue('random-ref');
+
+            expect(util['createReference']()).toBe('VRF-random-ref');
+            expect(helperStringService.random).toHaveBeenCalledWith(8);
+        });
+    });
+
+    describe('createToken', () => {
+        it('builds a random token of the configured length', () => {
+            helperStringService.random.mockReturnValue('random-token');
+
+            expect(util['createToken']()).toBe('random-token');
+            expect(helperStringService.random).toHaveBeenCalledWith(32);
+        });
+    });
+
+    describe('createExpiredAt', () => {
+        it('forwards now by the configured expiry', () => {
+            expect(util['createExpiredAt']()).toEqual(expiredAt);
         });
     });
 });

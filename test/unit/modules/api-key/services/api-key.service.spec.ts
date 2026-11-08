@@ -5,6 +5,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationOffsetReturn,
@@ -22,12 +24,14 @@ import type {
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 
 describe('ApiKeyService', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
     const apiKeyCredentialUtil: MockProxy<ApiKeyCredentialUtil> =
         mock<ApiKeyCredentialUtil>();
     const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>();
@@ -55,19 +59,19 @@ describe('ApiKeyService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        apiKeyUtil.isActive.mockImplementation(key => key.isActive);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyService,
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 {
                     provide: ApiKeyCredentialUtil,
                     useValue: apiKeyCredentialUtil,
                 },
                 { provide: ApiKeyCache, useValue: apiKeyCache },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
+                { provide: HelperStringService, useValue: helperStringService },
+                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
 
@@ -145,11 +149,9 @@ describe('ApiKeyService', () => {
         };
 
         beforeEach(() => {
-            apiKeyCredentialUtil.generateCredential.mockReturnValue({
-                key: 'local_abc123',
-                secret: 'plain-secret',
-                hash: 'hashed-secret',
-            });
+            apiKeyCredentialUtil.createKey.mockReturnValue('local_abc123');
+            helperStringService.random.mockReturnValue('plain-secret');
+            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-secret');
             apiKeyRepository.create.mockResolvedValue(apiKey);
         });
 
@@ -250,7 +252,6 @@ describe('ApiKeyService', () => {
                 endAt: new Date('2026-01-10T00:00:00.000Z'),
             };
             apiKeyRepository.findOneById.mockResolvedValue(expiredApiKey);
-            apiKeyUtil.isExpired.mockReturnValue(true);
 
             await expect(
                 service.updateStatusByAdmin(apiKey.id, true)
@@ -268,7 +269,6 @@ describe('ApiKeyService', () => {
 
         it('updates the status and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isExpired.mockReturnValue(false);
             const updated: ApiKey = { ...apiKey, isActive: false };
             apiKeyRepository.updateStatus.mockResolvedValue(updated);
 
@@ -285,7 +285,6 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyUtil.isExpired.mockReturnValue(false);
             apiKeyRepository.updateStatus.mockResolvedValue(null);
 
             await expect(
@@ -530,7 +529,7 @@ describe('ApiKeyService', () => {
 
         it('creates a new secret, updates the hash, and purges the cache after the write', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
+            helperStringService.random.mockReturnValue('new-secret');
             apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
             const updated: ApiKey = { ...apiKey, hash: 'new-hash' };
             const callOrder: string[] = [];
@@ -559,7 +558,7 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyInactiveException when the guarded write misses', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
+            helperStringService.random.mockReturnValue('new-secret');
             apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
             apiKeyRepository.updateHash.mockResolvedValue(null);
 
@@ -629,13 +628,6 @@ describe('ApiKeyService', () => {
     });
 
     describe('validateXApiKey', () => {
-        beforeEach(() => {
-            apiKeyCredentialUtil.parseHeader.mockReturnValue({
-                key: 'local_abc123',
-                secret: 'secret-1',
-            });
-        });
-
         it('throws ApiKeyXApiKeyRequiredException when the header is null', async () => {
             await expect(service.validateXApiKey(null)).rejects.toMatchObject({
                 module: 'apiKey',
@@ -663,8 +655,6 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the header does not parse', async () => {
-            apiKeyCredentialUtil.parseHeader.mockReturnValue(null);
-
             await expect(
                 service.validateXApiKey('  local_abc123  ')
             ).rejects.toMatchObject({
@@ -677,9 +667,6 @@ describe('ApiKeyService', () => {
                 httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.invalid',
             });
-            expect(apiKeyCredentialUtil.parseHeader).toHaveBeenCalledWith(
-                'local_abc123'
-            );
             expect(apiKeyCache.getApiKey).not.toHaveBeenCalled();
         });
 
@@ -703,7 +690,7 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyXApiKeyInvalidException when the credential does not match', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(false);
+            helperHashService.sha256Compare.mockReturnValue(false);
 
             await expect(
                 service.validateXApiKey('local_abc123:wrong-secret')
@@ -725,7 +712,7 @@ describe('ApiKeyService', () => {
                 ...apiKey,
                 isActive: false,
             });
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -735,9 +722,11 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is not yet active', async () => {
-            apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(true);
+            apiKeyCache.getApiKey.mockResolvedValue({
+                ...apiKey,
+                startAt: new Date('2026-02-01T00:00:00.000Z'),
+            });
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -753,9 +742,7 @@ describe('ApiKeyService', () => {
                 endAt: new Date('2026-01-10T00:00:00.000Z'),
             };
             apiKeyCache.getApiKey.mockResolvedValue(expiredApiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(true);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -769,10 +756,6 @@ describe('ApiKeyService', () => {
                 httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'apiKey.error.expired',
             });
-            expect(apiKeyUtil.isExpired).toHaveBeenCalledWith(
-                expiredApiKey.endAt,
-                now
-            );
             expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
         });
 
@@ -784,9 +767,7 @@ describe('ApiKeyService', () => {
             };
             apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(expiredApiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(true);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -798,18 +779,22 @@ describe('ApiKeyService', () => {
 
         it('returns the cached api key without reading the repository on a cache hit', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(false);
+            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-secret');
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result = await service.validateXApiKey(
                 'local_abc123:secret-1'
             );
 
             expect(result).toBe(apiKey);
-            expect(
-                apiKeyCredentialUtil.validateCredential
-            ).toHaveBeenCalledWith('local_abc123', 'secret-1', apiKey);
+            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
+                'local_abc123',
+                'secret-1'
+            );
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                'hashed-secret',
+                apiKey.hash
+            );
             expect(apiKeyRepository.findOneByKey).not.toHaveBeenCalled();
             expect(apiKeyCache.setApiKey).not.toHaveBeenCalled();
         });
@@ -818,9 +803,7 @@ describe('ApiKeyService', () => {
             apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyCache.takeApiKeyLease.mockResolvedValue('lease-token');
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(false);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result = await service.validateXApiKey(
                 'local_abc123:secret-1'
@@ -843,9 +826,7 @@ describe('ApiKeyService', () => {
             apiKeyCache.getApiKey.mockResolvedValue(null);
             apiKeyCache.takeApiKeyLease.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(false);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result = await service.validateXApiKey(
                 'local_abc123:secret-1'
@@ -857,9 +838,7 @@ describe('ApiKeyService', () => {
 
         it('takes no lease on a cache hit', async () => {
             apiKeyCache.getApiKey.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
-            apiKeyUtil.isNotYetActive.mockReturnValue(false);
-            apiKeyUtil.isExpired.mockReturnValue(false);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             await service.validateXApiKey('local_abc123:secret-1');
 
@@ -869,8 +848,6 @@ describe('ApiKeyService', () => {
 
     describe('validateXApiKeyTypeGuard', () => {
         it('throws ApiKeyXApiKeyForbiddenException when the api key type is not allowed', () => {
-            apiKeyUtil.validateType.mockReturnValue(false);
-
             let thrown: unknown;
             try {
                 service.validateXApiKeyTypeGuard(apiKey, [
@@ -893,8 +870,6 @@ describe('ApiKeyService', () => {
         });
 
         it('returns true when the api key type is allowed', () => {
-            apiKeyUtil.validateType.mockReturnValue(true);
-
             const result = service.validateXApiKeyTypeGuard(apiKey, [
                 EnumApiKeyType.default,
             ]);
@@ -984,6 +959,172 @@ describe('ApiKeyService', () => {
             expect(() =>
                 service['validateStartAtIsFuture'](future)
             ).not.toThrow();
+        });
+    });
+
+    describe('isActive', () => {
+        it('returns the active flag of the api key', () => {
+            expect(service['isActive']({ ...apiKey, isActive: true })).toBe(
+                true
+            );
+            expect(service['isActive']({ ...apiKey, isActive: false })).toBe(
+                false
+            );
+        });
+    });
+
+    describe('isExpired', () => {
+        const currentDate = new Date('2026-01-15T00:00:00.000Z');
+
+        it('returns true when the current date is after endAt', () => {
+            const result = service['isExpired'](
+                new Date('2020-01-01T00:00:00.000Z'),
+                currentDate
+            );
+
+            expect(result).toBe(true);
+        });
+
+        it('returns false when the current date is before endAt', () => {
+            const result = service['isExpired'](
+                new Date('2026-02-01T00:00:00.000Z'),
+                currentDate
+            );
+
+            expect(result).toBe(false);
+        });
+
+        it('returns false when endAt is absent', () => {
+            expect(service['isExpired'](null, currentDate)).toBe(false);
+        });
+    });
+
+    describe('isNotYetActive', () => {
+        const currentDate = new Date('2026-01-05T00:00:00.000Z');
+
+        it('returns true when the current date is before startAt', () => {
+            const result = service['isNotYetActive'](
+                new Date('2026-01-10T00:00:00.000Z'),
+                currentDate
+            );
+
+            expect(result).toBe(true);
+        });
+
+        it('returns false when the current date is at or after startAt', () => {
+            const result = service['isNotYetActive'](
+                new Date('2026-01-01T00:00:00.000Z'),
+                currentDate
+            );
+
+            expect(result).toBe(false);
+        });
+
+        it('returns false when startAt is absent', () => {
+            expect(service['isNotYetActive'](null, currentDate)).toBe(false);
+        });
+    });
+
+    describe('validateType', () => {
+        it('returns true when the api key type is in the allow-list', () => {
+            const result = service['validateType'](
+                { type: EnumApiKeyType.default },
+                [EnumApiKeyType.default, EnumApiKeyType.system]
+            );
+
+            expect(result).toBe(true);
+        });
+
+        it('returns false when the api key type is not in the allow-list', () => {
+            const result = service['validateType'](
+                { type: EnumApiKeyType.system },
+                [EnumApiKeyType.default]
+            );
+
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('createSecret', () => {
+        it('returns a random 50-character secret', () => {
+            helperStringService.random.mockReturnValue('random-secret');
+
+            const result = service['createSecret']();
+
+            expect(result).toBe('random-secret');
+            expect(helperStringService.random).toHaveBeenCalledWith(50);
+        });
+    });
+
+    describe('generateCredential', () => {
+        it('generates a key, secret, and hash', () => {
+            apiKeyCredentialUtil.createKey.mockReturnValue('local_random-key');
+            helperStringService.random.mockReturnValue('random-secret');
+            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
+
+            const result = service['generateCredential']();
+
+            expect(result).toEqual({
+                key: 'local_random-key',
+                secret: 'random-secret',
+                hash: 'hashed-value',
+            });
+            expect(apiKeyCredentialUtil.createKey).toHaveBeenCalledWith(null);
+            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
+                'local_random-key',
+                'random-secret'
+            );
+        });
+    });
+
+    describe('parseHeader', () => {
+        it('returns the key and secret of a key:secret header', () => {
+            expect(service['parseHeader']('local_abc123:secret-1')).toEqual({
+                key: 'local_abc123',
+                secret: 'secret-1',
+            });
+        });
+
+        it.each([
+            ['no separator', 'local_abc123'],
+            ['two separators', 'local_abc123:secret:extra'],
+            ['a blank key', ' :secret'],
+            ['a blank secret', 'local_abc123: '],
+            ['an empty secret', 'local_abc123:'],
+        ])('returns null for a header with %s', (_label, header) => {
+            expect(service['parseHeader'](header)).toBeNull();
+        });
+    });
+
+    describe('validateCredential', () => {
+        it('returns true when the re-derived hash matches the stored hash', () => {
+            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            const result = service['validateCredential']('key-1', 'secret-1', {
+                hash: 'hashed-value',
+            });
+
+            expect(result).toBe(true);
+            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
+                'key-1',
+                'secret-1'
+            );
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                'hashed-value',
+                'hashed-value'
+            );
+        });
+
+        it('returns false when the re-derived hash does not match the stored hash', () => {
+            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
+            helperHashService.sha256Compare.mockReturnValue(false);
+
+            const result = service['validateCredential']('key-1', 'secret-1', {
+                hash: 'other-hash',
+            });
+
+            expect(result).toBe(false);
         });
     });
 });

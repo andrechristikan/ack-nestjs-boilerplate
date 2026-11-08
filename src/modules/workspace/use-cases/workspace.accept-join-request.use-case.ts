@@ -23,6 +23,7 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
         private readonly notificationQueue: NotificationQueue
     ) {}
 
+    /** Temporary: recordEffect inside the transaction (phase 3D). */
     private prepareReviewActivityLogs(
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
@@ -58,7 +59,7 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
         const joinRequest =
             await this.workspaceJoinRequestService.getPendingById(
@@ -74,7 +75,6 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
             joinRequest
         );
 
-        // Sequential by design: write must not run if an earlier step throws
         const recipient =
             await this.workspaceJoinRequestService.getRequesterRecipient(
                 joinRequest.userId,

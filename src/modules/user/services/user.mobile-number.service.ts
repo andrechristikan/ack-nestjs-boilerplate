@@ -14,7 +14,6 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserService } from '@modules/user/services/user.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -23,9 +22,15 @@ export class UserMobileNumberService {
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userService: UserService,
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly userUtil: UserUtil
+        private readonly databaseUtil: DatabaseUtil
     ) {}
+
+    private checkMobileNumber(
+        phoneCodes: string[],
+        phoneCode: string
+    ): boolean {
+        return phoneCodes.includes(phoneCode);
+    }
 
     async existsMobileNumber(
         userId: string,
@@ -45,7 +50,7 @@ export class UserMobileNumberService {
         countryPhoneCodes: string[],
         isDuplicate: boolean
     ): Promise<IUserMobileNumber> {
-        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
+        const checkValidMobileNumber = this.checkMobileNumber(
             countryPhoneCodes,
             phoneCode
         );
@@ -115,7 +120,7 @@ export class UserMobileNumberService {
             throw new UserMobileNumberExistException();
         }
 
-        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
+        const checkValidMobileNumber = this.checkMobileNumber(
             countryPhoneCodes,
             phoneCode
         );

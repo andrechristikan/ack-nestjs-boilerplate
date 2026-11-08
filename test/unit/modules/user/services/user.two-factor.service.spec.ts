@@ -34,7 +34,6 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserTwoFactorService', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
@@ -45,7 +44,6 @@ describe('UserTwoFactorService', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -145,7 +143,6 @@ describe('UserTwoFactorService', () => {
                 { provide: SentryService, useValue: sentryService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: UserQueue, useValue: userQueue },
-                { provide: UserUtil, useValue: userUtil },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -368,12 +365,10 @@ describe('UserTwoFactorService', () => {
                 userTwoFactorRepository.incrementAttempt
             ).toHaveBeenCalledWith('user-quartz', 5);
             expect(userQueue.lockout).not.toHaveBeenCalled();
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
         });
 
         it('returns an uncounted attempt with the lockout stages and enqueues the lockout when the guarded increment finds the budget spent', async () => {
             userTwoFactorRepository.incrementAttempt.mockResolvedValue(null);
-            userUtil.buildTwoFactorLockoutStages.mockReturnValue(lockoutStages);
 
             await expect(service.countAttempt(baseUser)).resolves.toEqual({
                 isAttemptCounted: false,
@@ -383,9 +378,6 @@ describe('UserTwoFactorService', () => {
             expect(userQueue.lockout).toHaveBeenCalledWith('user-quartz');
             expect(userQueue.lockout).toHaveBeenCalledAfter(
                 userTwoFactorRepository.incrementAttempt
-            );
-            expect(userUtil.buildTwoFactorLockoutStages).toHaveBeenCalledWith(
-                'user-quartz'
             );
         });
     });
@@ -1306,6 +1298,23 @@ describe('UserTwoFactorService', () => {
                     statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
                 })
             );
+        });
+    });
+
+    describe('buildTwoFactorLockoutStages', () => {
+        it('returns the revoke-all-sessions and max-two-factor-attempt stages owned by the user', () => {
+            expect(service['buildTwoFactorLockoutStages']('user-1')).toEqual([
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                },
+            ]);
         });
     });
 });

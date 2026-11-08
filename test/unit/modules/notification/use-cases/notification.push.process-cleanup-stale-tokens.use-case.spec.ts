@@ -1,42 +1,32 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceService } from '@modules/device/services/device.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { MessageService } from '@common/message/services/message.service';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
 
 describe('NotificationPushProcessCleanupStaleTokensUseCase', () => {
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     let useCase: NotificationPushProcessCleanupStaleTokensUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, number | string> = {
+            const values: Record<string, number> = {
                 'notification.push.staleTokenThresholdInMs': 86_400_000,
-                'app.encryptionSecretKey': 'secret-key',
             };
 
             return values[key];
         });
         const module = await Test.createTestingModule({
             providers: [
-                { provide: MessageService, useValue: messageService },
                 { provide: ConfigService, useValue: configService },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
                 NotificationPushProcessCleanupStaleTokensUseCase,
-                NotificationUtil,
+                { provide: NotificationService, useValue: notificationService },
                 { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
@@ -45,17 +35,24 @@ describe('NotificationPushProcessCleanupStaleTokensUseCase', () => {
 
     describe('execute', () => {
         it('cleans up tokens older than the configured threshold and reports the removed count', async () => {
+            const cleanupResult = {
+                message: 'notification.queue.push.cleanupStaleTokens',
+                countRemovedTokens: 3,
+            };
             deviceService.cleanupStaleNotificationTokens.mockResolvedValue(3);
+            notificationService.toCleanupStaleTokensResult.mockReturnValue(
+                cleanupResult
+            );
 
             const result = await useCase.execute();
 
             expect(
                 deviceService.cleanupStaleNotificationTokens
             ).toHaveBeenCalledWith(86_400_000);
-            expect(result).toEqual({
-                message: 'notification.queue.push.cleanupStaleTokens',
-                countRemovedTokens: 3,
-            });
+            expect(
+                notificationService.toCleanupStaleTokensResult
+            ).toHaveBeenCalledWith(3);
+            expect(result).toEqual(cleanupResult);
         });
     });
 });

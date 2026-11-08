@@ -8,13 +8,13 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserGetTwoFactorStatusUseCase } from '@modules/user/use-cases/user.get-two-factor-status.use-case';
 
 describe('UserGetTwoFactorStatusUseCase', () => {
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userService: MockProxy<UserService> = mock<UserService>();
 
     let useCase: UserGetTwoFactorStatusUseCase;
 
@@ -87,7 +87,7 @@ describe('UserGetTwoFactorStatusUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGetTwoFactorStatusUseCase,
-                { provide: UserUtil, useValue: userUtil },
+                { provide: UserService, useValue: userService },
             ],
         }).compile();
         useCase = module.get(UserGetTwoFactorStatusUseCase);
@@ -95,7 +95,7 @@ describe('UserGetTwoFactorStatusUseCase', () => {
 
     describe('execute', () => {
         it('maps and wraps the two-factor status', async () => {
-            userUtil.mapTwoFactor.mockReturnValue({
+            userService.mapTwoFactor.mockReturnValue({
                 isEnabled: true,
                 isPendingConfirmation: false,
                 backupCodesRemaining: 1,
@@ -112,7 +112,7 @@ describe('UserGetTwoFactorStatusUseCase', () => {
                     lastUsedAt: null,
                 },
             });
-            expect(userUtil.mapTwoFactor).toHaveBeenCalledWith(twoFactor);
+            expect(userService.mapTwoFactor).toHaveBeenCalledWith(twoFactor);
         });
 
         it('maps a user without a two-factor row', async () => {
@@ -123,14 +123,14 @@ describe('UserGetTwoFactorStatusUseCase', () => {
                 confirmedAt: null,
                 lastUsedAt: null,
             };
-            userUtil.mapTwoFactor.mockReturnValue(disabled);
+            userService.mapTwoFactor.mockReturnValue(disabled);
 
             await expect(
                 useCase.execute({ ...user, twoFactor: null })
             ).resolves.toEqual({
                 data: disabled,
             });
-            expect(userUtil.mapTwoFactor).toHaveBeenCalledWith(null);
+            expect(userService.mapTwoFactor).toHaveBeenCalledWith(null);
         });
     });
 });

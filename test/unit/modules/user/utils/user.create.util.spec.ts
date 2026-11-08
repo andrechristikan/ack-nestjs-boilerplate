@@ -5,12 +5,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumDevicePlatform,
-    EnumPasswordHistoryType,
     EnumProjectMemberRole,
     EnumRoleType,
     EnumTermPolicyType,
-    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -22,10 +19,7 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -33,8 +27,6 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
-    IUserLoginSocial,
-    IUserSignUpResolved,
     IUserSignUpWorkspaceInvite,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
@@ -45,8 +37,6 @@ describe('UserCreateUtil', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let util: UserCreateUtil;
 
@@ -161,7 +151,6 @@ describe('UserCreateUtil', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -299,144 +288,6 @@ describe('UserCreateUtil', () => {
         });
     });
 
-    describe('buildSocialCreate', () => {
-        const socialInput: IUserLoginSocial = {
-            from: EnumUserSignUpFrom.mobile,
-            username: 'harborFinch',
-            name: 'Harbor Quill',
-            inviteToken: null,
-            countryId: 'country-harbor',
-            cookies: true,
-            marketing: false,
-            device: {
-                fingerprint: 'device-harbor',
-                name: null,
-                platform: EnumDevicePlatform.web,
-                notificationToken: null,
-            },
-        };
-        const resolved: IUserSignUpResolved = {
-            roleId: role.id,
-            workspaceContext: personalContext,
-        };
-
-        const now = new Date('2026-03-01T00:00:00.000Z');
-
-        beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('user-id-harbor');
-            helperDateService.create.mockReturnValue(now);
-        });
-
-        it('stores the email trimmed and lowercased', () => {
-            const result = util.buildSocialCreate(
-                '  Harbor@Example.COM ',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                resolved
-            );
-
-            expect(result.email).toBe('harbor@example.com');
-        });
-
-        it('builds a Google social create input from the resolved ids, verified at creation time', () => {
-            const result = util.buildSocialCreate(
-                'harbor@example.com',
-                EnumUserLoginWith.socialGoogle,
-                socialInput,
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                userId: 'user-id-harbor',
-                email: 'harbor@example.com',
-                username: 'harborFinch',
-                roleId: role.id,
-                countryId: 'country-harbor',
-                signUpFrom: EnumUserSignUpFrom.mobile,
-                signUpWith: EnumUserSignUpWith.socialGoogle,
-                isVerified: true,
-                verifiedAt: now,
-                password: null,
-                passwordHistoryType:
-                    UserCreateContract.social.passwordHistoryType,
-                verification: null,
-                workspaceContext: personalContext,
-                createdBy: 'user-id-harbor',
-                acceptedTermPolicyTypes: expect.arrayContaining([
-                    EnumTermPolicyType.cookies,
-                ]),
-            });
-            expect(result).not.toHaveProperty('termPolicy');
-        });
-
-        it('builds an Apple social create input with no optional term policy accepted', () => {
-            const result = util.buildSocialCreate(
-                'harbor@example.com',
-                EnumUserLoginWith.socialApple,
-                { ...socialInput, cookies: false, marketing: false },
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                signUpWith: EnumUserSignUpWith.socialApple,
-                acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
-                ],
-            });
-        });
-
-        it('keeps a null name and accepts marketing when no name is given', () => {
-            const result = util.buildSocialCreate(
-                'harbor@example.com',
-                EnumUserLoginWith.socialGoogle,
-                { ...socialInput, name: null, marketing: true },
-                resolved
-            );
-
-            expect(result).toMatchObject({
-                name: null,
-                acceptedTermPolicyTypes: expect.arrayContaining([
-                    EnumTermPolicyType.marketing,
-                ]),
-            });
-        });
-    });
-
-    describe('buildAcceptedTermPolicyTypes', () => {
-        it('returns the required types followed by cookies and marketing when both are accepted', () => {
-            expect(util.buildAcceptedTermPolicyTypes(true, true)).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.cookies,
-                EnumTermPolicyType.marketing,
-            ]);
-        });
-
-        it('returns the required types alone when neither is accepted', () => {
-            expect(util.buildAcceptedTermPolicyTypes(false, false)).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
-        });
-
-        it('adds cookies alone when only cookies is accepted', () => {
-            expect(util.buildAcceptedTermPolicyTypes(true, false)).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.cookies,
-            ]);
-        });
-
-        it('adds marketing alone when only marketing is accepted', () => {
-            expect(util.buildAcceptedTermPolicyTypes(false, true)).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.marketing,
-            ]);
-        });
-    });
-
     describe('buildStages', () => {
         it('builds the stage inputs of every input, omitting a null workspace id', () => {
             const result = util.buildStages(
@@ -469,84 +320,6 @@ describe('UserCreateUtil', () => {
         });
     });
 
-    describe('buildCreateByAdminStages', () => {
-        it('leads with the adminUserCreate row naming the created user, then the admin contract rows', () => {
-            const input = { ...personalInput, createdBy: 'admin-harbor' };
-
-            const result = util.buildCreateByAdminStages(input, user);
-
-            expect(result[0]).toEqual({
-                action: EnumActivityLogAction.adminUserCreate,
-                metadata: {
-                    targetUserId: user.id,
-                    targetUsername: user.username,
-                    timestamp: user.createdAt,
-                },
-            });
-            expect(result[1]).toMatchObject({
-                action: UserCreateContract.admin.createdAction,
-                createdBy: 'admin-harbor',
-            });
-            expect(result).toHaveLength(3);
-        });
-    });
-
-    describe('buildImportByAdminStages', () => {
-        it('leads with the adminUserImport row carrying the user count, then every input rows', () => {
-            const second = { ...user, id: 'user-second' };
-            const secondInput = {
-                ...personalInput,
-                userId: second.id,
-                createdBy: 'admin-harbor',
-            };
-
-            const result = util.buildImportByAdminStages(
-                [{ ...personalInput, createdBy: 'admin-harbor' }, secondInput],
-                [user, second]
-            );
-
-            expect(result[0]).toEqual({
-                action: EnumActivityLogAction.adminUserImport,
-                metadata: { userCount: 2 },
-            });
-            expect(result).toHaveLength(5);
-        });
-    });
-
-    describe('buildPasswordHistoryEntries', () => {
-        it('maps each input holding a password and a history type, skipping the rest', () => {
-            const password: IAuthPassword = {
-                passwordHash: 'hashed-password',
-                passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-                passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-                passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-            };
-            const withPassword: IUserCreateWithWorkspaceInput = {
-                ...personalInput,
-                password,
-                passwordHistoryType: EnumPasswordHistoryType.admin,
-                createdBy: 'admin-harbor',
-            };
-            const social: IUserCreateWithWorkspaceInput = {
-                ...personalInput,
-                userId: 'user-social',
-            };
-
-            expect(
-                util.buildPasswordHistoryEntries([withPassword, social])
-            ).toEqual([
-                {
-                    userId: user.id,
-                    password: 'hashed-password',
-                    type: EnumPasswordHistoryType.admin,
-                    expiredAt: password.passwordPeriodExpired,
-                    createdAt: password.passwordCreated,
-                    createdBy: 'admin-harbor',
-                },
-            ]);
-        });
-    });
-
     describe('buildTermPolicyAcceptanceEntries', () => {
         it('maps each input onto its user, accepted types, and creator', () => {
             expect(
@@ -561,31 +334,6 @@ describe('UserCreateUtil', () => {
                     createdBy: user.id,
                 },
             ]);
-        });
-    });
-
-    describe('buildUserIds', () => {
-        it('lists the user id of every input in order', () => {
-            expect(
-                util.buildUserIds([
-                    personalInput,
-                    { ...personalInput, userId: 'user-second' },
-                ])
-            ).toEqual([user.id, 'user-second']);
-        });
-    });
-
-    describe('resolveSocialFeatureFlagKey', () => {
-        it('returns the google flag key for a google sign-in', () => {
-            expect(
-                util.resolveSocialFeatureFlagKey(EnumUserLoginWith.socialGoogle)
-            ).toBe(EnumFeatureFlagKey.loginWithGoogle);
-        });
-
-        it('returns the apple flag key for an apple sign-in', () => {
-            expect(
-                util.resolveSocialFeatureFlagKey(EnumUserLoginWith.socialApple)
-            ).toBe(EnumFeatureFlagKey.loginWithApple);
         });
     });
 

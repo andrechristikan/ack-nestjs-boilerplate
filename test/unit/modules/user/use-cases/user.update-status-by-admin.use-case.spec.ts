@@ -146,8 +146,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 ...baseUser,
                 passwordAttempt: 3,
             });
-            userUtil.revokesSessionsOn.mockReturnValue(true);
-            userUtil.resolveStatusActivityLogAction.mockReturnValue(
+            userService.revokesSessionsOn.mockReturnValue(true);
+            userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userUpdateStatus
             );
             userUtil.mapActivityLogActorMetadata.mockReturnValue({
@@ -190,7 +190,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             sessionQueue.purgeLogins.mockImplementation(async () => {
                 calls.push('purge');
             });
-            userUtil.resolveStatusActivityLogAction.mockReturnValue(
+            userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userBlocked
             );
             const dto: UserUpdateStatusRequestDto = {
@@ -297,7 +297,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         });
 
         it('updateStatusByAdmin to active revokes no session', async () => {
-            userUtil.revokesSessionsOn.mockReturnValue(false);
+            userService.revokesSessionsOn.mockReturnValue(false);
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
 
             await useCase.execute(
@@ -306,7 +306,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 admin
             );
 
-            expect(userUtil.revokesSessionsOn).toHaveBeenCalledWith(
+            expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
                 EnumUserStatus.active
             );
             expect(
@@ -317,7 +317,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         });
 
         it('updateStatusByAdmin to blocked revokes sessions and stages userBlocked', async () => {
-            userUtil.resolveStatusActivityLogAction.mockReturnValue(
+            userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userBlocked
             );
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
@@ -329,11 +329,11 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 admin
             );
 
-            expect(userUtil.revokesSessionsOn).toHaveBeenCalledWith(
+            expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
                 EnumUserStatus.blocked
             );
             expect(
-                userUtil.resolveStatusActivityLogAction
+                userService.resolveStatusActivityLogAction
             ).toHaveBeenCalledWith(EnumUserStatus.blocked);
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledTimes(
                 1

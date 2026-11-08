@@ -1,19 +1,9 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    EnumActivityLogAction,
-    EnumTermPolicyType,
-    EnumUserLoginWith,
-    EnumUserSignUpWith,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
-import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -22,8 +12,6 @@ import type {
     IUser,
     IUserCreateContract,
     IUserCreateWithWorkspaceInput,
-    IUserLoginSocial,
-    IUserSignUpResolved,
     IUserSignUpWorkspaceContext,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
@@ -40,7 +28,6 @@ export class UserCreateUtil {
     constructor(
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
-        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.personalWorkspaceNamePattern = this.configService.get<string>(
@@ -172,60 +159,6 @@ export class UserCreateUtil {
         };
     }
 
-    buildAcceptedTermPolicyTypes(
-        cookies: boolean,
-        marketing: boolean
-    ): EnumTermPolicyType[] {
-        return [
-            ...UserTermPolicyContract.requiredTypes,
-            ...(cookies ? [EnumTermPolicyType.cookies] : []),
-            ...(marketing ? [EnumTermPolicyType.marketing] : []),
-        ];
-    }
-
-    buildSocialCreate(
-        email: string,
-        loginWith: EnumUserLoginWith,
-        {
-            from,
-            username,
-            name,
-            countryId,
-            cookies,
-            marketing,
-        }: IUserLoginSocial,
-        { roleId, workspaceContext }: IUserSignUpResolved
-    ): IUserCreateWithWorkspaceInput {
-        const userId = this.databaseUtil.createId();
-        const verifiedAt = this.helperDateService.create();
-        const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
-            cookies,
-            marketing
-        );
-
-        return {
-            userId,
-            email: email.trim().toLowerCase(),
-            name,
-            username,
-            countryId,
-            roleId,
-            signUpFrom: from,
-            signUpWith:
-                loginWith === EnumUserLoginWith.socialApple
-                    ? EnumUserSignUpWith.socialApple
-                    : EnumUserSignUpWith.socialGoogle,
-            isVerified: true,
-            verifiedAt,
-            acceptedTermPolicyTypes,
-            password: null,
-            passwordHistoryType: UserCreateContract.social.passwordHistoryType,
-            verification: null,
-            workspaceContext,
-            createdBy: userId,
-        };
-    }
-
     /** Lists each user's activity stage inputs under the contract; `users[i]` must be the created user of `inputs[i]`. */
     buildStages(
         contract: IUserCreateContract,
@@ -257,74 +190,6 @@ export class UserCreateUtil {
         return stages;
     }
 
-    buildCreateByAdminStages(
-        input: IUserCreateWithWorkspaceInput,
-        user: IUser
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
-        const stages = this.buildStages(
-            UserCreateContract.admin,
-            [input],
-            [user]
-        );
-
-        return [
-            {
-                action: EnumActivityLogAction.adminUserCreate,
-                metadata: {
-                    targetUserId: user.id,
-                    targetUsername: user.username,
-                    timestamp: user.createdAt,
-                },
-            },
-            ...stages,
-        ];
-    }
-
-    buildImportByAdminStages(
-        inputs: IUserCreateWithWorkspaceInput[],
-        users: IUser[]
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
-        const stages = this.buildStages(
-            UserCreateContract.admin,
-            inputs,
-            users
-        );
-
-        return [
-            {
-                action: EnumActivityLogAction.adminUserImport,
-                metadata: { userCount: users.length },
-            },
-            ...stages,
-        ];
-    }
-
-    buildPasswordHistoryEntries(
-        inputs: IUserCreateWithWorkspaceInput[]
-    ): IPasswordHistoryCreate[] {
-        const entries: IPasswordHistoryCreate[] = [];
-
-        for (const {
-            userId,
-            password,
-            passwordHistoryType,
-            createdBy,
-        } of inputs) {
-            if (password && passwordHistoryType) {
-                entries.push({
-                    userId,
-                    password: password.passwordHash,
-                    type: passwordHistoryType,
-                    expiredAt: password.passwordPeriodExpired,
-                    createdAt: password.passwordCreated,
-                    createdBy,
-                });
-            }
-        }
-
-        return entries;
-    }
-
     buildTermPolicyAcceptanceEntries(
         inputs: IUserCreateWithWorkspaceInput[]
     ): ITermPolicyAcceptanceCreate[] {
@@ -333,18 +198,6 @@ export class UserCreateUtil {
             types: acceptedTermPolicyTypes,
             createdBy,
         }));
-    }
-
-    buildUserIds(inputs: IUserCreateWithWorkspaceInput[]): string[] {
-        return inputs.map(({ userId }) => userId);
-    }
-
-    resolveSocialFeatureFlagKey(
-        loginWith: EnumUserLoginWith
-    ): EnumFeatureFlagKey {
-        return loginWith === EnumUserLoginWith.socialGoogle
-            ? EnumFeatureFlagKey.loginWithGoogle
-            : EnumFeatureFlagKey.loginWithApple;
     }
 
     /** Maps a username or email unique collision to its user exception and returns any other error untouched. */

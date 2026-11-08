@@ -1,4 +1,5 @@
 import { BulkEmailStatus } from '@aws-sdk/client-ses';
+import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
 import type { BulkEmailDestinationStatus } from '@aws-sdk/client-ses';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
@@ -49,6 +50,29 @@ export class NotificationEmailTermPolicyService {
             supportEmail: this.supportEmail,
             homeUrl: this.homeUrl,
         };
+    }
+
+    private toBulkDestination({
+        userId,
+        encryptedEmail,
+        username,
+    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSESSendBulkRecipient {
+        const recipient = this.notificationUtil.decryptPayload(
+            encryptedEmail,
+            userId
+        );
+
+        return { recipient, templateData: { username } };
+    }
+
+    private toDeliveryUnknownMessage(
+        batchId: string,
+        unknownCount: number
+    ): string {
+        return this.messageService.setMessage(
+            'notification.queue.email.error.deliveryUnknown',
+            { properties: { batchId, unknownCount } }
+        );
     }
 
     private async markSent(
@@ -108,7 +132,7 @@ export class NotificationEmailTermPolicyService {
         const destinations = new Map(
             batchRecipients.map(recipient => [
                 recipient.userId,
-                this.notificationUtil.toBulkDestination(recipient),
+                this.toBulkDestination(recipient),
             ])
         );
 
@@ -143,7 +167,7 @@ export class NotificationEmailTermPolicyService {
             });
             statuses = result.Status ?? [];
         } catch (err: unknown) {
-            const message = this.notificationUtil.toDeliveryUnknownMessage(
+            const message = this.toDeliveryUnknownMessage(
                 batchId,
                 claimedUserIds.length
             );
@@ -157,7 +181,7 @@ export class NotificationEmailTermPolicyService {
         }
 
         if (statuses.length !== claimedUserIds.length) {
-            const message = this.notificationUtil.toDeliveryUnknownMessage(
+            const message = this.toDeliveryUnknownMessage(
                 batchId,
                 claimedUserIds.length
             );
@@ -198,7 +222,7 @@ export class NotificationEmailTermPolicyService {
             this.releaseFailed(claimNonce, failedUserIds, proceedBy),
         ]);
         if (markOutcome.status === 'rejected') {
-            const message = this.notificationUtil.toDeliveryUnknownMessage(
+            const message = this.toDeliveryUnknownMessage(
                 batchId,
                 sentUserIds.length
             );
@@ -211,7 +235,7 @@ export class NotificationEmailTermPolicyService {
             );
         }
         if (releaseOutcome.status === 'rejected') {
-            const message = this.notificationUtil.toDeliveryUnknownMessage(
+            const message = this.toDeliveryUnknownMessage(
                 batchId,
                 failedUserIds.length
             );
@@ -240,7 +264,7 @@ export class NotificationEmailTermPolicyService {
         }
 
         if (unknownCount > 0) {
-            const message = this.notificationUtil.toDeliveryUnknownMessage(
+            const message = this.toDeliveryUnknownMessage(
                 batchId,
                 unknownCount
             );

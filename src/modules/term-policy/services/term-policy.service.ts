@@ -11,6 +11,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -22,12 +23,14 @@ import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-p
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
+import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
     ITermPolicyPublish,
+    ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -45,8 +48,33 @@ export class TermPolicyService {
         private readonly messageService: MessageService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly termPolicyQueue: TermPolicyQueue
+        private readonly termPolicyQueue: TermPolicyQueue,
+        private readonly helperArrayService: HelperArrayService
     ) {}
+
+    private validateUniqueLanguages(
+        contents: TermPolicyContentRequestDto[]
+    ): boolean {
+        const languages = contents.map(content => content.language);
+        const uniqueLanguages = this.helperArrayService.unique(languages);
+        return uniqueLanguages.length === languages.length;
+    }
+
+    private mapPublicContentKeys(
+        { type, version }: ITermPolicyRef,
+        contents: ITermPolicyContent[]
+    ): ITermPolicyContentUpload[] {
+        const destination = this.termPolicyUtil.getContentPublicPath(
+            type,
+            version
+        );
+
+        return contents.map(({ language, size, key }) => ({
+            language,
+            size,
+            key: `${destination}/${key.slice(key.lastIndexOf('/') + 1)}`,
+        }));
+    }
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
@@ -83,8 +111,7 @@ export class TermPolicyService {
             throw new TermPolicyExistException();
         }
 
-        const isUniqueLanguages =
-            this.termPolicyUtil.validateUniqueLanguages(contents);
+        const isUniqueLanguages = this.validateUniqueLanguages(contents);
         if (!isUniqueLanguages) {
             throw new TermPolicyLanguageDuplicateException();
         }
@@ -157,6 +184,7 @@ export class TermPolicyService {
     }
 
     async deleteByAdmin(termPolicyId: string): Promise<TermPolicy> {
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -170,7 +198,6 @@ export class TermPolicyService {
                 termPolicy.type,
                 termPolicy.version
             );
-            // Sequential by design: write must not run if an earlier step throws
             const isDeleted =
                 await this.termPolicyRepository.deleteDraft(termPolicyId);
             if (!isDeleted) {
@@ -217,10 +244,7 @@ export class TermPolicyService {
                 termPolicy.type,
                 termPolicy.version
             );
-            const publicKeys = this.termPolicyUtil.mapPublicContentKeys(
-                termPolicy,
-                contents
-            );
+            const publicKeys = this.mapPublicContentKeys(termPolicy, contents);
             const publicContents: ITermPolicyContent[] = publicKeys.map(
                 ({ language, key, size }: ITermPolicyContentUpload) => {
                     const presign = this.awsS3Service.mapPresign(

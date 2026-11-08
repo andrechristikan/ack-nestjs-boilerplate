@@ -1,6 +1,10 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
     EnumFeatureFlagKey,
@@ -15,28 +19,37 @@ import type {
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserForgotPasswordPrepared,
+    IUserPasswordSet,
     IUserPasswordTemporary,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
-import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class UserPasswordService {
     private readonly passwordAttemptEnabled: boolean;
     private readonly passwordMaxAttempt: number;
+    private readonly homeUrl: string;
+    private readonly forgotPasswordReferencePrefix: string;
+    private readonly forgotPasswordReferenceLength: number;
+    private readonly forgotExpiredInMinutes: number;
+    private readonly forgotTokenLength: number;
+    private readonly forgotResendInMinutes: number;
+    private readonly forgotLinkPattern: string;
 
     constructor(
         private readonly userPasswordRepository: UserPasswordRepository,
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
-        private readonly userPasswordUtil: UserPasswordUtil,
         private readonly helperHashService: HelperHashService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
         private readonly userQueue: UserQueue,
         private readonly authPasswordUtil: AuthPasswordUtil,
@@ -49,6 +62,89 @@ export class UserPasswordService {
         this.passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
+        this.homeUrl = this.configService.get<string>('home.url')!;
+
+        this.forgotPasswordReferencePrefix = this.configService.get<string>(
+            'forgotPassword.reference.prefix'
+        )!;
+        this.forgotPasswordReferenceLength = this.configService.get<number>(
+            'forgotPassword.reference.length'
+        )!;
+        this.forgotExpiredInMinutes = this.configService.get<number>(
+            'forgotPassword.expiredInMinutes'
+        )!;
+        this.forgotTokenLength = this.configService.get<number>(
+            'forgotPassword.tokenLength'
+        )!;
+        this.forgotResendInMinutes = this.configService.get<number>(
+            'forgotPassword.resendInMinutes'
+        )!;
+        this.forgotLinkPattern = this.configService.get<string>(
+            'forgotPassword.linkPattern'
+        )!;
+    }
+
+    private hasPassword(user: IUser): user is IUserPasswordSet {
+        return user.password !== null;
+    }
+
+    private buildPasswordLockoutStages(
+        userId: string
+    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+        return [
+            {
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId,
+                createdBy: userId,
+            },
+            {
+                action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                userId,
+                createdBy: userId,
+            },
+        ];
+    }
+
+    private createReference(): string {
+        const random = this.helperStringService.random(
+            this.forgotPasswordReferenceLength
+        );
+
+        return `${this.forgotPasswordReferencePrefix}-${random}`;
+    }
+
+    private createToken(): string {
+        return this.helperStringService.random(this.forgotTokenLength);
+    }
+
+    private createExpiredAt(): Date {
+        const now = this.helperDateService.create();
+
+        return this.helperDateService.forward(
+            now,
+            Duration.fromObject({ minutes: this.forgotExpiredInMinutes })
+        );
+    }
+
+    private createForgot(): IUserForgotPasswordCreate {
+        const token = this.createToken();
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const link = this.helperStringService.fillPattern(
+            this.forgotLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+        const reference = this.createReference();
+        const expiredAt = this.createExpiredAt();
+
+        return {
+            reference,
+            expiredAt,
+            token,
+            hashedToken,
+            expiredInMinutes: this.forgotExpiredInMinutes,
+            resendInMinutes: this.forgotResendInMinutes,
+            link,
+        };
     }
 
     async resetPasswordAttempt(userId: string): Promise<User> {
@@ -83,7 +179,7 @@ export class UserPasswordService {
     async countPasswordAttempt(
         user: IUser
     ): Promise<IUserCredentialAttempt | null> {
-        const hasPassword = this.userUtil.hasPassword(user);
+        const hasPassword = this.hasPassword(user);
         if (!hasPassword) {
             return null;
         }
@@ -91,9 +187,7 @@ export class UserPasswordService {
         const isAttemptCounted = await this.incrementPasswordAttempt(user.id);
         if (!isAttemptCounted) {
             await this.userQueue.lockout(user.id);
-            const lockoutStages = this.userUtil.buildPasswordLockoutStages(
-                user.id
-            );
+            const lockoutStages = this.buildPasswordLockoutStages(user.id);
 
             return {
                 user,
@@ -139,14 +233,14 @@ export class UserPasswordService {
         if (lastForgotPassword) {
             const isInsideResendWindow = this.userUtil.isInsideResendWindow(
                 lastForgotPassword.createdAt,
-                this.userPasswordUtil.forgotResendInMinutes
+                this.forgotResendInMinutes
             );
             if (isInsideResendWindow) {
                 return null;
             }
         }
 
-        const forgot = this.userPasswordUtil.createForgot();
+        const forgot = this.createForgot();
 
         return { user, forgot };
     }

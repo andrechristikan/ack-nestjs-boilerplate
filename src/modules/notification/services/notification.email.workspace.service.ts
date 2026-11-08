@@ -99,7 +99,7 @@ export class NotificationEmailWorkspaceService {
         const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
         const expiredAtFormatted =
             this.helperDateService.formatToRFC2822(expiredAtDate);
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceInvite,
@@ -198,7 +198,7 @@ export class NotificationEmailWorkspaceService {
             userId
         );
 
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinRequest,
@@ -241,7 +241,7 @@ export class NotificationEmailWorkspaceService {
             encryptedEmail,
             userId
         );
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinAccepted,
@@ -289,7 +289,7 @@ export class NotificationEmailWorkspaceService {
             `notification.rejectReason.${rejectReasonCode}`
         );
 
-        // Sequential by design: processedAt is stamped before the SES call and sentAt after its success
+        // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, sentAt after its success)
         await this.stampProcessed(notificationId);
         const result = await this.awsSESService.send({
             templateName: EnumNotificationProcess.workspaceJoinRejected,

@@ -586,4 +586,30 @@ describe('NotificationTermPolicyService', () => {
             });
         });
     });
+
+    describe('listPendingBatchIds', () => {
+        const users = [
+            { id: 'u1', email: 'u1@example.com', username: 'u1' },
+            { id: 'u2', email: 'u2@example.com', username: 'u2' },
+            { id: 'u3', email: 'u3@example.com', username: 'u3' },
+        ];
+        it('returns the distinct batch ids of the page users whose marker is unsent and unclaimed', () => {
+            expect(
+                service['listPendingBatchIds'](users, [
+                    buildTermPolicyMarker('u1', 'b1', null, null),
+                    buildTermPolicyMarker('u2', 'b1', null, null),
+                    buildTermPolicyMarker('u3', 'b2', new Date(), null),
+                ])
+            ).toEqual(['b1']);
+        });
+
+        it('skips a claimed marker and a marker of a user off the page', () => {
+            expect(
+                service['listPendingBatchIds'](users, [
+                    buildTermPolicyMarker('u1', 'b1', null, new Date()),
+                    buildTermPolicyMarker('u9', 'b3', null, null),
+                ])
+            ).toEqual([]);
+        });
+    });
 });

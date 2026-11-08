@@ -38,14 +38,14 @@ scripts/                generate-secret.ts, generate-package.ts
 ci/                     dockerfile.production, docker-compose.production.yml (production); mongo/, vault/, jwks-server/ (both compose files)
 dockerfile              development image, the compose apis service
 keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
-generated/              swagger, vault init, agent reports under docs/, gitignored
+generated/              swagger, vault init, sweep log, PR text under docs/, gitignored
 ```
 
 Propose no option a record rejects unless the owner reopens it: @docs/decisions/README.md
 
 ## Layering
 
-Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). A use case runs one action; a sequence use cases share sits in the highest participating module's service when its subject is that module's (`.claude/rules/database.md`, Transactions); a service holds one module's rules, injecting its own and lower-ranked modules' services; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
+Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). A service holds one module's application logic; a use case assembles services into one action's business logic; a sequence use cases share sits in the highest participating module's service when its subject is that module's (`.claude/rules/database.md`, Transactions); `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted (`.claude/rules/database.md`). `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
 
 ## Discipline
 

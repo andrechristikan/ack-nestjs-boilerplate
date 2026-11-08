@@ -12,6 +12,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { MessageService } from '@common/message/services/message.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -78,10 +79,17 @@ describe('WorkspaceJoinRequestService', () => {
         mock<HelperStringService>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configGet = vi.fn<(key: string) => unknown>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+    const configValues: Record<string, unknown> = {
+        'workspace.joinRequest.expiresInMs': 604800000,
+        'home.url': 'https://app.example.com',
+        'workspace.joinRequest.reviewLinkPattern':
+            '{homeUrl}/workspace/join-requests/{joinRequestId}',
+    };
     const pendingNonce = 'a'.repeat(64);
     const expiredAt = new Date('2026-01-09T00:00:00.000Z');
 
@@ -138,8 +146,8 @@ describe('WorkspaceJoinRequestService', () => {
         helperDateService.create.mockReturnValue(reviewedAt);
         helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
         helperHashService.sha256Hash.mockReturnValue(pendingNonce);
-        configGet.mockImplementation((key: string) =>
-            key === 'workspace.joinRequest.expiresInMs' ? 604800000 : null
+        configGet.mockImplementation(
+            (key: string) => configValues[key] ?? null
         );
         helperDateService.forward.mockReturnValue(expiredAt);
         helperDateService.createDuration.mockReturnValue(
@@ -171,6 +179,7 @@ describe('WorkspaceJoinRequestService', () => {
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: HelperHashService, useValue: helperHashService },
+                { provide: MessageService, useValue: messageService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -768,6 +777,50 @@ describe('WorkspaceJoinRequestService', () => {
             expect(
                 workspaceJoinRequestRepository.cancelPendingByRequesterInTx
             ).toHaveBeenCalledWith(tx, 'user-1');
+        });
+    });
+
+    describe('buildJoinRequestReviewLink', () => {
+        it('fills the review link pattern with the home url and join request id', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'https://app.example.com/workspace/join-requests/join-1'
+            );
+
+            const result = service.buildJoinRequestReviewLink('join-1');
+
+            expect(result).toBe(
+                'https://app.example.com/workspace/join-requests/join-1'
+            );
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{homeUrl}/workspace/join-requests/{joinRequestId}',
+                { homeUrl: 'https://app.example.com', joinRequestId: 'join-1' }
+            );
+        });
+    });
+
+    describe('resolveRequesterName', () => {
+        it('returns the requester name', () => {
+            expect(
+                service.resolveRequesterName({
+                    name: 'Jane Doe',
+                    username: 'jane',
+                })
+            ).toBe('Jane Doe');
+        });
+
+        it('falls back to the requester username when the name is null', () => {
+            expect(
+                service.resolveRequesterName({ name: null, username: 'jane' })
+            ).toBe('jane');
+        });
+
+        it('falls back to the translated generic label when the requester is missing', () => {
+            messageService.setMessage.mockReturnValue('Translated user');
+
+            expect(service.resolveRequesterName(null)).toBe('Translated user');
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'workspace.joinRequest.requesterFallbackName'
+            );
         });
     });
 });

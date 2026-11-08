@@ -46,13 +46,12 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, user.id);
 
-        // Sequential by design: gate before the work it guards
         const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(user.role.type, target.role.type);
         this.userService.assertUnblocked(target);
 
         const now = this.helperDateService.create();
-        const revokesSessions = this.userUtil.revokesSessionsOn(status);
+        const revokesSessions = this.userService.revokesSessionsOn(status);
         let row: User;
         let revoked: ISessionRef[] | null;
         try {
@@ -92,7 +91,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
             throw new AppUnknownException(err);
         }
 
-        const action = this.userUtil.resolveStatusActivityLogAction(status);
+        const action = this.userService.resolveStatusActivityLogAction(status);
         const actorMetadata = this.userUtil.mapActivityLogActorMetadata(row);
         const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
             row,

@@ -9,7 +9,7 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
-import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
@@ -20,7 +20,7 @@ describe('DeviceRemoveUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
@@ -77,7 +77,7 @@ describe('DeviceRemoveUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: DeviceUtil, useValue: deviceUtil },
+                { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
 
@@ -111,7 +111,7 @@ describe('DeviceRemoveUseCase', () => {
             sessionQueue.purgeLogins.mockImplementation(async () => {
                 calls.push('purge');
             });
-            deviceUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+            deviceService.mapActivityLogMetadata.mockReturnValue(metadata);
             activityLogService.prepare.mockReturnValue(activityLog);
 
             const result = await useCase.execute(
@@ -126,7 +126,7 @@ describe('DeviceRemoveUseCase', () => {
                 'user-1'
             );
             expect(calls).toEqual(['remove', 'purge']);
-            expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+            expect(deviceService.mapActivityLogMetadata).toHaveBeenCalledWith(
                 deviceOwnership,
                 1
             );

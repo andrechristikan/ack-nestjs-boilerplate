@@ -1,59 +1,9 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import {
-    EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
-} from '@generated/prisma-client/client';
-import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 
 describe('DeviceUtil', () => {
-    const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
-    const deviceOwnership: IDeviceOwnership = {
-        id: 'device-ownership-1',
-        createdAt: updatedAt,
-        createdBy: 'user-1',
-        updatedAt,
-        updatedBy: 'user-1',
-        deviceId: 'device-1',
-        userId: 'user-1',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: updatedAt,
-        notificationToken: null,
-        notificationProvider: EnumDeviceNotificationProvider.apns,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        device: {
-            id: 'device-1',
-            createdAt: updatedAt,
-            createdBy: 'user-1',
-            updatedAt,
-            updatedBy: 'user-1',
-            fingerprint: 'abc123def456ghi789jkl012mno345pq',
-            name: 'iPhone 12',
-            platform: EnumDevicePlatform.ios,
-            lastActiveAt: updatedAt,
-        },
-        user: {
-            id: 'user-1',
-            createdAt: updatedAt,
-            createdBy: 'user-1',
-            updatedAt,
-            updatedBy: 'user-1',
-            deletedAt: null,
-            deletedBy: null,
-            name: 'Jane Doe',
-            username: 'jane',
-            photo: null,
-        },
-        revokedBy: null,
-        _count: { sessions: 2 },
-    };
-
     let util: DeviceUtil;
 
     beforeEach(async () => {
@@ -64,43 +14,6 @@ describe('DeviceUtil', () => {
         }).compile();
 
         util = module.get(DeviceUtil);
-    });
-
-    describe('resolveNotificationProvider', () => {
-        it('maps android to fcm', () => {
-            expect(
-                util.resolveNotificationProvider(
-                    EnumDevicePlatform.android,
-                    'token-1'
-                )
-            ).toBe(EnumDeviceNotificationProvider.fcm);
-        });
-
-        it('maps ios to apns', () => {
-            expect(
-                util.resolveNotificationProvider(
-                    EnumDevicePlatform.ios,
-                    'token-1'
-                )
-            ).toBe(EnumDeviceNotificationProvider.apns);
-        });
-
-        it('maps web to null', () => {
-            expect(
-                util.resolveNotificationProvider(
-                    EnumDevicePlatform.web,
-                    'token-1'
-                )
-            ).toBeNull();
-        });
-
-        it.each([
-            EnumDevicePlatform.android,
-            EnumDevicePlatform.ios,
-            EnumDevicePlatform.web,
-        ])('maps a null token on platform %s to null', platform => {
-            expect(util.resolveNotificationProvider(platform, null)).toBeNull();
-        });
     });
 
     describe('toIdentity', () => {
@@ -132,106 +45,6 @@ describe('DeviceUtil', () => {
                 platform: EnumDevicePlatform.ios,
                 notificationToken: 'token-1',
             });
-        });
-    });
-
-    describe('mapActivityLogMetadata', () => {
-        it('projects the ownership id, device id, and session count', () => {
-            const result = util.mapActivityLogMetadata(deviceOwnership, 3);
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-            });
-        });
-    });
-
-    describe('mapActivityLogActorMetadata', () => {
-        it('extends the base metadata with the target user and timestamp', () => {
-            const result = util.mapActivityLogActorMetadata(deviceOwnership, 3);
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-                targetUserId: 'user-1',
-                targetUsername: 'jane',
-                timestamp: updatedAt,
-            });
-        });
-    });
-
-    describe('mapActivityLogTargetMetadata', () => {
-        it('extends the base metadata with the actor user and timestamp', () => {
-            const result = util.mapActivityLogTargetMetadata(
-                deviceOwnership,
-                'admin-1',
-                3
-            );
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-                actorUserId: 'admin-1',
-                timestamp: updatedAt,
-            });
-        });
-    });
-
-    describe('findProliferationOutliers', () => {
-        it('returns a zero result when no user carries a device', () => {
-            const result = util.findProliferationOutliers([], 2);
-
-            expect(result).toEqual({
-                count: 0,
-                avg: 0,
-                stdDev: 0,
-                rows: [],
-            });
-        });
-
-        it('flags and sorts users whose device count crosses the z-score threshold, highest first', () => {
-            const result = util.findProliferationOutliers(
-                [
-                    { userId: 'user-1', count: 1 },
-                    { userId: 'user-2', count: 1 },
-                    { userId: 'user-3', count: 10 },
-                    { userId: 'user-4', count: 8 },
-                ],
-                0.5
-            );
-
-            expect(result.count).toBe(2);
-            expect(result.avg).toBe(5);
-            expect(result.rows).toEqual([
-                {
-                    userId: 'user-3',
-                    deviceCount: 10,
-                    zScore: expect.any(Number),
-                },
-                {
-                    userId: 'user-4',
-                    deviceCount: 8,
-                    zScore: expect.any(Number),
-                },
-            ]);
-        });
-
-        it('scores every user zero when every user carries the same device count', () => {
-            const result = util.findProliferationOutliers(
-                [
-                    { userId: 'user-1', count: 2 },
-                    { userId: 'user-2', count: 2 },
-                ],
-                -1
-            );
-
-            expect(result.rows).toEqual([
-                { userId: 'user-1', deviceCount: 2, zScore: 0 },
-                { userId: 'user-2', deviceCount: 2, zScore: 0 },
-            ]);
         });
     });
 });

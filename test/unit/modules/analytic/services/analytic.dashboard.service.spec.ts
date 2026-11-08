@@ -1,4 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -40,6 +41,7 @@ import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.
 import { WorkspaceInviteAnalyticService } from '@modules/workspace/services/workspace.invite.analytic.service';
 import { WorkspaceJoinRequestAnalyticService } from '@modules/workspace/services/workspace.join-request.analytic.service';
 import { WorkspaceMemberAnalyticService } from '@modules/workspace/services/workspace.member.analytic.service';
+import { buildAnalyticSession } from '@test/unit/helpers/test.unit.analytic.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
@@ -53,6 +55,8 @@ describe('AnalyticDashboardService', () => {
         mock<PasswordHistoryAnalyticService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     const userAnalyticService: MockProxy<UserAnalyticService> =
         mock<UserAnalyticService>();
     const userPasswordAnalyticService: MockProxy<UserPasswordAnalyticService> =
@@ -125,7 +129,7 @@ describe('AnalyticDashboardService', () => {
             date ? date.toISOString() : '_'
         );
         analyticCache.getDashboard.mockResolvedValue(null);
-        analyticDateUtil.pagedMetricToken.mockReturnValue('paged-token');
+        helperStringService.fillPattern.mockReturnValue('paged-token');
         helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -136,6 +140,7 @@ describe('AnalyticDashboardService', () => {
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperStringService, useValue: helperStringService },
                 {
                     provide: PasswordHistoryAnalyticService,
                     useValue: passwordHistoryAnalyticService,
@@ -775,9 +780,13 @@ describe('AnalyticDashboardService', () => {
     describe('authConcurrentSessions', () => {
         it('buckets active sessions per user by count range', async () => {
             const rows = [{ userId: 'user-1', count: 2 }];
-            const buckets = [{ key: '2', count: 1 }];
+            const buckets = [
+                { key: '1', count: 0 },
+                { key: '2', count: 1 },
+                { key: '3-5', count: 0 },
+                { key: '6+', count: 0 },
+            ];
             sessionAnalyticService.getCountActiveByUser.mockResolvedValue(rows);
-            analyticBucketUtil.toBucketsByCountRange.mockReturnValue(buckets);
 
             const result = await service.authConcurrentSessions();
 
@@ -785,9 +794,6 @@ describe('AnalyticDashboardService', () => {
             expect(
                 sessionAnalyticService.getCountActiveByUser
             ).toHaveBeenCalledWith(now);
-            expect(
-                analyticBucketUtil.toBucketsByCountRange
-            ).toHaveBeenCalledWith(rows);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -838,7 +844,7 @@ describe('AnalyticDashboardService', () => {
             os: { name: null, version: null },
         };
 
-        it('buckets the active sessions by browser through the bucket util', async () => {
+        it('buckets the active sessions by browser', async () => {
             const sessions = [
                 {
                     id: 'session-1',
@@ -851,7 +857,6 @@ describe('AnalyticDashboardService', () => {
             ];
             const buckets = [{ key: 'Chrome', count: 1 }];
             sessionAnalyticService.getActiveInRange.mockResolvedValue(sessions);
-            analyticBucketUtil.toBucketsByBrowser.mockReturnValue(buckets);
 
             const result = await service.authSessionsUserAgent(
                 startDate,
@@ -865,9 +870,6 @@ describe('AnalyticDashboardService', () => {
             expect(
                 sessionAnalyticService.getActiveWithGeoInRange
             ).not.toHaveBeenCalled();
-            expect(analyticBucketUtil.toBucketsByBrowser).toHaveBeenCalledWith(
-                sessions
-            );
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -1407,16 +1409,17 @@ describe('AnalyticDashboardService', () => {
     describe('devicesPerUser', () => {
         it('buckets per-user device counts by count range', async () => {
             const rows = [{ userId: 'user-1', count: 3 }];
-            const buckets = [{ key: '3-5', count: 1 }];
+            const buckets = [
+                { key: '1', count: 0 },
+                { key: '2', count: 0 },
+                { key: '3-5', count: 1 },
+                { key: '6+', count: 0 },
+            ];
             deviceAnalyticService.getCountPerUser.mockResolvedValue(rows);
-            analyticBucketUtil.toBucketsByCountRange.mockReturnValue(buckets);
 
             const result = await service.devicesPerUser();
 
             expect(result).toEqual({ buckets });
-            expect(
-                analyticBucketUtil.toBucketsByCountRange
-            ).toHaveBeenCalledWith(rows);
         });
 
         it('returns the cached value without storing on a cache hit', async () => {
@@ -1751,10 +1754,13 @@ describe('AnalyticDashboardService', () => {
             const result = await service.workspacesMembership(pagination);
 
             expect(result).toEqual(offsetPage);
-            expect(analyticDateUtil.pagedMetricToken).toHaveBeenCalledWith(
-                EnumAnalyticDashboardMetric.workspacesMembership,
-                0,
-                20
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{metric}:page={page}:perPage={perPage}',
+                {
+                    metric: EnumAnalyticDashboardMetric.workspacesMembership,
+                    page: '1',
+                    perPage: '20',
+                }
             );
             expect(analyticCache.getDashboard).toHaveBeenCalledWith(
                 'paged-token',
@@ -1841,10 +1847,13 @@ describe('AnalyticDashboardService', () => {
             const result = await service.projectsMembership(pagination);
 
             expect(result).toEqual(page);
-            expect(analyticDateUtil.pagedMetricToken).toHaveBeenCalledWith(
-                EnumAnalyticDashboardMetric.projectsMembership,
-                0,
-                20
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{metric}:page={page}:perPage={perPage}',
+                {
+                    metric: EnumAnalyticDashboardMetric.projectsMembership,
+                    page: '1',
+                    perPage: '20',
+                }
             );
             expect(analyticCache.getDashboard).toHaveBeenCalledWith(
                 'paged-token',
@@ -1908,6 +1917,114 @@ describe('AnalyticDashboardService', () => {
                 endDate.toISOString(),
                 { count: 1 }
             );
+        });
+    });
+
+    describe('pagedMetricToken', () => {
+        it('fills the paged metric pattern with the one-based page and the page size', () => {
+            const result = service['pagedMetricToken'](
+                EnumAnalyticDashboardMetric.workspacesMembership,
+                20,
+                10
+            );
+
+            expect(result).toBe('paged-token');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{metric}:page={page}:perPage={perPage}',
+                {
+                    metric: EnumAnalyticDashboardMetric.workspacesMembership,
+                    page: '3',
+                    perPage: '10',
+                }
+            );
+        });
+    });
+
+    describe('toBucketsByBrowser', () => {
+        const createdAt = new Date('2026-01-01T00:00:00.000Z');
+        const emptyAgent: UserAgent = {
+            ua: null,
+            browser: null,
+            cpu: { architecture: null },
+            device: { type: null, vendor: null, model: null },
+            engine: { name: null, version: null },
+            os: { name: null, version: null },
+        };
+        const chrome: UserAgent = {
+            ...emptyAgent,
+            browser: { name: 'Chrome', version: null, major: null, type: null },
+        };
+        const ios: UserAgent = {
+            ...emptyAgent,
+            os: { name: 'iOS', version: null },
+        };
+
+        it('counts sessions by browser, then os, then unknown, in first-seen order', () => {
+            const sessions = [
+                buildAnalyticSession('1', 'user-1', createdAt, null, chrome),
+                buildAnalyticSession('2', 'user-2', createdAt, null, chrome),
+                buildAnalyticSession('3', 'user-3', createdAt, null, ios),
+                buildAnalyticSession(
+                    '4',
+                    'user-4',
+                    createdAt,
+                    null,
+                    emptyAgent
+                ),
+            ];
+
+            expect(service['toBucketsByBrowser'](sessions)).toEqual([
+                { key: 'Chrome', count: 2 },
+                { key: 'iOS', count: 1 },
+                { key: 'unknown', count: 1 },
+            ]);
+        });
+
+        it('returns an empty list for no sessions', () => {
+            expect(service['toBucketsByBrowser']([])).toEqual([]);
+        });
+    });
+
+    describe('toBucketsByCountRange', () => {
+        it('counts each row into the range holding its count and keeps empty ranges', () => {
+            const rows = [
+                { userId: 'user-1', count: 1 },
+                { userId: 'user-2', count: 1 },
+                { userId: 'user-3', count: 2 },
+                { userId: 'user-4', count: 3 },
+                { userId: 'user-5', count: 5 },
+                { userId: 'user-6', count: 6 },
+                { userId: 'user-7', count: 40 },
+            ];
+
+            expect(service['toBucketsByCountRange'](rows)).toEqual([
+                { key: '1', count: 2 },
+                { key: '2', count: 1 },
+                { key: '3-5', count: 2 },
+                { key: '6+', count: 2 },
+            ]);
+        });
+
+        it('returns every range with a zero count for no rows', () => {
+            expect(service['toBucketsByCountRange']([])).toEqual([
+                { key: '1', count: 0 },
+                { key: '2', count: 0 },
+                { key: '3-5', count: 0 },
+                { key: '6+', count: 0 },
+            ]);
+        });
+
+        it('ignores a row whose count is below every range', () => {
+            expect(
+                service['toBucketsByCountRange']([
+                    { userId: 'user-1', count: 0 },
+                ])
+            ).toEqual([
+                { key: '1', count: 0 },
+                { key: '2', count: 0 },
+                { key: '3-5', count: 0 },
+                { key: '6+', count: 0 },
+            ]);
         });
     });
 });

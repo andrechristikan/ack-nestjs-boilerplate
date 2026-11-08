@@ -26,6 +26,7 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService
     ) {}
 
+    /** Temporary: one UserPasswordService method recording the attempt through recordEffect (phase 3D). */
     private async assertPasswordMatched(
         user: IUser,
         password: string | null
@@ -44,6 +45,7 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
         await this.userAuthService.assertPasswordAttempt(attempt, password);
     }
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
         const attempt = await this.userTwoFactorService.countAttempt(user);
         const lockoutLogs = attempt.lockoutStages.map(stage =>
@@ -76,9 +78,7 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
             );
         let backupCodeVerified: IUserTwoFactorVerifyResult | null = null;
         if (backupCodeForSetup !== null) {
-            // Sequential by design: gate before the work it guards
             await this.assertTwoFactorAttemptCounted(user);
-            // Sequential by design: the attempt is counted before the code is checked
             backupCodeVerified = await this.userTwoFactorService.verify(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: null,

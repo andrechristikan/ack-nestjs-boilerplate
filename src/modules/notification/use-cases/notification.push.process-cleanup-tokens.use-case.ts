@@ -1,7 +1,7 @@
 import { DeviceService } from '@modules/device/services/device.service';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type { INotificationPushCleanupTokenEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -20,7 +20,7 @@ export class NotificationPushProcessCleanupTokensUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly deviceService: DeviceService,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationService: NotificationService
     ) {}
 
     async execute({
@@ -30,7 +30,7 @@ export class NotificationPushProcessCleanupTokensUseCase implements IAppUseCase<
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        const failureTokens = this.notificationUtil.decryptFailureTokens(
+        const failureTokens = this.notificationService.decryptFailureTokens(
             userId,
             encryptedFailureTokens
         );
@@ -40,7 +40,7 @@ export class NotificationPushProcessCleanupTokensUseCase implements IAppUseCase<
                 failureTokens
             );
 
-        return this.notificationUtil.toCleanupTokensResult(
+        return this.notificationService.toCleanupTokensResult(
             failureTokens.length,
             countRemovedTokens
         );

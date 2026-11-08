@@ -4,6 +4,7 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -30,26 +31,53 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceService {
     private readonly maxWorkspacesPerUser: number;
+    private readonly slugRegex: RegExp;
+    private readonly slugPrefix: string;
+    private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
 
     constructor(
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.maxWorkspacesPerUser = this.configService.get<number>(
             'workspace.maxWorkspacesPerUser'
         )!;
+        this.slugRegex = this.configService.get<RegExp>('workspace.slugRegex')!;
+        this.slugPrefix = this.configService.get<string>(
+            'workspace.slugPrefix'
+        )!;
+        this.slugMaxLength = this.configService.get<number>(
+            'workspace.slugMaxLength'
+        )!;
+        this.slugMaxAttempts = this.configService.get<number>(
+            'workspace.slugMaxAttempts'
+        )!;
+    }
+
+    private drawSlugCandidates(): string[] {
+        return this.helperStringService.generateSlugCandidates(
+            this.slugPrefix,
+            this.slugMaxLength,
+            this.slugMaxAttempts
+        );
+    }
+
+    private isSlugAllowed(slug: string): boolean {
+        const isPatternValid = this.slugRegex.test(slug);
+
+        return slug.length <= this.slugMaxLength && isPatternValid;
     }
 
     async validateWorkspaceGuard(
@@ -136,14 +164,13 @@ export class WorkspaceService {
         userId: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
-        const slugCandidates = this.workspaceUtil.drawSlugCandidates();
+        const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
 
             try {
                 return await this.databaseService.withTransaction(async tx => {
-                    // Sequential by design: gate before the work it guards
                     const ownedCount =
                         await this.workspaceRepository.countByOwnerInTx(
                             tx,
@@ -197,7 +224,7 @@ export class WorkspaceService {
         workspaceId: string,
         slug: string
     ): Promise<Workspace> {
-        const isSlugAllowed = this.workspaceUtil.isSlugAllowed(slug);
+        const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
             throw new WorkspaceSlugInvalidException();
         }

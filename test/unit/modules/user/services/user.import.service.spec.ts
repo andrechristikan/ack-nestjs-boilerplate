@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -13,7 +14,9 @@ import {
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -21,6 +24,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUser,
+    IUserCreateWithWorkspaceInput,
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
@@ -509,6 +513,73 @@ describe('UserImportService', () => {
                     ],
                 messagePath: 'file.error.exceedMaxDataExport',
             });
+        });
+    });
+
+    describe('buildImportByAdminStages', () => {
+        it('leads with the adminUserImport row carrying the user count, then every input rows', () => {
+            const input: IUserCreateWithWorkspaceInput = {
+                userId: baseUser.id,
+                email: baseUser.email,
+                name: baseUser.name,
+                username: baseUser.username,
+                countryId: baseUser.countryId,
+                roleId: role.id,
+                signUpFrom: EnumUserSignUpFrom.admin,
+                signUpWith: EnumUserSignUpWith.credential,
+                isVerified: true,
+                verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+                acceptedTermPolicyTypes: [],
+                password,
+                passwordHistoryType: null,
+                verification: null,
+                workspaceContext: {
+                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    workspaceId: 'workspace-thistle',
+                    slugCandidates: ['w-thistle'],
+                    name: "thistleRowe's Workspace",
+                },
+                createdBy: 'admin-thistle',
+            };
+            const second: IUser = { ...baseUser, id: 'user-second' };
+            const secondInput: IUserCreateWithWorkspaceInput = {
+                ...input,
+                userId: second.id,
+            };
+            const contractStages: IActivityLogStageInput<EnumActivityLogAction>[] =
+                [
+                    {
+                        action: UserCreateContract.admin.createdAction,
+                        userId: baseUser.id,
+                        createdBy: 'admin-thistle',
+                        metadata: {},
+                    },
+                    {
+                        action: UserCreateContract.admin.createdAction,
+                        userId: second.id,
+                        createdBy: 'admin-thistle',
+                        metadata: {},
+                    },
+                ];
+            userCreateUtil.buildStages.mockReturnValue(contractStages);
+
+            const result = service.buildImportByAdminStages(
+                [input, secondInput],
+                [baseUser, second]
+            );
+
+            expect(userCreateUtil.buildStages).toHaveBeenCalledWith(
+                UserCreateContract.admin,
+                [input, secondInput],
+                [baseUser, second]
+            );
+            expect(result).toEqual([
+                {
+                    action: EnumActivityLogAction.adminUserImport,
+                    metadata: { userCount: 2 },
+                },
+                ...contractStages,
+            ]);
         });
     });
 });

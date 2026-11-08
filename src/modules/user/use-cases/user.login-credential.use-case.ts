@@ -49,6 +49,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -108,6 +109,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         return session.tokens;
     }
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -155,6 +157,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         };
     }
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,
@@ -196,6 +199,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     }
 
     private async sendVerificationEmail(user: IUser): Promise<void> {
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const isResendable =
             await this.userVerificationService.isEmailResendable(user);
         if (!isResendable) {
@@ -209,7 +213,6 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 createdBy: user.id,
             }),
         ];
-        // Sequential by design: write must not run if an earlier step throws
         const recipient = await this.notificationService.getRecipient(
             user,
             EnumNotificationKind.verificationEmail
@@ -240,6 +243,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         this.userPasswordService.assertAttemptCounted(attempt.isAttemptCounted);
 
+        // Sequential by design: gate before the work it guards
         const isMatch = await this.userAuthService.verifyCredential(
             attempt,
             password
@@ -259,7 +263,6 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         const isUnverified = this.userUtil.isUnverified(attempt.user);
         if (isUnverified) {
-            // Sequential by design: gate before the work it guards
             await this.sendVerificationEmail(attempt.user);
         }
         this.userAuthService.assertVerified(attempt.user);

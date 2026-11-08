@@ -38,6 +38,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         private readonly workspaceUtil: WorkspaceUtil
     ) {}
 
+    /** Temporary: recordEffect inside the transaction (phase 3D). */
     private prepareInviteActivityLogs(
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
@@ -71,6 +72,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         return activityLogs;
     }
 
+    /** Temporary: notificationService.notify inside the transaction (phase 3C). */
     private async sendInviteNotification(
         workspace: Workspace,
         invite: WorkspaceInvite,
@@ -119,7 +121,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             projectRole: projectRole ?? null,
             expiryDuration: expiryDuration ?? null,
         };
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceInviteService.assertProjectRolePaired(create);
 
         let projectLookup: Promise<Project | null> | null = null;
@@ -146,7 +148,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             this.workspaceInviteService.getInviterName(workspace, actorId),
             this.workspaceInviteService.getInviteeRecipient(existingUser),
         ]);
-        // Sequential by design: write must not run if an earlier step throws
         const { invite, tokenData } =
             await this.workspaceInviteService.createInvite(
                 workspace.id,

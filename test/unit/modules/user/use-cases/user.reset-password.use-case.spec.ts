@@ -395,7 +395,6 @@ describe('UserResetPasswordUseCase', () => {
             expect(
                 userTwoFactorService.assertAttemptCounted
             ).toHaveBeenCalledWith(true);
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
@@ -506,7 +505,6 @@ describe('UserResetPasswordUseCase', () => {
                 null
             );
             expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });

@@ -1,13 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 import type { INotificationVerificationEmailPayload } from '@modules/notification/interfaces/notification.interface';
-import type {
-    IUserVerificationEmailCreate,
-    IUserVerificationMobileNumberCreate,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +14,6 @@ export class UserVerificationUtil {
     private readonly homeUrl: string;
     private readonly verificationReferencePrefix: string;
     private readonly verificationReferenceLength: number;
-    private readonly verificationOtpLength: number;
     private readonly verificationExpiredInMinutes: number;
     private readonly verificationTokenLength: number;
     readonly verificationResendInMinutes: number;
@@ -27,7 +22,6 @@ export class UserVerificationUtil {
     constructor(
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly helperNumberService: HelperNumberService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService
     ) {
@@ -38,9 +32,6 @@ export class UserVerificationUtil {
         )!;
         this.verificationReferenceLength = this.configService.get<number>(
             'verification.reference.length'
-        )!;
-        this.verificationOtpLength = this.configService.get<number>(
-            'verification.otpLength'
         )!;
         this.verificationExpiredInMinutes = this.configService.get<number>(
             'verification.expiredInMinutes'
@@ -56,7 +47,7 @@ export class UserVerificationUtil {
         )!;
     }
 
-    createReference(): string {
+    private createReference(): string {
         const random = this.helperStringService.random(
             this.verificationReferenceLength
         );
@@ -64,40 +55,17 @@ export class UserVerificationUtil {
         return `${this.verificationReferencePrefix}-${random}`;
     }
 
-    createOtp(): string {
-        return this.helperNumberService.randomDigits(
-            this.verificationOtpLength
-        );
-    }
-
-    createToken(): string {
+    private createToken(): string {
         return this.helperStringService.random(this.verificationTokenLength);
     }
 
-    createExpiredAt(): Date {
+    private createExpiredAt(): Date {
         const now = this.helperDateService.create();
 
         return this.helperDateService.forward(
             now,
             Duration.fromObject({ minutes: this.verificationExpiredInMinutes })
         );
-    }
-
-    createMobile(): IUserVerificationMobileNumberCreate {
-        const token = this.createOtp();
-        const hashedToken = this.helperHashService.sha256Hash(token);
-        const reference = this.createReference();
-        const expiredAt = this.createExpiredAt();
-
-        return {
-            reference,
-            expiredAt,
-            type: EnumVerificationType.mobileNumber,
-            token,
-            hashedToken,
-            expiredInMinutes: this.verificationExpiredInMinutes,
-            resendInMinutes: this.verificationResendInMinutes,
-        };
     }
 
     createEmail(): IUserVerificationEmailCreate {

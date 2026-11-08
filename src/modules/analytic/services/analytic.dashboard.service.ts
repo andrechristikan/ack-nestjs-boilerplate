@@ -1,14 +1,20 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticCountRanges,
+    AnalyticDashboardPagedMetricPattern,
+} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
     IAnalyticBlockedUsers,
     IAnalyticBucketsResult,
+    IAnalyticCountBucket,
     IAnalyticForgotPasswordConversion,
     IAnalyticLockoutMetrics,
     IAnalyticMetricCount,
@@ -33,6 +39,7 @@ import { DeviceAnalyticService } from '@modules/device/services/device.analytic.
 import { PasswordHistoryAnalyticService } from '@modules/password-history/services/password-history.analytic.service';
 import { ProjectAnalyticService } from '@modules/project/services/project.analytic.service';
 import { ProjectMemberAnalyticService } from '@modules/project/services/project.member.analytic.service';
+import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
 import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
 import { TermPolicyAcceptanceAnalyticService } from '@modules/term-policy/services/term-policy.acceptance.analytic.service';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
@@ -67,6 +74,7 @@ export class AnalyticDashboardService {
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly userAnalyticService: UserAnalyticService,
         private readonly userPasswordAnalyticService: UserPasswordAnalyticService,
         private readonly userForgotPasswordAnalyticService: UserForgotPasswordAnalyticService,
@@ -116,6 +124,47 @@ export class AnalyticDashboardService {
             startToken,
             endToken,
             value
+        );
+    }
+
+    private toBucketsByBrowser(
+        sessions: ISessionAnalyticSession[]
+    ): IAnalyticCountBucket[] {
+        const counts = new Map<string, number>();
+        for (const session of sessions) {
+            const key =
+                session.userAgent.browser?.name ??
+                session.userAgent.os?.name ??
+                'unknown';
+            counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+
+        return [...counts.entries()].map(([key, count]) => ({ key, count }));
+    }
+
+    private toBucketsByCountRange<T extends { count: number }>(
+        rows: T[]
+    ): IAnalyticCountBucket[] {
+        return AnalyticCountRanges.map(range => ({
+            key: range.key,
+            count: rows.filter(
+                row =>
+                    row.count >= range.min &&
+                    (range.max === null || row.count <= range.max)
+            ).length,
+        }));
+    }
+
+    private pagedMetricToken(
+        metric: EnumAnalyticDashboardMetric,
+        skip: number,
+        limit: number
+    ): string {
+        const page = Math.floor(skip / limit) + 1;
+
+        return this.helperStringService.fillPattern(
+            AnalyticDashboardPagedMetricPattern,
+            { metric, page: String(page), perPage: String(limit) }
         );
     }
 
@@ -610,7 +659,7 @@ export class AnalyticDashboardService {
         const rows =
             await this.sessionAnalyticService.getCountActiveByUser(now);
 
-        const buckets = this.analyticBucketUtil.toBucketsByCountRange(rows);
+        const buckets = this.toBucketsByCountRange(rows);
         const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
@@ -665,7 +714,7 @@ export class AnalyticDashboardService {
             now
         );
 
-        const buckets = this.analyticBucketUtil.toBucketsByBrowser(sessions);
+        const buckets = this.toBucketsByBrowser(sessions);
         const result = { buckets };
         await this.writeCache(metric, startDate, endDate, result);
 
@@ -1112,7 +1161,7 @@ export class AnalyticDashboardService {
 
         const rows = await this.deviceAnalyticService.getCountPerUser();
 
-        const buckets = this.analyticBucketUtil.toBucketsByCountRange(rows);
+        const buckets = this.toBucketsByCountRange(rows);
         const result = { buckets };
         await this.writeCache(metric, null, null, result);
 
@@ -1373,7 +1422,7 @@ export class AnalyticDashboardService {
     async workspacesMembership(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.analyticDateUtil.pagedMetricToken(
+        const metric = this.pagedMetricToken(
             EnumAnalyticDashboardMetric.workspacesMembership,
             params.skip,
             params.limit
@@ -1400,7 +1449,7 @@ export class AnalyticDashboardService {
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.analyticDateUtil.pagedMetricToken(
+        const metric = this.pagedMetricToken(
             EnumAnalyticDashboardMetric.workspacesActivity,
             params.skip,
             params.limit
@@ -1450,7 +1499,7 @@ export class AnalyticDashboardService {
     async projectsMembership(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        const metric = this.analyticDateUtil.pagedMetricToken(
+        const metric = this.pagedMetricToken(
             EnumAnalyticDashboardMetric.projectsMembership,
             params.skip,
             params.limit

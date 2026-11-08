@@ -7,7 +7,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import type { IUserVerificationCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -106,7 +106,12 @@ export class UserVerificationRepository implements IUserVerificationRepository {
     async createReplacingActive(
         userId: string,
         userEmail: string,
-        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
+        {
+            expiredAt,
+            reference,
+            hashedToken,
+            type,
+        }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification> {
         return this.databaseService.withTransaction(async tx => {

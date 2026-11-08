@@ -396,7 +396,6 @@ describe('UserLoginWithSocialUseCase', () => {
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        userUtil.requiresTwoFactorSetup.mockReturnValue(false);
         notificationService.getRecipient.mockResolvedValue(recipient);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
@@ -489,7 +488,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 true
             );
-            userCreateUtil.buildSocialCreate.mockReturnValue(input);
+            userRegistrationService.buildSocialCreate.mockReturnValue(input);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
             userUtil.resolveLoginActivityLogAction.mockReturnValue(
@@ -532,7 +531,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumUserLoginWith.socialGoogle
             );
             expect(deviceUtil.toIdentity).toHaveBeenCalledWith(device);
-            expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
+            expect(
+                userRegistrationService.buildSocialCreate
+            ).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
@@ -692,7 +693,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
-            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
+            userRegistrationService.buildSocialCreate.mockReturnValue(
+                inviteInput
+            );
             userAuthService.getOneForSocialLogin.mockResolvedValue(
                 committedUser
             );
@@ -730,7 +733,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 inviteContext
             );
-            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
+            userRegistrationService.buildSocialCreate.mockReturnValue(
+                inviteInput
+            );
             workspaceInviteService.acceptOnSignUpInTx.mockRejectedValue(
                 failure
             );
@@ -781,7 +786,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 dtoWithoutName
             );
 
-            expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
+            expect(
+                userRegistrationService.buildSocialCreate
+            ).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 expect.objectContaining({
@@ -814,7 +821,9 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userCreateUtil.buildSignUpWorkspaceContext
             ).not.toHaveBeenCalled();
-            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
+            expect(
+                userRegistrationService.buildSocialCreate
+            ).not.toHaveBeenCalled();
         });
 
         it('resolves the invite once the user is known to be new', async () => {
@@ -875,7 +884,9 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             expect(roleService.getByName).not.toHaveBeenCalled();
-            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
+            expect(
+                userRegistrationService.buildSocialCreate
+            ).not.toHaveBeenCalled();
             expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
         });
 
@@ -912,7 +923,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
             });
-            expect(userCreateUtil.buildSocialCreate).not.toHaveBeenCalled();
+            expect(
+                userRegistrationService.buildSocialCreate
+            ).not.toHaveBeenCalled();
         });
 
         it('marks an unverified user verified and stages the row before logging in', async () => {
@@ -983,7 +996,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 true
             );
-            userCreateUtil.buildSocialCreate.mockReturnValue(inviteInput);
+            userRegistrationService.buildSocialCreate.mockReturnValue(
+                inviteInput
+            );
             userService.checkUsername.mockResolvedValue(clearUsername);
         });
 
@@ -1060,7 +1075,7 @@ describe('UserLoginWithSocialUseCase', () => {
         });
 
         it('creates the project membership only when the invite carries a project and role', async () => {
-            userCreateUtil.buildSocialCreate.mockReturnValue({
+            userRegistrationService.buildSocialCreate.mockReturnValue({
                 ...inviteInput,
                 workspaceContext: {
                     ...inviteContext,
@@ -1085,7 +1100,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
                 personalContext
             );
-            userCreateUtil.buildSocialCreate.mockReturnValue({
+            userRegistrationService.buildSocialCreate.mockReturnValue({
                 ...input,
                 password: null,
                 passwordHistoryType: null,

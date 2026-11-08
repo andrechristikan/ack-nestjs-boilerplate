@@ -45,14 +45,16 @@ describe('UserProfileService', () => {
     const fileService: MockProxy<FileService> = mock<FileService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configGet = vi.fn<(key: string) => number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
-    const configValues: Record<string, number> = {
-        'user.photo.filenameRandomLength': 24,
-    };
     const photoMaxSizeInBytes = 2048;
+    const configValues: Record<string, number | string> = {
+        'user.photo.filenameRandomLength': 24,
+        'user.uploadPhotoProfilePath': 'photo-profile/{userId}',
+        'user.photo.maxSizeInBytes': photoMaxSizeInBytes,
+    };
 
     let service: UserProfileService;
 
@@ -149,15 +151,6 @@ describe('UserProfileService', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation(key => configValues[key]);
-        userUtil.buildPhotoProfilePath.mockImplementation(
-            userId => `photo-profile/${userId}`
-        );
-        userUtil.isPhotoProfileKeyOwned.mockImplementation((userId, key) =>
-            key.startsWith(`photo-profile/${userId}/`)
-        );
-        userUtil.isPhotoSizeAllowed.mockImplementation(
-            size => size <= photoMaxSizeInBytes
-        );
         userRepository.findOneById.mockResolvedValue(profile);
         userQueue.deletePhoto.mockResolvedValue();
 
@@ -389,9 +382,6 @@ describe('UserProfileService', () => {
                 messagePath: 'user.error.photoSizeExceeded',
                 httpStatus: 400,
             });
-            expect(userUtil.isPhotoSizeAllowed).toHaveBeenCalledWith(
-                photoMaxSizeInBytes + 1
-            );
             expect(userRepository.updatePhotoProfile).not.toHaveBeenCalled();
             expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
@@ -941,10 +931,6 @@ describe('UserProfileService', () => {
         it('enqueues the delete of a photo under the profile path of the user', async () => {
             await service.deleteOwnedPhoto(profile.id, previousPhoto);
 
-            expect(userUtil.isPhotoProfileKeyOwned).toHaveBeenCalledWith(
-                profile.id,
-                previousPhoto.key
-            );
             expect(userQueue.deletePhoto).toHaveBeenCalledWith(
                 profile.id,
                 previousPhoto
@@ -963,7 +949,6 @@ describe('UserProfileService', () => {
         it('enqueues nothing for a user without a photo', async () => {
             await service.deleteOwnedPhoto(profile.id, null);
 
-            expect(userUtil.isPhotoProfileKeyOwned).not.toHaveBeenCalled();
             expect(userQueue.deletePhoto).not.toHaveBeenCalled();
         });
     });
@@ -1011,6 +996,59 @@ describe('UserProfileService', () => {
                 extension: EnumFileExtensionImage.png,
                 randomLength: 24,
             });
+        });
+    });
+
+    describe('buildPhotoProfilePath', () => {
+        it('substitutes the user id in the configured path', () => {
+            expect(service['buildPhotoProfilePath']('user-marigold')).toBe(
+                'photo-profile/user-marigold'
+            );
+        });
+
+        it('keeps a replacement pattern in the user id literal', () => {
+            expect(service['buildPhotoProfilePath']('$&')).toBe(
+                'photo-profile/$&'
+            );
+        });
+    });
+
+    describe('isPhotoProfileKeyOwned', () => {
+        it('returns true when the key sits under the user photo path', () => {
+            expect(
+                service['isPhotoProfileKeyOwned'](
+                    'user-marigold',
+                    'photo-profile/user-marigold/random.png'
+                )
+            ).toBe(true);
+        });
+
+        it.each([
+            'photo-profile/user-other/random.png',
+            'photo-profile/user-marigold-sibling/random.png',
+            'photo-profile/user-marigold',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'returns false when the key %s sits outside the user photo path',
+            key => {
+                expect(
+                    service['isPhotoProfileKeyOwned']('user-marigold', key)
+                ).toBe(false);
+            }
+        );
+    });
+
+    describe('isPhotoSizeAllowed', () => {
+        it('returns true at the configured maximum', () => {
+            expect(service['isPhotoSizeAllowed'](photoMaxSizeInBytes)).toBe(
+                true
+            );
+        });
+
+        it('returns false above the configured maximum', () => {
+            expect(service['isPhotoSizeAllowed'](photoMaxSizeInBytes + 1)).toBe(
+                false
+            );
         });
     });
 });

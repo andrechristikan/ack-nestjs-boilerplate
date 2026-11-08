@@ -5,7 +5,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -20,7 +19,6 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionQueue: SessionQueue,
-        private readonly sessionUtil: SessionUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -41,7 +39,7 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
             revokedAt
         );
 
-        const actorMetadata = this.sessionUtil.mapActivityLogActorMetadata(
+        const actorMetadata = this.sessionService.mapActivityLogActorMetadata(
             session,
             revokedAt
         );
@@ -53,7 +51,7 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
         ];
         if (userId !== user.id) {
             const targetMetadata =
-                this.sessionUtil.mapActivityLogTargetMetadata(
+                this.sessionService.mapActivityLogTargetMetadata(
                     session,
                     user.id,
                     revokedAt

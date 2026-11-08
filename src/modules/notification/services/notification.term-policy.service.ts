@@ -15,8 +15,10 @@ import type {
     INotificationTermPolicyPage,
     INotificationTermPolicyPending,
     INotificationTermPolicyRecipientCreate,
+    INotificationTermPolicyRecipientState,
     INotificationTermPolicyUser,
 } from '@modules/notification/interfaces/notification.interface';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -38,6 +40,26 @@ export class NotificationTermPolicyService {
     ) {
         this.emailBatchSize =
             this.configService.get<number>('email.batchSize')!;
+    }
+
+    private listPendingBatchIds(
+        users: IUserRecipient[],
+        markers: INotificationTermPolicyRecipientState[]
+    ): string[] {
+        const batchIdByUserId = new Map(
+            markers
+                .filter(
+                    marker =>
+                        marker.sentAt === null && marker.claimedAt === null
+                )
+                .map(marker => [marker.userId, marker.batchId])
+        );
+
+        return [
+            ...new Set(
+                users.flatMap(({ id }) => batchIdByUserId.get(id) ?? [])
+            ),
+        ];
     }
 
     private async createAndEnqueueTermPolicyBatch(
@@ -73,6 +95,7 @@ export class NotificationTermPolicyService {
                 notificationId,
             }));
 
+        // Sequential by design: write must not run if an earlier step throws
         await this.notificationRepository.createTermPolicyRecipients(
             proceedBy,
             data.termPolicyId,
@@ -80,7 +103,6 @@ export class NotificationTermPolicyService {
             entries,
             markers
         );
-        // Sequential by design: write must not run if an earlier step throws
         await this.notificationEmailQueue.sendPublishTermPolicyBatch(
             data,
             batchId,
@@ -101,10 +123,7 @@ export class NotificationTermPolicyService {
             );
         const markedUserIds = new Set(markers.map(m => m.userId));
         const freshUsers = users.filter(({ id }) => !markedUserIds.has(id));
-        const pendingBatchIds = this.notificationUtil.listPendingBatchIds(
-            users,
-            markers
-        );
+        const pendingBatchIds = this.listPendingBatchIds(users, markers);
         return { users, freshUsers, pendingBatchIds };
     }
 

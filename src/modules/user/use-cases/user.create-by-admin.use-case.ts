@@ -152,7 +152,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         );
         const created = users[0]!;
 
-        const stages = this.userCreateUtil.buildCreateByAdminStages(
+        const stages = this.userRegistrationService.buildCreateByAdminStages(
             input,
             created
         );

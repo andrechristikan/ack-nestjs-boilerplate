@@ -47,6 +47,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly databaseService: DatabaseService
     ) {}
 
+    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
     private async verifyTwoFactorIfRequired(
         user: IUser,
         input: IUserTwoFactorVerifyInput
@@ -89,7 +90,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 action: EnumActivityLogAction.userChangePassword,
             }),
         ];
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const attempt =
             await this.userPasswordService.countPasswordAttempt(user);
         if (attempt !== null) {
@@ -102,11 +103,9 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 attempt,
                 oldPassword ?? null
             );
-            // Sequential by design: gate before the work it guards
             await this.passwordHistoryService.assertNew(user.id, newPassword);
         }
 
-        // Sequential by design: gate before the work it guards
         const twoFactorVerified = await this.verifyTwoFactorIfRequired(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
@@ -128,7 +127,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             activityLogs.push(verifyTwoFactorActivityLog);
         }
 
-        // Sequential by design: write must not run if an earlier step throws
         const { passwordHistoryId, revoked } =
             await this.databaseService.withTransaction(async tx => {
                 await this.userService.updatePasswordInTx(

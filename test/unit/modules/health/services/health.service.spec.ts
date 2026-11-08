@@ -21,7 +21,6 @@ import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indi
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
-import { HealthUtil } from '@modules/health/utils/health.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 describe('HealthService', () => {
@@ -49,8 +48,6 @@ describe('HealthService', () => {
     const queueIndicator: MockProxy<HealthQueueIndicator> =
         mock<HealthQueueIndicator>();
 
-    const healthUtil: MockProxy<HealthUtil> = mock<HealthUtil>();
-
     const healthCheckResult: HealthCheckResult = {
         status: 'ok',
         details: {},
@@ -65,7 +62,6 @@ describe('HealthService', () => {
             providers: [
                 HealthService,
                 { provide: HealthCheckService, useValue: health },
-                { provide: HealthUtil, useValue: healthUtil },
                 {
                     provide: HealthInstanceIndicator,
                     useValue: healthInstanceIndicator,
@@ -289,22 +285,21 @@ describe('HealthService', () => {
             const failed: HealthCheckResult = {
                 ...healthCheckResult,
                 status: 'error',
+                info: {},
+                error: {},
             };
             health.check.mockRejectedValue(
                 new ServiceUnavailableException(failed)
             );
-            healthUtil.isHealthCheckResult.mockReturnValue(true);
 
             const result = await service['check']([]);
 
             expect(result).toEqual(failed);
-            expect(healthUtil.isHealthCheckResult).toHaveBeenCalledWith(failed);
         });
 
         it('wraps a ServiceUnavailableException that carries no health result in AppUnknownException', async () => {
             const error = new ServiceUnavailableException('unavailable');
             health.check.mockRejectedValue(error);
-            healthUtil.isHealthCheckResult.mockReturnValue(false);
 
             await expect(service['check']([])).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -320,7 +315,107 @@ describe('HealthService', () => {
                 constructor: AppUnknownException,
                 rawError: error,
             });
-            expect(healthUtil.isHealthCheckResult).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('isHealthCheckResult', () => {
+        it('returns false when the value is not an object', () => {
+            expect(service['isHealthCheckResult']('not-an-object')).toBe(false);
+        });
+
+        it('returns false when status is missing', () => {
+            expect(service['isHealthCheckResult']({})).toBe(false);
+        });
+
+        it('returns false when status is not a string', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 200,
+                    info: {},
+                    error: {},
+                    details: {},
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when info is missing', () => {
+            expect(service['isHealthCheckResult']({ status: 'ok' })).toBe(
+                false
+            );
+        });
+
+        it('returns false when error is missing', () => {
+            expect(
+                service['isHealthCheckResult']({ status: 'ok', info: {} })
+            ).toBe(false);
+        });
+
+        it('returns false when details is missing', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 'ok',
+                    info: {},
+                    error: {},
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when info is not an object', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 'ok',
+                    info: 'not-an-object',
+                    error: {},
+                    details: {},
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when error is not an object', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 'ok',
+                    info: {},
+                    error: 'not-an-object',
+                    details: {},
+                })
+            ).toBe(false);
+        });
+
+        it('returns false when details is not an object', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 'ok',
+                    info: {},
+                    error: {},
+                    details: 'not-an-object',
+                })
+            ).toBe(false);
+        });
+
+        it('returns true when status, info, error, and details are present and shaped', () => {
+            expect(
+                service['isHealthCheckResult']({
+                    status: 'ok',
+                    info: { database: { status: 'up' } },
+                    error: {},
+                    details: { database: { status: 'up' } },
+                })
+            ).toBe(true);
+        });
+    });
+
+    describe('isIndicatorMap', () => {
+        it('returns true for a plain object', () => {
+            expect(service['isIndicatorMap']({})).toBe(true);
+        });
+
+        it('returns false for null', () => {
+            expect(service['isIndicatorMap'](null)).toBe(false);
+        });
+
+        it('returns false for a non-object value', () => {
+            expect(service['isIndicatorMap']('not-an-object')).toBe(false);
         });
     });
 });

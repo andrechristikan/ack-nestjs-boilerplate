@@ -43,19 +43,29 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteInviter,
     IWorkspaceInviteIssued,
     IWorkspaceInviteList,
+    IWorkspaceInvitePreviewSummary,
+    IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class WorkspaceInviteService {
     private readonly referenceMaxAttempts: number;
+    private readonly homeUrl: string;
+    private readonly inviteExpiredInDays: number;
+    private readonly inviteTokenLength: number;
+    private readonly inviteReferencePrefix: string;
+    private readonly inviteReferenceRandomLength: number;
+    private readonly inviteLinkPattern: string;
+    private readonly inviteSignUpLinkPattern: string;
 
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
@@ -64,7 +74,6 @@ export class WorkspaceInviteService {
         private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
@@ -74,6 +83,86 @@ export class WorkspaceInviteService {
         this.referenceMaxAttempts = this.configService.get<number>(
             'workspace.invite.referenceMaxAttempts'
         )!;
+        this.homeUrl = this.configService.get<string>('home.url')!;
+        this.inviteExpiredInDays = this.configService.get<number>(
+            'workspace.invite.expiredInDays'
+        )!;
+        this.inviteTokenLength = this.configService.get<number>(
+            'workspace.invite.tokenLength'
+        )!;
+        this.inviteReferencePrefix = this.configService.get<string>(
+            'workspace.invite.referencePrefix'
+        )!;
+        this.inviteReferenceRandomLength = this.configService.get<number>(
+            'workspace.invite.referenceRandomLength'
+        )!;
+        this.inviteLinkPattern = this.configService.get<string>(
+            'workspace.invite.linkPattern'
+        )!;
+        this.inviteSignUpLinkPattern = this.configService.get<string>(
+            'workspace.invite.signUpLinkPattern'
+        )!;
+    }
+
+    private resolveInviterName(
+        inviter: IWorkspaceInviteInviter | null,
+        workspace: Workspace
+    ): string {
+        return inviter?.name ?? inviter?.username ?? workspace.name;
+    }
+
+    private createInviteTokenData(
+        expiryDurationInDays: number | null
+    ): IWorkspaceInviteTokenData {
+        const token = this.helperStringService.random(this.inviteTokenLength);
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const referenceRandom = this.helperStringService.random(
+            this.inviteReferenceRandomLength
+        );
+        const reference = `${this.inviteReferencePrefix}-${referenceRandom}`;
+        const now = this.helperDateService.create();
+        const expiredAt = this.helperDateService.forward(
+            now,
+            Duration.fromObject({
+                days: expiryDurationInDays ?? this.inviteExpiredInDays,
+            })
+        );
+        const claimLink = this.helperStringService.fillPattern(
+            this.inviteLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+        const signUpLink = this.helperStringService.fillPattern(
+            this.inviteSignUpLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+
+        return {
+            token,
+            hashedToken,
+            reference,
+            expiredAt,
+            claimLink,
+            signUpLink,
+        };
+    }
+
+    private isInviteEmailMatch(inviteEmail: string, email: string): boolean {
+        return inviteEmail.toLowerCase() === email.toLowerCase();
+    }
+
+    mapInvitePreview(
+        workspace: Workspace,
+        invite: WorkspaceInvite,
+        inviter: IWorkspaceInviteInviter | null
+    ): IWorkspaceInvitePreviewSummary {
+        const inviterName = this.resolveInviterName(inviter, workspace);
+
+        return {
+            workspaceName: workspace.name,
+            inviterName,
+            workspaceRole: invite.workspaceRole,
+            expiredAt: invite.expiredAt,
+        };
     }
 
     async getInviterName(
@@ -82,7 +171,7 @@ export class WorkspaceInviteService {
     ): Promise<string> {
         const inviter = await this.userService.getNameById(actorId);
 
-        return this.workspaceUtil.resolveInviterName(inviter, workspace);
+        return this.resolveInviterName(inviter, workspace);
     }
 
     /** Null when the invitee has no account. */
@@ -124,10 +213,7 @@ export class WorkspaceInviteService {
         email: string
     ): Promise<WorkspaceInvite> {
         const invite = await this.validateInviteToken(token);
-        const isEmailMatch = this.workspaceUtil.isInviteEmailMatch(
-            invite.email,
-            email
-        );
+        const isEmailMatch = this.isInviteEmailMatch(invite.email, email);
         if (!isEmailMatch) {
             throw new WorkspaceInviteInvalidException();
         }
@@ -227,7 +313,6 @@ export class WorkspaceInviteService {
         projectId,
         projectRole,
     }: IWorkspaceInviteCreate): Promise<void> {
-        // Sequential by design: gate before the work it guards
         await this.featureFlagService.validateFeatureFlagMetadata(
             EnumFeatureFlagKey.workspace,
             EnumFeatureFlagMetadataKey.invitationAllowed
@@ -261,9 +346,7 @@ export class WorkspaceInviteService {
         const nonce = this.helperHashService.sha256Hash(noncePattern);
 
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData = this.workspaceUtil.createInviteTokenData(
-                create.expiryDuration
-            );
+            const tokenData = this.createInviteTokenData(create.expiryDuration);
 
             try {
                 const invite =
@@ -364,8 +447,7 @@ export class WorkspaceInviteService {
         const resentAt = this.helperDateService.create();
 
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData =
-                this.workspaceUtil.createInviteTokenData(expiryDuration);
+            const tokenData = this.createInviteTokenData(expiryDuration);
 
             try {
                 const invite =

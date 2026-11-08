@@ -19,7 +19,6 @@ import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISession } from '@modules/session/interfaces/session.interface';
 import { SessionQueue } from '@modules/session/queues/session.queue';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
 
@@ -29,7 +28,6 @@ describe('SessionRevokeByAdminUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
@@ -151,7 +149,6 @@ describe('SessionRevokeByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: SessionQueue, useValue: sessionQueue },
-                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -164,7 +161,7 @@ describe('SessionRevokeByAdminUseCase', () => {
             helperDateService.create.mockReturnValue(revokedAt);
             sessionService.revokeByAdmin.mockResolvedValue(session);
             const actorMetadata = { targetUserId: 'root-1' };
-            sessionUtil.mapActivityLogActorMetadata.mockReturnValue(
+            sessionService.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
             );
             const actorActivityLog = {
@@ -207,10 +204,10 @@ describe('SessionRevokeByAdminUseCase', () => {
             sessionService.revokeByAdmin.mockResolvedValue(session);
             const actorMetadata = { targetUserId: 'user-1' };
             const targetMetadata = { actorUserId: 'admin-1' };
-            sessionUtil.mapActivityLogActorMetadata.mockReturnValue(
+            sessionService.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
             );
-            sessionUtil.mapActivityLogTargetMetadata.mockReturnValue(
+            sessionService.mapActivityLogTargetMetadata.mockReturnValue(
                 targetMetadata
             );
             const actorActivityLog = {
@@ -228,10 +225,10 @@ describe('SessionRevokeByAdminUseCase', () => {
             await useCase.execute('user-1', 'session-1', admin);
 
             expect(
-                sessionUtil.mapActivityLogActorMetadata
+                sessionService.mapActivityLogActorMetadata
             ).toHaveBeenCalledWith(session, revokedAt);
             expect(
-                sessionUtil.mapActivityLogTargetMetadata
+                sessionService.mapActivityLogTargetMetadata
             ).toHaveBeenCalledWith(session, 'admin-1', revokedAt);
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminSessionRevoke,

@@ -38,6 +38,10 @@ import {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
+import type {
+    IAnalyticFraudSignalRows,
+    IAnalyticFraudSignalUsers,
+} from '@modules/analytic/interfaces/analytic.fraud.interface';
 import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
@@ -135,17 +139,27 @@ describe('AnalyticFraudService', () => {
         'analytic.fraud.bands.monitorMax': 10,
         'analytic.fraud.bands.reviewMax': 30,
         'analytic.fraud.bands.elevateMax': 50,
-        'analytic.fraud.weights.sessionAfterAdmin': 10,
-        'analytic.fraud.weights.impossibleTravel': 10,
-        'analytic.fraud.weights.newDeviceAfterPasswordChange': 10,
-        'analytic.fraud.weights.credentialStuffingIp': 10,
-        'analytic.fraud.weights.sharedFingerprint': 10,
-        'analytic.fraud.weights.nearLockout': 10,
-        'analytic.fraud.weights.massRegistrationIp': 10,
-        'analytic.fraud.weights.forgotPasswordAbuse': 10,
+        'analytic.fraud.weights.sessionAfterAdmin': 1,
+        'analytic.fraud.weights.impossibleTravel': 2,
+        'analytic.fraud.weights.newDeviceAfterPasswordChange': 4,
+        'analytic.fraud.weights.credentialStuffingIp': 8,
+        'analytic.fraud.weights.sharedFingerprint': 16,
+        'analytic.fraud.weights.nearLockout': 32,
+        'analytic.fraud.weights.massRegistrationIp': 64,
+        'analytic.fraud.weights.forgotPasswordAbuse': 128,
         'auth.password.maxAttempt': 5,
         'analytic.fraud.riskScore.candidateLimit': 3,
         'analytic.fraud.riskScore.lookbackInMs': 3600000,
+    };
+
+    const emptySignals: IAnalyticFraudSignalUsers = {
+        sessionAfterAdmin: new Set(),
+        impossibleTravel: new Set(),
+        newDeviceAfterPasswordChange: new Set(),
+        credentialStuffingIp: new Set(),
+        sharedFingerprint: new Set(),
+        massRegistrationIp: new Set(),
+        forgotPasswordAbuse: new Set(),
     };
 
     let service: AnalyticFraudService;
@@ -970,21 +984,14 @@ describe('AnalyticFraudService', () => {
             email: 'user@example.com',
             passwordAttempt: 4,
         };
-        const signals = {
-            sessionAfterAdmin: new Set<string>(),
-            impossibleTravel: new Set(['user-1']),
-            newDeviceAfterPasswordChange: new Set<string>(),
-            credentialStuffingIp: new Set<string>(),
-            sharedFingerprint: new Set(['user-1']),
-            massRegistrationIp: new Set<string>(),
-            forgotPasswordAbuse: new Set<string>(),
-        };
         const scored = {
             userId: 'user-1',
-            score: 80,
-            band: EnumAnalyticFraudBand.critical,
+            score: 50,
+            band: EnumAnalyticFraudBand.elevate,
             contributingSignalCodes: [
                 EnumAnalyticFraudContributingSignal.impossibleTravel,
+                EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                EnumAnalyticFraudContributingSignal.nearLockout,
             ],
         };
 
@@ -1019,7 +1026,7 @@ describe('AnalyticFraudService', () => {
             expect(
                 deviceAnalyticService.getSharedFingerprints
             ).not.toHaveBeenCalled();
-            expect(analyticFraudUtil.score).not.toHaveBeenCalled();
+            expect(analyticCache.setRiskScore).not.toHaveBeenCalled();
         });
 
         it('collects the signal users over the lookback window, scores the user, and caches the score', async () => {
@@ -1037,26 +1044,14 @@ describe('AnalyticFraudService', () => {
             deviceAnalyticService.getSharedFingerprints.mockResolvedValue(
                 shared
             );
-            analyticFraudUtil.toSignalUsers.mockReturnValue(signals);
-            analyticFraudUtil.score.mockReturnValue(scored);
 
             const result = await service.riskScore('user-1');
 
-            expect(result).toBe(scored);
+            expect(result).toEqual(scored);
             expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
             expect(
                 analyticAnomalyService.getImpossibleTravelUserIds
             ).toHaveBeenCalledWith(startDate, now);
-            expect(analyticFraudUtil.toSignalUsers).toHaveBeenCalledWith({
-                sessionAfterAdmin: [],
-                impossibleTravelUserIds: ['user-1'],
-                accountTakeover: [],
-                credentialStuffingUserIds: new Set(),
-                sharedFingerprint: shared,
-                massRegistrationUserIds: new Set(),
-                forgotPasswordAbuse: [],
-            });
-            expect(analyticFraudUtil.score).toHaveBeenCalledWith(user, signals);
             expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
                 'user-1',
                 scored
@@ -1065,15 +1060,13 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('riskScores', () => {
-        const signals = {
-            sessionAfterAdmin: new Set<string>(),
-            impossibleTravel: new Set<string>(),
-            newDeviceAfterPasswordChange: new Set<string>(),
-            credentialStuffingIp: new Set<string>(),
-            sharedFingerprint: new Set(['user-high', 'user-low']),
-            massRegistrationIp: new Set<string>(),
-            forgotPasswordAbuse: new Set<string>(),
-        };
+        const shared = [
+            {
+                fingerprint: 'fp-1',
+                userCount: 2,
+                userIds: ['user-low', 'user-high'],
+            },
+        ];
         const nearLockout = [
             {
                 id: 'user-high',
@@ -1095,31 +1088,31 @@ describe('AnalyticFraudService', () => {
         };
         const lowScore = {
             userId: 'user-low',
-            score: 10,
-            band: EnumAnalyticFraudBand.monitor,
-            contributingSignalCodes: [],
+            score: 16,
+            band: EnumAnalyticFraudBand.review,
+            contributingSignalCodes: [
+                EnumAnalyticFraudContributingSignal.sharedFingerprint,
+            ],
         };
         const highScore = {
             userId: 'user-high',
-            score: 40,
+            score: 48,
             band: EnumAnalyticFraudBand.elevate,
-            contributingSignalCodes: [],
+            contributingSignalCodes: [
+                EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                EnumAnalyticFraudContributingSignal.nearLockout,
+            ],
         };
 
         beforeEach(() => {
-            analyticFraudUtil.toSignalUsers.mockReturnValue(signals);
-            analyticFraudUtil.collectCandidateIds.mockReturnValue([
-                'user-low',
-                'user-high',
-            ]);
+            deviceAnalyticService.getSharedFingerprints.mockResolvedValue(
+                shared
+            );
             userAnalyticService.getNearLockout.mockResolvedValue(nearLockout);
             userAnalyticService.getManyByIds.mockResolvedValue([low, high]);
-            analyticFraudUtil.score.mockImplementation(candidate =>
-                candidate.id === 'user-high' ? highScore : lowScore
-            );
         });
 
-        it('reads the signal users once and picks the candidates through the fraud util', async () => {
+        it('reads the signal users once and picks the candidates from the signals and the near-lockout users', async () => {
             await service.riskScores(null, pagination);
 
             expect(
@@ -1130,11 +1123,6 @@ describe('AnalyticFraudService', () => {
             );
             expect(userAnalyticService.getNearLockout).toHaveBeenCalledWith(
                 4,
-                3
-            );
-            expect(analyticFraudUtil.collectCandidateIds).toHaveBeenCalledWith(
-                signals,
-                nearLockout,
                 3
             );
             expect(userAnalyticService.getManyByIds).toHaveBeenCalledWith([
@@ -1150,8 +1138,6 @@ describe('AnalyticFraudService', () => {
                 [low, high],
                 10
             );
-            expect(analyticFraudUtil.score).toHaveBeenCalledWith(low, signals);
-            expect(analyticFraudUtil.score).toHaveBeenCalledWith(high, signals);
             expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
                 'user-low',
                 lowScore
@@ -1169,8 +1155,11 @@ describe('AnalyticFraudService', () => {
 
             await service.riskScores(null, pagination);
 
-            expect(analyticFraudUtil.score).toHaveBeenCalledTimes(1);
-            expect(analyticFraudUtil.score).toHaveBeenCalledWith(low, signals);
+            expect(analyticCache.setRiskScore).toHaveBeenCalledTimes(1);
+            expect(analyticCache.setRiskScore).toHaveBeenCalledWith(
+                'user-low',
+                lowScore
+            );
         });
 
         it('includes every score when minScore is null and sorts descending', async () => {
@@ -1221,15 +1210,6 @@ describe('AnalyticFraudService', () => {
                     ['10.0.0.2', { users: new Set(['user-3']), count: 1 }],
                 ])
             );
-            analyticFraudUtil.toSignalUsers.mockImplementation(rows => ({
-                sessionAfterAdmin: new Set(),
-                impossibleTravel: new Set(),
-                newDeviceAfterPasswordChange: new Set(),
-                credentialStuffingIp: rows.credentialStuffingUserIds,
-                sharedFingerprint: new Set(),
-                massRegistrationIp: new Set(),
-                forgotPasswordAbuse: new Set(),
-            }));
 
             const result = await service['collectSignalUsers']();
 
@@ -1683,6 +1663,192 @@ describe('AnalyticFraudService', () => {
                 now,
                 2
             );
+        });
+    });
+
+    describe('resolveBand', () => {
+        it('maps a score at or below each ceiling to its band', () => {
+            expect(service['resolveBand'](0)).toBe(
+                EnumAnalyticFraudBand.monitor
+            );
+            expect(service['resolveBand'](10)).toBe(
+                EnumAnalyticFraudBand.monitor
+            );
+            expect(service['resolveBand'](11)).toBe(
+                EnumAnalyticFraudBand.review
+            );
+            expect(service['resolveBand'](30)).toBe(
+                EnumAnalyticFraudBand.review
+            );
+            expect(service['resolveBand'](31)).toBe(
+                EnumAnalyticFraudBand.elevate
+            );
+            expect(service['resolveBand'](50)).toBe(
+                EnumAnalyticFraudBand.elevate
+            );
+        });
+
+        it('maps a score above the last ceiling to critical', () => {
+            expect(service['resolveBand'](51)).toBe(
+                EnumAnalyticFraudBand.critical
+            );
+        });
+    });
+
+    describe('score', () => {
+        const user = {
+            id: 'user-1',
+            email: 'user@example.com',
+            passwordAttempt: null,
+        };
+
+        it('sums the weight of every signal that hit, in signal order', () => {
+            const signals: IAnalyticFraudSignalUsers = {
+                sessionAfterAdmin: new Set(['user-1']),
+                impossibleTravel: new Set(['user-1']),
+                newDeviceAfterPasswordChange: new Set(['user-1']),
+                credentialStuffingIp: new Set(['user-1']),
+                sharedFingerprint: new Set(['user-1']),
+                massRegistrationIp: new Set(['user-1']),
+                forgotPasswordAbuse: new Set(['user-1']),
+            };
+
+            const result = service['score'](
+                { ...user, passwordAttempt: 4 },
+                signals
+            );
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                score: 255,
+                band: EnumAnalyticFraudBand.critical,
+                contributingSignalCodes: [
+                    EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
+                    EnumAnalyticFraudContributingSignal.impossibleTravel,
+                    EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                    EnumAnalyticFraudContributingSignal.credentialStuffingIp,
+                    EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                    EnumAnalyticFraudContributingSignal.nearLockout,
+                    EnumAnalyticFraudContributingSignal.massRegistrationIp,
+                    EnumAnalyticFraudContributingSignal.forgotPasswordAbuse,
+                ],
+            });
+        });
+
+        it('ignores signals that name another user', () => {
+            const signals: IAnalyticFraudSignalUsers = {
+                ...emptySignals,
+                sharedFingerprint: new Set(['user-2']),
+            };
+
+            expect(service['score'](user, signals)).toEqual({
+                userId: 'user-1',
+                score: 0,
+                band: EnumAnalyticFraudBand.monitor,
+                contributingSignalCodes: [],
+            });
+        });
+
+        it('flags near-lockout at the password max attempt minus the offset and treats null as zero', () => {
+            expect(
+                service['score']({ ...user, passwordAttempt: 3 }, emptySignals)
+                    .contributingSignalCodes
+            ).toEqual([]);
+            expect(
+                service['score']({ ...user, passwordAttempt: 4 }, emptySignals)
+                    .contributingSignalCodes
+            ).toEqual([EnumAnalyticFraudContributingSignal.nearLockout]);
+            expect(
+                service['score'](user, emptySignals).contributingSignalCodes
+            ).toEqual([]);
+        });
+    });
+
+    describe('toSignalUsers', () => {
+        const createdAt = new Date('2026-01-01T00:00:00.000Z');
+
+        it('turns the signal rows into one user set per signal', () => {
+            const rows: IAnalyticFraudSignalRows = {
+                sessionAfterAdmin: [
+                    {
+                        userId: 'user-1',
+                        revokedAt: createdAt,
+                        loginAt: createdAt,
+                    },
+                ],
+                impossibleTravelUserIds: ['user-2'],
+                accountTakeover: [
+                    {
+                        userId: 'user-3',
+                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        passwordChangedAt: createdAt,
+                    },
+                ],
+                credentialStuffingUserIds: new Set(['user-4']),
+                sharedFingerprint: [
+                    {
+                        fingerprint: 'fp-1',
+                        userCount: 2,
+                        userIds: ['user-5', 'user-6'],
+                    },
+                ],
+                massRegistrationUserIds: new Set(['user-7']),
+                forgotPasswordAbuse: [{ userId: 'user-8', tokenCount: 2 }],
+            };
+
+            expect(service['toSignalUsers'](rows)).toEqual({
+                sessionAfterAdmin: new Set(['user-1']),
+                impossibleTravel: new Set(['user-2']),
+                newDeviceAfterPasswordChange: new Set(['user-3']),
+                credentialStuffingIp: new Set(['user-4']),
+                sharedFingerprint: new Set(['user-5', 'user-6']),
+                massRegistrationIp: new Set(['user-7']),
+                forgotPasswordAbuse: new Set(['user-8']),
+            });
+        });
+    });
+
+    describe('collectCandidateIds', () => {
+        const createdAt = new Date('2026-01-01T00:00:00.000Z');
+        const nearLockout = [
+            {
+                id: 'user-9',
+                email: 'user@example.com',
+                passwordAttempt: 4,
+                lastLoginAt: null,
+                createdAt,
+            },
+            {
+                id: 'user-1',
+                email: 'user1@example.com',
+                passwordAttempt: 4,
+                lastLoginAt: null,
+                createdAt,
+            },
+        ];
+
+        it('unions every signal set with the near-lockout users without duplicates', () => {
+            const signals: IAnalyticFraudSignalUsers = {
+                ...emptySignals,
+                sessionAfterAdmin: new Set(['user-1']),
+                forgotPasswordAbuse: new Set(['user-2', 'user-1']),
+            };
+
+            expect(
+                service['collectCandidateIds'](signals, nearLockout, 10)
+            ).toEqual(['user-1', 'user-9', 'user-2']);
+        });
+
+        it('caps the union at the limit', () => {
+            const signals: IAnalyticFraudSignalUsers = {
+                ...emptySignals,
+                sessionAfterAdmin: new Set(['user-1', 'user-2']),
+                impossibleTravel: new Set(['user-3']),
+            };
+
+            expect(
+                service['collectCandidateIds'](signals, nearLockout, 2)
+            ).toEqual(['user-1', 'user-2']);
         });
     });
 });

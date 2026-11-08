@@ -28,7 +28,7 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 ## Rollout and targeting
 
 - `targetUserIds` is an allow-list that bypasses rollout; a targeted user passes at `rolloutPercent: 0`. It applies to authenticated callers only.
-- Rollout buckets stickily: `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100 (`FeatureFlagUtil.isInRollout`, `src/modules/feature-flag/utils/feature-flag.util.ts`), so one caller lands in the same bucket for a flag and not on the same side of every flag.
+- Rollout buckets stickily: `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100 (`FeatureFlagService.isInRollout`, `src/modules/feature-flag/services/feature-flag.service.ts`), so one caller lands in the same bucket for a flag and not on the same side of every flag.
 - An authenticated caller is bucketed by `userId`; the `x-anonymous-id` header is ignored for them. With no user, `rolloutPercent: 100` passes without reading the header; anything lower buckets by `x-anonymous-id`, and a caller sending none or a malformed one is rejected. Fail closed. The header is `FeatureFlagAnonymousIdHeaderName`; the bounds come from `featureFlag.anonymous.*` config; an invalid value is treated as absent and never reaches the hash, a log, or a key.
 - A flag is never an authorization boundary: the anonymous key is client-supplied and forgeable by design. An entitlement is gated by authorization or `isEnable: false`.
 

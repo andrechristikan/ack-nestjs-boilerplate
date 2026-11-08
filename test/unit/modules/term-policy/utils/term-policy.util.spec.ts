@@ -5,16 +5,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
-import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type {
-    ITermPolicyAcceptanceAnalytic,
-    ITermPolicyContent,
-} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyUtil', () => {
@@ -22,8 +16,6 @@ describe('TermPolicyUtil', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
-    const helperArrayService: MockProxy<HelperArrayService> =
-        mock<HelperArrayService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
 
@@ -49,7 +41,6 @@ describe('TermPolicyUtil', () => {
             providers: [
                 TermPolicyUtil,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperArrayService, useValue: helperArrayService },
                 {
                     provide: HelperStringService,
                     useValue: helperStringService,
@@ -58,42 +49,6 @@ describe('TermPolicyUtil', () => {
         }).compile();
 
         util = module.get(TermPolicyUtil);
-    });
-
-    describe('validateUniqueLanguages', () => {
-        it('returns true when every language is unique', () => {
-            const contents: TermPolicyContentRequestDto[] = [
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 1024,
-                    key: 'term-policies/privacy/v1/en.hbs',
-                },
-            ];
-            helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
-
-            expect(util.validateUniqueLanguages(contents)).toBe(true);
-            expect(helperArrayService.unique).toHaveBeenCalledWith([
-                EnumMessageLanguage.en,
-            ]);
-        });
-
-        it('returns false when a language repeats', () => {
-            const contents: TermPolicyContentRequestDto[] = [
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 1024,
-                    key: 'term-policies/privacy/v1/en.hbs',
-                },
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 2048,
-                    key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-            ];
-            helperArrayService.unique.mockReturnValue([EnumMessageLanguage.en]);
-
-            expect(util.validateUniqueLanguages(contents)).toBe(false);
-        });
     });
 
     describe('isContentSizeAllowed', () => {
@@ -278,48 +233,6 @@ describe('TermPolicyUtil', () => {
         });
     });
 
-    describe('mapPublicContentKeys', () => {
-        it('maps each content to its public key under the public path with no S3 call', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-            const contents: ITermPolicyContent[] = [
-                {
-                    language: EnumMessageLanguage.en,
-                    bucket: 'private-bucket',
-                    key: 'term-policies/privacy/1/en.hbs',
-                    cdnUrl: null,
-                    completedUrl: 'https://private.example.com/en.hbs',
-                    mime: 'text/plain',
-                    extension: 'hbs',
-                    access: EnumAwsS3Accessibility.private,
-                    size: 1024,
-                },
-            ];
-
-            const result = util.mapPublicContentKeys(
-                {
-                    id: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                },
-                contents
-            );
-
-            expect(result).toEqual([
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 1024,
-                    key: 'public/term-policies/privacy/1/en.hbs',
-                },
-            ]);
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'public/term-policies/{type}/{version}',
-                { type: EnumTermPolicyType.privacy, version: '1' }
-            );
-        });
-    });
-
     describe('mapActivityLogMetadata', () => {
         it('maps the term policy identity and timestamp', () => {
             const termPolicy = {
@@ -336,89 +249,6 @@ describe('TermPolicyUtil', () => {
                 termPolicyType: EnumTermPolicyType.privacy,
                 termPolicyVersion: 1,
                 timestamp,
-            });
-        });
-    });
-
-    describe('getContentByLanguage', () => {
-        it('returns the content matching the language', () => {
-            const content: ITermPolicyContent = {
-                language: EnumMessageLanguage.en,
-                bucket: 'sample-bucket',
-                key: 'term-policies/privacy/v1/en.hbs',
-                cdnUrl: null,
-                completedUrl: 'https://cdn.example.com/en.hbs',
-                mime: 'text/plain',
-                extension: 'hbs',
-                access: EnumAwsS3Accessibility.public,
-                size: 1024,
-            };
-
-            expect(
-                util.getContentByLanguage([content], EnumMessageLanguage.en)
-            ).toBe(content);
-        });
-
-        it('returns null when no content matches the language', () => {
-            expect(
-                util.getContentByLanguage([], EnumMessageLanguage.en)
-            ).toBeNull();
-        });
-    });
-
-    describe('averageAcceptanceMs', () => {
-        it('returns zero count and average when there are no rows', () => {
-            expect(util.averageAcceptanceMs([])).toEqual({
-                count: 0,
-                averageMs: 0,
-            });
-        });
-
-        it('averages the delay from the policy publish time to the acceptance', () => {
-            const rows: ITermPolicyAcceptanceAnalytic[] = [
-                {
-                    id: 'acceptance-1',
-                    userId: 'user-1',
-                    termPolicyId: 'term-policy-1',
-                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
-                },
-                {
-                    id: 'acceptance-2',
-                    userId: 'user-2',
-                    termPolicyId: 'term-policy-1',
-                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
-                },
-            ];
-
-            expect(util.averageAcceptanceMs(rows)).toEqual({
-                count: 2,
-                averageMs: 120000,
-            });
-        });
-
-        it('skips an acceptance whose policy has no publish time', () => {
-            const rows: ITermPolicyAcceptanceAnalytic[] = [
-                {
-                    id: 'acceptance-1',
-                    userId: 'user-1',
-                    termPolicyId: 'term-policy-1',
-                    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    acceptedAt: new Date('2026-01-01T00:01:00.000Z'),
-                },
-                {
-                    id: 'acceptance-2',
-                    userId: 'user-2',
-                    termPolicyId: 'term-policy-2',
-                    publishedAt: null,
-                    acceptedAt: new Date('2026-01-01T00:03:00.000Z'),
-                },
-            ];
-
-            expect(util.averageAcceptanceMs(rows)).toEqual({
-                count: 1,
-                averageMs: 60000,
             });
         });
     });

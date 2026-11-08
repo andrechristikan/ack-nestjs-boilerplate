@@ -94,17 +94,16 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginSocial: IUserLoginSocial
     ): Promise<IUserCreated | null> {
         const normalizedEmail = email.trim().toLowerCase();
+        // Sequential by design: gate before the work it guards
         const isAllowed =
             await this.userRegistrationService.isSocialSignUpAllowed(
                 normalizedEmail,
                 loginWith
             );
-        // Sequential by design: gate before the work it guards
         if (!isAllowed) {
             return null;
         }
 
-        // Sequential by design: gate before the work it guards
         const invite = await this.workspaceInviteService.getSignUpInvite(
             loginSocial.inviteToken,
             normalizedEmail
@@ -121,7 +120,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         ]);
         this.userService.assertUsernameAvailable(usernameCheck);
 
-        const input = this.userCreateUtil.buildSocialCreate(
+        const input = this.userRegistrationService.buildSocialCreate(
             normalizedEmail,
             loginWith,
             loginSocial,
@@ -137,7 +136,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             try {
                 const users = await this.databaseService.withTransaction(
                     async tx => {
-                        // Sequential by design: gate before the work it guards
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
                             UserTermPolicyContract.requiredTypes
@@ -213,6 +211,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -272,6 +271,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         return session.tokens;
     }
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -319,6 +319,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         };
     }
 
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,
@@ -417,13 +418,13 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             this.activityLogService.stagePrepared(verifiedLogs);
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         const outcome = await this.completeLogin(
             user,
             deviceIdentity,
             from,
             loginWith
         );
-        // Sequential by design: write must not run if an earlier step throws
         if (created !== null) {
             const recipient = this.notificationUtil.mapRecipient(
                 created.users[0]!,

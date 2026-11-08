@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { Verification } from '@generated/prisma-client/client';
-import type { IUserVerificationCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserVerificationRepository {
@@ -32,7 +32,12 @@ export interface IUserVerificationRepository {
     createReplacingActive(
         userId: string,
         userEmail: string,
-        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
+        {
+            expiredAt,
+            reference,
+            hashedToken,
+            type,
+        }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification>;
 }

@@ -10,7 +10,6 @@ import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -25,8 +24,7 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly notificationQueue: NotificationQueue
     ) {}
 
     private async getReviewerRecipients(
@@ -51,7 +49,7 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
         userId: string,
         { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
         const workspace =
             await this.workspaceJoinRequestService.getJoinableWorkspace(
@@ -72,7 +70,6 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
             this.userService.getNameById(userId),
             this.getReviewerRecipients(workspace.id),
         ]);
-        // Sequential by design: write must not run if an earlier step throws
         const joinRequest =
             await this.workspaceJoinRequestService.createJoinRequest(userId, {
                 workspaceId,
@@ -83,9 +80,13 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
 
         if (reviewerRecipients.length > 0) {
             const joinRequestReviewLink =
-                this.workspaceUtil.buildJoinRequestReviewLink(joinRequest.id);
+                this.workspaceJoinRequestService.buildJoinRequestReviewLink(
+                    joinRequest.id
+                );
             const requesterName =
-                this.workspaceUtil.resolveRequesterName(requester);
+                this.workspaceJoinRequestService.resolveRequesterName(
+                    requester
+                );
 
             await this.notificationQueue.sendWorkspaceJoinRequestBulk(
                 reviewerRecipients,

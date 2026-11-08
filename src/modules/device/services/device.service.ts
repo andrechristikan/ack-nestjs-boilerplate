@@ -11,7 +11,12 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumDeviceNotificationProvider,
+    EnumDevicePlatform,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -22,7 +27,6 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -32,11 +36,29 @@ export class DeviceService {
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
-        private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
+
+    private resolveNotificationProvider(
+        platform: EnumDevicePlatform,
+        notificationToken: string | null
+    ): EnumDeviceNotificationProvider | null {
+        if (notificationToken === null) {
+            return null;
+        }
+
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                return EnumDeviceNotificationProvider.fcm;
+            case EnumDevicePlatform.ios:
+                return EnumDeviceNotificationProvider.apns;
+            case EnumDevicePlatform.web:
+            default:
+                return null;
+        }
+    }
 
     async getListOffsetByAdmin(
         userId: string,
@@ -107,11 +129,10 @@ export class DeviceService {
         device: IDeviceIdentity,
         now: Date
     ): Promise<IDeviceLoginUpsert> {
-        const notificationProvider =
-            this.deviceUtil.resolveNotificationProvider(
-                device.platform,
-                device.notificationToken
-            );
+        const notificationProvider = this.resolveNotificationProvider(
+            device.platform,
+            device.notificationToken
+        );
         const upserted = await this.deviceRepository.upsertByFingerprintInTx(
             tx,
             userId,
@@ -218,11 +239,10 @@ export class DeviceService {
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
-        const notificationProvider =
-            this.deviceUtil.resolveNotificationProvider(
-                data.platform,
-                data.notificationToken
-            );
+        const notificationProvider = this.resolveNotificationProvider(
+            data.platform,
+            data.notificationToken
+        );
         const now = this.helperDateService.create();
 
         try {
@@ -265,5 +285,50 @@ export class DeviceService {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    mapActivityLogMetadata(
+        deviceOwnership: IDeviceOwnership,
+        sessionCount: number
+    ): IActivityLogMetadata {
+        return {
+            deviceOwnershipId: deviceOwnership.id,
+            deviceId: deviceOwnership.device.id,
+            sessionCount,
+        };
+    }
+
+    mapActivityLogActorMetadata(
+        deviceOwnership: IDeviceOwnership,
+        sessionCount: number
+    ): IActivityLogMetadata {
+        const metadata = this.mapActivityLogMetadata(
+            deviceOwnership,
+            sessionCount
+        );
+
+        return {
+            ...metadata,
+            targetUserId: deviceOwnership.userId,
+            targetUsername: deviceOwnership.user.username,
+            timestamp: deviceOwnership.updatedAt,
+        };
+    }
+
+    mapActivityLogTargetMetadata(
+        deviceOwnership: IDeviceOwnership,
+        actorUserId: string,
+        sessionCount: number
+    ): IActivityLogMetadata {
+        const metadata = this.mapActivityLogMetadata(
+            deviceOwnership,
+            sessionCount
+        );
+
+        return {
+            ...metadata,
+            actorUserId,
+            timestamp: deviceOwnership.updatedAt,
+        };
     }
 }

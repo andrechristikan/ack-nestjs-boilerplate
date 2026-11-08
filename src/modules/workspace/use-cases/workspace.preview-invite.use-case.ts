@@ -3,7 +3,6 @@ import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -14,8 +13,7 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly userService: UserService,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly userService: UserService
     ) {}
 
     async execute({
@@ -30,7 +28,7 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
             this.userService.getNameById(invite.invitedByUserId),
         ]);
 
-        const preview = this.workspaceUtil.mapInvitePreview(
+        const preview = this.workspaceInviteService.mapInvitePreview(
             workspace,
             invite,
             inviter

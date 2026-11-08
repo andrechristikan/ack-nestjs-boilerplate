@@ -29,7 +29,6 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
-import { UserPasswordUtil } from '@modules/user/utils/user.password.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { NotificationModule } from '@modules/notification/notification.module';
@@ -62,7 +61,6 @@ import { Module } from '@nestjs/common';
         UserUtil,
         UserCreateUtil,
         UserVerificationUtil,
-        UserPasswordUtil,
         UserAnalyticService,
         UserPasswordAnalyticService,
         UserForgotPasswordAnalyticService,
@@ -84,7 +82,6 @@ import { Module } from '@nestjs/common';
         UserCreateUtil,
         UserUtil,
         UserVerificationUtil,
-        UserPasswordUtil,
         UserAnalyticService,
         UserPasswordAnalyticService,
         UserForgotPasswordAnalyticService,

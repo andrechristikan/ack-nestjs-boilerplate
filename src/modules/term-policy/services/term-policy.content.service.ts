@@ -44,6 +44,13 @@ export class TermPolicyContentService {
         return termPolicy;
     }
 
+    private getContentByLanguage(
+        contents: ITermPolicyContent[],
+        language: EnumMessageLanguage
+    ): ITermPolicyContent | null {
+        return contents.find(c => c.language === language) ?? null;
+    }
+
     private assertKeyPath({ type, version }: TermPolicy, key: string): void {
         const isInPath = this.termPolicyUtil.isContentKeyInPath(
             type,
@@ -121,10 +128,7 @@ export class TermPolicyContentService {
             throw contents;
         }
 
-        const existingContent = this.termPolicyUtil.getContentByLanguage(
-            contents,
-            language
-        );
+        const existingContent = this.getContentByLanguage(contents, language);
         if (!existingContent) {
             throw new TermPolicyContentNotFoundException();
         }
@@ -181,10 +185,7 @@ export class TermPolicyContentService {
             throw contents;
         }
 
-        const existingContent = this.termPolicyUtil.getContentByLanguage(
-            contents,
-            language
-        );
+        const existingContent = this.getContentByLanguage(contents, language);
         if (existingContent) {
             throw new TermPolicyContentExistException();
         }
@@ -233,10 +234,7 @@ export class TermPolicyContentService {
             throw contents;
         }
 
-        const existingContent = this.termPolicyUtil.getContentByLanguage(
-            contents,
-            language
-        );
+        const existingContent = this.getContentByLanguage(contents, language);
         if (!existingContent) {
             throw new TermPolicyContentNotFoundException();
         }
@@ -276,10 +274,7 @@ export class TermPolicyContentService {
             throw contents;
         }
 
-        const existContent = this.termPolicyUtil.getContentByLanguage(
-            contents,
-            language
-        );
+        const existContent = this.getContentByLanguage(contents, language);
         if (!existContent) {
             throw new TermPolicyContentNotFoundException();
         }

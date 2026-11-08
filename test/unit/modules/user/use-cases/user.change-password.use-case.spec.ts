@@ -323,7 +323,6 @@ describe('UserChangePasswordUseCase', () => {
                 userAuthService.assertPasswordAttempt
             ).toHaveBeenCalledBefore(passwordHistoryService.assertNew);
             expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(1);
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
@@ -467,7 +466,6 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userTwoFactorService.assertAttemptCounted
             ).toHaveBeenCalledWith(true);
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
@@ -559,7 +557,6 @@ describe('UserChangePasswordUseCase', () => {
                 null
             );
             expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
@@ -622,7 +619,6 @@ describe('UserChangePasswordUseCase', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userUtil.buildTwoFactorLockoutStages).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
                 2,
                 [activityLog, activityLog]
@@ -663,7 +659,6 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userPasswordService.resetPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
@@ -729,7 +724,6 @@ describe('UserChangePasswordUseCase', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(userUtil.buildPasswordLockoutStages).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
                 activityLog,

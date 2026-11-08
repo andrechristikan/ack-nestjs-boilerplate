@@ -78,7 +78,7 @@ Follow `references/debug.md`: it pins the symptom, dispatches `debugger`, and cl
 - On `feature`, follow `superpowers:subagent-driven-development` with `coder` as its implementer, as `references/feature.md`, Build, gives; step 5 is the one review.
 - `coder` writes the failing spec first when `src/` behaviour changes and runs the task's acceptance commands.
 - A schema delta: relay the model, field, index, and owner's `pnpm db:migrate`.
-- A report (`references/example-report.md`) quoting every acceptance line green completes the task; on `feature`, mark it `- [x]`.
+- A hand-back (`.claude/agents/coder.md`, Hand back) quoting every acceptance line green completes the task; on `feature`, mark it `- [x]`.
 - `NEEDS_CONTEXT`, `BLOCKED`, a line not green, or `DONE_WITH_CONCERNS`: ask the owner with `AskUserQuestion`; an answer joins `**Decisions:**` before the next dispatch.
 
 ## 5. Review, through `reviewer`
