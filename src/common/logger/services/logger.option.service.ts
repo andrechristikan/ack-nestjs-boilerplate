@@ -176,10 +176,9 @@ export class LoggerOptionService {
                 });
             }
 
-            if (err) {
-                log.err = this.loggerUtil.serializeError(
-                    (error as Error) ?? (err as Error)
-                );
+            const caughtError = error ?? err ?? null;
+            if (caughtError !== null) {
+                log.err = this.loggerUtil.serializeError(caughtError as Error);
             }
 
             if (res) {

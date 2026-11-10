@@ -500,6 +500,25 @@ describe('LoggerOptionService', () => {
             expect(loggerUtil.serializeError).toHaveBeenCalledWith(wrapped);
         });
 
+        it('serializes error when no err field is present', async () => {
+            const service = await createLoggerOptionService(
+                baseConfig,
+                loggerDoubles
+            );
+            helperDateService.create.mockReturnValue(new Date());
+            requestContextService.getHostname.mockReturnValue('host-1');
+            loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
+            loggerUtil.sanitizeMessage.mockImplementation(m => m);
+            loggerUtil.serializeError.mockReturnValue({ type: 'Error' });
+            const error = new Error('boom');
+
+            const formatter = service['createLogFormatter']();
+            const result = formatter({ level: 50, error });
+
+            expect(loggerUtil.serializeError).toHaveBeenCalledWith(error);
+            expect(result.err).toEqual({ type: 'Error' });
+        });
+
         it('carries the raw res and req fields through when present', async () => {
             const service = await createLoggerOptionService(
                 baseConfig,
