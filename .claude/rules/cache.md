@@ -22,7 +22,7 @@ paths:
     - a reader that took no lease serves the loaded value without a set;
     - the post-commit delete removes the entry and its lease.
 - `invalidate(keys)` deletes the keys in one `UNLINK`, none for an empty list, its errors classed as above.
-- A session cache purge is a session-module queue job enqueued after the revoke commits and retried by BullMQ (`auth.md`, Session invalidation).
+- A session cache purge is a session-module outbox row added in the revoke's transaction and retried by BullMQ (`auth.md`, Session invalidation).
 - A cache clear tied to a transaction runs after the commit, never in a `Promise.all` with it.
 - Every read-through cache is cache-aside: a write that changes or deletes a cached row deletes its keys after the commit and never sets them; the next read misses and `readThrough` sets the key (`src/modules/api-key/services/api-key.service.ts`: `deleteApiKey` after each committed update or delete).
 - The session entry (write and compare-and-set) and the two-factor challenge are authorities, written directly, not cache-aside. `SessionService` re-reads the session row after `setLogin` and deletes the entry when the row is revoked, so revoke, purge, set, re-read always ends without a live entry. The login entry's TTL equals the access-token lifetime (`auth.jwt.accessToken.expirationTimeInSeconds`).

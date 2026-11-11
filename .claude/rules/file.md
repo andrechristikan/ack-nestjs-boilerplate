@@ -36,7 +36,7 @@ The browser PUTs straight to S3; the API signs and never proxies bytes. The pres
 
 ## S3 deletes
 
-An S3 object delete is a side effect (`exceptions.md`, Side effects): a job on a queue of the module owning the object, added after the database write commits, never in a `Promise.all` with it. A term-policy draft's content directory and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete enqueue a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
+An S3 object delete is a side effect (`exceptions.md`, Side effects): an outbox row of the module owning the object, added in the database write's transaction (`outbox.md`). A term-policy draft's content directory and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete add a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
 
 ## AWS without credentials
 

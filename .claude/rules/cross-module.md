@@ -37,7 +37,7 @@ Use cases compose features; services share downward. Only `src/router/` imports 
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
 2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
-3. A fire-and-forget hand-off: a queue job, enqueued by the use case after commit (`queue.md`).
+3. A fire-and-forget hand-off: an outbox effect the use case adds in its transaction (`outbox.md`), or a notification it enqueues after the commit (`queue.md`).
 
 ## An exception names the subject that failed
 
