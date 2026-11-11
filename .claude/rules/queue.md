@@ -17,7 +17,7 @@ BullMQ runs on two clients `RedisModule.forRoot()` owns on `redis.queue.url` (`c
 - `src/common/queue/`, the kit, holds `QueueModule.forRoot()` (`queue.module.ts`), whose one `BullModule.forRootAsync`, no config key, carries the producer client, `prefix`, and the shared `defaultJobOptions`; `@QueueProcessor()`; `QueueWorkerFactory` (`factories/queue.worker.factory.ts`); `QueueBase`, `QueueProcessorBase`, and `QueueWorkerBase` (`bases/`); `QueueException`, `QueueSideEffectFailedException`, `IQueueResponse`; `EnumQueuePriority` and `EnumQueueJobState` (`enums/queue.enum.ts`); no queue.
 - The owning feature names each queue in `Enum<Module>Queue` (`<module>.enum.ts`, its value the Redis queue name) and registers them in `<module>.module.ts`: `imports: [BullModule.registerQueueAsync({ name: Enum<Module>Queue.<member>, useClass: <Module>[<Concern>]QueueFactory })]`, one call per module, run once however many modules import it. A queue registered in the kit or a direct `BullModule.registerQueue` is the defect.
 - Each queue has its own factory, `src/modules/<module>/factories/<module>[.<concern>].queue.factory.ts`, no shared base, returning `defaultJobOptions` alone, from `queue.job.*`: `attempts`, `keepLogs`, `removeOnCompleteAgeInSeconds`, `removeOnFailAgeInSeconds`, and its own `<name>BackoffDelayInMs` (exponential `backoff`).
-- `queues/<module>[.<concern>].queue.ts` is one class per registered queue, extending `QueueBase`. `@InjectQueue`, the BullMQ `Queue` type, `jobId`, `add`, `addBulk`, `upsertJobScheduler` appear under `src/modules/` only there and in `HealthQueueIndicator`, which checks health's own queue (`EnumHealthQueue.health`) has a ready client; no job enters it.
+- `queues/<module>[.<concern>].queue.ts` is one class per registered queue, extending `QueueBase`. `@InjectQueue`, the BullMQ `Queue` type, `jobId`, `add`, `addBulk`, `upsertJobScheduler` appear under `src/modules/` only there and in `HealthQueueIndicator`, which checks health's own queue (`EnumHealthQueue.health`) has a ready client; no job enters it. `OutboxService` reaches every queue through `ModuleRef.get(getQueueToken(...))` for `addBulk` and `getJob`.
 
 ## Enqueuing
 
@@ -25,7 +25,7 @@ A side effect on any queue but the notification and activity-log ones is an outb
 
 BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out. A queue-class job carries a `jobId` only when a duplicate the normal flow produces collapses into one job; a `jobId` never guards a race (`discipline.md`, Normal use). A job that may legitimately run again for the same subject carries none, or a fresh nonce in it as an operator re-run does.
 
-- No producer calls `getJob`, `getState`, `retry`, or `remove`; no caller branches on an `add` result.
+- No producer calls `getJob`, `getState`, `retry`, or `remove`, the outbox reconcile aside; no caller branches on an `add` result.
 - An operator-triggered re-run puts a fresh `DatabaseUtil.createId()` nonce in every job id it adds (`NotificationQueue.sendResendPublishTermPolicy`, `notification.jobId.termPolicyResendPattern`); the `TermPolicyRecipient` claim (`claimedAt`, `claimNonce`) keeps delivery at most once per recipient.
 - A queue-class side-effect job is added after its transaction commits, never inside it: an earlier `add` leaves a job for a rolled-back write.
 - Who injects a queue class: `layering.md`, Roles; a service enqueues only its own module's jobs. A recurring job is scheduled from the queue class's own `onModuleInit`.

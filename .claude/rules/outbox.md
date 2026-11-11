@@ -27,9 +27,13 @@ A side effect of a write is an `Outbox` row written in the write's transaction. 
 - `OutboxService.add(effect)` and `addMany(effects)` insert and dispatch at once, only for an effect with no business write.
 - `dispatch` resolves each row's queue through `ModuleRef.get(getQueueToken(row.queue), { strict: false })`; the outbox injects no queue class of another module.
 - Dispatch never throws and never changes the response. A failed enqueue leaves the row `pending`; a Redis connection error warns once per `redis.warnWindowInMs`, any other error warns once, and nothing goes to Sentry.
-- The sweep (every `outbox.sweepIntervalInMs` and once at boot) re-dispatches rows `pending` longer than `outbox.pendingAfterInMs`, oldest first, at most `outbox.sweepBatch` a run. `EnumOutboxStatus` is `pending`, `enqueued`, `completed`, `failed`.
+- The sweep runs every `outbox.sweepIntervalInMs` and once at boot:
+    - it re-dispatches up to `outbox.sweepBatch` rows `pending` longer than `outbox.pendingAfterInMs`, oldest first;
+    - it reads up to `outbox.sweepBatch` rows `enqueued` longer than `outbox.enqueuedAfterInMs`, oldest first, and reads each one's job by `idempotencyKey`: `completed` stamps the row `completed`, `failed` stamps it `failed` with the job's `failedReason`, any other state leaves it;
+    - rows whose job is gone go out with the pending rows in one dispatch.
+- `EnumOutboxStatus` is `pending`, `enqueued`, `completed`, `failed`.
 
 ## Processing
 
 - `QueueProcessorBase.process` loads the row of a job whose data holds an `outboxId` and passes `row.data` to `handle(job, data)`. A job scheduler tick carries no `outboxId`, has no row, and passes `job.data`.
-- The base stamps the row `completed` with its attempts on return, and `failed` with the message on the last attempt or an `UnrecoverableError`. A retrying job stays `enqueued`.
+- The base stamps the row `completed` with its attempts on return, and `failed` with the message on the last attempt or an `UnrecoverableError`. A retrying job stays `enqueued`. A stamp that fails logs one `warn` and leaves the job's outcome as it is; the row stays `enqueued` for the reconcile.
