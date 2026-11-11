@@ -77,7 +77,7 @@ The session locates code with the built-in `Explore` agent. An agent missing som
 - A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold is global. Read the `Tests` line and the per-file rows, not the exit code.
 - `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so `.github/workflows/test-integration.yml` and `test-e2e.yml` fail calling those scripts.
 - A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
-- `npx <pkg>@<version>` runs the local binary when the package is installed.
+- A booted request sends `x-api-key: local_<key>:<secret>`: the seed prefixes the `migration.api-key.data.ts` key with the environment (`ApiKeyCredentialUtil.createKey`). A notification proof passes once the SES or FCM call is made; a sandbox `MessageRejected` for an unverified address is no finding.
 - Claude worktrees live under `.claude/worktrees/` (gitignored). A recursive grep from the root is denied unless it excludes `.claude` (`guard-bash.sh`).
 - The root `.env`, `keys/`, `generated/vault/`, and `.claude/settings.local.json` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker-compose exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env`.
 

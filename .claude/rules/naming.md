@@ -4,7 +4,7 @@
 
 `<module>.<noun-or-action>[.<sub>].<role>.ts`. Every file under `src/` carries the `<module>.` prefix except `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, `src/swagger.ts`, `src/configure.ts` (each aliased in `tsconfig.json` `paths`: `@main`, `@migration`, `@instrument`, `@swagger`, `@configure`) and generated code. A dot separates segments; a dash sits only inside one segment for a compound noun (`user.mobile-number.service.ts`). At most four dot-separated name parts, three for `*.interface.ts`; a spec adds `.spec.ts` on top. Folders are kebab-case, plural when they hold a kind of file (`use-cases/`, `dtos/request/`). A feature module keeps its services in `services/` and its use cases in `use-cases/`, both flat, one class per file.
 
-Role suffixes: `.use-case .service .repository .controller .guard .strategy .decorator .interceptor .filter .middleware .pipe .processor .indicator .factory .validation .util .queue .cache .dto .module .enum .constant .interface .exception .contract`; tree-bound: `.config` (`src/configs/`), `.data` and `.seed` (`src/migration/`), `.base` (`src/migration/bases/`, `src/queues/bases/`), `.template.hbs` (`templates/`; a per-language template is `<module>.<type>.<lang>.hbs`).
+Role suffixes: `.use-case .service .repository .controller .guard .strategy .decorator .interceptor .filter .middleware .pipe .processor .indicator .factory .validation .util .queue .cache .dto .module .enum .constant .interface .exception .contract`; tree-bound: `.config` (`src/configs/`), `.data` and `.seed` (`src/migration/`), `.base` (`src/migration/bases/`, `src/common/queue/bases/`), `.template.hbs` (`templates/`; a per-language template is `<module>.<type>.<lang>.hbs`).
 
 | File | Class |
 | --- | --- |

@@ -22,7 +22,7 @@ A string with placeholders is a `{token}` pattern (`naming.md`): one token is `S
 
 ## Constructors and fields
 
-- Every constructor parameter is a parameter property, never plain, never `public`.
+- Every constructor parameter is a parameter property, never plain, never `public`; `QueueWorkerBase` alone takes plain parameters, because BullMQ's `Worker` holds public `name` and `opts` and `@nestjs/bullmq` constructs it positionally.
 - In an exception (`*.exception.ts`), each is bare `readonly` (`constructor(readonly period: number)`, `readonly rawError: unknown = null`).
 - Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue`, `sentryService`, and `cacheService` on a `QueueBase` subclass, `sentryService`, `messageService`, `cacheService`, and `outboxService` on a `QueueProcessorBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies). A bare `readonly` parameter appears only in an exception.
 - Values forwarded to `super(...)` come first, in `super`'s order, then the injected collaborators.

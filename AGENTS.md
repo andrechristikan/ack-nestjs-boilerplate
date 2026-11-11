@@ -20,14 +20,13 @@ src/migration.ts        nest-commander entrypoint, runs seeders
 src/instrument.ts       Sentry init and event scrubbing
 src/swagger.ts          OpenAPI document builder
 src/app/                app.module and the APP_FILTER chain
-src/common/             shared module: database, cache, redis, pagination, request, response, logger, message, helper, file, doc, aws, firebase, sentry
+src/common/             shared module: database, cache, redis, pagination, request, response, logger, message, helper, file, doc, aws, firebase, sentry, queue
 src/configs/            registerAs config files and the index barrel
 src/generated/          prisma-client/ and package/, gitignored, from pnpm generate
 src/languages/          nestjs-i18n JSON, one file per module prefix
 src/migration/          seeds: data/, seeds/, bases/, enums/, interfaces/
 src/modules/            feature modules
-src/queues/             BullMQ framework layer, outbox included; features register their own queues
-src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ imports use-case modules with processors
+src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ provides every processor and imports their use-case modules
 prisma/schema.prisma    editable; applying it is the owner's
 test/unit/              unit specs mirroring src/, no Docker
 test/integration/ e2e/  held, not created (.claude/rules/testing.md)

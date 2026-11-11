@@ -37,14 +37,14 @@ A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-
 Copy the shape, not the names:
 
 - `<module>.module.ts`: services, repositories, utils, caches, queue classes in `providers`; services, utils, caches, and queue classes in `exports`, never a repository; imports each non-`@Global()` `<Module>Module` whose services or utils its services inject (`src/modules/device/device.module.ts`).
-- `<module>.use-case.module.ts`: use cases and processors in `providers`, use cases in `exports`; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included (`src/modules/project/project.use-case.module.ts`; with a processor, `src/modules/workspace/workspace.use-case.module.ts`).
+- `<module>.use-case.module.ts`: use cases in `providers` and `exports`, never a processor; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included (`src/modules/project/project.use-case.module.ts`).
 
 `controllers: []` in both. Only a file with something to provide exists.
 
 ## 6. Register
 
 - Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
-- Processor: the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
+- Processor: the processor into `providers` and the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
 - A `@Global()` module: `src/common/common.module.ts` `imports`, only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/layering.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
 
 ## 7. Messages

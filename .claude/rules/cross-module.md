@@ -33,7 +33,7 @@ A repository does not inject or call another repository. Work spanning one modul
 
 ## Composition follows the dependency order
 
-Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`layering.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: lint checks the declared module graph for cycles (`ts/module-cycle`), and `forwardRef` hides one and is forbidden (`eslint.md`, Config blocks). When a service needs a higher module, the ways out:
+Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`layering.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden (`eslint.md`, Config blocks). When a service needs a higher module, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
 2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
@@ -45,7 +45,7 @@ A missing workspace throws `WorkspaceNotFoundException` wherever the check runs:
 
 ## Registration lives outside the feature module
 
-A controller file lives in its feature module; `src/router/http/router.http.<scope>.module.ts` declares it. A processor is provided by `<module>.use-case.module.ts`, which `src/router/processor/router.processor.module.ts` imports.
+A controller file lives in its feature module; `src/router/http/router.http.<scope>.module.ts` declares it. A processor file lives in its feature module; `src/router/processor/router.processor.module.ts` provides it.
 
 ## Workspace scoping follows the surface
 
