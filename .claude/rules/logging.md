@@ -6,6 +6,7 @@ paths:
     - 'src/instrument.ts'
     - 'src/common/logger/**'
     - 'src/common/cache/**'
+    - 'src/common/redis/**'
     - 'src/common/request/services/request.throttle-storage.service.ts'
     - 'src/common/sentry/**'
 ---
