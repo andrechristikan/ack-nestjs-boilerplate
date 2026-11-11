@@ -14,7 +14,7 @@ Each feature names its queues in `Enum<Module>Queue` (`<module>.enum.ts`) and re
 ## Considered options
 
 - registration in the owning feature (chosen)
-- eight factories in `src/queues/` (0018's shape): rejected, the kit would know every feature.
+- eight factories in the queue kit (0018's shape): rejected, the kit would know every feature.
 - a single fast-fail connection for workers too: rejected, workers would error during an outage instead of waiting.
 - `process.env` back in the decorator: rejected, the owner removed it.
 - a module-level client in the decorator: rejected, it builds a Redis client outside the redis module, which can neither log nor close it.
@@ -27,5 +27,5 @@ Each feature names its queues in `Enum<Module>Queue` (`<module>.enum.ts`) and re
 ## Consequences
 
 - A new queue adds its enum member, factory, and registration in its own module.
-- No feature queue lives in `src/queues/`.
-- The outbox resolves a queue by its `Enum<Module>Queue` value through `ModuleRef.get(getQueueToken(name), { strict: false })`, which searches every module, so the kit imports no feature module.
+- No queue lives in the queue kit (`src/common/queue/`).
+- The outbox (0043) resolves a queue by its `Enum<Module>Queue` value through `ModuleRef.get(getQueueToken(name), { strict: false })`, which searches every module, so it imports no other feature module.

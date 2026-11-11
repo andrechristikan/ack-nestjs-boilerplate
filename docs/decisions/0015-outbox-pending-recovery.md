@@ -9,7 +9,7 @@ A failed `add` after commit leaves the outbox row `pending`. Something dispatche
 
 ## Decision
 
-`OutboxProcessor` runs every `queue.outbox.sweepIntervalInMs` (60000) over rows `pending` longer than `queue.outbox.pendingAfterInMs` (30000), bounded by `queue.outbox.sweepBatch` (100). The same sweep runs once at boot.
+`OutboxProcessor` runs every `outbox.sweepIntervalInMs` (60000) over rows `pending` longer than `outbox.pendingAfterInMs` (30000), bounded by `outbox.sweepBatch` (100). The same sweep runs once at boot.
 
 ## Considered options
 

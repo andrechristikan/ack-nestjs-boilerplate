@@ -9,7 +9,7 @@ Sign-up creates a workspace, so user flows need workspace services. An invite lo
 
 ## Decision
 
-`<Module>Module` provides the services, repositories, utils, caches, and queue classes. `<Module>UseCaseModule` provides the use cases and processors and is a leaf only `src/router/` imports.
+`<Module>Module` provides the services, repositories, utils, caches, and queue classes. `<Module>UseCaseModule` provides the use cases and is a leaf only `src/router/` imports; processors are registered by the processor router (0045).
 
 ## Considered options
 

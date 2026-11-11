@@ -9,7 +9,7 @@ Cross-module flows live in feature HTTP services, and nothing may share them. Th
 
 ## Decision
 
-Each user- or job-facing action is one class in `use-cases/` with one public method `execute`. A module's rules live in `services/`, and a service injects services only of lower-ranked modules on a declared order that each module file's `imports:` follows; lint checks those imports and that the module graph has no cycle (0031).
+Each user- or job-facing action is one class in `use-cases/` with one public method `execute`. A module's rules live in `services/`, and a service injects services only of lower-ranked modules on a declared order that each module file's `imports:` follows; the reviewer checks those imports and a cycle fails the boot (0046).
 
 ## Considered options
 

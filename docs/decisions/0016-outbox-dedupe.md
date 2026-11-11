@@ -1,6 +1,6 @@
 # 0016. Dedupe by `jobId` and `idempotencyKey`
 
-- Status: accepted
+- Status: superseded by 0042
 - Date: 2026-11-07
 
 ## Context

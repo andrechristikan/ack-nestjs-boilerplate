@@ -1,6 +1,6 @@
 # 0031. Boundary lint reads the module graph
 
-- Status: accepted
+- Status: superseded by 0046
 - Date: 2026-11-08
 
 ## Context

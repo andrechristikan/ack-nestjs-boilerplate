@@ -11,12 +11,10 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0007 · Shared cross-module transaction in the highest service · chosen: a service of the highest participating module owns a shared sequence when the subject is that module's entity, otherwise each use case sequences the `*InTx` calls · rejected: always in the highest service, a module's statements copied per use case, a shared use case
 - 0008 · `DatabaseService` outside repositories is `withTransaction` only · chosen: every statement goes through a repository · rejected: `databaseService.client` in a service or use case
 - 0009 · The `<module>.` file prefix stays · chosen: `user.sign-up.use-case.ts` · rejected: short names (`sign-up.use-case.ts`)
-- 0010 · Feature dependency order · chosen: kernel, device, session, auth, password-history, notification, term-policy, user, workspace, project, analytic · rejected: password-history in the kernel, `AuthPasswordUtil` in the kit
-- 0011 · `@Global()` only for guard-injected modules · chosen: eight modules global, notification not · rejected: notification global, everything global
+- 0010 · Feature dependency order · chosen: outbox, kernel, device, session, auth, password-history, notification, term-policy, user, workspace, project, analytic · rejected: password-history in the kernel, `AuthPasswordUtil` in the kit
 - 0013 · Thick outbox, BullMQ as the worker · chosen: an `Outbox` row in the transaction, the job carries `{ outboxId }`, dispatch after commit · rejected: no outbox (post-commit enqueue), a thin outbox deleting rows after enqueue, the payload copied into the job
 - 0014 · Outbox history is kept · chosen: rows stay after completion · rejected: a cleanup job, a retention period
 - 0015 · Pending rows recovered by boot drain and a one-minute sweep · chosen: the sweep re-dispatches rows `pending` after 30 seconds · rejected: boot drain alone, retry on the next request
-- 0016 · Dedupe by `jobId` and `idempotencyKey` · chosen: `jobId = idempotencyKey` and a read inside the transaction before the insert · rejected: a unique index on the key
 - 0017 · Step state lives in the row · chosen: `OutboxService.updateData` · rejected: `job.updateData`
 - 0019 · Notify by reference · chosen: the processor resolves the recipient on the first attempt and records it · rejected: a producer snapshot for every kind
 - 0020 · Security alert snapshot · chosen: the three credential-reset kinds snapshot live-session tokens before the revoke and are mandatory · rejected: resolving after the revoke, every registered device, honouring opt-outs on a credential reset
@@ -29,7 +27,6 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0027 · One transaction per flow, cross-module allowed · chosen: the use case or the highest service opens one transaction · rejected: two transactions where one suffices, a compensating write after commit
 - 0028 · Two-factor challenge is a row · chosen: `TwoFactorChallenge` claimed inside the verify transaction · rejected: the challenge as Redis state (`GETDEL`)
 - 0030 · Health follows Redis · chosen: Redis down marks health down · rejected: an informational indicator
-- 0031 · Boundary lint reads the module graph · chosen: the lint derives the graph from each feature's module file and fails a cycle · rejected: the feature order hard-coded in `eslint.config.mjs`, the order in a separate data file, the order outside lint
 - 0032 · Every use case implements `IAppUseCase` · chosen: `IAppUseCase<TArgs, TResult>` with `execute(...args: TArgs): Promise<TResult>` · rejected: a single input object, a marker interface
 - 0033 · Queues register in their feature · chosen: each feature registers its queues with its own factory, the kit holds the shared config · rejected: the kit holding every feature queue, one kit factory, one fast-fail connection for workers, a module-level client in the decorator, the worker `configKey`, writing `bullmq:worker_metadata`, a kit worker registrar through `DiscoveryService`
 - 0034 · ioredis direct, no Keyv · chosen: every Redis connection an ioredis client of `RedisModule.forRoot()`, `CacheService` over the cache client · rejected: Keyv over `@keyv/redis`, `cache-manager`
@@ -40,3 +37,8 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0039 · Audit stamping is top-level only · chosen: `DatabaseExtensionFactory` stamps the top-level payload, a nested write passes its audit values explicitly · rejected: a hand-written relation map, a generated relation map
 - 0040 · The transaction opener dispatches · chosen: `OutboxService.withTransaction` collects the ids added on its `tx` and dispatches after the commit · rejected: only the use case dispatches with ids returned through every layer, the opener asking for a dispatch by `tx`
 - 0041 · A statement with a side effect shares a transaction with its row · chosen: one transaction over the statement and its outbox row · rejected: a non-transactional add after the statement
+- 0042 · Outbox key unique per queue and process · chosen: `@@unique([queue, name, idempotencyKey])` plus the read on `tx` · rejected: no unique index, a unique index on the key alone
+- 0043 · The outbox is a feature module with its own queue · chosen: the lowest module `src/modules/outbox/` registering its queue, the queue kit in `src/common/queue/` registering none · rejected: the outbox in the queue kit, a `@nestjs/schedule` cron sweep
+- 0044 · `@Global()` for guard-injected modules and the outbox · chosen: eight guard-injected modules plus `OutboxModule` · rejected: importing `OutboxModule` everywhere, notification global, everything global
+- 0045 · Processors are registered in the processor router · chosen: every processor in `router.processor.module.ts` · rejected: the processor in its use-case module, a `<module>.processor.module.ts` per feature
+- 0046 · Lint enforces the layer matrix only · chosen: `ts/boundaries` holds the layer matrix, one literal `OutboxService` allowance for processors · rejected: lint derives the module graph, per-feature policies, and cycles, the dependency order hard-coded in the config
