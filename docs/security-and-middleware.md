@@ -242,7 +242,7 @@ Route tiers are the members of `EnumRequestThrottleRoute`:
 Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later.
 
 - A route tier therefore rejects before `@ApiKeyProtected()`, `@FeatureFlagProtected()`, and the social-login guards do any work.
-- `POST /login/social/google` and `/login/social/apple` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
+- `POST /login/social/google`, `/login/social/apple`, and `/login/social/github` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
 
 Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/common/request/services/request.throttle.service.ts`), the single place that:
 

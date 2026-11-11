@@ -7,7 +7,7 @@
 
 ### Optional integrations
 
-AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates every key at boot:
+AWS S3, AWS SES, Firebase, Sentry, Google, Apple, and GitHub are optional. `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates every key at boot:
 
 - A blank `.env` line (`KEY=`) and an absent key both parse to `null`.
 - What turns an integration on:
@@ -16,6 +16,7 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
     - Once one of those is on, a missing member of the group fails boot with `<KEY> is required when ...`.
     - A region, bucket, or `EMAIL_*` value set alone does not turn an integration on and boots fine.
     - Google turns on with `AUTH_SOCIAL_GOOGLE_CLIENT_ID`, Apple with either Apple client id, and Sentry with `SENTRY_DSN`. Each needs nothing else.
+    - GitHub turns on when `AUTH_SOCIAL_GITHUB_CLIENT_ID` or `AUTH_SOCIAL_GITHUB_CLIENT_SECRET` is set, and boot then requires both.
     - The groups are listed under each integration below.
 - An unconfigured adapter (`AwsS3Service`, `AwsSESService`, `FirebaseService`) logs a warning at startup and stays uninitialized. `isInitialized()` reports its state.
     - A call that reaches the provider logs a warning and returns without calling it.
@@ -24,18 +25,18 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
     - Firebase returns `false` from `sendPush`, and a result with `failureCount: tokens.length`, `failureTokens: []`, and `retryTokens: []` from `sendMulticast`. The push domains guard with `isInitialized()` before calling it, so they never read that result.
     - Two S3 calls behave differently: `putItemMultiPart` returns the multipart record it received unchanged, and `mapPresign` never checks initialization because it builds the record from config without a provider call.
 - A request path that cannot work without S3 throws `AwsS3NotConfiguredException` (HTTP 404). See [Error Codes](#error-codes).
-- A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`). The exception filters report only 5xx to Sentry, so these stay out of it.
+- A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, `AuthSocialGithubNotConfiguredException`). The exception filters report only 5xx to Sentry, so these stay out of it.
 - A seed that needs an integration logs a warning and skips without it:
     - `templateEmailNotification` needs SES
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
 - The `termPolicy` seed logs a warning without S3 and still writes every row, without uploading the content.
-- The health indicators report an unconfigured integration as `down` with the message `<name> is not configured`. The health endpoints still answer HTTP 200.
+- The health indicators of the integrations that have one (GitHub has none) report an unconfigured integration as `down` with the message `<name> is not configured`. The health endpoints still answer HTTP 200.
 
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration]: AWS, Firebase, Sentry config keys
 - [Environment Documentation][ref-doc-environment]: Credential env vars
-- [Authentication Documentation][ref-doc-authentication]: Google and Apple OAuth
+- [Authentication Documentation][ref-doc-authentication]: Google, Apple, and GitHub OAuth
 - [File Upload Documentation][ref-doc-file-upload]: Multipart upload and S3 presign
 - [Email Documentation][ref-doc-email]: SES templates and sync
 - [Notification Documentation][ref-doc-notification]: Push and email delivery
@@ -60,6 +61,7 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
 - [Social Authentication](#social-authentication)
     - [Google OAuth](#google-oauth)
     - [Apple Sign In](#apple-sign-in)
+    - [GitHub OAuth](#github-oauth)
 - [HashiCorp Vault](#hashicorp-vault)
 
 ## AWS Services
@@ -445,6 +447,57 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=<your_apple_sign_in_client_id>
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
+### GitHub OAuth
+
+[GitHub OAuth][ref-github-oauth] for social login integration.
+
+**Packages:**
+
+- None. The backend calls GitHub through the built-in `fetch`.
+
+**Environment Variables:**
+
+```dotenv
+AUTH_SOCIAL_GITHUB_CLIENT_ID=<your_github_client_id>
+AUTH_SOCIAL_GITHUB_CLIENT_SECRET=<your_github_client_secret>
+AUTH_SOCIAL_GITHUB_TOKEN_URL=https://github.com/login/oauth/access_token
+AUTH_SOCIAL_GITHUB_API_URL=https://api.github.com
+```
+
+**Turned on by:** `AUTH_SOCIAL_GITHUB_CLIENT_ID` or `AUTH_SOCIAL_GITHUB_CLIENT_SECRET`
+
+- Boot then requires both, so a lone client id or secret fails validation.
+- `AUTH_SOCIAL_GITHUB_TOKEN_URL` and `AUTH_SOCIAL_GITHUB_API_URL` are optional overrides: a blank or missing value uses the github.com default.
+- The API version (`2026-03-10`) and the timeout (10 seconds) are fixed in `auth.config.ts` with no environment key.
+- GitHub Enterprise Server sets `AUTH_SOCIAL_GITHUB_TOKEN_URL` and `AUTH_SOCIAL_GITHUB_API_URL`.
+
+**Setup:**
+
+1. Register an OAuth app in [GitHub Developer Settings][ref-github-oauth-apps].
+2. Set the authorization callback URL to the client's redirect URI.
+3. Generate a client secret.
+4. Copy the client id and secret into `.env`.
+
+See [Authentication][ref-doc-authentication] for the full setup and the Enterprise Server forms.
+
+**Provider contract:**
+
+- The client requests the `user:email` scope and runs the PKCE authorization (RFC 7636).
+- The backend exchanges the code at the token URL with the client id, the client secret, the redirect URI, and the code verifier.
+- It then reads `GET /user/emails` and accepts only the primary verified email.
+- The GitHub access token is discarded after that read: it is never stored, logged, or returned.
+
+**Unconfigured:** with the client id or secret blank:
+
+- GitHub sign-in throws `AuthSocialGithubNotConfiguredException` (`50823`, HTTP 404).
+- No health indicator reports GitHub: `GET /api/system/health/third-party` lists Sentry, Firebase, Google, and Apple.
+
+**Unreachable:** when GitHub is down, times out, or rate limits the app, sign-in throws `AuthProviderUnavailableException` (`50819`, HTTP 503).
+
+**Rejected:** a bad or expired code, a redirect URI mismatch, an account with no primary verified email, or a token without the `user:email` scope answers `AuthSocialGithubInvalidException` (`50822`, HTTP 401). A rejection caused by the app setup (wrong client credentials, an unsupported API version) answers 500 and leaks nothing to the client.
+
+For authentication flow details, see [Authentication][ref-doc-authentication].
+
 ## HashiCorp Vault
 
 [HashiCorp Vault][ref-vault] is integrated as an **optional** secret store.
@@ -471,6 +524,8 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-prisma]: https://www.prisma.io
 [ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
 [ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/
+[ref-github-oauth]: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+[ref-github-oauth-apps]: https://github.com/settings/developers
 [ref-vault]: https://developer.hashicorp.com/vault
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md

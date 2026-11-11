@@ -20,6 +20,8 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
+import { AuthSocialGithubInvalidException } from '@modules/auth/exceptions/auth.social-github-invalid.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('AuthUtil', () => {
@@ -465,6 +467,162 @@ describe('AuthUtil', () => {
             const result = util.toProviderUnavailableException(null);
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('toGithubUnavailableException', () => {
+        it.each([500, 502, 503])('maps status %s', status => {
+            const result = util.toGithubUnavailableException(
+                status,
+                new Headers()
+            );
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toEqual({ status });
+        });
+
+        it.each([403, 429])('maps status %s with retry-after', status => {
+            const result = util.toGithubUnavailableException(
+                status,
+                new Headers({ 'retry-after': '60' })
+            );
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toEqual({ status });
+        });
+
+        it.each([403, 429])(
+            'maps status %s with an exhausted rate limit',
+            status => {
+                const result = util.toGithubUnavailableException(
+                    status,
+                    new Headers({ 'x-ratelimit-remaining': '0' })
+                );
+
+                expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+                expect(result?.rawError).toEqual({ status });
+            }
+        );
+
+        it('returns null for a 403 with rate limit left', () => {
+            const result = util.toGithubUnavailableException(
+                403,
+                new Headers({ 'x-ratelimit-remaining': '4' })
+            );
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null for a 200', () => {
+            const result = util.toGithubUnavailableException(
+                200,
+                new Headers()
+            );
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('toGithubTokenException', () => {
+        it.each([
+            'bad_verification_code',
+            'redirect_uri_mismatch',
+            'unverified_user_email',
+        ])('maps client error %s to the invalid exception', error => {
+            const result = util.toGithubTokenException(error, 'details');
+
+            expect(result).toBeInstanceOf(AuthSocialGithubInvalidException);
+            expect(result.rawError).toEqual({
+                error,
+                description: 'details',
+            });
+        });
+
+        it.each(['incorrect_client_credentials', 'something_else'])(
+            'maps %s to an unknown exception with its description',
+            error => {
+                const result = util.toGithubTokenException(error, 'details');
+
+                expect(result).toBeInstanceOf(AppUnknownException);
+                expect(result.rawError).toEqual({
+                    error,
+                    description: 'details',
+                });
+                expect(result.message).toBe(
+                    'GitHub rejected the OAuth app credentials or request'
+                );
+            }
+        );
+    });
+
+    describe('toGithubEmailsException', () => {
+        it('returns null for a 200', () => {
+            const result = util.toGithubEmailsException(200);
+
+            expect(result).toBeNull();
+        });
+
+        it.each([401, 403, 404])(
+            'maps status %s to the invalid exception',
+            status => {
+                const result = util.toGithubEmailsException(status);
+
+                expect(result).toBeInstanceOf(AuthSocialGithubInvalidException);
+                expect(result?.rawError).toEqual({ status });
+            }
+        );
+
+        it.each([410, 400])(
+            'maps status %s to an unknown exception',
+            status => {
+                const result = util.toGithubEmailsException(status);
+
+                expect(result).toBeInstanceOf(AppUnknownException);
+                expect(result?.rawError).toEqual({ status });
+                expect(result?.message).toBe(
+                    'GitHub rejected the emails request'
+                );
+            }
+        );
+    });
+
+    describe('parseGithubToken', () => {
+        it('returns the parsed token body', () => {
+            const result = util.parseGithubToken('{"access_token":"gho_x"}');
+
+            expect(result).toEqual({ access_token: 'gho_x' });
+        });
+
+        it('returns an unknown exception carrying the parse error when the body is not JSON', () => {
+            const result = util.parseGithubToken('<html>');
+
+            expect(result).toBeInstanceOf(AppUnknownException);
+            expect(result).toMatchObject({
+                description: 'GitHub token response is not JSON',
+                rawError: expect.any(SyntaxError),
+            });
+        });
+    });
+
+    describe('parseGithubEmails', () => {
+        it('returns the parsed emails', () => {
+            const emails = [
+                { email: 'a@example.com', primary: true, verified: true },
+            ];
+
+            const result = util.parseGithubEmails(JSON.stringify(emails));
+
+            expect(result).toEqual(emails);
+        });
+
+        it('returns an unknown exception carrying the parse error when the body is not JSON', () => {
+            const result = util.parseGithubEmails('<html>');
+
+            expect(result).toBeInstanceOf(AppUnknownException);
+            expect(result).toMatchObject({
+                description: 'GitHub emails response is not JSON',
+                rawError: expect.any(SyntaxError),
+            });
         });
     });
 });

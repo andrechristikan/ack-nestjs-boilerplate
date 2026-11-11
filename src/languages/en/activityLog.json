@@ -20,6 +20,7 @@
     "userLoginFailed": "Login failed with invalid credentials",
     "userLoginGoogle": "You logged in with Google",
     "userLoginApple": "You logged in with Apple",
+    "userLoginGithub": "You logged in with GitHub",
     "userRefreshToken": "Your access token has been refreshed",
     "userVerifiedEmail": "Your email address has been verified",
     "userSendVerificationEmail": "Verification email has been sent",

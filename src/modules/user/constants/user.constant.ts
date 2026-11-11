@@ -103,6 +103,7 @@ export const UserLoginAnalyticActions: EnumActivityLogAction[] = [
     EnumActivityLogAction.userLoginCredential,
     EnumActivityLogAction.userLoginGoogle,
     EnumActivityLogAction.userLoginApple,
+    EnumActivityLogAction.userLoginGithub,
 ];
 
 /** @public */

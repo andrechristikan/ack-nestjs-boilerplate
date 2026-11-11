@@ -123,6 +123,10 @@ describe('AppEnvSchema', () => {
                 AUTH_SOCIAL_GOOGLE_CLIENT_ID: null,
                 AUTH_SOCIAL_APPLE_CLIENT_ID: null,
                 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: null,
+                AUTH_SOCIAL_GITHUB_CLIENT_ID: null,
+                AUTH_SOCIAL_GITHUB_CLIENT_SECRET: null,
+                AUTH_SOCIAL_GITHUB_TOKEN_URL: null,
+                AUTH_SOCIAL_GITHUB_API_URL: null,
                 AWS_S3_IAM_CREDENTIAL_KEY: null,
                 AWS_S3_IAM_CREDENTIAL_SECRET: null,
                 AWS_S3_IAM_ARN: null,
@@ -447,6 +451,10 @@ describe('AppEnvSchema', () => {
             'AUTH_SOCIAL_GOOGLE_CLIENT_ID',
             'AUTH_SOCIAL_APPLE_CLIENT_ID',
             'AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID',
+            'AUTH_SOCIAL_GITHUB_CLIENT_ID',
+            'AUTH_SOCIAL_GITHUB_CLIENT_SECRET',
+            'AUTH_SOCIAL_GITHUB_TOKEN_URL',
+            'AUTH_SOCIAL_GITHUB_API_URL',
             'AWS_S3_IAM_CREDENTIAL_KEY',
             'AWS_S3_IAM_CREDENTIAL_SECRET',
             'AWS_S3_IAM_ARN',
@@ -478,11 +486,21 @@ describe('AppEnvSchema', () => {
             }
         });
 
-        it('parses the third-party lines of .env.example, all blank', () => {
+        it('parses the third-party lines of .env.example, blank except the GitHub URL defaults', () => {
             const exampleThirdParty = readEnvExample(thirdPartyKeys);
+            const blankKeys = omitKey(
+                omitKey(thirdPartyKeys, 'AUTH_SOCIAL_GITHUB_TOKEN_URL'),
+                'AUTH_SOCIAL_GITHUB_API_URL'
+            );
+            const exampleBlank = readEnvExample(blankKeys);
 
             expect(Object.keys(exampleThirdParty)).toEqual(thirdPartyKeys);
-            expect(isEveryEnvBlank(exampleThirdParty)).toBe(true);
+            expect(isEveryEnvBlank(exampleBlank)).toBe(true);
+            expect(exampleThirdParty).toMatchObject({
+                AUTH_SOCIAL_GITHUB_TOKEN_URL:
+                    'https://github.com/login/oauth/access_token',
+                AUTH_SOCIAL_GITHUB_API_URL: 'https://api.github.com',
+            });
             expect(
                 AppEnvSchema.safeParse({ ...validEnv, ...exampleThirdParty })
                     .success
@@ -775,6 +793,90 @@ describe('AppEnvSchema', () => {
             });
 
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('GitHub refinement', () => {
+        const githubComplete = {
+            AUTH_SOCIAL_GITHUB_CLIENT_ID: 'github-client-id',
+            AUTH_SOCIAL_GITHUB_CLIENT_SECRET: 'github-client-secret',
+        };
+        const githubKeys = Object.keys(githubComplete);
+
+        it('accepts the client id and secret together', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                ...githubComplete,
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        for (const trigger of githubKeys) {
+            it(`requires the other key when only ${trigger} is set`, () => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    [trigger]:
+                        githubComplete[trigger as keyof typeof githubComplete],
+                });
+
+                expect(result.success).toBe(false);
+                for (const key of omitKey(githubKeys, trigger)) {
+                    expect(result.error?.issues).toContainEqual(
+                        expect.objectContaining({
+                            code: 'custom',
+                            path: [key],
+                        })
+                    );
+                }
+            });
+        }
+
+        it('does not trigger on empty keys', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                AUTH_SOCIAL_GITHUB_CLIENT_ID: '',
+                AUTH_SOCIAL_GITHUB_CLIENT_SECRET: '',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it.each(['AUTH_SOCIAL_GITHUB_TOKEN_URL', 'AUTH_SOCIAL_GITHUB_API_URL'])(
+            'parses a blank or missing %s to null',
+            key => {
+                const blank = AppEnvSchema.parse({ ...validEnv, [key]: '' });
+                const missing = AppEnvSchema.parse(validEnv);
+
+                expect(blank).toHaveProperty(key, null);
+                expect(missing).toHaveProperty(key, null);
+            }
+        );
+
+        it.each([
+            ['AUTH_SOCIAL_GITHUB_TOKEN_URL', 'https://ghe.example.com/login'],
+            ['AUTH_SOCIAL_GITHUB_API_URL', 'https://ghe.example.com/api/v3'],
+        ])('keeps a set %s', (key, value) => {
+            const result = AppEnvSchema.parse({ ...validEnv, [key]: value });
+
+            expect(result).toHaveProperty(key, value);
+        });
+
+        it.each([
+            ['AUTH_SOCIAL_GITHUB_TOKEN_URL', 'not a url'],
+            ['AUTH_SOCIAL_GITHUB_API_URL', 'not a url'],
+            ['AUTH_SOCIAL_GITHUB_TOKEN_URL', 'https://github.com/token/'],
+            ['AUTH_SOCIAL_GITHUB_API_URL', 'https://api.github.com/'],
+        ])('rejects %s %s', (key, value) => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                [key]: value,
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: [key] })
+            );
         });
     });
 

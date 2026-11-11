@@ -774,6 +774,7 @@ enum EnumUserSignUpWith {
   credential
   socialGoogle
   socialApple
+  socialGithub
 }
 
 enum EnumUserLoginFrom {
@@ -785,6 +786,7 @@ enum EnumUserLoginWith {
   credential
   socialGoogle
   socialApple
+  socialGithub
 }
 
 enum EnumRoleType {
@@ -865,6 +867,7 @@ enum EnumActivityLogAction {
   userLoginFailed
   userLoginGoogle
   userLoginApple
+  userLoginGithub
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail

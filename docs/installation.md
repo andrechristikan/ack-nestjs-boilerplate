@@ -143,7 +143,7 @@ QUEUE_REDIS_URL=redis://:<password>@localhost:6379/1
 
 Full variable list: [Environment Documentation][ref-doc-environment].
 
-Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. Leave their lines blank in `.env` and the app boots without them:
+Third-party integrations (AWS S3, AWS SES, Firebase, Google, Apple, and GitHub sign-in, Sentry) are optional. Leave their lines blank in `.env` and the app boots without them:
 
 - A route that needs S3 or a social sign-in that is not set up answers 404.
 - Email and push delivery are skipped.
@@ -155,6 +155,7 @@ Turning one on:
 - Firebase turns on when any of its three keys is set.
 - Once one of those is on, startup validation fails with the keys it still needs.
 - Google, Apple, and Sentry turn on from their client id or DSN alone.
+- GitHub turns on when its client id or client secret is set, and startup validation then requires both.
 - A region, bucket, or `EMAIL_*` value set on its own boots fine.
 
 The full trigger table is in [Environment Documentation][ref-doc-environment].

@@ -50,6 +50,7 @@ export const LoggerSensitiveFields: string[] = [
     'challengeToken',
     'backupCode',
     'code',
+    'codeVerifier',
     'pendingSecret',
     'encryptedPassword',
     'encryptedLink',

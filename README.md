@@ -4,7 +4,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required), uses native ESM, and stays modular with a repository layer for data access.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google, Apple & GitHub), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required), uses native ESM, and stays modular with a repository layer for data access.
 
 _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
@@ -13,7 +13,7 @@ _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 A good fit when you are building:
 
 - 🏢 **Enterprise apps**: Auth with roles, CASL policies, and an activity log
-- 🔐 **Auth services**: JWT, Google and Apple sign-in, and TOTP 2FA
+- 🔐 **Auth services**: JWT, Google, Apple, and GitHub sign-in, and TOTP 2FA
 - 📱 **Mobile backends**: REST API with social login, device tracking, and push notifications
 - 🌐 **Multi-tenant SaaS**: Every user belongs to a workspace. Projects stay workspace-scoped, with invites and join requests
 - 💼 **Startup MVPs**: Auth, workspaces, notifications, and file upload already wired
@@ -50,11 +50,12 @@ A good fit when you are building:
 ## Important
 
 - MongoDB runs as a replica set because Prisma transactions need one.
-- Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset.
+- Third-party integrations (AWS S3, AWS SES, Firebase, Google, Apple, and GitHub sign-in, Sentry) are optional. A blank `.env` line leaves one unset.
     - S3 and SES turn on when their IAM credential key or secret is set.
     - Firebase turns on when any of its three keys is set.
     - Once S3, SES, or Firebase is on, a missing member of its group fails startup validation.
     - Google, Apple, and Sentry each turn on from their own id or DSN and need nothing else.
+    - GitHub turns on from its client id or client secret, and startup validation then requires both.
     - A region, bucket, or `EMAIL_*` value set alone boots fine.
     - A route that needs S3, or a social sign-in, answers 404 when that integration is unset.
 - When `APP_ENV` is `production`:
@@ -100,7 +101,6 @@ A good fit when you are building:
 
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
-- [ ] Login with Github SSO
 - [ ] Mobile number verification by WhatsApp and/or SMS
 - [ ] Versioning System (force the frontend to update, especially mobile)
 
@@ -150,7 +150,7 @@ See [package.json][ref-package-json] for the full list.
 ### 🔐 Authentication & Security
 
 - **JWT + stateful sessions**: ES256 access and ES512 refresh tokens, Redis-backed sessions, and instant revocation
-- **Social sign-in**: Google OAuth and Apple Sign In for mobile and web
+- **Social sign-in**: Google OAuth, Apple Sign In, and GitHub OAuth for mobile and web
 - **TOTP 2FA**: Authenticator apps, encrypted secrets, and backup recovery codes
 - **RBAC & CASL policies**: Roles and fine-grained abilities on top of workspace and project membership
 - **API keys & rate limits**: `x-api-key` guards plus Redis sliding-window limits (per IP, per user, per route)

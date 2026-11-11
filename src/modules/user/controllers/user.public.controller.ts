@@ -7,12 +7,15 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
+    AuthSocialGithubProtected,
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
+import { UserCreateGithubRequestSchema } from '@modules/user/dtos/request/user.create-github.request.dto';
+import type { UserCreateGithubRequestDto } from '@modules/user/dtos/request/user.create-github.request.dto';
 import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
@@ -130,6 +133,29 @@ export class UserPublicController {
         return this.userLoginWithSocialUseCase.execute(
             email,
             EnumUserLoginWith.socialApple,
+            body
+        );
+    }
+
+    @Doc({ summary: 'login with social github' })
+    @Response('user.loginWithSocialGithub', {
+        schema: UserLoginResponseSchema,
+    })
+    @AuthSocialGithubProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithGithub)
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/login/social/github')
+    async loginWithGithub(
+        @AuthJwtPayload<IAuthSocialPayload>('email')
+        email: string,
+        @Body({ schema: UserCreateGithubRequestSchema })
+        body: UserCreateGithubRequestDto
+    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+        return this.userLoginWithSocialUseCase.execute(
+            email,
+            EnumUserLoginWith.socialGithub,
             body
         );
     }

@@ -156,4 +156,26 @@ export class AuthService {
             throw unavailable ?? new AuthSocialGoogleInvalidException(err);
         }
     }
+
+    async validateOAuthGithub(
+        code: string,
+        redirectUri: string,
+        codeVerifier: string
+    ): Promise<IAuthSocialPayload> {
+        try {
+            const email = await this.authSocialService.verifyGithub(
+                code,
+                redirectUri,
+                codeVerifier
+            );
+
+            return { email, emailVerified: true };
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
 }

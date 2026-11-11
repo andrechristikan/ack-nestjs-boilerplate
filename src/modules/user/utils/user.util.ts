@@ -4,6 +4,7 @@ import type {
     IActivityLogMetadata,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
+import { UserSocialLoginContract } from '@modules/user/contracts/user.social-login.contract';
 import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import type {
     IUser,
@@ -222,15 +223,11 @@ export class UserUtil {
     resolveLoginActivityLogAction(
         loginWith: EnumUserLoginWith
     ): EnumActivityLogAction {
-        switch (loginWith) {
-            case EnumUserLoginWith.socialApple:
-                return EnumActivityLogAction.userLoginApple;
-            case EnumUserLoginWith.socialGoogle:
-                return EnumActivityLogAction.userLoginGoogle;
-            case EnumUserLoginWith.credential:
-            default:
-                return EnumActivityLogAction.userLoginCredential;
+        if (loginWith === EnumUserLoginWith.credential) {
+            return EnumActivityLogAction.userLoginCredential;
         }
+
+        return UserSocialLoginContract[loginWith].loginAction;
     }
 
     mapActivityLogActorMetadata(user: User): IActivityLogMetadata {

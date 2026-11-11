@@ -22,6 +22,7 @@ A service holds one module's business rules and typed exceptions; many use cases
 - An assert is a util predicate plus the throw: `if (!this.roleUtil.outranks(actor, target)) throw new RoleRankForbiddenException()`. A method that throws its subject's exception and otherwise returns its narrowed input is an assert and stays in the service (`UserTwoFactorService.getProvidedMethod`, `src/modules/user/services/user.two-factor.service.ts`).
 - A method returning its argument or a single util call is deleted.
 - A method joining a caller's transaction is `*InTx(tx, ...)` and forwards `tx` to its own repositories and lower-ranked services.
+- An outbound HTTP call is native `fetch` with `signal: AbortSignal.timeout(...)` on the module's `timeoutInMs` config key, no HTTP client dependency. The service owning the call wraps a thrown fetch error (`AuthSocialService.requestGithub`); the module's util maps a response to an exception and returns it, never throws (`AuthUtil.toGithubUnavailableException`).
 
 ## Shared transactions
 

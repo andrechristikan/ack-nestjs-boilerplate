@@ -37,6 +37,7 @@ Feature flags provided in `src/migration/data/migration.feature-flag.data.ts`:
 | --- | --- | --- | --- |
 | `loginWithGoogle` | Enable login with Google | 100% | `signUpAllowed: true` |
 | `loginWithApple` | Enable login with Apple | 100% | `signUpAllowed: true` |
+| `loginWithGithub` | Enable login with GitHub | 100% | `signUpAllowed: true` |
 | `loginWithCredential` | Enable login with Credential | 100% | - |
 | `signUp` | Enable user sign up | 100% | - |
 | `changePassword` | Enable change password feature | 100% | `forgotAllowed: true` |

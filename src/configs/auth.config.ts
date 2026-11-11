@@ -41,6 +41,14 @@ export interface IConfigAuth {
     google: {
         clientId: string | null;
     };
+    github: {
+        clientId: string | null;
+        clientSecret: string | null;
+        tokenUrl: string;
+        apiUrl: string;
+        apiVersion: string;
+        timeoutInMs: number;
+    };
     xApiKey: {
         keyPattern: string;
         cacheTtlInMs: number;
@@ -71,6 +79,9 @@ export interface IConfigAuth {
         };
     };
 }
+
+const AuthGithubDefaultTokenUrl = 'https://github.com/login/oauth/access_token';
+const AuthGithubDefaultApiUrl = 'https://api.github.com';
 
 export default registerAs('auth', (): IConfigAuth => {
     return {
@@ -131,6 +142,28 @@ export default registerAs('auth', (): IConfigAuth => {
                 process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID === ''
                     ? null
                     : (process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null),
+        },
+        github: {
+            clientId:
+                process.env.AUTH_SOCIAL_GITHUB_CLIENT_ID === ''
+                    ? null
+                    : (process.env.AUTH_SOCIAL_GITHUB_CLIENT_ID ?? null),
+            clientSecret:
+                process.env.AUTH_SOCIAL_GITHUB_CLIENT_SECRET === ''
+                    ? null
+                    : (process.env.AUTH_SOCIAL_GITHUB_CLIENT_SECRET ?? null),
+            tokenUrl:
+                process.env.AUTH_SOCIAL_GITHUB_TOKEN_URL === ''
+                    ? AuthGithubDefaultTokenUrl
+                    : (process.env.AUTH_SOCIAL_GITHUB_TOKEN_URL ??
+                      AuthGithubDefaultTokenUrl),
+            apiUrl:
+                process.env.AUTH_SOCIAL_GITHUB_API_URL === ''
+                    ? AuthGithubDefaultApiUrl
+                    : (process.env.AUTH_SOCIAL_GITHUB_API_URL ??
+                      AuthGithubDefaultApiUrl),
+            apiVersion: '2026-03-10',
+            timeoutInMs: ms('10s'),
         },
         xApiKey: {
             keyPattern: 'ApiKey:{key}',

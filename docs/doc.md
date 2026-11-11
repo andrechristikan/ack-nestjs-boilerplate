@@ -255,7 +255,8 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 Two kits carry a 404, and the feature flag kit a 500 as well:
 
 - `FeatureFlagProtected` publishes `FeatureFlagProtectedDocErrors`: `disabled` (404, `featureFlag.error.disabled`) and `notConfigured` (500, `featureFlag.error.notConfigured`, a flag key with no stored row)
-- `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `AuthSocialGoogleProtectedDocErrors` / `AuthSocialAppleProtectedDocErrors`: invalid and required (401), `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`), and provider unavailable (503)
+- `AuthSocialGoogleProtected`, `AuthSocialAppleProtected`, and `AuthSocialGithubProtected` publish `AuthSocialGoogleProtectedDocErrors` / `AuthSocialAppleProtectedDocErrors` / `AuthSocialGithubProtectedDocErrors`: invalid and required (401), `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured` / `auth.error.socialGithubNotConfigured`), and provider unavailable (503)
+- `AuthSocialGithubProtected` registers no security scheme, because the GitHub code travels in the request body and nothing rides in `Authorization`
 
 - `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`, and `UserProtected` does not publish it.
 

@@ -46,6 +46,23 @@ export const AuthGoogleCertificateErrorPrefix =
     'Failed to retrieve verification certificates';
 
 /** @public */
+export const AuthSocialGithubClientErrorCodes: readonly string[] = [
+    'bad_verification_code',
+    'redirect_uri_mismatch',
+    'unverified_user_email',
+];
+
+/** @public */
+export const AuthSocialGithubRetryAfterHeaderName = 'retry-after';
+
+/** @public */
+export const AuthSocialGithubRateLimitRemainingHeaderName =
+    'x-ratelimit-remaining';
+
+/** @public */
+export const AuthSocialGithubEmailsPath = '/user/emails';
+
+/** @public */
 export const AuthHeaderName = 'Authorization';
 
 /** @public */
@@ -124,6 +141,30 @@ export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
         httpStatus: HttpStatus.NOT_FOUND,
         statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
         messagePath: 'auth.error.socialAppleNotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/** @public */
+export const AuthSocialGithubProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGithubInvalid,
+        messagePath: 'auth.error.socialGithubInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGithubRequired,
+        messagePath: 'auth.error.socialGithubRequired',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumAuthStatusCodeError.socialGithubNotConfigured,
+        messagePath: 'auth.error.socialGithubNotConfigured',
     },
     {
         httpStatus: HttpStatus.SERVICE_UNAVAILABLE,

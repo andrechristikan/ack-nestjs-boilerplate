@@ -6,11 +6,13 @@ import {
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import type { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
@@ -420,3 +422,19 @@ export interface IUserCreateContracts {
     social: IUserCreateContract;
     admin: IUserCreateContract;
 }
+
+export type IUserSocialLoginProvider = Exclude<
+    EnumUserLoginWith,
+    typeof EnumUserLoginWith.credential
+>;
+
+export interface IUserSocialLoginContract {
+    signUpWith: EnumUserSignUpWith;
+    featureFlagKey: EnumFeatureFlagKey;
+    loginAction: EnumActivityLogAction;
+}
+
+export type IUserSocialLoginContracts = Record<
+    IUserSocialLoginProvider,
+    IUserSocialLoginContract
+>;

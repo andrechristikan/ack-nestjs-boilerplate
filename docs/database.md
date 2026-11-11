@@ -315,12 +315,13 @@ Notes on the removal:
 
 ### Feature Flags
 
-Six feature flags are created to control authentication, user, and workspace features:
+Seven feature flags are created to control authentication, user, and workspace features:
 
 | Key | Description | Enabled | Rollout | Metadata |
 | --- | --- | --- | --- | --- |
 | `loginWithGoogle` | Enable login with Google | ✅ Yes | 100% | `signUpAllowed: true` |
 | `loginWithApple` | Enable login with Apple | ✅ Yes | 100% | `signUpAllowed: true` |
+| `loginWithGithub` | Enable login with GitHub | ✅ Yes | 100% | `signUpAllowed: true` |
 | `loginWithCredential` | Enable login with Credential | ✅ Yes | 100% | - |
 | `signUp` | Enable user sign up | ✅ Yes | 100% | - |
 | `changePassword` | Enable change password feature | ✅ Yes | 100% | `forgotAllowed: true` |

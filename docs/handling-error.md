@@ -191,6 +191,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 - `AuthJwtAccessStrategy` reads the login entry of the session from Redis; the refresh strategy reads no store. A store error there reaches the filter wrapped in `AppUnknownException`. A not-connected error renders as `RedisUnavailableException` (503), and any other store error stays a 500.
 - An unreachable JWKS endpoint, Google certificate fetch, or Apple key fetch during JWT or social-token verification throws `AuthProviderUnavailableException` (`50819`, 503) directly. A bad token answers 401.
+- A GitHub outage, timeout, or rate limit during the code exchange or the email read throws `AuthProviderUnavailableException` (`50819`, 503). A GitHub rejection caused by the app setup (wrong client credentials, an unsupported API version) reaches the filter wrapped in `AppUnknownException` and answers 500.
 
 **Behavior**:
 
