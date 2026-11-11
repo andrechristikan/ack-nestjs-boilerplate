@@ -24,6 +24,7 @@ export enum EnumHealthIndicatorKey {
     firebase = 'firebase',
     google = 'google',
     apple = 'apple',
+    github = 'github',
     jwksAccessToken = 'jwksAccessToken',
     jwksRefreshToken = 'jwksRefreshToken',
     memoryRss = 'memoryRss',

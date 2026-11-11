@@ -15,6 +15,7 @@ import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthService } from '@modules/health/services/health.service';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
+import { HealthGithubIndicator } from '@modules/health/indicators/health.github.indicator';
 import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
 import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
@@ -44,6 +45,8 @@ describe('HealthService', () => {
         mock<HealthGoogleIndicator>();
     const appleIndicator: MockProxy<HealthAppleIndicator> =
         mock<HealthAppleIndicator>();
+    const githubIndicator: MockProxy<HealthGithubIndicator> =
+        mock<HealthGithubIndicator>();
     const jwksIndicator: MockProxy<HealthJwksIndicator> =
         mock<HealthJwksIndicator>();
     const queueIndicator: MockProxy<HealthQueueIndicator> =
@@ -87,6 +90,7 @@ describe('HealthService', () => {
                 },
                 { provide: HealthGoogleIndicator, useValue: googleIndicator },
                 { provide: HealthAppleIndicator, useValue: appleIndicator },
+                { provide: HealthGithubIndicator, useValue: githubIndicator },
                 { provide: HealthJwksIndicator, useValue: jwksIndicator },
                 { provide: HealthQueueIndicator, useValue: queueIndicator },
             ],
@@ -175,7 +179,7 @@ describe('HealthService', () => {
     });
 
     describe('checkThirdParty', () => {
-        it('checks the sentry, firebase, google, apple, and jwks indicators', async () => {
+        it('checks the sentry, firebase, google, apple, github, and jwks indicators', async () => {
             let checks: Array<() => Promise<HealthIndicatorResult>> = [];
             health.check.mockImplementation(async passedChecks => {
                 checks = passedChecks as Array<
@@ -196,6 +200,9 @@ describe('HealthService', () => {
             appleIndicator.isHealthy.mockResolvedValue({
                 apple: { status: 'up' },
             });
+            githubIndicator.isHealthy.mockResolvedValue({
+                github: { status: 'up' },
+            });
             jwksIndicator.isHealthyAccessToken.mockResolvedValue({
                 jwksAccessToken: { status: 'up' },
             });
@@ -206,7 +213,7 @@ describe('HealthService', () => {
             const result = await service.checkThirdParty();
 
             expect(result).toBe(healthCheckResult);
-            expect(checks).toHaveLength(6);
+            expect(checks).toHaveLength(7);
 
             await checks[0]!();
             expect(sentryIndicator.isHealthy).toHaveBeenCalledWith('sentry');
@@ -223,11 +230,14 @@ describe('HealthService', () => {
             expect(appleIndicator.isHealthy).toHaveBeenCalledWith('apple');
 
             await checks[4]!();
+            expect(githubIndicator.isHealthy).toHaveBeenCalledWith('github');
+
+            await checks[5]!();
             expect(jwksIndicator.isHealthyAccessToken).toHaveBeenCalledWith(
                 'jwksAccessToken'
             );
 
-            await checks[5]!();
+            await checks[6]!();
             expect(jwksIndicator.isHealthyRefreshToken).toHaveBeenCalledWith(
                 'jwksRefreshToken'
             );

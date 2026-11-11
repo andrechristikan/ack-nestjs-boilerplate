@@ -96,8 +96,8 @@ Each third-party integration is optional and validated as a group by a `superRef
 An integration left unset boots fine:
 
 - A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, `AuthSocialGithubNotConfiguredException`, each 404).
-- Its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, and so on). GitHub sign-in has no health indicator.
-- `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200.
+- Its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, `GitHub is not configured`, and so on).
+- `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple, GitHub, JWKS) still answer 200.
 - A seed that needs it logs a warning and skips:
     - `templateEmailNotification` needs SES
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`

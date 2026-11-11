@@ -27,6 +27,9 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
             apple: {
                 status: EnumHealthIndicatorStatus.up,
             },
+            github: {
+                status: EnumHealthIndicatorStatus.up,
+            },
             jwksAccessToken: {
                 status: EnumHealthIndicatorStatus.up,
             },
@@ -50,6 +53,9 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
             apple: {
                 status: EnumHealthIndicatorStatus.down,
             },
+            github: {
+                status: EnumHealthIndicatorStatus.down,
+            },
             jwksAccessToken: {
                 status: EnumHealthIndicatorStatus.down,
             },
@@ -71,6 +77,9 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
                 status: EnumHealthIndicatorStatus.up,
             },
             apple: {
+                status: EnumHealthIndicatorStatus.up,
+            },
+            github: {
                 status: EnumHealthIndicatorStatus.up,
             },
             jwksAccessToken: {

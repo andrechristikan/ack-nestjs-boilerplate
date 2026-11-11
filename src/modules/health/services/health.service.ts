@@ -6,6 +6,7 @@ import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aw
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
+import { HealthGithubIndicator } from '@modules/health/indicators/health.github.indicator';
 import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
 import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
@@ -34,6 +35,7 @@ export class HealthService {
         private readonly firebaseIndicator: HealthFirebaseIndicator,
         private readonly googleIndicator: HealthGoogleIndicator,
         private readonly appleIndicator: HealthAppleIndicator,
+        private readonly githubIndicator: HealthGithubIndicator,
         private readonly jwksIndicator: HealthJwksIndicator,
         private readonly queueIndicator: HealthQueueIndicator
     ) {}
@@ -95,6 +97,7 @@ export class HealthService {
                 ),
             () => this.googleIndicator.isHealthy(EnumHealthIndicatorKey.google),
             () => this.appleIndicator.isHealthy(EnumHealthIndicatorKey.apple),
+            () => this.githubIndicator.isHealthy(EnumHealthIndicatorKey.github),
             () =>
                 this.jwksIndicator.isHealthyAccessToken(
                     EnumHealthIndicatorKey.jwksAccessToken

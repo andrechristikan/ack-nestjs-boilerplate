@@ -1082,7 +1082,7 @@ GitHub authentication is configured in `auth.config.ts` under `github`:
 - `apiVersion` is `2026-03-10` and `timeoutInMs` is 10 seconds, both fixed in `auth.config.ts` with no environment key.
 - No GitHub key is required for boot.
 - The `loginWithGithub` feature flag row comes from the feature-flag seed: enabled, 100% rollout, `signUpAllowed: true`. See [Feature Flag Documentation][ref-doc-feature-flag].
-- No health indicator reports GitHub.
+- The `github` health indicator in `GET /api/system/health/third-party` reports down with `GitHub is not configured` unless both the client id and the client secret are set.
 
 **GitHub Enterprise Server:**
 

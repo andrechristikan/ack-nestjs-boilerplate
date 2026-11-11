@@ -30,7 +30,7 @@ AWS S3, AWS SES, Firebase, Sentry, Google, Apple, and GitHub are optional. `AppE
     - `templateEmailNotification` needs SES
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
 - The `termPolicy` seed logs a warning without S3 and still writes every row, without uploading the content.
-- The health indicators of the integrations that have one (GitHub has none) report an unconfigured integration as `down` with the message `<name> is not configured`. The health endpoints still answer HTTP 200.
+- The health indicators of the integrations that have one report an unconfigured integration as `down` with the message `<name> is not configured`. The health endpoints still answer HTTP 200.
 
 ## Related Documents
 
@@ -490,7 +490,7 @@ See [Authentication][ref-doc-authentication] for the full setup and the Enterpri
 **Unconfigured:** with the client id or secret blank:
 
 - GitHub sign-in throws `AuthSocialGithubNotConfiguredException` (`50823`, HTTP 404).
-- No health indicator reports GitHub: `GET /api/system/health/third-party` lists Sentry, Firebase, Google, and Apple.
+- The `github` health indicator reports it down with `GitHub is not configured`. It makes no network call and reports up once both are set.
 
 **Unreachable:** when GitHub is down, times out, or rate limits the app, sign-in throws `AuthProviderUnavailableException` (`50819`, HTTP 503).
 
