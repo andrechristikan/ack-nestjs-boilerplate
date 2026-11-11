@@ -1,6 +1,6 @@
 # 0029. Keyv direct, no cache-manager
 
-- Status: accepted
+- Status: superseded by 0034
 - Date: 2026-11-07
 
 ## Context
