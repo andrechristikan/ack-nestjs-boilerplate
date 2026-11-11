@@ -9,7 +9,7 @@
 
 ## Decision
 
-`ts/boundaries` enforces the layer matrix of `layering.md` and nothing per feature. The module graph reader, the per-feature policies, and the cycle rule are gone. The config names one feature path: a processor may import `OutboxService`. Supersedes 0031.
+`ts/boundaries` enforces the layer matrix of `layering.md` and nothing per feature. The module graph reader, the per-feature policies, and the cycle rule are gone. The layer policies name one feature path: a processor may import `OutboxService`. Supersedes 0031.
 
 ## Considered options
 
@@ -20,5 +20,6 @@
 ## Consequences
 
 - A higher-module import or an import missing from `imports:` passes lint; the reviewer catches it against `layering.md`, Dependency order.
+- A service injecting another module's repository, cache, or queue class, a controller or processor calling another feature's use case, and a guard, interceptor, or decorator injecting a non-`@Global()` feature's service also pass lint; the reviewer holds them (`cross-module.md`).
 - A module cycle fails the boot, not `pnpm lint`.
 - `.claude/rules/eslint.md` carries the remaining rule set.
