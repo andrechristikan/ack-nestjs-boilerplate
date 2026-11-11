@@ -82,6 +82,19 @@ describe('RedisClientFactory', () => {
         });
     });
 
+    describe('createQueueWorker', () => {
+        it('constructs the queue worker client with the offline queue on, unlimited retries, and no timeouts or key prefix', () => {
+            const client = factory.createQueueWorker();
+
+            expect(Redis).toHaveBeenCalledWith('redis://queue', {
+                lazyConnect: true,
+                maxRetriesPerRequest: null,
+                connectionName: 'ack-test:processor',
+            });
+            expect(client).toBeInstanceOf(Redis);
+        });
+    });
+
     describe('connect', () => {
         it('attaches the error and ready listeners, records the client, and resolves it once connected', async () => {
             client.connect.mockResolvedValue(undefined);

@@ -1,10 +1,3 @@
-import { Redis } from 'ioredis';
-import appConfigFunction from '@configs/app.config';
-import redisConfigFunction from '@configs/redis.config';
-
-const appConfigs = appConfigFunction();
-const redisConfigs = redisConfigFunction();
-
 /** @public */
 export const RedisCacheClient = Symbol('RedisCacheClient');
 
@@ -12,14 +5,7 @@ export const RedisCacheClient = Symbol('RedisCacheClient');
 export const RedisQueueClient = Symbol('RedisQueueClient');
 
 /** @public */
-export const RedisQueueWorkerClientToken = Symbol('RedisQueueWorkerClient');
-
-/** @public */
-export const RedisQueueWorkerClient = new Redis(redisConfigs.queue.url, {
-    lazyConnect: true,
-    maxRetriesPerRequest: null,
-    connectionName: `${appConfigs.name}-${appConfigs.env}:processor`,
-});
+export const RedisQueueWorkerClient = Symbol('RedisQueueWorkerClient');
 
 /** @public */
 export const RedisConnectionErrorMessages = [

@@ -1,4 +1,5 @@
 import { RedisQueueClient } from '@common/redis/constants/redis.constant';
+import { QueueWorkerFactory } from '@queues/factories/queue.worker.factory';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
@@ -49,6 +50,7 @@ export class QueueModule {
                 }),
             ],
             controllers: [],
+            providers: [QueueWorkerFactory],
             exports: [BullModule],
         };
     }

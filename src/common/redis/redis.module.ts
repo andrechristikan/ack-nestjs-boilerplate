@@ -2,7 +2,6 @@ import {
     RedisCacheClient,
     RedisQueueClient,
     RedisQueueWorkerClient,
-    RedisQueueWorkerClientToken,
 } from '@common/redis/constants/redis.constant';
 import { RedisClientFactory } from '@common/redis/factories/redis.client.factory';
 import { Module } from '@nestjs/common';
@@ -30,13 +29,17 @@ export class RedisModule {
                         factory.connect(factory.createQueue()),
                 },
                 {
-                    provide: RedisQueueWorkerClientToken,
+                    provide: RedisQueueWorkerClient,
                     inject: [RedisClientFactory],
                     useFactory: (factory: RedisClientFactory) =>
-                        factory.connect(RedisQueueWorkerClient),
+                        factory.connect(factory.createQueueWorker()),
                 },
             ],
-            exports: [RedisCacheClient, RedisQueueClient],
+            exports: [
+                RedisCacheClient,
+                RedisQueueClient,
+                RedisQueueWorkerClient,
+            ],
         };
     }
 }

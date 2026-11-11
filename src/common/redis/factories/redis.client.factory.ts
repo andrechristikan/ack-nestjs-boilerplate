@@ -96,6 +96,14 @@ export class RedisClientFactory implements OnApplicationShutdown {
         });
     }
 
+    createQueueWorker(): Redis {
+        return new Redis(this.queueUrl, {
+            lazyConnect: true,
+            maxRetriesPerRequest: null,
+            connectionName: `${this.connectionNamePrefix}:processor`,
+        });
+    }
+
     async connect(client: Redis): Promise<Redis> {
         this.clients.add(client);
         client.on('error', (error: Error) => this.onError(client, error));
