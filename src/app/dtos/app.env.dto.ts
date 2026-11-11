@@ -67,6 +67,11 @@ export const AppEnvSchema = z
         AUTH_SOCIAL_GOOGLE_CLIENT_ID: RequestOptionalEnvStringSchema,
         AUTH_SOCIAL_APPLE_CLIENT_ID: RequestOptionalEnvStringSchema,
         AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: RequestOptionalEnvStringSchema,
+        AUTH_SOCIAL_GITHUB_CLIENT_ID: RequestOptionalEnvStringSchema,
+        AUTH_SOCIAL_GITHUB_CLIENT_SECRET: RequestOptionalEnvStringSchema,
+        AUTH_SOCIAL_GITHUB_TOKEN_URL:
+            RequestOptionalEnvUrlNoTrailingSlashSchema,
+        AUTH_SOCIAL_GITHUB_API_URL: RequestOptionalEnvUrlNoTrailingSlashSchema,
 
         AWS_S3_IAM_CREDENTIAL_KEY: RequestOptionalEnvStringSchema,
         AWS_S3_IAM_CREDENTIAL_SECRET: RequestOptionalEnvStringSchema,
@@ -138,6 +143,16 @@ export const AppEnvSchema = z
                 'EMAIL_SUPPORT',
             ],
             'an AWS SES credential is set'
+        );
+
+        requireAll(
+            env.AUTH_SOCIAL_GITHUB_CLIENT_ID !== null ||
+                env.AUTH_SOCIAL_GITHUB_CLIENT_SECRET !== null,
+            [
+                'AUTH_SOCIAL_GITHUB_CLIENT_ID',
+                'AUTH_SOCIAL_GITHUB_CLIENT_SECRET',
+            ],
+            'a GitHub credential is set'
         );
 
         requireAll(

@@ -21,4 +21,7 @@ export enum EnumAuthStatusCodeError {
     socialAppleNotConfigured = 50818,
     providerUnavailable = 50819,
     jwtGuardMissing = 50820,
+    socialGithubRequired = 50821,
+    socialGithubInvalid = 50822,
+    socialGithubNotConfigured = 50823,
 }

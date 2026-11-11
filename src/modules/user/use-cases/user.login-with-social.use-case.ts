@@ -49,6 +49,7 @@ import type {
     IUser,
     IUserLoginOutcome,
     IUserLoginSocial,
+    IUserSocialLoginProvider,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -63,7 +64,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginWithSocialUseCase implements IAppUseCase<
-    [string, EnumUserLoginWith, UserCreateSocialRequestDto],
+    [string, IUserSocialLoginProvider, UserCreateSocialRequestDto],
     IResponseReturn<IUserLoginOutcome>
 > {
     private readonly userRoleName: string;
@@ -111,7 +112,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
     private async signUpWithSocial(
         email: string,
-        loginWith: EnumUserLoginWith,
+        loginWith: IUserSocialLoginProvider,
         loginSocial: IUserLoginSocial
     ): Promise<IUserCreated | null> {
         const normalizedEmail = email.trim().toLowerCase();
@@ -533,7 +534,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
     async execute(
         email: string,
-        loginWith: EnumUserLoginWith,
+        loginWith: IUserSocialLoginProvider,
         {
             from,
             device,

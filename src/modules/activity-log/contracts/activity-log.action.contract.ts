@@ -72,6 +72,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userLoginGithub]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userSignedUp]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,

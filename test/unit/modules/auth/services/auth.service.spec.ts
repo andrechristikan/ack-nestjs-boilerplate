@@ -21,6 +21,8 @@ import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.s
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
+import { AuthSocialGithubInvalidException } from '@modules/auth/exceptions/auth.social-github-invalid.exception';
+import { AuthSocialGithubNotConfiguredException } from '@modules/auth/exceptions/auth.social-github-not-configured.exception';
 import { HttpStatus } from '@nestjs/common';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
@@ -576,6 +578,79 @@ describe('AuthService', () => {
                 messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: cause,
             });
+        });
+    });
+
+    describe('validateOAuthGithub', () => {
+        it('returns the verified email with emailVerified true', async () => {
+            authSocialService.verifyGithub.mockResolvedValue('a@b.com');
+
+            const result = await service.validateOAuthGithub(
+                'code',
+                'https://app/cb',
+                'verifier'
+            );
+
+            expect(result).toEqual({ email: 'a@b.com', emailVerified: true });
+            expect(authSocialService.verifyGithub).toHaveBeenCalledWith(
+                'code',
+                'https://app/cb',
+                'verifier'
+            );
+        });
+
+        it('rethrows AuthSocialGithubNotConfiguredException unwrapped', async () => {
+            const notConfigured = new AuthSocialGithubNotConfiguredException();
+            authSocialService.verifyGithub.mockRejectedValue(notConfigured);
+
+            const rejection = service.validateOAuthGithub('c', 'u', 'v');
+
+            await expect(rejection).rejects.toBe(notConfigured);
+        });
+
+        it('rethrows AuthSocialGithubInvalidException unwrapped', async () => {
+            const invalid = new AuthSocialGithubInvalidException(
+                new Error('bad_verification_code')
+            );
+            authSocialService.verifyGithub.mockRejectedValue(invalid);
+
+            const rejection = service.validateOAuthGithub('c', 'u', 'v');
+
+            await expect(rejection).rejects.toBe(invalid);
+        });
+
+        it('rethrows AuthProviderUnavailableException unwrapped', async () => {
+            const unavailable = new AuthProviderUnavailableException(
+                new Error('down')
+            );
+            authSocialService.verifyGithub.mockRejectedValue(unavailable);
+
+            const rejection = service.validateOAuthGithub('c', 'u', 'v');
+
+            await expect(rejection).rejects.toBe(unavailable);
+        });
+
+        it('rethrows AppUnknownException unwrapped', async () => {
+            const unknown = new AppUnknownException(new Error('bug'));
+            authSocialService.verifyGithub.mockRejectedValue(unknown);
+
+            const rejection = service.validateOAuthGithub('c', 'u', 'v');
+
+            await expect(rejection).rejects.toBe(unknown);
+        });
+
+        it('maps an unexpected error to AppUnknownException', async () => {
+            const cause = new TypeError('boom');
+            authSocialService.verifyGithub.mockRejectedValue(cause);
+
+            const rejection = service.validateOAuthGithub('c', 'u', 'v');
+
+            await expect(rejection).rejects.toMatchObject({
+                statusCode: EnumAppStatusCodeError.unknown,
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                rawError: cause,
+            });
+            await expect(rejection).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, Google/Apple social login, and API keys.
+Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, Google/Apple/GitHub social login, and API keys.
 
 - **Password:** bcrypt hash, expiration, rotation, attempt limits, history, and reset/change/temporary-password flows that invalidate sessions.
 - **JWT:**
@@ -17,8 +17,8 @@ Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, G
     - The database holds listing, management, and history.
     - A missing or mismatched Redis `jti` rejects the request.
 - **Social:**
-    - Google OAuth 2.0 and Apple Sign In.
-    - The backend verifies the provider token, then follows the same session path as credential login.
+    - Google OAuth 2.0, Apple Sign In, and GitHub OAuth.
+    - The backend verifies the provider token (Google, Apple) or exchanges the authorization code (GitHub), then follows the same session path as credential login.
 - **API key:** default and system keys, checked against the database and cache.
 
 Configuration lives in two files:
@@ -76,6 +76,11 @@ Authorization, workspace, and project scoping are separate docs.
         - [Configuration](#configuration-1)
         - [Setup Apple Sign In](#setup-apple-sign-in)
         - [Usage](#usage-2)
+    - [GitHub Authentication](#github-authentication)
+        - [GitHub Authorization Flow](#github-authorization-flow)
+        - [GitHub Configuration](#github-configuration)
+        - [Setup GitHub OAuth](#setup-github-oauth)
+        - [GitHub Usage](#github-usage)
 - [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp)
     - [Configuration](#configuration-2)
     - [Flow](#flow)
@@ -758,17 +763,18 @@ A unique identifier (32-character random string) generated during login and toke
 
 ## Social Authentication
 
-- Social authentication allows users to sign in using their Google or Apple accounts.
-- The backend validates the OAuth tokens provided by the client and extracts user information to create a session, similar to credential-based authentication.
+- Social authentication allows users to sign in using their Google, Apple, or GitHub accounts.
+- The backend validates the OAuth credentials provided by the client and extracts user information to create a session, similar to credential-based authentication.
 
 **Supported Providers:**
 
 - Google OAuth 2.0
 - Apple Sign In
+- GitHub OAuth (authorization code with PKCE; see [GitHub Authentication](#github-authentication))
 
 ### Social Authentication Flow
 
-Social login:
+Google and Apple social login:
 
 ```mermaid
 sequenceDiagram
@@ -777,9 +783,9 @@ sequenceDiagram
     participant GoogleApple as Google/Apple
     participant Guard
     participant API
-    participant AuthDomain
-    participant AuthSocialDomain
-    participant AuthJwtDomain
+    participant AuthService
+    participant AuthSocialService
+    participant AuthJwtService
     participant Redis
     participant Database
 
@@ -795,19 +801,19 @@ sequenceDiagram
     Guard->>Guard: Split the Authorization header on the Bearer scheme (AuthBearerScheme)
 
     alt Google Authentication
-        Guard->>AuthDomain: validateOAuthGoogle(token)
-        AuthDomain->>AuthSocialDomain: verifyGoogle(token)
-        Note over AuthSocialDomain: OAuth2Client from google-auth-library,<br/>built from the client id; verifyIdToken<br/>with audience = the client id
-        AuthSocialDomain-->>AuthDomain: TokenPayload {email, email_verified}
-        AuthDomain-->>Guard: {email, emailVerified}
+        Guard->>AuthService: validateOAuthGoogle(token)
+        AuthService->>AuthSocialService: verifyGoogle(token)
+        Note over AuthSocialService: OAuth2Client from google-auth-library,<br/>built from the client id; verifyIdToken<br/>with audience = the client id
+        AuthSocialService-->>AuthService: TokenPayload {email, email_verified}
+        AuthService-->>Guard: {email, emailVerified}
     else Apple Authentication
-        Guard->>AuthDomain: validateOAuthApple(token)
-        AuthDomain->>AuthSocialDomain: verifyApple(token)
-        Note over AuthSocialDomain: verifyAppleToken from verify-apple-id-token,<br/>against every configured Apple client id
-        AuthSocialDomain-->>AuthDomain: Payload {email, email_verified}
-        AuthDomain-->>Guard: {email, emailVerified}
+        Guard->>AuthService: validateOAuthApple(token)
+        AuthService->>AuthSocialService: verifyApple(token)
+        Note over AuthSocialService: verifyAppleToken from verify-apple-id-token,<br/>against every configured Apple client id
+        AuthSocialService-->>AuthService: Payload {email, email_verified}
+        AuthService-->>Guard: {email, emailVerified}
     end
-    Note over AuthDomain: Rethrows a not-configured exception as is;<br/>maps an unreachable provider to AuthProviderUnavailableException;<br/>wraps any other verification error in<br/>AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException
+    Note over AuthService: Rethrows a not-configured exception as is;<br/>maps an unreachable provider to AuthProviderUnavailableException;<br/>wraps any other verification error in<br/>AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException
 
     alt Provider not configured
         Guard-->>Client: 404 Not Found (AuthSocialGoogleNotConfiguredException 50817 /<br/>AuthSocialAppleNotConfiguredException 50818)
@@ -825,8 +831,8 @@ sequenceDiagram
         API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership and<br/>other users' sessions on the device,<br/>create session record with jti, update last-login fields
         Database-->>API: Committed, device ownership id returned
 
-        API->>AuthJwtDomain: createTokens(user, { sessionId, jti, deviceOwnershipId, loginAt }, loginFrom, loginWith)
-        AuthJwtDomain-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti and the device ownership id
+        API->>AuthJwtService: createTokens(user, { sessionId, jti, deviceOwnershipId, loginAt }, loginFrom, loginWith)
+        AuthJwtService-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti and the device ownership id
         API->>Redis: Store session with the jti digest and TTL
         Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jtiDigest}<br/>TTL: follows AUTH_JWT_ACCESS_TOKEN_EXPIRED
         Redis-->>API: Session cached
@@ -847,20 +853,20 @@ Social login joins the credential login path once the user is resolved:
 - The email-verification branch does not apply. A social user who is not yet verified is marked verified in place before the shared path runs, and the same write clears the stored password and its expiry, so the email owner is the only credential holder. `UserEmailNotVerifiedException` is never reached from a social login.
 - A user whose status is not `active` is rejected with `UserInactiveForbiddenException` at the same point, whether the record was just created or already existed.
 
-Both routes are also gated by `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)` / `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)` and `@ApiKeyProtected()`. The social guard sits above `@FeatureFlagProtected()` in source, so guards run in this order:
+The three routes are also gated by `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)` / `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)` / `@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGithub)` and `@ApiKeyProtected()`. The social guard sits above `@FeatureFlagProtected()` in source, so guards run in this order:
 
 1. `@ApiKeyProtected()`
 2. `@FeatureFlagProtected()`, on its anonymous branch
     - A disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before any provider call
 3. the social guard
 
-A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs. The GitHub route reads its code from the body instead and fails with `AuthSocialGithubRequiredException` (401, `50821`).
 
-A provider with no client id configured answers 404 before the token is verified: `AuthSocialGoogleNotConfiguredException` (`50817`) or `AuthSocialAppleNotConfiguredException` (`50818`).
+A provider with no client id configured answers 404 before the token is verified: `AuthSocialGoogleNotConfiguredException` (`50817`), `AuthSocialAppleNotConfiguredException` (`50818`), or `AuthSocialGithubNotConfiguredException` (`50823`).
 
-- `AuthDomain` rethrows these two as they are.
+- `AuthService` rethrows these as they are.
 - A provider whose key or certificate endpoint cannot be reached answers `AuthProviderUnavailableException` (503, `50819`): `AuthUtil.toProviderUnavailableException` recognizes a failed Google certificate fetch, a JWKS client error, an error flagged `isEndpointUnavailable`, and the network error codes of the JWKS paragraph above.
-- Every other verification failure becomes `AuthSocialGoogleInvalidException` / `AuthSocialAppleInvalidException` (401).
+- Every other verification failure becomes `AuthSocialGoogleInvalidException` / `AuthSocialAppleInvalidException` (401). The GitHub failures are in [GitHub Usage](#github-usage).
 
 When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path:
 
@@ -898,7 +904,7 @@ export default registerAs('auth', (): IConfigAuth => ({
 - `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID
     - Empty or unset leaves Google sign-in unconfigured
 
-`AuthSocialDomain` builds one `OAuth2Client` from the client id alone.
+`AuthSocialService` builds one `OAuth2Client` from the client id alone.
 
 - It verifies every Google ID token with `audience` set to that client id, so a token minted for another client is rejected.
 - With no client id, `verifyGoogle` throws `AuthSocialGoogleNotConfiguredException` (404, `50817`) before any verification.
@@ -934,7 +940,7 @@ async loginWithGoogle(
     @Body({ schema: UserCreateSocialRequestSchema })
     body: UserCreateSocialRequestDto
 ): Promise<IResponseReturn<IUserLoginOutcome>> {
-    return this.userAuthHttpService.loginWithSocial(
+    return this.userLoginWithSocialUseCase.execute(
         email,
         EnumUserLoginWith.socialGoogle,
         body
@@ -1002,7 +1008,7 @@ async loginWithApple(
     @Body({ schema: UserCreateSocialRequestSchema })
     body: UserCreateSocialRequestDto
 ): Promise<IResponseReturn<IUserLoginOutcome>> {
-    return this.userAuthHttpService.loginWithSocial(
+    return this.userLoginWithSocialUseCase.execute(
         email,
         EnumUserLoginWith.socialApple,
         body
@@ -1012,6 +1018,154 @@ async loginWithApple(
 
 - The Apple token is verified against whichever of `clientId` and `signInClientId` are set, so one route serves the web Services ID and the native app.
 - With neither set, `verifyApple` throws `AuthSocialAppleNotConfiguredException` (404, `50818`) before any verification.
+
+### GitHub Authentication
+
+GitHub OAuth apps issue no ID token, so the client sends an authorization code in the request body instead of an ID token in `Authorization`.
+
+The client builds the authorize URL, not the API:
+
+1. The client generates a PKCE code verifier and its `S256` code challenge. GitHub accepts only `S256`; the `plain` method is not supported.
+2. The client sends the challenge on the authorize redirect.
+3. The client sends the verifier to this API as `codeVerifier`.
+4. The API forwards the verifier to GitHub, which checks it against the challenge.
+
+#### GitHub Authorization Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant GitHub
+    participant API
+    participant Guard as AuthSocialGithubGuard
+    participant AuthService
+    participant AuthSocialService
+    participant UseCase as UserLoginWithSocialUseCase
+
+    Client->>GitHub: Authorization redirect (scope user:email, PKCE code challenge)
+    GitHub-->>Client: code at the redirect URI
+    Client->>API: POST /public/user/login/social/github
+    Note over Client,API: Body: code, redirectUri, codeVerifier,<br/>plus the social login fields. No Authorization header.
+
+    API->>API: ApiKeyProtected, then FeatureFlagProtected loginWithGithub<br/>(disabled flag: 404 FeatureFlagDisabledException)
+    API->>Guard: canActivate
+    Guard->>Guard: Read code, redirectUri, codeVerifier from the body
+    alt Missing or malformed
+        Guard-->>Client: 401 AuthSocialGithubRequiredException 50821
+    end
+    Guard->>AuthService: validateOAuthGithub(code, redirectUri, codeVerifier)
+    AuthService->>AuthSocialService: verifyGithub(code, redirectUri, codeVerifier)
+    AuthSocialService->>GitHub: POST token URL with client id, client secret, code, redirect URI, code verifier
+    GitHub-->>AuthSocialService: access token
+    AuthSocialService->>GitHub: GET /user/emails
+    GitHub-->>AuthSocialService: email list
+    Note over AuthSocialService: Accepts only the primary verified email.<br/>The access token is discarded.
+    AuthSocialService-->>AuthService: email
+    AuthService-->>Guard: {email, emailVerified: true}
+    Guard->>API: request.user = {email, emailVerified}
+    API->>API: Validate the body against UserCreateGithubRequestSchema
+    API->>UseCase: execute(email, socialGithub, body)
+    UseCase-->>Client: Login response (same shape as the other social routes)
+```
+
+#### GitHub Configuration
+
+GitHub authentication is configured in `auth.config.ts` under `github`:
+
+- `clientId` and `clientSecret` come from `AUTH_SOCIAL_GITHUB_CLIENT_ID` and `AUTH_SOCIAL_GITHUB_CLIENT_SECRET`.
+    - Both blank or unset is the unconfigured state: `verifyGithub` throws `AuthSocialGithubNotConfiguredException` (404, `50823`) before any GitHub call.
+    - Exactly one set fails boot validation.
+- `tokenUrl` and `apiUrl` come from `AUTH_SOCIAL_GITHUB_TOKEN_URL` and `AUTH_SOCIAL_GITHUB_API_URL`.
+    - Both are optional, and `.env.example` carries the github.com defaults.
+    - A blank or missing value uses the github.com default, `https://github.com/login/oauth/access_token` and `https://api.github.com`.
+    - A set value is a URL with no trailing slash.
+- `apiVersion` is `2026-03-10` and `timeoutInMs` is 10 seconds, both fixed in `auth.config.ts` with no environment key.
+- No GitHub key is required for boot.
+- The `loginWithGithub` feature flag row comes from the feature-flag seed: enabled, 100% rollout, `signUpAllowed: true`. See [Feature Flag Documentation][ref-doc-feature-flag].
+- The `github` health indicator in `GET /api/system/health/third-party` reports down with `GitHub is not configured` unless both the client id and the client secret are set.
+
+**GitHub Enterprise Server:**
+
+- Set `AUTH_SOCIAL_GITHUB_TOKEN_URL` to `https://HOSTNAME/login/oauth/access_token`.
+- Set `AUTH_SOCIAL_GITHUB_API_URL` to `https://HOSTNAME/api/v3`.
+- Register the OAuth app on that server.
+
+See [Environment Documentation][ref-doc-environment] for the values and [Configuration Documentation][ref-doc-configuration] for the config shape.
+
+#### Setup GitHub OAuth
+
+To obtain GitHub OAuth credentials:
+
+1. Go to [GitHub Developer Settings][ref-github-oauth-apps]
+2. Register a new OAuth app
+3. Set the authorization callback URL to the redirect URI the client uses
+4. Generate a client secret
+5. Copy the Client ID and Client secret to your `.env` file
+
+#### GitHub Usage
+
+**Protecting the Endpoint:**
+
+```typescript
+@Doc({ summary: 'login with social github' })
+@Response('user.loginWithSocialGithub', { schema: UserLoginResponseSchema })
+@AuthSocialGithubProtected()
+@FeatureFlagProtected(EnumFeatureFlagKey.loginWithGithub)
+@RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@ApiKeyProtected()
+@HttpCode(HttpStatus.OK)
+@Post('/login/social/github')
+async loginWithGithub(
+    @AuthJwtPayload<IAuthSocialPayload>('email') email: string,
+    @Body({ schema: UserCreateGithubRequestSchema })
+    body: UserCreateGithubRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
+    return this.userLoginWithSocialUseCase.execute(
+        email,
+        EnumUserLoginWith.socialGithub,
+        body
+    );
+}
+```
+
+- The request body is the social login body plus three required fields:
+    - `code`: the authorization code GitHub returned to the redirect URI
+    - `redirectUri`: the redirect URI of the authorization request
+    - `codeVerifier`: the PKCE verifier (RFC 7636) of the authorization
+- The client requests the `user:email` scope.
+- Nothing rides in `Authorization`.
+- The guard puts `{ email, emailVerified: true }` on `request.user`, which is what `@AuthJwtPayload` reads.
+
+**Account linking:**
+
+- The account is found by the provider-verified primary email and by nothing else.
+- A changed GitHub primary email is a new account.
+- The email path follows the shared rules above: first login signs up when the flag's `signUpAllowed` metadata is true.
+- An existing unverified credential account with the same email is marked verified and its password cleared, as in the shared social path above.
+
+**Single-use code:**
+
+- The guard exchanges the code once, before body validation and the sign-up checks.
+- A request that then fails (a taken username, a malformed field) has already spent the code, so the client starts a new GitHub authorization redirect before retrying.
+- A Google or Apple ID token can be resubmitted.
+
+**Errors:**
+
+- `AuthSocialGithubRequiredException` (401, `50821`): the body lacks a valid `code`, `redirectUri`, or `codeVerifier`.
+- `AuthSocialGithubInvalidException` (401, `50822`): a bad or expired code, a redirect URI mismatch, no primary verified email, or a token without `user:email`.
+- `AuthSocialGithubNotConfiguredException` (404, `50823`): the client id and secret are both blank.
+- `AuthProviderUnavailableException` (503, `50819`): a GitHub outage, timeout, or rate limit.
+- A rejection caused by the app setup (wrong client credentials, an unsupported API version) answers 500 and leaks nothing to the client.
+
+The API tells a client fault from its own misconfiguration in two places:
+
+- The `error` field of GitHub's token response: `bad_verification_code`, `redirect_uri_mismatch`, and `unverified_user_email` are the client's and answer 401. Any other value, `incorrect_client_credentials` included, answers 500.
+- The status of `GET /user/emails`: 401, 403, and 404 answer 401. 410 and any other failure status answer 500.
+
+**Token handling:**
+
+- The GitHub access token is used for one `GET /user/emails` call.
+- It is never stored, logged, or returned, and no revoke call is made.
 
 ## Two-Factor Authentication (TOTP)
 
@@ -1671,10 +1825,12 @@ sequenceDiagram
 [ref-jwt]: https://jwt.io
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
+[ref-github-oauth-apps]: https://github.com/settings/developers
 [ref-doc-installation]: installation.md
 [ref-doc-cache]: cache.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
+[ref-doc-feature-flag]: feature-flag.md
 [ref-doc-device]: device.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-authorization]: authorization.md

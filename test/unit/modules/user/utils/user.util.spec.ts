@@ -349,12 +349,12 @@ describe('UserUtil', () => {
             ).toBe(EnumActivityLogAction.userLoginCredential);
         });
 
-        it('resolves userLoginCredential for any other value', () => {
+        it('resolves userLoginGithub for socialGithub', () => {
             expect(
                 util.resolveLoginActivityLogAction(
-                    'unknown' as EnumUserLoginWith
+                    EnumUserLoginWith.socialGithub
                 )
-            ).toBe(EnumActivityLogAction.userLoginCredential);
+            ).toBe(EnumActivityLogAction.userLoginGithub);
         });
     });
 

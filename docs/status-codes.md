@@ -224,6 +224,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `socialAppleNotConfigured` | `50818` | `socialAppleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialAppleNotConfigured` | Apple login is not configured. |
 | `providerUnavailable` | `50819` | `providerUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `auth.error.providerUnavailable` | The sign-in provider is temporarily unavailable. Please try again shortly. |
 | `jwtGuardMissing` | `50820` | `jwtGuardMissing` | 401 (`UNAUTHORIZED`) | `auth.error.jwtGuardMissing` | Your session could not be verified. Please sign in again. |
+| `socialGithubRequired` | `50821` | `socialGithubRequired` | 401 (`UNAUTHORIZED`) | `auth.error.socialGithubRequired` | GitHub login is required for this action. |
+| `socialGithubInvalid` | `50822` | `socialGithubInvalid` | 401 (`UNAUTHORIZED`) | `auth.error.socialGithubInvalid` | There was an error with GitHub login. |
+| `socialGithubNotConfigured` | `50823` | `socialGithubNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialGithubNotConfigured` | GitHub login is not configured. |
 
 - `socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set.
 - `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
@@ -231,6 +234,11 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
     - `AuthUtil.toProviderUnavailableException` recognises the failure; a bad token never maps to it.
     - It covers the JWT access and refresh guards and the Google and Apple sign-in verification.
 - `jwtGuardMissing` is raised by `UserGuard` and `@AuthJwtPayload()` when the request carries no JWT payload.
+- `socialGithubRequired` answers a body without a valid `code`, `redirectUri`, and `codeVerifier`.
+- `socialGithubInvalid` answers a bad or expired code, a redirect URI mismatch, an account with no primary verified email, and a token without the `user:email` scope.
+- `socialGithubNotConfigured` is raised when `AUTH_SOCIAL_GITHUB_CLIENT_ID` or `AUTH_SOCIAL_GITHUB_CLIENT_SECRET` is unset.
+- A GitHub outage, timeout, or rate limit answers `providerUnavailable`.
+- A GitHub rejection caused by this app's own setup (wrong client credentials, an unsupported API version) answers 500 and leaks nothing to the client.
 
 ## `country`
 

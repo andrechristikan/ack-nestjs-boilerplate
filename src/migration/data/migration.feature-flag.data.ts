@@ -25,6 +25,15 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         },
     },
     {
+        key: EnumFeatureFlagKey.loginWithGithub,
+        description: 'Enable login with GitHub',
+        isEnable: true,
+        rolloutPercent: 100,
+        metadata: {
+            [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
+        },
+    },
+    {
         key: EnumFeatureFlagKey.loginWithCredential,
         description: 'Enable login with Credential',
         rolloutPercent: 100,

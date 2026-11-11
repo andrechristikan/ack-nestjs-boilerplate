@@ -6,6 +6,7 @@ import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aw
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
+import { HealthGithubIndicator } from '@modules/health/indicators/health.github.indicator';
 import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
 import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
@@ -33,6 +34,7 @@ import { TerminusModule } from '@nestjs/terminus';
         HealthFirebaseIndicator,
         HealthGoogleIndicator,
         HealthAppleIndicator,
+        HealthGithubIndicator,
         HealthJwksIndicator,
         HealthQueueIndicator,
     ],

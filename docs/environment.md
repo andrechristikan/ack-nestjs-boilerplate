@@ -90,13 +90,14 @@ Each third-party integration is optional and validated as a group by a `superRef
 | Firebase | any `FIREBASE_*` key | all three `FIREBASE_*` keys |
 | Google sign-in | `AUTH_SOCIAL_GOOGLE_CLIENT_ID` | nothing else |
 | Apple sign-in | `AUTH_SOCIAL_APPLE_CLIENT_ID` or `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID` | nothing else |
+| GitHub sign-in | `AUTH_SOCIAL_GITHUB_CLIENT_ID` or `AUTH_SOCIAL_GITHUB_CLIENT_SECRET` | `AUTH_SOCIAL_GITHUB_CLIENT_ID`, `AUTH_SOCIAL_GITHUB_CLIENT_SECRET` |
 | Sentry | `SENTRY_DSN` | nothing else |
 
 An integration left unset boots fine:
 
-- A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, each 404).
-- Its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, and so on).
-- `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200.
+- A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, `AuthSocialGithubNotConfiguredException`, each 404).
+- Its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, `GitHub is not configured`, and so on).
+- `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple, GitHub, JWKS) still answer 200.
 - A seed that needs it logs a warning and skips:
     - `templateEmailNotification` needs SES
     - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
@@ -188,6 +189,10 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
 AUTH_SOCIAL_APPLE_CLIENT_ID=
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
+AUTH_SOCIAL_GITHUB_CLIENT_ID=
+AUTH_SOCIAL_GITHUB_CLIENT_SECRET=
+AUTH_SOCIAL_GITHUB_TOKEN_URL=https://github.com/login/oauth/access_token
+AUTH_SOCIAL_GITHUB_API_URL=https://api.github.com
 
 # AWS S3 Configuration (Optional)
 AWS_S3_IAM_CREDENTIAL_KEY=
@@ -613,7 +618,7 @@ AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
 ### Social Authentication Settings
 
-> [!NOTE] All social authentication settings are optional. Leave them blank to keep social sign-in off. The matching sign-in route then answers 404 (`AuthSocialGoogleNotConfiguredException` or `AuthSocialAppleNotConfiguredException`).
+> [!NOTE] The Google, Apple, and GitHub credentials are optional. Leave them blank to keep that provider off. The matching sign-in route then answers 404 (`AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, or `AuthSocialGithubNotConfiguredException`). The two GitHub URL settings are optional overrides with github.com defaults.
 
 **`AUTH_SOCIAL_GOOGLE_CLIENT_ID`** _(optional)_  
 Google OAuth client ID.
@@ -641,6 +646,52 @@ Second of the two accepted Apple audiences, checked alongside `AUTH_SOCIAL_APPLE
 ```bash
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ```
+
+**`AUTH_SOCIAL_GITHUB_CLIENT_ID`** _(optional)_  
+GitHub OAuth app client ID.
+
+- It identifies the app in the authorization code exchange.
+- Startup validation requires it together with `AUTH_SOCIAL_GITHUB_CLIENT_SECRET`: setting either one makes both required.
+- Setting both turns GitHub sign-in on.
+
+```bash
+AUTH_SOCIAL_GITHUB_CLIENT_ID=
+```
+
+**`AUTH_SOCIAL_GITHUB_CLIENT_SECRET`** _(optional)_  
+GitHub OAuth app client secret.
+
+- It authenticates the backend in the authorization code exchange.
+- It is never returned to a client.
+
+```bash
+AUTH_SOCIAL_GITHUB_CLIENT_SECRET=
+```
+
+**`AUTH_SOCIAL_GITHUB_TOKEN_URL`** _(optional)_  
+URL the authorization code is exchanged at. Format: an absolute URL with no trailing slash.
+
+- A blank or missing value uses `https://github.com/login/oauth/access_token`.
+- GitHub Enterprise Server sets it to `https://HOSTNAME/login/oauth/access_token`.
+
+```bash
+AUTH_SOCIAL_GITHUB_TOKEN_URL=https://github.com/login/oauth/access_token
+```
+
+**`AUTH_SOCIAL_GITHUB_API_URL`** _(optional)_  
+Base URL of the GitHub REST API, used to read `GET /user/emails`. Format: an absolute URL with no trailing slash.
+
+- A blank or missing value uses `https://api.github.com`.
+- GitHub Enterprise Server sets it to `https://HOSTNAME/api/v3`.
+
+```bash
+AUTH_SOCIAL_GITHUB_API_URL=https://api.github.com
+```
+
+The GitHub REST API version (`2026-03-10`, sent as the `X-GitHub-Api-Version` header) and the timeout of each GitHub request (10 seconds) are fixed in `auth.config.ts` and have no environment key.
+
+- A request that exceeds the timeout answers `AuthProviderUnavailableException` (503).
+- An API version the server does not support answers 500 and leaks nothing to the client.
 
 ### Two-Factor Authentication Settings
 

@@ -777,6 +777,42 @@ describe('UserLoginWithSocialUseCase', () => {
             );
         });
 
+        it('reads the GitHub flag, builds a socialGithub create, and stages the GitHub login row', async () => {
+            userCreateUtil.resolveSocialFeatureFlagKey.mockReturnValue(
+                EnumFeatureFlagKey.loginWithGithub
+            );
+            userUtil.resolveLoginActivityLogAction.mockReturnValue(
+                EnumActivityLogAction.userLoginGithub
+            );
+
+            await useCase.execute(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGithub,
+                dto
+            );
+
+            expect(
+                userCreateUtil.resolveSocialFeatureFlagKey
+            ).toHaveBeenCalledWith(EnumUserLoginWith.socialGithub);
+            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.loginWithGithub
+            );
+            expect(userCreateUtil.buildSocialCreate).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGithub,
+                social,
+                { roleId: 'role-bramble', workspaceContext: personalContext }
+            );
+            expect(userUtil.resolveLoginActivityLogAction).toHaveBeenCalledWith(
+                EnumUserLoginWith.socialGithub
+            );
+            expect(activityLogService.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userLoginGithub,
+                userId: 'user-bramble',
+                createdBy: 'user-bramble',
+            });
+        });
+
         it('creates a new invited user, joins the workspace, and issues tokens', async () => {
             workspaceInviteService.getSignUpInvite.mockResolvedValue(invite);
             userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(

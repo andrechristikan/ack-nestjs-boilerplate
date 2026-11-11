@@ -23,6 +23,7 @@
     "loginCredential": "Logged in successfully with credentials.",
     "loginWithSocialGoogle": "Logged in successfully with Google.",
     "loginWithSocialApple": "Logged in successfully with Apple.",
+    "loginWithSocialGithub": "Logged in successfully with GitHub.",
     "verifyTwoFactor": "Two-factor verification completed successfully.",
     "refresh": "Token refreshed successfully.",
     "sendEmailVerification": "Verification email has been sent.",

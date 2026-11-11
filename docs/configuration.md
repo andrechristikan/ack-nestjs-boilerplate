@@ -281,6 +281,19 @@ google: {
 }
 ```
 
+**`github`**: GitHub OAuth configuration
+
+```typescript
+github: {
+    clientId: string | null; // GitHub OAuth app client ID
+    clientSecret: string | null; // GitHub OAuth app client secret
+    tokenUrl: string; // Authorization code exchange URL, from AUTH_SOCIAL_GITHUB_TOKEN_URL or the github.com default
+    apiUrl: string; // GitHub REST API base URL, no trailing slash, from AUTH_SOCIAL_GITHUB_API_URL or the github.com default
+    apiVersion: string; // X-GitHub-Api-Version value ('2026-03-10')
+    timeoutInMs: number; // Timeout of each GitHub request (ms('10s'))
+}
+```
+
 **`xApiKey`**: API Key authentication configuration
 
 ```typescript

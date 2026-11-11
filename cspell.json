@@ -106,7 +106,8 @@
         "Zgoh",
         "Zsnn",
         "passwordHasheds",
-        "Upserted"
+        "Upserted",
+        "PKCE"
     ],
     "ignorePaths": [
         "node_modules/**",

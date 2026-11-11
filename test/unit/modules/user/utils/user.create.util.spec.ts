@@ -386,6 +386,19 @@ describe('UserCreateUtil', () => {
             });
         });
 
+        it('builds a GitHub social create input signed up with socialGithub', () => {
+            const result = util.buildSocialCreate(
+                'harbor@example.com',
+                EnumUserLoginWith.socialGithub,
+                { ...socialInput, cookies: false, marketing: false },
+                resolved
+            );
+
+            expect(result).toMatchObject({
+                signUpWith: EnumUserSignUpWith.socialGithub,
+            });
+        });
+
         it('keeps a null name and accepts marketing when no name is given', () => {
             const result = util.buildSocialCreate(
                 'harbor@example.com',

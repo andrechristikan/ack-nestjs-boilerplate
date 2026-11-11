@@ -6,6 +6,8 @@ import type {
     IAuthJwtPayloadIdentified,
     IAuthJwtRefreshTokenPayload,
     IAuthLoginIdentifiers,
+    IAuthSocialGithubEmail,
+    IAuthSocialGithubToken,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -16,8 +18,13 @@ import {
     AuthGoogleCertificateErrorPrefix,
     AuthJwksErrorName,
     AuthProviderNetworkErrorCodes,
+    AuthSocialGithubClientErrorCodes,
+    AuthSocialGithubRateLimitRemainingHeaderName,
+    AuthSocialGithubRetryAfterHeaderName,
 } from '@modules/auth/constants/auth.constant';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
+import { AuthSocialGithubInvalidException } from '@modules/auth/exceptions/auth.social-github-invalid.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -166,5 +173,83 @@ export class AuthUtil {
         }
 
         return null;
+    }
+
+    /** Maps a GitHub 5xx, or a 403 or 429 carrying a rate-limit signal, to its exception; null for every other status. */
+    toGithubUnavailableException(
+        status: number,
+        headers: Headers
+    ): AuthProviderUnavailableException | null {
+        const isRateLimited =
+            (status === 403 || status === 429) &&
+            (headers.has(AuthSocialGithubRetryAfterHeaderName) ||
+                headers.get(AuthSocialGithubRateLimitRemainingHeaderName) ===
+                    '0');
+        if (status >= 500 || isRateLimited) {
+            return new AuthProviderUnavailableException({ status });
+        }
+
+        return null;
+    }
+
+    /** Maps a GitHub token-exchange error code: a client fault is the invalid exception, any other code is an unknown exception. */
+    toGithubTokenException(
+        error: string,
+        description: string | null
+    ): AuthSocialGithubInvalidException | AppUnknownException {
+        if (AuthSocialGithubClientErrorCodes.includes(error)) {
+            return new AuthSocialGithubInvalidException({
+                error,
+                description,
+            });
+        }
+
+        return new AppUnknownException(
+            { error, description },
+            'GitHub rejected the OAuth app credentials or request'
+        );
+    }
+
+    /** Maps a GitHub emails response status; null for a 2xx. */
+    toGithubEmailsException(
+        status: number
+    ): AuthSocialGithubInvalidException | AppUnknownException | null {
+        if (status >= 200 && status < 300) {
+            return null;
+        }
+        if (status === 401 || status === 403 || status === 404) {
+            return new AuthSocialGithubInvalidException({ status });
+        }
+
+        return new AppUnknownException(
+            { status },
+            'GitHub rejected the emails request'
+        );
+    }
+
+    parseGithubToken(
+        text: string
+    ): IAuthSocialGithubToken | AppUnknownException {
+        try {
+            return JSON.parse(text) as IAuthSocialGithubToken;
+        } catch (err) {
+            return new AppUnknownException(
+                err,
+                'GitHub token response is not JSON'
+            );
+        }
+    }
+
+    parseGithubEmails(
+        text: string
+    ): IAuthSocialGithubEmail[] | AppUnknownException {
+        try {
+            return JSON.parse(text) as IAuthSocialGithubEmail[];
+        } catch (err) {
+            return new AppUnknownException(
+                err,
+                'GitHub emails response is not JSON'
+            );
+        }
     }
 }

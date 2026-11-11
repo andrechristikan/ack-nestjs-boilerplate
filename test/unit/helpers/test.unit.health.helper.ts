@@ -3,6 +3,7 @@ import { HealthIndicatorService } from '@nestjs/terminus';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
+import type { HealthGithubIndicator } from '@modules/health/indicators/health.github.indicator';
 import type { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
 import type { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import type { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
@@ -47,6 +48,27 @@ export async function createHealthAppleIndicator(
     }).compile();
 
     return module.get(HealthAppleIndicatorClass);
+}
+
+export async function createHealthGithubIndicator(
+    configService: MockProxy<ConfigService>,
+    healthIndicatorService: MockProxy<HealthIndicatorService>
+): Promise<HealthGithubIndicator> {
+    const { HealthGithubIndicator: HealthGithubIndicatorClass } =
+        await import('@modules/health/indicators/health.github.indicator');
+
+    const module = await Test.createTestingModule({
+        providers: [
+            HealthGithubIndicatorClass,
+            { provide: ConfigService, useValue: configService },
+            {
+                provide: HealthIndicatorService,
+                useValue: healthIndicatorService,
+            },
+        ],
+    }).compile();
+
+    return module.get(HealthGithubIndicatorClass);
 }
 
 export async function createHealthJwksIndicator(

@@ -113,7 +113,7 @@ A route takes only the slots it needs, and the relative order of the ones it tak
 
 Placement rules:
 
-- A social-login guard (`@AuthSocialGoogleProtected()`, `@AuthSocialAppleProtected()`) sits ABOVE `@FeatureFlagProtected()`, so it runs after the flag guard.
+- A social-login guard (`@AuthSocialGoogleProtected()`, `@AuthSocialAppleProtected()`, `@AuthSocialGithubProtected()`) sits ABOVE `@FeatureFlagProtected()`, so it runs after the flag guard.
     - A disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before the provider token is verified.
     - The flag guard takes its anonymous branch on those routes.
 - `@RequestThrottle({ ... })` sits outside this order. See [Security and Middleware][ref-doc-security-and-middleware].

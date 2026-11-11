@@ -60,6 +60,24 @@ export interface IAuthSocialPayload extends Pick<
     emailVerified: boolean;
 }
 
+export interface IAuthSocialGithubResponse {
+    status: number;
+    headers: Headers;
+    text: string;
+}
+
+export interface IAuthSocialGithubToken {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+}
+
+export interface IAuthSocialGithubEmail {
+    email: string;
+    primary: boolean;
+    verified: boolean;
+}
+
 export interface IAuthAccessTokenGenerate {
     tokens: IAuthToken;
     jti: string;

@@ -4,14 +4,13 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
-    EnumUserLoginWith,
-    EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
+import { UserSocialLoginContract } from '@modules/user/contracts/user.social-login.contract';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -26,6 +25,7 @@ import type {
     IUserSignUpResolved,
     IUserSignUpWorkspaceContext,
     IUserSignUpWorkspacePersonal,
+    IUserSocialLoginProvider,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -185,7 +185,7 @@ export class UserCreateUtil {
 
     buildSocialCreate(
         email: string,
-        loginWith: EnumUserLoginWith,
+        loginWith: IUserSocialLoginProvider,
         {
             from,
             username,
@@ -211,10 +211,7 @@ export class UserCreateUtil {
             countryId,
             roleId,
             signUpFrom: from,
-            signUpWith:
-                loginWith === EnumUserLoginWith.socialApple
-                    ? EnumUserSignUpWith.socialApple
-                    : EnumUserSignUpWith.socialGoogle,
+            signUpWith: UserSocialLoginContract[loginWith].signUpWith,
             isVerified: true,
             verifiedAt,
             acceptedTermPolicyTypes,
@@ -340,11 +337,9 @@ export class UserCreateUtil {
     }
 
     resolveSocialFeatureFlagKey(
-        loginWith: EnumUserLoginWith
+        loginWith: IUserSocialLoginProvider
     ): EnumFeatureFlagKey {
-        return loginWith === EnumUserLoginWith.socialGoogle
-            ? EnumFeatureFlagKey.loginWithGoogle
-            : EnumFeatureFlagKey.loginWithApple;
+        return UserSocialLoginContract[loginWith].featureFlagKey;
     }
 
     /** Maps a username or email unique collision to its user exception and returns any other error untouched. */
