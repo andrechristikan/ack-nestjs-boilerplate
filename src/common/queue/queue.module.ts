@@ -28,7 +28,7 @@ export class QueueModule {
                             backoff: {
                                 type: 'exponential',
                                 delay: configService.get<number>(
-                                    'queue.job.notificationBackoffDelayInMs'
+                                    'queue.job.defaultBackoffDelayInMs'
                                 )!,
                             },
                             attempts:

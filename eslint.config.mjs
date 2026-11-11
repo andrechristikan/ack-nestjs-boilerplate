@@ -336,7 +336,6 @@ const featureElementTypes = [
 ].map(([type, pattern]) => ({
     type,
     pattern,
-    capture: ['feature'],
     partialMatch: false,
 }));
 

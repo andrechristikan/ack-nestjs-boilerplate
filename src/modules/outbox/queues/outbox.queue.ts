@@ -14,6 +14,7 @@ import {
 @Injectable()
 export class OutboxQueue extends QueueBase implements OnModuleInit {
     private readonly sweepIntervalInMs: number;
+    private readonly sweepKeepCompleted: number;
 
     constructor(
         @InjectQueue(EnumOutboxQueue.outbox) protected readonly queue: Queue,
@@ -25,13 +26,20 @@ export class OutboxQueue extends QueueBase implements OnModuleInit {
         this.sweepIntervalInMs = this.configService.get<number>(
             'outbox.sweepIntervalInMs'
         )!;
+        this.sweepKeepCompleted = this.configService.get<number>(
+            'outbox.sweepKeepCompleted'
+        )!;
     }
 
     async onModuleInit(): Promise<void> {
         await this.queue.upsertJobScheduler(
             EnumOutboxProcess.sweep,
             { every: this.sweepIntervalInMs },
-            { name: EnumOutboxProcess.sweep, data: {} }
+            {
+                name: EnumOutboxProcess.sweep,
+                data: {},
+                opts: { removeOnComplete: { count: this.sweepKeepCompleted } },
+            }
         );
     }
 }

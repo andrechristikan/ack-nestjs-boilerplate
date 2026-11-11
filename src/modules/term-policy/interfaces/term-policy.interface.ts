@@ -58,10 +58,6 @@ export interface ITermPolicyCopyContentPayload {
     destination: string;
 }
 
-export interface ITermPolicyPublish {
-    termPolicy: TermPolicy;
-}
-
 export interface ITermPolicyAcceptanceCreate {
     userId: string;
     types: EnumTermPolicyType[];

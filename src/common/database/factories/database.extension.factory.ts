@@ -164,14 +164,13 @@ export class DatabaseExtensionFactory {
                     // Must stay a method, not an arrow: Prisma.getExtensionContext
                     // reads `this` as the model delegate the call was made on.
                     async softDelete<T>(
-                        this: IDatabaseSoftDeletable<T>,
+                        this: IDatabaseSoftDeletable<T> &
+                            IDatabaseModelContext<T>,
                         args: IDatabaseSoftDeleteArgs<T>
                     ): Promise<IDatabaseSoftDeleteResult<T>> {
                         const actor = getActor();
                         const data: IDatabaseData = args.data ?? {};
-                        const context = Prisma.getExtensionContext(
-                            this
-                        ) as unknown as IDatabaseModelContext<T>;
+                        const context = Prisma.getExtensionContext(this);
 
                         return context.update({
                             where: args.where,
@@ -184,14 +183,13 @@ export class DatabaseExtensionFactory {
                         });
                     },
                     async restore<T>(
-                        this: IDatabaseSoftDeletable<T>,
+                        this: IDatabaseSoftDeletable<T> &
+                            IDatabaseModelContext<T>,
                         args: IDatabaseRestoreArgs<T>
                     ): Promise<IDatabaseSoftDeleteResult<T>> {
                         const actor = getActor();
                         const data: IDatabaseData = args.data ?? {};
-                        const context = Prisma.getExtensionContext(
-                            this
-                        ) as unknown as IDatabaseModelContext<T>;
+                        const context = Prisma.getExtensionContext(this);
 
                         return context.update({
                             where: args.where,

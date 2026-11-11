@@ -135,12 +135,11 @@ export function ResponseFileInterceptor(
         ): Observable<Promise<StreamableFile>> {
             if (context.getType() === 'http') {
                 return next.handle().pipe(
-                    map(async (res: Promise<Response>) => {
+                    map(async (res: Promise<IResponseFileReturn>) => {
                         const ctx = context.switchToHttp();
                         const response: Response = ctx.getResponse();
 
-                        const responseData =
-                            (await res) as unknown as IResponseFileReturn;
+                        const responseData = await res;
                         this.validateDataResponse(responseData);
 
                         const dataRows = this.countDataRows(responseData);

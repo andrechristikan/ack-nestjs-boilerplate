@@ -43,7 +43,7 @@ export class TermPolicyPublishByAdminUseCase implements IAppUseCase<
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const { termPolicy: published } =
+        const published =
             await this.termPolicyService.publishByAdmin(termPolicyId);
         const activityLogs = [
             this.prepareActivityLog(

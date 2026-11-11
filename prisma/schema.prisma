@@ -705,8 +705,9 @@ model Outbox {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  @@index(fields: [status, createdAt])
   @@unique(fields: [queue, name, idempotencyKey])
+  @@index(fields: [status, createdAt])
+  @@index(fields: [status, enqueuedAt])
   @@map("Outboxes")
 }
 

@@ -462,8 +462,10 @@ describe('ResponsePaginationInterceptor', () => {
             expect(() =>
                 interceptor['validatePaginationResponse']({
                     type: EnumPaginationType.cursor,
+                    perPage: 20,
+                    hasNext: false,
                     data: [],
-                } as unknown as IResponsePaginationReturn<unknown>)
+                })
             ).not.toThrow();
         });
     });

@@ -52,7 +52,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
     ): Observable<Promise<ResponseDto<T>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Response>) => {
+                map(async (res: Promise<IResponseReturn<T>>) => {
                     const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
@@ -72,7 +72,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                     const metadata: ResponseMetadataDto =
                         this.responseMetadataService.create();
 
-                    const responseData = (await res) as IResponseReturn<T>;
+                    const responseData = await res;
                     const responseMetadata = responseData?.metadata;
                     if (responseData) {
                         const payload = responseData.data ?? null;

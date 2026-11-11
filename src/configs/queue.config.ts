@@ -7,6 +7,7 @@ export interface IConfigQueue {
         keepLogs: number;
         removeOnCompleteAgeInSeconds: number;
         removeOnFailAgeInSeconds: number;
+        defaultBackoffDelayInMs: number;
         emailBackoffDelayInMs: number;
         pushBackoffDelayInMs: number;
         notificationBackoffDelayInMs: number;
@@ -25,6 +26,7 @@ export default registerAs('queue', (): IConfigQueue => ({
         keepLogs: 20,
         removeOnCompleteAgeInSeconds: ms('7d') / 1000,
         removeOnFailAgeInSeconds: ms('14d') / 1000,
+        defaultBackoffDelayInMs: ms('3s'),
         emailBackoffDelayInMs: ms('10s'),
         pushBackoffDelayInMs: ms('5s'),
         notificationBackoffDelayInMs: ms('3s'),

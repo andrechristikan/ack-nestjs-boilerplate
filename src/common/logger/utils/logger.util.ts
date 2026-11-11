@@ -10,6 +10,7 @@ import {
 } from '@common/logger/constants/logger.constant';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { ILoggerError } from '@common/logger/interfaces/logger.interface';
 
 @Injectable()
 export class LoggerUtil {
@@ -112,7 +113,7 @@ export class LoggerUtil {
     }
 
     private serializeUser(request: IRequestApp): string | null {
-        return (request.user as unknown as { userId: string })?.userId ?? null;
+        return request.user?.userId ?? null;
     }
 
     private maskUrl(url: string): string {
@@ -161,10 +162,6 @@ export class LoggerUtil {
             userAgent: request.headers['user-agent'],
             contentType: request.headers?.['content-type'],
             referer,
-            remoteAddress: (request as unknown as { remoteAddress: string })
-                .remoteAddress,
-            remotePort: (request as unknown as { remotePort: number })
-                .remotePort,
             ip: clientIp,
             user,
             query,
@@ -186,13 +183,12 @@ export class LoggerUtil {
 
     serializeError(error: Error, depth = 0): Record<string, unknown> {
         const message = this.sanitizeMessage(error.message);
+        const loggerError = error as ILoggerError;
         const defaultError: Record<string, unknown> = {
             type: error.name,
             message,
-            code: (error as unknown as { status?: number })?.status,
-            statusCode: (
-                error as unknown as { response?: { statusCode?: number } }
-            )?.response?.statusCode,
+            code: loggerError.status,
+            statusCode: loggerError.response?.statusCode,
             stack: error.stack,
         };
 

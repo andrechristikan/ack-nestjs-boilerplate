@@ -8,7 +8,6 @@ import type {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { Response } from 'express';
 import { of } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { mock } from 'vitest-mock-extended';
@@ -119,8 +118,8 @@ export function buildPassThroughSchema(): StandardSchemaV1 {
     };
 }
 
-export function buildPaginationEmission(
-    responseData: IResponsePaginationReturn<unknown>
-): Observable<Promise<Response>> {
-    return of(Promise.resolve(responseData as unknown as Response));
+export function buildPaginationEmission<T>(
+    responseData: IResponsePaginationReturn<T>
+): Observable<Promise<IResponsePaginationReturn<T>>> {
+    return of(Promise.resolve(responseData));
 }

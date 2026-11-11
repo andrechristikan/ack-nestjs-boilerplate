@@ -1,4 +1,3 @@
-import type { Params } from 'nestjs-pino';
 import type { Options } from 'pino-http';
 
 export interface ILoggerDebugInfo {
@@ -9,6 +8,11 @@ export interface ILoggerDebugInfo {
     uptime: number;
 }
 
+export interface ILoggerError extends Error {
+    status?: number;
+    response?: { statusCode?: number };
+}
+
 export interface ILoggerMixin {
     level: number;
     requestId: string | null;
@@ -16,5 +20,3 @@ export interface ILoggerMixin {
 }
 
 export type ILoggerTransport = NonNullable<Options['transport']>;
-
-export type ILoggerPinoHttp = NonNullable<Params['pinoHttp']>;

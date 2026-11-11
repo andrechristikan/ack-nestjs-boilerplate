@@ -14,9 +14,11 @@ import type {
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 import type {
     IOutboxEffect,
     IOutboxJobPayload,
+    IOutboxReconcileResult,
 } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxDispatchWarnKey } from '@modules/outbox/constants/outbox.constant';
 import { OutboxTransactionMissingException } from '@modules/outbox/exceptions/outbox.transaction-missing.exception';
@@ -26,6 +28,7 @@ import { OutboxRepository } from '@modules/outbox/repositories/outbox.repository
 export class OutboxService implements OnApplicationBootstrap {
     private readonly logger = new Logger(OutboxService.name);
     private readonly pendingAfterInMs: number;
+    private readonly enqueuedAfterInMs: number;
     private readonly sweepBatch: number;
     private readonly idsByTx: Map<IDatabaseTransactionClient, string[]> =
         new Map();
@@ -42,10 +45,13 @@ export class OutboxService implements OnApplicationBootstrap {
         this.pendingAfterInMs = this.configService.get<number>(
             'outbox.pendingAfterInMs'
         )!;
+        this.enqueuedAfterInMs = this.configService.get<number>(
+            'outbox.enqueuedAfterInMs'
+        )!;
         this.sweepBatch = this.configService.get<number>('outbox.sweepBatch')!;
     }
 
-    private async enqueue(rows: Outbox[]): Promise<void> {
+    private async enqueue(rows: Outbox[]): Promise<number> {
         const rowsByQueue = new Map<string, Outbox[]>();
         for (const row of rows) {
             const group = rowsByQueue.get(row.queue) ?? [];
@@ -60,11 +66,44 @@ export class OutboxService implements OnApplicationBootstrap {
         );
         const enqueuedIds = results.flat();
         if (enqueuedIds.length === 0) {
-            return;
+            return 0;
         }
 
         const enqueuedAt = this.helperDateService.create();
         await this.outboxRepository.updateEnqueued(enqueuedIds, enqueuedAt);
+
+        return enqueuedIds.length;
+    }
+
+    private async reconcile(row: Outbox): Promise<IOutboxReconcileResult> {
+        try {
+            const queue = this.moduleRef.get<Queue<IOutboxJobPayload>>(
+                getQueueToken(row.queue),
+                { strict: false }
+            );
+            const found = await queue.getJob(row.idempotencyKey);
+            const job = found ?? null;
+            if (job === null) {
+                return { stamped: false, missingRow: row };
+            }
+
+            const state = await job.getState();
+            if (state === EnumQueueJobState.completed) {
+                await this.complete(row.id, job.attemptsMade);
+
+                return { stamped: true, missingRow: null };
+            }
+
+            if (state === EnumQueueJobState.failed) {
+                await this.fail(row.id, job.attemptsMade, job.failedReason);
+
+                return { stamped: true, missingRow: null };
+            }
+        } catch (error: unknown) {
+            this.warnDispatchFailure(error);
+        }
+
+        return { stamped: false, missingRow: null };
     }
 
     private async enqueueGroup(
@@ -305,19 +344,60 @@ export class OutboxService implements OnApplicationBootstrap {
         });
     }
 
-    /** Dispatches the oldest rows pending longer than outbox.pendingAfterInMs, at most outbox.sweepBatch, and returns their count. */
+    /** Dispatches the oldest rows pending longer than outbox.pendingAfterInMs and reconciles the oldest enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each; returns the count dispatched or stamped and never throws. */
     async sweep(): Promise<number> {
         const now = this.helperDateService.create();
         const pendingAfter = this.helperDateService.createDuration({
             milliseconds: this.pendingAfterInMs,
         });
-        const before = this.helperDateService.backward(now, pendingAfter);
-        const rows = await this.outboxRepository.findManyPendingBefore(
-            before,
-            this.sweepBatch
+        const enqueuedAfter = this.helperDateService.createDuration({
+            milliseconds: this.enqueuedAfterInMs,
+        });
+        const pendingBefore = this.helperDateService.backward(
+            now,
+            pendingAfter
         );
-        await this.enqueue(rows);
+        const enqueuedBefore = this.helperDateService.backward(
+            now,
+            enqueuedAfter
+        );
 
-        return rows.length;
+        try {
+            const [pendingRows, enqueuedRows] = await Promise.all([
+                this.outboxRepository.findManyPendingBefore(
+                    pendingBefore,
+                    this.sweepBatch
+                ),
+                this.outboxRepository.findManyEnqueuedBefore(
+                    enqueuedBefore,
+                    this.sweepBatch
+                ),
+            ]);
+            const results = await Promise.all(
+                enqueuedRows.map(row => this.reconcile(row))
+            );
+            let stamped = 0;
+            const missingRows: Outbox[] = [];
+            for (const result of results) {
+                if (result.stamped) {
+                    stamped++;
+                }
+
+                if (result.missingRow !== null) {
+                    missingRows.push(result.missingRow);
+                }
+            }
+
+            const enqueued = await this.enqueue([
+                ...pendingRows,
+                ...missingRows,
+            ]);
+
+            return stamped + enqueued;
+        } catch (error: unknown) {
+            this.warnDispatchFailure(error);
+
+            return 0;
+        }
     }
 }

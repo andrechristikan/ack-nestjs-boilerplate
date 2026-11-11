@@ -95,7 +95,7 @@ describe('TermPolicyPublishByAdminUseCase', () => {
             termPolicyService.publishByAdmin.mockImplementation(async () => {
                 calls.push('publish');
 
-                return { termPolicy: publishedTermPolicy };
+                return publishedTermPolicy;
             });
             activityLogService.stagePrepared.mockImplementation(() => {
                 calls.push('stage');

@@ -94,9 +94,7 @@ describe('ResponseInterceptor', () => {
         });
 
         it('falls back to the response status and default message path when the handler returns no data', async () => {
-            callHandler.handle.mockReturnValue(
-                of(Promise.resolve(undefined as unknown as Response))
-            );
+            callHandler.handle.mockReturnValue(of(Promise.resolve(undefined)));
 
             const emitted = await firstValueFrom(
                 interceptor.intercept(context, callHandler)
@@ -119,7 +117,7 @@ describe('ResponseInterceptor', () => {
         it('leaves data undefined when the handler returns a payload with no data field', async () => {
             const responseData: IResponseReturn<unknown> = {};
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const emitted = await firstValueFrom(
@@ -153,7 +151,7 @@ describe('ResponseInterceptor', () => {
                 },
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const emitted = await firstValueFrom(
@@ -182,7 +180,7 @@ describe('ResponseInterceptor', () => {
                 data: { foo: 'raw' },
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -218,7 +216,7 @@ describe('ResponseInterceptor', () => {
                 data: { foo: 'raw' },
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(

@@ -97,7 +97,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
     ): Observable<Promise<ResponsePaginationDto<T>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Response>) => {
+                map(async (res: Promise<IResponsePaginationReturn<T>>) => {
                     const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
@@ -114,8 +114,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
 
                     const metadata = this.responseMetadataService.create();
 
-                    const responseData =
-                        (await res) as unknown as IResponsePaginationReturn<T>;
+                    const responseData = await res;
                     this.validatePaginationResponse(responseData);
 
                     const {

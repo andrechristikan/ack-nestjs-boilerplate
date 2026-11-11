@@ -119,7 +119,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(
@@ -140,7 +140,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.pdf,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(
@@ -157,7 +157,7 @@ describe('ResponseFileInterceptor', () => {
                 filename: 'custom.csv',
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             await firstValueFrom(interceptor.intercept(context, callHandler));
@@ -177,7 +177,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(
@@ -194,7 +194,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(
@@ -213,7 +213,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -240,7 +240,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(
@@ -261,7 +261,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -285,7 +285,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.pdf,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             await firstValueFrom(interceptor.intercept(context, callHandler));
@@ -299,7 +299,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             };
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -323,7 +323,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.csv,
             } as unknown as IResponseFileReturn;
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -347,7 +347,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: EnumFileExtensionDocument.pdf,
             } as unknown as IResponseFileReturn;
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const promise = firstValueFrom(
@@ -371,7 +371,7 @@ describe('ResponseFileInterceptor', () => {
                 extension: 'txt',
             } as unknown as IResponseFileReturn;
             callHandler.handle.mockReturnValue(
-                of(Promise.resolve(responseData as unknown as Response))
+                of(Promise.resolve(responseData))
             );
 
             const result = await firstValueFrom(

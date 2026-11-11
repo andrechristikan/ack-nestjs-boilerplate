@@ -1,5 +1,6 @@
 import { Injectable, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IncomingMessage } from 'node:http';
 import type { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -21,7 +22,6 @@ import type { Response } from 'express';
 import type {
     ILoggerDebugInfo,
     ILoggerMixin,
-    ILoggerPinoHttp,
     ILoggerTransport,
 } from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
@@ -113,9 +113,7 @@ export class LoggerOptionService {
             });
         }
 
-        return transport.targets.length > 0
-            ? (transport as unknown as ILoggerTransport)
-            : null;
+        return transport.targets.length > 0 ? transport : null;
     }
 
     private createLogFormatter(): (
@@ -238,23 +236,20 @@ export class LoggerOptionService {
     }
 
     private createAutoLoggingConfig():
-        { ignore: (req: IRequestApp) => boolean } | boolean {
+        { ignore: (req: IncomingMessage) => boolean } | boolean {
         return this.autoLogger === true
             ? {
-                  ignore: (req: IRequestApp) =>
+                  ignore: (req: IncomingMessage) =>
                       this.helperStringService.checkUrlMatchesPatterns(
-                          req.url,
+                          req.url!,
                           this.excludedRoutes
                       ),
               }
             : false;
     }
 
-    private createMixin(): (
-        _: Record<string, unknown>,
-        level: number
-    ) => ILoggerMixin {
-        return (_: Record<string, unknown>, level: number) => {
+    private createMixin(): (_: object, level: number) => ILoggerMixin {
+        return (_: object, level: number) => {
             const requestId =
                 this.requestStoreService.get<string>(RequestIdStoreKey);
             const correlationId = this.requestStoreService.get<string>(
@@ -293,7 +288,7 @@ export class LoggerOptionService {
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,
-            } as unknown as ILoggerPinoHttp,
+            },
         };
     }
 }

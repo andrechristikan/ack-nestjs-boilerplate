@@ -67,6 +67,20 @@ export abstract class QueueProcessorBase extends WorkerHost {
         return row.data;
     }
 
+    private async completeRow(
+        outboxId: string,
+        attempts: number
+    ): Promise<void> {
+        try {
+            await this.outboxService.complete(outboxId, attempts);
+        } catch (error: unknown) {
+            this.logger.warn(
+                { outboxId, err: error },
+                'Outbox row complete stamp failed'
+            );
+        }
+    }
+
     private async failRow(
         outboxId: string,
         attempts: number,
@@ -139,7 +153,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
         }
 
         if (rowId !== null) {
-            await this.outboxService.complete(rowId, job.attemptsMade + 1);
+            await this.completeRow(rowId, job.attemptsMade + 1);
         }
 
         return result;

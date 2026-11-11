@@ -28,7 +28,7 @@ describe('OutboxProcessSweepUseCase', () => {
     });
 
     describe('execute', () => {
-        it('sweeps the pending rows and reports the swept count', async () => {
+        it('sweeps the pending rows, reconciles the stale enqueued rows, and reports the count', async () => {
             outboxService.sweep.mockResolvedValue(3);
 
             const result = await useCase.execute();

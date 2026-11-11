@@ -172,15 +172,17 @@ describe('QueueProcessorBase', () => {
             );
         });
 
-        it('fails the job when stamping the row completed throws', async () => {
+        it('completes the job and leaves the row for the reconcile when stamping the row completed throws', async () => {
             const job = buildProcessorJob({ data: { outboxId } });
-            const error = new Error('mongo down');
             outboxService.load.mockResolvedValue(row);
-            outboxService.complete.mockRejectedValue(error);
+            outboxService.complete.mockRejectedValue(new Error('mongo down'));
             handle.mockResolvedValue({ message: 'done' });
 
-            await expect(processor.process(job)).rejects.toBe(error);
+            await expect(processor.process(job)).resolves.toEqual({
+                message: 'done',
+            });
 
+            expect(outboxService.complete).toHaveBeenCalledWith(outboxId, 1);
             expect(outboxService.fail).not.toHaveBeenCalled();
         });
 

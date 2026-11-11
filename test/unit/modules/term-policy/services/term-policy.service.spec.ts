@@ -1036,7 +1036,7 @@ describe('TermPolicyService', () => {
             it('publishes the public keys, archives the earlier published versions, and returns the row', async () => {
                 const result = await service.publishByAdmin('term-policy-1');
 
-                expect(result).toEqual({ termPolicy: publishedTermPolicy });
+                expect(result).toEqual(publishedTermPolicy);
                 expect(
                     termPolicyUtil.getContentPublicPath
                 ).toHaveBeenCalledWith(EnumTermPolicyType.privacy, 1);

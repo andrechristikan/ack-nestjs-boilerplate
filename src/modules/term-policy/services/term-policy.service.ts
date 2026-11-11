@@ -36,7 +36,6 @@ import type {
     ITermPolicyContentUpload,
     ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
-    ITermPolicyPublish,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -271,7 +270,7 @@ export class TermPolicyService {
         }
     }
 
-    async publishByAdmin(termPolicyId: string): Promise<ITermPolicyPublish> {
+    async publishByAdmin(termPolicyId: string): Promise<TermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -359,7 +358,7 @@ export class TermPolicyService {
                     }
                 );
 
-            return { termPolicy: published };
+            return published;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

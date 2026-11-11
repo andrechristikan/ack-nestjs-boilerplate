@@ -7,7 +7,11 @@ export interface IOutboxRepository {
         keys: Prisma.OutboxQueueNameIdempotencyKeyCompoundUniqueInput[]
     ): Promise<Outbox[]>;
     findManyPendingByIds(ids: string[]): Promise<Outbox[]>;
-    findManyPendingBefore(before: Date, take: number): Promise<Outbox[]>;
+    findManyPendingBefore(createdBefore: Date, take: number): Promise<Outbox[]>;
+    findManyEnqueuedBefore(
+        enqueuedBefore: Date,
+        take: number
+    ): Promise<Outbox[]>;
     findOneById(id: string): Promise<Outbox | null>;
     createManyInTx(
         tx: IDatabaseTransactionClient,

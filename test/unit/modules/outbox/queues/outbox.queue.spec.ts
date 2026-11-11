@@ -28,6 +28,7 @@ describe('OutboxQueue', () => {
         configGet.mockImplementation((key: string) => {
             const values: Record<string, number> = {
                 'outbox.sweepIntervalInMs': 60000,
+                'outbox.sweepKeepCompleted': 20,
             };
 
             return values[key];
@@ -50,13 +51,17 @@ describe('OutboxQueue', () => {
     });
 
     describe('onModuleInit', () => {
-        it('schedules the sweep every sweep interval', async () => {
+        it('schedules the sweep every sweep interval keeping the last completed jobs', async () => {
             await queue.onModuleInit();
 
             expect(outboxQueue.upsertJobScheduler).toHaveBeenCalledWith(
                 EnumOutboxProcess.sweep,
                 { every: 60000 },
-                { name: EnumOutboxProcess.sweep, data: {} }
+                {
+                    name: EnumOutboxProcess.sweep,
+                    data: {},
+                    opts: { removeOnComplete: { count: 20 } },
+                }
             );
         });
     });

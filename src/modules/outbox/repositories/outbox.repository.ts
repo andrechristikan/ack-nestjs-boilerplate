@@ -28,13 +28,30 @@ export class OutboxRepository implements IOutboxRepository {
         });
     }
 
-    async findManyPendingBefore(before: Date, take: number): Promise<Outbox[]> {
+    async findManyPendingBefore(
+        createdBefore: Date,
+        take: number
+    ): Promise<Outbox[]> {
         return this.databaseService.client.outbox.findMany({
             where: {
                 status: EnumOutboxStatus.pending,
-                createdAt: { lt: before },
+                createdAt: { lt: createdBefore },
             },
             orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
+            take,
+        });
+    }
+
+    async findManyEnqueuedBefore(
+        enqueuedBefore: Date,
+        take: number
+    ): Promise<Outbox[]> {
+        return this.databaseService.client.outbox.findMany({
+            where: {
+                status: EnumOutboxStatus.enqueued,
+                enqueuedAt: { lt: enqueuedBefore },
+            },
+            orderBy: { enqueuedAt: EnumPaginationOrderDirectionType.asc },
             take,
         });
     }
@@ -56,7 +73,9 @@ export class OutboxRepository implements IOutboxRepository {
         await this.databaseService.client.outbox.updateMany({
             where: {
                 id: { in: ids },
-                status: EnumOutboxStatus.pending,
+                status: {
+                    in: [EnumOutboxStatus.pending, EnumOutboxStatus.enqueued],
+                },
             },
             data: {
                 status: EnumOutboxStatus.enqueued,
