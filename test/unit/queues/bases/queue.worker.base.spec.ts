@@ -1,9 +1,7 @@
-import { Worker } from 'bullmq';
 import type { Processor } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { QueueWorkerBase } from '@queues/bases/queue.worker.base';
 
 vi.mock('bullmq');
 
@@ -12,8 +10,14 @@ describe('QueueWorkerBase', () => {
     const producerConnection: MockProxy<Redis> = mock<Redis>();
     const processor: Processor = vi.fn();
 
-    beforeEach(() => {
+    let Worker: typeof import('bullmq').Worker;
+    let QueueWorkerBase: typeof import('@queues/bases/queue.worker.base').QueueWorkerBase;
+
+    beforeEach(async () => {
         vi.resetAllMocks();
+        vi.resetModules();
+        ({ Worker } = await import('bullmq'));
+        ({ QueueWorkerBase } = await import('@queues/bases/queue.worker.base'));
         QueueWorkerBase.connection = connection;
     });
 

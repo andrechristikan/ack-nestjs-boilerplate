@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type {
     ITermPolicyCopyContentPayload,
@@ -19,10 +20,11 @@ export class TermPolicyProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly termPolicyProcessDeleteContentUseCase: TermPolicyProcessDeleteContentUseCase,
         private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

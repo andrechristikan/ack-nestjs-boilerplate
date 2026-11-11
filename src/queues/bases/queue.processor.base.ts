@@ -2,6 +2,7 @@ import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { CacheService } from '@common/cache/services/cache.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
@@ -12,7 +13,8 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
     constructor(
         protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService
+        protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService
     ) {
         super();
     }
@@ -113,5 +115,15 @@ export abstract class QueueProcessorBase extends WorkerHost {
                 },
             },
         });
+    }
+
+    @OnWorkerEvent('error')
+    onError(error: Error): void {
+        const isConnection = this.cacheService.isConnectionError(error);
+        if (isConnection) {
+            return;
+        }
+
+        this.logger.warn(error, 'Queue worker error');
     }
 }

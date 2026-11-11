@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
@@ -20,10 +21,11 @@ export class UserProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
         private readonly userProcessLockoutUseCase: UserProcessLockoutUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

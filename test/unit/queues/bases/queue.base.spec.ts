@@ -1,7 +1,7 @@
-import { Logger } from '@nestjs/common';
-import type { Queue } from 'bullmq';
+import type { Queue, QueueListener } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { CacheService } from '@common/cache/services/cache.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueBase } from '@queues/bases/queue.base';
 import { EnumQueuePriority } from '@queues/enums/queue.enum';
@@ -10,12 +10,49 @@ import { QueueSideEffectFailedException } from '@queues/exceptions/queue.side-ef
 describe('QueueBase', () => {
     const queue: MockProxy<Queue> = mock<Queue>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const description = 'enqueue notification after commit';
     let queueBase: QueueBase;
+    let errorListener: QueueListener['error'] | null = null;
 
     beforeEach(() => {
         vi.resetAllMocks();
-        queueBase = Reflect.construct(QueueBase, [queue, sentryService]);
+        queue.on.mockImplementation((_event, listener) => {
+            errorListener = listener as QueueListener['error'];
+
+            return queue;
+        });
+        queueBase = Reflect.construct(QueueBase, [
+            queue,
+            sentryService,
+            cacheService,
+        ]);
+    });
+
+    describe('constructor', () => {
+        it('registers one error listener on the queue', () => {
+            expect(queue.on).toHaveBeenCalledTimes(1);
+            expect(queue.on).toHaveBeenCalledWith(
+                'error',
+                expect.any(Function)
+            );
+        });
+
+        it('classifies a connection error raised on the queue and returns without throwing', () => {
+            const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
+            cacheService.isConnectionError.mockReturnValue(true);
+
+            expect(() => errorListener?.(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+        });
+
+        it('classifies any other error raised on the queue and handles it without throwing', () => {
+            const error = new Error('queue failure');
+            cacheService.isConnectionError.mockReturnValue(false);
+
+            expect(() => errorListener?.(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+        });
     });
 
     describe('addSideEffect', () => {
@@ -37,9 +74,8 @@ describe('QueueBase', () => {
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
-        it('resolves, logs at error and reports the wrapped failure when add rejects', async () => {
+        it('resolves and reports the wrapped failure when add rejects', async () => {
             const error = new Error('redis down');
-            const logError = vi.spyOn(Logger.prototype, 'error');
             queue.add.mockRejectedValue(error);
 
             await expect(
@@ -51,13 +87,10 @@ describe('QueueBase', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(logError).toHaveBeenCalledWith(
-                expect.any(QueueSideEffectFailedException),
-                description
-            );
             expect(sentryService.captureException).toHaveBeenCalledTimes(1);
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 expect.objectContaining({
+                    constructor: QueueSideEffectFailedException,
                     rawError: error,
                     message: description,
                 })
@@ -80,9 +113,8 @@ describe('QueueBase', () => {
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
-        it('resolves, logs at error and reports the wrapped failure when addBulk rejects', async () => {
+        it('resolves and reports the wrapped failure when addBulk rejects', async () => {
             const error = new Error('redis down');
-            const logError = vi.spyOn(Logger.prototype, 'error');
             queue.addBulk.mockRejectedValue(error);
 
             await expect(
@@ -92,13 +124,10 @@ describe('QueueBase', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(logError).toHaveBeenCalledWith(
-                expect.any(QueueSideEffectFailedException),
-                description
-            );
             expect(sentryService.captureException).toHaveBeenCalledTimes(1);
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 expect.objectContaining({
+                    constructor: QueueSideEffectFailedException,
                     rawError: error,
                     message: description,
                 })

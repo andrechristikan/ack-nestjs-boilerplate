@@ -2,6 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Mock } from 'vitest';
+import { CacheService } from '@common/cache/services/cache.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
@@ -15,6 +16,7 @@ import {
 describe('QueueProcessorBase', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let handle: Mock;
     const jobName = 'testJob';
     let processor: QueueProcessorBase;
@@ -25,7 +27,8 @@ describe('QueueProcessorBase', () => {
 
         ({ processor, handle } = buildQueueProcessor(
             sentryService,
-            messageService
+            messageService,
+            cacheService
         ));
     });
 
@@ -221,6 +224,24 @@ describe('QueueProcessorBase', () => {
             processor.onFailed(job, error);
 
             expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('onError', () => {
+        it('classifies a connection error and returns without throwing', () => {
+            const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
+            cacheService.isConnectionError.mockReturnValue(true);
+
+            expect(() => processor.onError(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+        });
+
+        it('classifies any other error and handles it without throwing', () => {
+            const error = new Error('worker failure');
+            cacheService.isConnectionError.mockReturnValue(false);
+
+            expect(() => processor.onError(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
         });
     });
 

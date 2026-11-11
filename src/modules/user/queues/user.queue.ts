@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
@@ -23,12 +24,13 @@ export class UserQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumUserQueue.user) protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
+        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService
     ) {
-        super(queue, sentryService);
+        super(queue, sentryService, cacheService);
         this.deletePhotoJobIdPattern = this.configService.get<string>(
             'user.jobId.deletePhotoPattern'
         )!;

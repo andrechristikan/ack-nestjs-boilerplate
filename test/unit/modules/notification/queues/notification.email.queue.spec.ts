@@ -2,6 +2,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
+import { CacheService } from '@common/cache/services/cache.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -35,6 +36,7 @@ describe('NotificationEmailQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const emailQueue: MockProxy<Queue> = mock<Queue>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
@@ -77,6 +79,7 @@ describe('NotificationEmailQueue', () => {
                     useValue: emailQueue,
                 },
                 { provide: SentryService, useValue: sentryService },
+                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 HelperStringService,
                 {

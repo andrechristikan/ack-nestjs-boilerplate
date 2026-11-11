@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceProcessExpireStaleInvitesUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-invites.use-case';
 import { WorkspaceProcessExpireStaleJoinRequestsUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-join-requests.use-case';
@@ -15,10 +16,11 @@ export class WorkspaceProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly workspaceProcessExpireStaleInvitesUseCase: WorkspaceProcessExpireStaleInvitesUseCase,
         private readonly workspaceProcessExpireStaleJoinRequestsUseCase: WorkspaceProcessExpireStaleJoinRequestsUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
+import { CacheService } from '@common/cache/services/cache.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -18,6 +19,7 @@ describe('SessionQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const sessionQueue: MockProxy<Queue> = mock<Queue>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperStringService: MockProxy<HelperStringService> =
@@ -44,6 +46,7 @@ describe('SessionQueue', () => {
                     useValue: sessionQueue,
                 },
                 { provide: SentryService, useValue: sentryService },
+                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperStringService, useValue: helperStringService },

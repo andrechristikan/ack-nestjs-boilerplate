@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
 import { SessionProcessPurgeLoginsUseCase } from '@modules/session/use-cases/session.process-purge-logins.use-case';
@@ -15,9 +16,10 @@ export class SessionProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly sessionProcessPurgeLoginsUseCase: SessionProcessPurgeLoginsUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

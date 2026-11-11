@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import {
     FirebaseMaxRateLimitPerDuration,
     FirebaseRateLimitDurationInMs,
@@ -45,6 +46,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly notificationPushProcessNewDeviceLoginUseCase: NotificationPushProcessNewDeviceLoginUseCase,
         private readonly notificationPushProcessResetTwoFactorByAdminUseCase: NotificationPushProcessResetTwoFactorByAdminUseCase,
         private readonly notificationPushProcessTemporaryPasswordByAdminUseCase: NotificationPushProcessTemporaryPasswordByAdminUseCase,
@@ -57,7 +59,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         private readonly notificationPushProcessCleanupTokensUseCase: NotificationPushProcessCleanupTokensUseCase,
         private readonly notificationPushProcessCleanupStaleTokensUseCase: NotificationPushProcessCleanupStaleTokensUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

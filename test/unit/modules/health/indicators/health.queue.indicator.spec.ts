@@ -4,9 +4,10 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { CacheService } from '@common/cache/services/cache.service';
 
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
-import type { Queue } from 'bullmq';
+import type { Queue, QueueListener } from 'bullmq';
 import {
     EnumHealthIndicatorKey,
     EnumHealthQueue,
@@ -19,12 +20,19 @@ describe('HealthQueueIndicator', () => {
     });
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
         mock<HealthIndicatorService>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const session = { up: vi.fn(), down: vi.fn() };
 
     let indicator: HealthQueueIndicator;
+    let errorListener: QueueListener['error'] | null = null;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        queue.on.mockImplementation((_event, listener) => {
+            errorListener = listener as QueueListener['error'];
+
+            return queue;
+        });
 
         healthIndicatorService.check.mockReturnValue(session as never);
 
@@ -39,10 +47,37 @@ describe('HealthQueueIndicator', () => {
                     provide: HealthIndicatorService,
                     useValue: healthIndicatorService,
                 },
+                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
         indicator = module.get(HealthQueueIndicator);
+    });
+
+    describe('constructor', () => {
+        it('registers one error listener on the queue', () => {
+            expect(queue.on).toHaveBeenCalledTimes(1);
+            expect(queue.on).toHaveBeenCalledWith(
+                'error',
+                expect.any(Function)
+            );
+        });
+
+        it('classifies a connection error raised on the queue and returns without throwing', () => {
+            const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
+            cacheService.isConnectionError.mockReturnValue(true);
+
+            expect(() => errorListener?.(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+        });
+
+        it('classifies any other error raised on the queue and handles it without throwing', () => {
+            const error = new Error('queue failure');
+            cacheService.isConnectionError.mockReturnValue(false);
+
+            expect(() => errorListener?.(error)).not.toThrow();
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+        });
     });
 
     describe('isHealthy', () => {

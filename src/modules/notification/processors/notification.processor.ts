@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
@@ -49,6 +50,7 @@ export class NotificationProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly notificationProcessNewDeviceLoginUseCase: NotificationProcessNewDeviceLoginUseCase,
         private readonly notificationProcessWelcomeByAdminUseCase: NotificationProcessWelcomeByAdminUseCase,
         private readonly notificationProcessTemporaryPasswordByAdminUseCase: NotificationProcessTemporaryPasswordByAdminUseCase,
@@ -68,7 +70,7 @@ export class NotificationProcessor extends QueueProcessorBase {
         private readonly notificationProcessWorkspaceJoinAcceptedUseCase: NotificationProcessWorkspaceJoinAcceptedUseCase,
         private readonly notificationProcessWorkspaceJoinRejectedUseCase: NotificationProcessWorkspaceJoinRejectedUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

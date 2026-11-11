@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogProcessCreateManyUseCase } from '@modules/activity-log/use-cases/activity-log.process-create-many.use-case';
@@ -15,9 +16,10 @@ export class ActivityLogProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly activityLogProcessCreateManyUseCase: ActivityLogProcessCreateManyUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(

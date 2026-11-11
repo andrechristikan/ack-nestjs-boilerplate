@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import {
@@ -34,10 +35,11 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
         @InjectQueue(EnumNotificationQueue.notificationPush)
         protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
+        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
     ) {
-        super(queue, sentryService);
+        super(queue, sentryService, cacheService);
         this.defTz = this.configService.get<string>('app.timezone')!;
         this.cleanupStaleTokensCron = this.configService.get<string>(
             'notification.push.cleanupStaleTokensCron'

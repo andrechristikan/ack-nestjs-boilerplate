@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -58,13 +59,14 @@ export class NotificationQueue extends QueueBase {
         @InjectQueue(EnumNotificationQueue.notification)
         protected readonly queue: Queue,
         protected readonly sentryService: SentryService,
+        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperStringService: HelperStringService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService
     ) {
-        super(queue, sentryService);
+        super(queue, sentryService, cacheService);
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
         )!;

@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { JobsOptions, Queue } from 'bullmq';
+import { CacheService } from '@common/cache/services/cache.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueSideEffectFailedException } from '@queues/exceptions/queue.side-effect-failed.exception';
 import type {
@@ -12,8 +13,24 @@ export abstract class QueueBase {
 
     constructor(
         protected readonly queue: Queue,
-        protected readonly sentryService: SentryService
-    ) {}
+        protected readonly sentryService: SentryService,
+        protected readonly cacheService: CacheService
+    ) {
+        this.registerErrorListener();
+    }
+
+    private registerErrorListener(): void {
+        this.queue.on('error', (error: Error) => this.onError(error));
+    }
+
+    private onError(error: Error): void {
+        const isConnection = this.cacheService.isConnectionError(error);
+        if (isConnection) {
+            return;
+        }
+
+        this.logger.warn(error, 'Queue error');
+    }
 
     private reportSideEffectFailure(error: unknown, description: string): void {
         const exception = new QueueSideEffectFailedException(

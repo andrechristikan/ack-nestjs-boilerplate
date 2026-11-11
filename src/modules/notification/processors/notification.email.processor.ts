@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { QueueException } from '@queues/exceptions/queue.exception';
@@ -61,6 +62,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
     constructor(
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
+        protected readonly cacheService: CacheService,
         private readonly notificationEmailProcessChangePasswordUseCase: NotificationEmailProcessChangePasswordUseCase,
         private readonly notificationEmailProcessWelcomeUseCase: NotificationEmailProcessWelcomeUseCase,
         private readonly notificationEmailProcessWelcomeSocialUseCase: NotificationEmailProcessWelcomeSocialUseCase,
@@ -80,7 +82,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         private readonly notificationEmailProcessWorkspaceJoinAcceptedUseCase: NotificationEmailProcessWorkspaceJoinAcceptedUseCase,
         private readonly notificationEmailProcessWorkspaceJoinRejectedUseCase: NotificationEmailProcessWorkspaceJoinRejectedUseCase
     ) {
-        super(sentryService, messageService);
+        super(sentryService, messageService, cacheService);
     }
 
     protected async handle(
