@@ -3,25 +3,15 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type Keyv from 'keyv';
-import type KeyvRedis from '@keyv/redis';
-import { RedisErrorMessages } from '@keyv/redis';
-import {
-    ClientClosedError,
-    ClientOfflineError,
-    ConnectionTimeoutError,
-    SocketClosedUnexpectedlyError,
-    TimeoutError,
-} from '@redis/client';
 import { z } from 'zod';
 import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
-import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
+import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('CacheService', () => {
     const configGet = vi.fn<(key: string) => number | undefined>();
@@ -32,11 +22,7 @@ describe('CacheService', () => {
         mock<HelperDateService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const keyvGet = vi.fn<(key: string | string[]) => Promise<unknown>>();
-    const keyv: MockProxy<Keyv> = mock<Keyv>({
-        get: keyvGet as Keyv['get'],
-    });
-    const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
+    const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     const key = 'Entry:entry-1';
     const ttlInMs = 4000;
@@ -44,6 +30,7 @@ describe('CacheService', () => {
     const entrySchema = z.object({ id: z.string(), name: z.string() });
     const entry = { id: 'entry-1', name: 'Entry One' };
     const loader = vi.fn<() => Promise<typeof entry | null>>();
+    const connectionError = new Error('Connection is closed.');
     const redisUnavailable = {
         module: 'redis',
         statusCode: EnumRedisStatusCodeError.unavailable,
@@ -56,7 +43,6 @@ describe('CacheService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        (keyv as unknown as { store: KeyvRedis<string> }).store = store;
         configGet.mockImplementation((configKey: string) => {
             const values: Record<string, number> = {
                 'redis.warnWindowInMs': 60000,
@@ -69,7 +55,7 @@ describe('CacheService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CacheService,
-                { provide: RedisClientCachedProvider, useValue: keyv },
+                { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -85,8 +71,8 @@ describe('CacheService', () => {
     describe('readThrough', () => {
         const lease: ICacheLease = { key: 'lease', ttlInMs: 10000 };
 
-        it('returns the cached value when it passes the schema and calls no loader', async () => {
-            keyvGet.mockResolvedValue(entry);
+        it('returns the cached JSON value when it passes the schema and calls no loader', async () => {
+            redis.get.mockResolvedValue(JSON.stringify(entry));
 
             const result = await service.readThrough(
                 key,
@@ -96,14 +82,14 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(keyvGet).toHaveBeenCalledWith(key);
+            expect(redis.get).toHaveBeenCalledWith(key);
             expect(loader).not.toHaveBeenCalled();
         });
 
         it('revives an ISO date through the schema', async () => {
             const dated = { at: new Date('2026-01-01T00:00:00.000Z') };
             const datedLoader = vi.fn<() => Promise<typeof dated | null>>();
-            keyvGet.mockResolvedValue({ at: '2026-01-01T00:00:00.000Z' });
+            redis.get.mockResolvedValue('{"at":"2026-01-01T00:00:00.000Z"}');
 
             const result = await service.readThrough(
                 key,
@@ -117,7 +103,7 @@ describe('CacheService', () => {
         });
 
         it('treats a missing entry as a miss with no delete and no warning', async () => {
-            keyvGet.mockResolvedValue(undefined);
+            redis.get.mockResolvedValue(null);
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -129,27 +115,12 @@ describe('CacheService', () => {
 
             expect(result).toEqual(entry);
             expect(loader).toHaveBeenCalledTimes(1);
-            expect(keyv.delete).not.toHaveBeenCalled();
+            expect(redis.unlink).not.toHaveBeenCalled();
             expect(service['warnedAtByKey'].size).toBe(0);
         });
 
-        it('loads and sets the result with the TTL on a miss', async () => {
-            keyvGet.mockResolvedValue(undefined);
-            loader.mockResolvedValue(entry);
-
-            const result = await service.readThrough(
-                key,
-                entrySchema,
-                ttlInMs,
-                loader
-            );
-
-            expect(result).toEqual(entry);
-            expect(keyv.set).toHaveBeenCalledWith(key, entry, ttlInMs);
-        });
-
         it('does not store a null result', async () => {
-            keyvGet.mockResolvedValue(undefined);
+            redis.get.mockResolvedValue(null);
             loader.mockResolvedValue(null);
 
             const result = await service.readThrough(
@@ -160,11 +131,11 @@ describe('CacheService', () => {
             );
 
             expect(result).toBeNull();
-            expect(keyv.set).not.toHaveBeenCalled();
+            expect(redis.set).not.toHaveBeenCalled();
         });
 
-        it('deletes the key, records a warning, and loads when the entry fails the schema', async () => {
-            keyvGet.mockResolvedValue({ id: 1 });
+        it('unlinks the key, records a warning, and loads when the entry fails the schema', async () => {
+            redis.get.mockResolvedValue('{"id":1}');
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -175,14 +146,41 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(keyv.delete).toHaveBeenCalledWith(key);
+            expect(redis.unlink).toHaveBeenCalledWith(key);
             expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
             expect(loader).toHaveBeenCalledTimes(1);
-            expect(keyv.set).toHaveBeenCalledWith(key, entry, ttlInMs);
+            expect(redis.set).toHaveBeenCalledWith(
+                key,
+                JSON.stringify(entry),
+                'PX',
+                4000
+            );
+        });
+
+        it('records a warning, loads, and sets the loaded value without an unlink when the entry is not JSON', async () => {
+            redis.get.mockResolvedValue('not-json');
+            loader.mockResolvedValue(entry);
+
+            const result = await service.readThrough(
+                key,
+                entrySchema,
+                ttlInMs,
+                loader
+            );
+
+            expect(result).toEqual(entry);
+            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(redis.unlink).not.toHaveBeenCalled();
+            expect(redis.set).toHaveBeenCalledWith(
+                key,
+                JSON.stringify(entry),
+                'PX',
+                4000
+            );
         });
 
         it('loads and records a warning when the read fails with a non-connection error', async () => {
-            keyvGet.mockRejectedValue(new Error('wrong kind of value'));
+            redis.get.mockRejectedValue(new Error('wrong kind of value'));
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -198,18 +196,20 @@ describe('CacheService', () => {
         });
 
         it('throws RedisUnavailableException carrying the caught error as rawError when the read fails with a connection error', async () => {
-            const failure = new ClientOfflineError();
-            keyvGet.mockRejectedValue(failure);
+            redis.get.mockRejectedValue(connectionError);
 
             await expect(
                 service.readThrough(key, entrySchema, ttlInMs, loader)
-            ).rejects.toMatchObject({ ...redisUnavailable, rawError: failure });
+            ).rejects.toMatchObject({
+                ...redisUnavailable,
+                rawError: connectionError,
+            });
             expect(loader).not.toHaveBeenCalled();
         });
 
         it('returns the loaded value and records a warning when the set fails with a non-connection error', async () => {
-            keyvGet.mockResolvedValue(undefined);
-            keyv.set.mockRejectedValue(new Error('OOM'));
+            redis.get.mockResolvedValue(null);
+            redis.set.mockRejectedValue(new Error('OOM'));
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -224,19 +224,21 @@ describe('CacheService', () => {
         });
 
         it('throws RedisUnavailableException when the set fails with a connection error', async () => {
-            const failure = new TimeoutError();
-            keyvGet.mockResolvedValue(undefined);
-            keyv.set.mockRejectedValue(failure);
+            redis.get.mockResolvedValue(null);
+            redis.set.mockRejectedValue(connectionError);
             loader.mockResolvedValue(entry);
 
             await expect(
                 service.readThrough(key, entrySchema, ttlInMs, loader)
-            ).rejects.toMatchObject({ ...redisUnavailable, rawError: failure });
+            ).rejects.toMatchObject({
+                ...redisUnavailable,
+                rawError: connectionError,
+            });
         });
 
         it('propagates a loader error unchanged and records no warning', async () => {
             const failure = new Error('database down');
-            keyvGet.mockResolvedValue(undefined);
+            redis.get.mockResolvedValue(null);
             loader.mockRejectedValue(failure);
 
             await expect(
@@ -245,33 +247,48 @@ describe('CacheService', () => {
             expect(service['warnedAtByKey'].size).toBe(0);
         });
 
-        it('takes SET NX PX on the prefixed lease key before the loader runs', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockResolvedValue('OK');
+        it('loads and sets the result as JSON with a PX TTL on a miss', async () => {
+            redis.get.mockResolvedValue(null);
+            loader.mockResolvedValue(entry);
+
+            const result = await service.readThrough(
+                key,
+                entrySchema,
+                ttlInMs,
+                loader
+            );
+
+            expect(result).toEqual(entry);
+            expect(redis.set).toHaveBeenCalledWith(
+                key,
+                JSON.stringify(entry),
+                'PX',
+                4000
+            );
+        });
+        it('takes SET NX PX on the lease key before the loader runs', async () => {
+            redis.get.mockResolvedValue(null);
+            redis.set.mockResolvedValue('OK');
             loader.mockResolvedValue(entry);
 
             await service.readThrough(key, entrySchema, ttlInMs, loader, {
                 lease,
             });
 
-            expect(store.createKeyPrefix).toHaveBeenCalledWith(
+            expect(redis.set).toHaveBeenCalledWith(
                 'lease',
-                'cache'
-            );
-            expect(client.set).toHaveBeenCalledWith(
-                'prefixed-lease',
                 'lease-token',
-                { expiration: { type: 'PX', value: 10000 }, condition: 'NX' }
+                'PX',
+                10000,
+                'NX'
             );
-            expect(client.set).toHaveBeenCalledBefore(loader);
+            expect(redis.set).toHaveBeenCalledBefore(loader);
         });
 
         it('sets the entry through CacheLeaseSetScript while the lease holds the token', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockResolvedValue('OK');
-            client.eval.mockResolvedValue(1);
+            redis.get.mockResolvedValue(null);
+            redis.set.mockResolvedValue('OK');
+            redis.eval.mockResolvedValue(1);
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -283,21 +300,21 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(keyv.serializeData).toHaveBeenCalledWith({
-                value: entry,
-                expires: now.getTime() + ttlInMs,
-            });
-            expect(client.eval).toHaveBeenCalledWith(CacheLeaseSetScript, {
-                keys: [`prefixed-${key}`, 'prefixed-lease'],
-                arguments: ['lease-token', 'serialized-value', `${ttlInMs}`],
-            });
-            expect(keyv.set).not.toHaveBeenCalled();
+            expect(redis.eval).toHaveBeenCalledWith(
+                CacheLeaseSetScript,
+                2,
+                key,
+                'lease',
+                'lease-token',
+                JSON.stringify(entry),
+                '4000'
+            );
+            expect(redis.set).toHaveBeenCalledTimes(1);
         });
 
         it('serves the loaded value without a set when another reader holds the lease', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockResolvedValue(null);
+            redis.get.mockResolvedValue(null);
+            redis.set.mockResolvedValue(null);
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -309,14 +326,13 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(client.eval).not.toHaveBeenCalled();
-            expect(keyv.set).not.toHaveBeenCalled();
+            expect(redis.eval).not.toHaveBeenCalled();
+            expect(redis.set).toHaveBeenCalledTimes(1);
         });
 
         it('serves the loaded value without a set and records a warning when the lease take fails with a non-connection error', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockRejectedValue(new Error('READONLY'));
+            redis.get.mockResolvedValue(null);
+            redis.set.mockRejectedValue(new Error('READONLY'));
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -328,29 +344,29 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(client.eval).not.toHaveBeenCalled();
-            expect(keyv.set).not.toHaveBeenCalled();
+            expect(redis.eval).not.toHaveBeenCalled();
+            expect(redis.set).toHaveBeenCalledTimes(1);
             expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
         });
 
         it('throws RedisUnavailableException before the loader when the lease take fails with a connection error', async () => {
-            const failure = new ClientOfflineError();
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockRejectedValue(failure);
+            redis.get.mockResolvedValue(null);
+            redis.set.mockRejectedValue(connectionError);
 
             await expect(
                 service.readThrough(key, entrySchema, ttlInMs, loader, {
                     lease,
                 })
-            ).rejects.toMatchObject({ ...redisUnavailable, rawError: failure });
+            ).rejects.toMatchObject({
+                ...redisUnavailable,
+                rawError: connectionError,
+            });
             expect(loader).not.toHaveBeenCalled();
         });
 
         it('does not run the script for a null result', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockResolvedValue('OK');
+            redis.get.mockResolvedValue(null);
+            redis.set.mockResolvedValue('OK');
             loader.mockResolvedValue(null);
 
             const result = await service.readThrough(
@@ -362,14 +378,13 @@ describe('CacheService', () => {
             );
 
             expect(result).toBeNull();
-            expect(client.eval).not.toHaveBeenCalled();
+            expect(redis.eval).not.toHaveBeenCalled();
         });
 
         it('records a warning when the script fails with a non-connection error', async () => {
-            const client = stubStoreClient({ keyv, store });
-            keyvGet.mockResolvedValue(undefined);
-            client.set.mockResolvedValue('OK');
-            client.eval.mockRejectedValue(new Error('NOSCRIPT'));
+            redis.get.mockResolvedValue(null);
+            redis.set.mockResolvedValue('OK');
+            redis.eval.mockRejectedValue(new Error('NOSCRIPT'));
             loader.mockResolvedValue(entry);
 
             const result = await service.readThrough(
@@ -388,27 +403,35 @@ describe('CacheService', () => {
     describe('invalidate', () => {
         const keys = ['Entry:entry-1', 'Entry:Lease:entry-1'];
 
-        it('deletes the keys in one deleteMany', async () => {
-            keyv.deleteMany.mockResolvedValue(true);
+        it('deletes the keys in one UNLINK', async () => {
+            redis.unlink.mockResolvedValue(2);
 
             await service.invalidate(keys);
 
-            expect(keyv.deleteMany).toHaveBeenCalledTimes(1);
-            expect(keyv.deleteMany).toHaveBeenCalledWith(keys);
+            expect(redis.unlink).toHaveBeenCalledTimes(1);
+            expect(redis.unlink).toHaveBeenCalledWith(
+                'Entry:entry-1',
+                'Entry:Lease:entry-1'
+            );
+        });
+
+        it('issues no command for an empty list', async () => {
+            await service.invalidate([]);
+
+            expect(redis.unlink).not.toHaveBeenCalled();
         });
 
         it('throws RedisUnavailableException on a connection error', async () => {
-            const failure = new ClientOfflineError();
-            keyv.deleteMany.mockRejectedValue(failure);
+            redis.unlink.mockRejectedValue(connectionError);
 
             await expect(service.invalidate(keys)).rejects.toMatchObject({
                 ...redisUnavailable,
-                rawError: failure,
+                rawError: connectionError,
             });
         });
 
         it('records a warning and resolves on a non-connection error', async () => {
-            keyv.deleteMany.mockRejectedValue(new Error('READONLY'));
+            redis.unlink.mockRejectedValue(new Error('READONLY'));
 
             await expect(service.invalidate(keys)).resolves.toBeUndefined();
             expect(
@@ -421,32 +444,60 @@ describe('CacheService', () => {
 
     describe('isConnectionError', () => {
         it.each([
-            { name: 'ClientOfflineError', error: new ClientOfflineError() },
-            { name: 'ClientClosedError', error: new ClientClosedError() },
-            {
-                name: 'ConnectionTimeoutError',
-                error: new ConnectionTimeoutError(),
-            },
-            {
-                name: 'SocketClosedUnexpectedlyError',
-                error: new SocketClosedUnexpectedlyError(),
-            },
-            { name: 'TimeoutError', error: new TimeoutError() },
-            {
-                name: 'RedisClientNotConnectedThrown',
-                error: new Error(
-                    RedisErrorMessages.RedisClientNotConnectedThrown
-                ),
-            },
-        ])('returns true for $name', ({ error }) => {
+            "Stream isn't writeable and enableOfflineQueue options is false",
+            'Command timed out',
+            'Connection is closed.',
+        ])("returns true for the message '%s'", message => {
+            expect(service.isConnectionError(new Error(message))).toBe(true);
+        });
+
+        it.each(['MaxRetriesPerRequestError', 'AbortError'])(
+            "returns true for the name '%s'",
+            name => {
+                const error = new Error('redis failure');
+                error.name = name;
+
+                expect(service.isConnectionError(error)).toBe(true);
+            }
+        );
+
+        it.each([
+            'ECONNREFUSED',
+            'ETIMEDOUT',
+            'ECONNRESET',
+            'EPIPE',
+            'ENOTFOUND',
+            'EHOSTUNREACH',
+        ])("returns true for the code '%s'", code => {
+            const error = Object.assign(new Error('socket failure'), { code });
+
             expect(service.isConnectionError(error)).toBe(true);
         });
 
-        it('returns false for any other Error and for a non-Error value', () => {
+        it('returns false for any other Error', () => {
+            const error = Object.assign(new Error('READONLY'), {
+                code: 'READONLY',
+            });
+
+            expect(service.isConnectionError(error)).toBe(false);
+        });
+
+        it('returns false for a SyntaxError', () => {
             expect(
-                service.isConnectionError(new Error('wrong kind of value'))
+                service.isConnectionError(new SyntaxError('Unexpected token'))
             ).toBe(false);
-            expect(service.isConnectionError('offline')).toBe(false);
+        });
+
+        it('returns false for a plain object carrying a connection code', () => {
+            expect(service.isConnectionError({ code: 'ECONNREFUSED' })).toBe(
+                false
+            );
+        });
+
+        it('returns false for a string', () => {
+            expect(service.isConnectionError('Connection is closed.')).toBe(
+                false
+            );
         });
     });
 

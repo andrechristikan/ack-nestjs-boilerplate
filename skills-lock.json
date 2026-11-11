@@ -1,89 +1,89 @@
 {
-  "version": 2,
-  "skills": {
-    "caveman": {
-      "source": "JuliusBrussee/caveman",
-      "sourceType": "github",
-      "skillPath": "skills/caveman/SKILL.md",
-      "computedHash": "b51af74aacdadbc3c2d6bb79f05db58dc521854b87f7ffabd48faf286a81ed31",
-      "installMode": "copy"
-    },
-    "code-review": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/code-review/SKILL.md",
-      "computedHash": "ce86b40a3d1648a0018b712f0c70704e6c2316b2a9b9e915ab116916a31273dc",
-      "installMode": "copy"
-    },
-    "codebase-design": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/codebase-design/SKILL.md",
-      "computedHash": "d40f025dc1b0f2020663260f38f2bcb8d6ed3523afb11e5fda624b01238677e8",
-      "installMode": "copy"
-    },
-    "diagnosing-bugs": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
-      "computedHash": "87c78ae966e591f9ceb177789cc5cc9de69277cd26679ffd36ca5300f430d513",
-      "installMode": "copy"
-    },
-    "diagram-design": {
-      "source": "cathrynlavery/diagram-design",
-      "sourceType": "github",
-      "skillPath": "skills/diagram-design/SKILL.md",
-      "computedHash": "b5887faf4e1ed402ec2a652822f045add0b3f86d41f86bd08a304ec701119162",
-      "installMode": "copy"
-    },
-    "grilling": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/grilling/SKILL.md",
-      "computedHash": "485451958784497cd4c4dbea13cb5bbb579da58fac0d0e45f3bcb310fab68ac7",
-      "installMode": "copy"
-    },
-    "humanizer": {
-      "source": "blader/humanizer",
-      "sourceType": "github",
-      "skillPath": "SKILL.md",
-      "computedHash": "04cdabbcceaa7b5d4bd4b1ea02339013503d623b270b5b3b2e274837494d7134",
-      "installMode": "copy"
-    },
-    "ponytail": {
-      "source": "DietrichGebert/ponytail",
-      "sourceType": "github",
-      "skillPath": "skills/ponytail/SKILL.md",
-      "computedHash": "56d72677aca02689ac89bd48734e8c19b40ab86716d1257eaf5f1238b43cda6b",
-      "installMode": "copy"
-    },
-    "tdd": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/tdd/SKILL.md",
-      "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c",
-      "installMode": "copy"
-    },
-    "to-spec": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/to-spec/SKILL.md",
-      "computedHash": "eb934b5eda9523c7853a2741544bd4721ee1bea471f5a04f8397827f67bdbdda",
-      "installMode": "copy"
-    },
-    "to-tickets": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/to-tickets/SKILL.md",
-      "computedHash": "17496514c92954f68eacdf2b1221e2ddb39fa231b83f03c70bc7d4422f704b2d",
-      "installMode": "copy"
-    },
-    "writing-for-agents": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
-      "computedHash": "e79a2476b2417b228922453478d9505a6b9af19f3a412e560728ce62ed3555ca",
-      "installMode": "copy"
+    "version": 2,
+    "skills": {
+        "caveman": {
+            "source": "JuliusBrussee/caveman",
+            "sourceType": "github",
+            "skillPath": "skills/caveman/SKILL.md",
+            "computedHash": "b51af74aacdadbc3c2d6bb79f05db58dc521854b87f7ffabd48faf286a81ed31",
+            "installMode": "copy"
+        },
+        "code-review": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/code-review/SKILL.md",
+            "computedHash": "ce86b40a3d1648a0018b712f0c70704e6c2316b2a9b9e915ab116916a31273dc",
+            "installMode": "copy"
+        },
+        "codebase-design": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/codebase-design/SKILL.md",
+            "computedHash": "d40f025dc1b0f2020663260f38f2bcb8d6ed3523afb11e5fda624b01238677e8",
+            "installMode": "copy"
+        },
+        "diagnosing-bugs": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+            "computedHash": "87c78ae966e591f9ceb177789cc5cc9de69277cd26679ffd36ca5300f430d513",
+            "installMode": "copy"
+        },
+        "diagram-design": {
+            "source": "cathrynlavery/diagram-design",
+            "sourceType": "github",
+            "skillPath": "skills/diagram-design/SKILL.md",
+            "computedHash": "b5887faf4e1ed402ec2a652822f045add0b3f86d41f86bd08a304ec701119162",
+            "installMode": "copy"
+        },
+        "grilling": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/productivity/grilling/SKILL.md",
+            "computedHash": "485451958784497cd4c4dbea13cb5bbb579da58fac0d0e45f3bcb310fab68ac7",
+            "installMode": "copy"
+        },
+        "humanizer": {
+            "source": "blader/humanizer",
+            "sourceType": "github",
+            "skillPath": "SKILL.md",
+            "computedHash": "04cdabbcceaa7b5d4bd4b1ea02339013503d623b270b5b3b2e274837494d7134",
+            "installMode": "copy"
+        },
+        "ponytail": {
+            "source": "DietrichGebert/ponytail",
+            "sourceType": "github",
+            "skillPath": "skills/ponytail/SKILL.md",
+            "computedHash": "56d72677aca02689ac89bd48734e8c19b40ab86716d1257eaf5f1238b43cda6b",
+            "installMode": "copy"
+        },
+        "tdd": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/tdd/SKILL.md",
+            "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c",
+            "installMode": "copy"
+        },
+        "to-spec": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/to-spec/SKILL.md",
+            "computedHash": "eb934b5eda9523c7853a2741544bd4721ee1bea471f5a04f8397827f67bdbdda",
+            "installMode": "copy"
+        },
+        "to-tickets": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/engineering/to-tickets/SKILL.md",
+            "computedHash": "17496514c92954f68eacdf2b1221e2ddb39fa231b83f03c70bc7d4422f704b2d",
+            "installMode": "copy"
+        },
+        "writing-for-agents": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
+            "computedHash": "e79a2476b2417b228922453478d9505a6b9af19f3a412e560728ce62ed3555ca",
+            "installMode": "copy"
+        }
     }
-  }
 }

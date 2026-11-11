@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { DatabaseClientToken } from '@common/database/constants/database.constant';
+import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -17,7 +17,7 @@ export class DatabaseModule {
                 DatabaseExtensionFactory,
                 DatabaseClientFactory,
                 {
-                    provide: DatabaseClientToken,
+                    provide: DatabaseClient,
                     useFactory: (
                         databaseClientFactory: DatabaseClientFactory
                     ): IDatabaseClient => databaseClientFactory.create(),

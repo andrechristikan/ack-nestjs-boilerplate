@@ -1,17 +1,16 @@
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
-import type KeyvRedis from '@keyv/redis';
-import type Keyv from 'keyv';
+import type { Redis } from 'ioredis';
 
 @Injectable()
 export class HealthRedisIndicator {
     private readonly logger = new Logger(HealthRedisIndicator.name);
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
@@ -21,10 +20,7 @@ export class HealthRedisIndicator {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            const client = await (
-                this.keyv.store as KeyvRedis<string>
-            ).getClient();
-            await client.ping();
+            await this.redis.ping();
 
             return indicator.up();
         } catch (err: unknown) {

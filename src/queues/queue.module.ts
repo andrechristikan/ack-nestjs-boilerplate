@@ -1,8 +1,9 @@
-import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { RedisQueueClient } from '@common/redis/constants/redis.constant';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { Redis } from 'ioredis';
 
 @Module({})
 export class QueueModule {
@@ -13,19 +14,12 @@ export class QueueModule {
             imports: [
                 BullModule.forRootAsync({
                     imports: [ConfigModule],
-                    inject: [ConfigService],
-                    useFactory: (configService: ConfigService) => ({
-                        connection: {
-                            url: configService.get<string>('redis.queue.url')!,
-                            connectionName: `${configService.get<string>('app.name')}-${configService.get<EnumAppEnvironment>('app.env')}:queue`,
-                            enableOfflineQueue: false,
-                            connectTimeout: configService.get<number>(
-                                'queue.redis.connectTimeoutInMs'
-                            )!,
-                            maxRetriesPerRequest: configService.get<number>(
-                                'queue.redis.maxRetriesPerRequest'
-                            )!,
-                        },
+                    inject: [ConfigService, RedisQueueClient],
+                    useFactory: (
+                        configService: ConfigService,
+                        connection: Redis
+                    ) => ({
+                        connection,
                         prefix: configService.get<string>(
                             'redis.queue.namespace'
                         )!,

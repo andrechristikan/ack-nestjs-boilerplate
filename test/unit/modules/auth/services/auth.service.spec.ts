@@ -10,7 +10,6 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
-import { RedisErrorMessages } from '@keyv/redis';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type {
@@ -187,9 +186,7 @@ describe('AuthService', () => {
         });
 
         it('wraps any other strategy error in AppUnknownException carrying the raw error', () => {
-            const err = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
+            const err = new Error('Connection is closed.');
 
             let thrown: unknown;
             try {
@@ -317,9 +314,7 @@ describe('AuthService', () => {
         });
 
         it('wraps any other strategy error in AppUnknownException carrying the raw error', () => {
-            const err = new Error(
-                RedisErrorMessages.RedisClientNotConnectedThrown
-            );
+            const err = new Error('Connection is closed.');
 
             let thrown: unknown;
             try {

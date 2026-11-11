@@ -1,8 +1,6 @@
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import type KeyvRedis from '@keyv/redis';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import type {
     ISessionCache,
@@ -10,7 +8,7 @@ import type {
 } from '@modules/session/interfaces/session.interface';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Keyv from 'keyv';
+import type { Redis } from 'ioredis';
 
 @Injectable()
 export class SessionCache {
@@ -18,9 +16,8 @@ export class SessionCache {
     private readonly loginTtlInMs: number;
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService
     ) {
@@ -38,19 +35,15 @@ export class SessionCache {
         });
     }
 
-    private getStore(): KeyvRedis<string> {
-        return this.keyv.store as KeyvRedis<string>;
-    }
-
-    /** Reads the login entry through the Keyv client; a store failure throws. */
+    /** Reads the login entry through the cache client; a Redis failure throws. */
     async getLogin(
         userId: string,
         sessionId: string
     ): Promise<ISessionCache | null> {
         const key = this.buildLoginKey(userId, sessionId);
-        const cached = await this.keyv.get<ISessionCache>(key);
+        const raw = await this.redis.get(key);
 
-        return cached ?? null;
+        return raw === null ? null : JSON.parse(raw);
     }
 
     /** Stores a login session for the access-token lifetime; the entry holds the SHA-256 digest of the jti, never the jti. */
@@ -61,13 +54,11 @@ export class SessionCache {
     ): Promise<void> {
         const key = this.buildLoginKey(userId, sessionId);
         const jtiDigest = this.helperHashService.sha256Hash(jti);
-        await this.keyv.set<ISessionCache>(
+        const entry: ISessionCache = { userId, sessionId, jtiDigest };
+        await this.redis.set(
             key,
-            {
-                userId,
-                sessionId,
-                jtiDigest,
-            },
+            JSON.stringify(entry),
+            'PX',
             this.loginTtlInMs
         );
     }
@@ -79,40 +70,32 @@ export class SessionCache {
         oldJti: string,
         newJti: string
     ): Promise<EnumSessionCacheUpdate> {
-        const store = this.getStore();
-        const sessionKey = this.buildLoginKey(userId, sessionId);
-        const key = store.createKeyPrefix(sessionKey, store.namespace);
-        const now = this.helperDateService.create();
+        const key = this.buildLoginKey(userId, sessionId);
         const oldJtiDigest = this.helperHashService.sha256Hash(oldJti);
         const newJtiDigest = this.helperHashService.sha256Hash(newJti);
-        const [value, client] = await Promise.all([
-            this.keyv.serializeData<ISessionCache>({
-                value: { userId, sessionId, jtiDigest: newJtiDigest },
-                expires: now.getTime() + this.loginTtlInMs,
-            }),
-            store.getClient(),
-        ]);
-        const reply = await client.eval(
+        const entry: ISessionCache = {
+            userId,
+            sessionId,
+            jtiDigest: newJtiDigest,
+        };
+        const reply = await this.redis.eval(
             `
-local raw = redis.call('GET', KEYS[1])
-if not raw then
-    return 'absent'
-end
-local entry = cjson.decode(raw)
-if entry.value.jtiDigest ~= ARGV[1] then
-    return 'mismatch'
-end
-redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
-return 'updated'
-`,
-            {
-                keys: [key],
-                arguments: [
-                    oldJtiDigest,
-                    value as string,
-                    `${this.loginTtlInMs}`,
-                ],
-            }
+                local raw = redis.call('GET', KEYS[1])
+                if not raw then
+                    return 'absent'
+                end
+                local entry = cjson.decode(raw)
+                if entry.jtiDigest ~= ARGV[1] then
+                    return 'mismatch'
+                end
+                redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+                return 'updated'
+            `,
+            1,
+            key,
+            oldJtiDigest,
+            JSON.stringify(entry),
+            `${this.loginTtlInMs}`
         );
 
         if (reply === EnumSessionCacheUpdate.updated) {
@@ -129,8 +112,8 @@ return 'updated'
             return;
         }
 
-        await this.keyv.deleteMany(
-            sessions.map(session => this.buildLoginKey(userId, session.id))
+        await this.redis.unlink(
+            ...sessions.map(session => this.buildLoginKey(userId, session.id))
         );
     }
 }

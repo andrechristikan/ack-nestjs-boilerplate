@@ -5,7 +5,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import {
-    DatabaseClientToken,
+    DatabaseClient,
     DatabaseQueryTargetRegex,
 } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
@@ -25,7 +25,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     constructor(
         private readonly configService: ConfigService,
         private readonly databaseClientFactory: DatabaseClientFactory,
-        @Inject(DatabaseClientToken)
+        @Inject(DatabaseClient)
         private readonly databaseClient: IDatabaseClient
     ) {
         this.isDebugMode = this.configService.get<boolean>('database.debug')!;

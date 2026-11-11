@@ -1,47 +1,42 @@
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import { createKeyv } from '@keyv/redis';
+import {
+    RedisCacheClient,
+    RedisQueueClient,
+    RedisQueueWorkerClient,
+    RedisQueueWorkerClientToken,
+} from '@common/redis/constants/redis.constant';
+import { RedisClientFactory } from '@common/redis/factories/redis.client.factory';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Module({})
-export class RedisCacheModule {
+export class RedisModule {
     static forRoot(): DynamicModule {
-        const redisCacheProvider = {
-            provide: RedisClientCachedProvider,
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService) => {
-                return createKeyv(
-                    {
-                        url: configService.get<string>('redis.cache.url')!,
-                        disableOfflineQueue: true,
-                        commandOptions: {
-                            timeout: configService.get<number>(
-                                'redis.commandTimeoutInMs'
-                            )!,
-                        },
-                    },
-                    {
-                        connectionTimeout: configService.get<number>(
-                            'redis.connectTimeoutInMs'
-                        )!,
-                        namespace: configService.get<string>(
-                            'redis.cache.namespace'
-                        )!,
-                        useUnlink: true,
-                        keyPrefixSeparator: ':',
-                        throwOnErrors: true,
-                    }
-                );
-            },
-        };
-
         return {
-            module: RedisCacheModule,
+            module: RedisModule,
             global: true,
             imports: [],
-            providers: [redisCacheProvider],
-            exports: [redisCacheProvider],
+            providers: [
+                RedisClientFactory,
+                {
+                    provide: RedisCacheClient,
+                    inject: [RedisClientFactory],
+                    useFactory: (factory: RedisClientFactory) =>
+                        factory.connect(factory.createCache()),
+                },
+                {
+                    provide: RedisQueueClient,
+                    inject: [RedisClientFactory],
+                    useFactory: (factory: RedisClientFactory) =>
+                        factory.connect(factory.createQueue()),
+                },
+                {
+                    provide: RedisQueueWorkerClientToken,
+                    inject: [RedisClientFactory],
+                    useFactory: (factory: RedisClientFactory) =>
+                        factory.connect(RedisQueueWorkerClient),
+                },
+            ],
+            exports: [RedisCacheClient, RedisQueueClient],
         };
     }
 }

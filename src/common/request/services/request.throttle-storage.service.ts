@@ -2,12 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
-import Keyv from 'keyv';
-import KeyvRedis from '@keyv/redis';
-import type { RedisClientConnectionType } from '@keyv/redis';
+import type { Redis } from 'ioredis';
 import { CacheService } from '@common/cache/services/cache.service';
 import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 
@@ -18,7 +16,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
     private readonly sequenceKeyPattern: string;
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly cacheService: CacheService
@@ -43,11 +41,6 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             name: throttlerName,
             tracker,
         });
-    }
-
-    private async getClient(): Promise<RedisClientConnectionType> {
-        const store = this.keyv.store as KeyvRedis<string>;
-        return store.getClient();
     }
 
     private failOpenRecord(): ThrottlerStorageRecord {
@@ -149,15 +142,16 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
         `;
 
         try {
-            const client = await this.getClient();
-            const results = await client.eval(script, {
-                keys: [redisKey, blockKey, sequenceKey],
-                arguments: [
-                    ttl.toString(),
-                    limit.toString(),
-                    blockDuration.toString(),
-                ],
-            });
+            const results = await this.redis.eval(
+                script,
+                3,
+                redisKey,
+                blockKey,
+                sequenceKey,
+                ttl.toString(),
+                limit.toString(),
+                blockDuration.toString()
+            );
 
             if (!Array.isArray(results) || results.length < 4) {
                 this.cacheService.warnOnce(

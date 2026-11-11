@@ -1,15 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type KeyvRedis from '@keyv/redis';
-import { RedisErrorMessages } from '@keyv/redis';
-import {
-    ClientClosedError,
-    ClientOfflineError,
-    ConnectionTimeoutError,
-    SocketClosedUnexpectedlyError,
-    TimeoutError,
-} from '@redis/client';
-import type Keyv from 'keyv';
+import type { Redis } from 'ioredis';
 import type { ZodType } from 'zod';
 import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
 import type {
@@ -18,7 +9,12 @@ import type {
 } from '@common/cache/interfaces/cache.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import {
+    RedisCacheClient,
+    RedisConnectionErrorCodes,
+    RedisConnectionErrorMessages,
+    RedisConnectionErrorNames,
+} from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 
 @Injectable()
@@ -28,7 +24,7 @@ export class CacheService {
     private readonly warnedAtByKey: Map<string, number> = new Map();
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService
@@ -38,28 +34,23 @@ export class CacheService {
         )!;
     }
 
-    private getStore(): KeyvRedis<string> {
-        return this.keyv.store as KeyvRedis<string>;
-    }
-
     private async readEntry<T>(
         key: string,
         schema: ZodType<T>
     ): Promise<T | null> {
         try {
-            const stored = await this.keyv.get<unknown>(key);
-            const cached = stored ?? null;
+            const cached = await this.redis.get(key);
             if (cached === null) {
                 return null;
             }
 
-            const parsed = schema.safeParse(cached);
+            const parsed = schema.safeParse(JSON.parse(cached));
             if (parsed.success) {
                 return parsed.data;
             }
 
             this.warnOnce(key, parsed.error, 'Cache entry failed its schema');
-            await this.keyv.delete(key);
+            await this.redis.unlink(key);
 
             return null;
         } catch (error: unknown) {
@@ -75,7 +66,7 @@ export class CacheService {
         ttlInMs: number
     ): Promise<void> {
         try {
-            await this.keyv.set(key, value, ttlInMs);
+            await this.redis.set(key, JSON.stringify(value), 'PX', ttlInMs);
         } catch (error: unknown) {
             this.handleError(key, error, 'Cache write failed');
         }
@@ -86,14 +77,14 @@ export class CacheService {
         lease: ICacheLease
     ): Promise<string | null> {
         const token = this.helperStringService.random(32);
-        const store = this.getStore();
-        const leaseKey = store.createKeyPrefix(lease.key, store.namespace);
         try {
-            const client = await store.getClient();
-            const reply = await client.set(leaseKey, token, {
-                expiration: { type: 'PX', value: lease.ttlInMs },
-                condition: 'NX',
-            });
+            const reply = await this.redis.set(
+                lease.key,
+                token,
+                'PX',
+                lease.ttlInMs,
+                'NX'
+            );
 
             return reply === 'OK' ? token : null;
         } catch (error: unknown) {
@@ -110,22 +101,16 @@ export class CacheService {
         lease: ICacheLease,
         token: string
     ): Promise<void> {
-        const store = this.getStore();
-        const entryKey = store.createKeyPrefix(key, store.namespace);
-        const leaseKey = store.createKeyPrefix(lease.key, store.namespace);
-        const now = this.helperDateService.create();
         try {
-            const [serialized, client] = await Promise.all([
-                this.keyv.serializeData<T>({
-                    value,
-                    expires: now.getTime() + ttlInMs,
-                }),
-                store.getClient(),
-            ]);
-            await client.eval(CacheLeaseSetScript, {
-                keys: [entryKey, leaseKey],
-                arguments: [token, serialized as string, `${ttlInMs}`],
-            });
+            await this.redis.eval(
+                CacheLeaseSetScript,
+                2,
+                key,
+                lease.key,
+                token,
+                JSON.stringify(value),
+                `${ttlInMs}`
+            );
         } catch (error: unknown) {
             this.handleError(key, error, 'Cache write failed');
         }
@@ -175,8 +160,12 @@ export class CacheService {
 
     /** Deletes the keys; a connection error throws RedisUnavailableException, any other error logs one warn. */
     async invalidate(keys: string[]): Promise<void> {
+        if (keys.length === 0) {
+            return;
+        }
+
         try {
-            await this.keyv.deleteMany(keys);
+            await this.redis.unlink(...keys);
         } catch (error: unknown) {
             const warnKey = keys.join(',');
             this.handleError(warnKey, error, 'Cache invalidation failed');
@@ -184,15 +173,16 @@ export class CacheService {
     }
 
     isConnectionError(error: unknown): boolean {
+        if (!(error instanceof Error)) {
+            return false;
+        }
+
         return (
-            error instanceof ClientOfflineError ||
-            error instanceof ClientClosedError ||
-            error instanceof ConnectionTimeoutError ||
-            error instanceof SocketClosedUnexpectedlyError ||
-            error instanceof TimeoutError ||
-            (error instanceof Error &&
-                error.message ===
-                    RedisErrorMessages.RedisClientNotConnectedThrown)
+            RedisConnectionErrorMessages.includes(error.message) ||
+            RedisConnectionErrorNames.includes(error.name) ||
+            ('code' in error &&
+                typeof error.code === 'string' &&
+                RedisConnectionErrorCodes.includes(error.code))
         );
     }
 

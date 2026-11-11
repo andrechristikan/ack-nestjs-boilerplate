@@ -26,5 +26,3 @@ minimumReleaseAgeExclude:
     - '@commitlint/rules@21.2.3'
     - '@commitlint/types@21.2.3'
     - '@nestjs/terminus@12.1.0'
-overrides:
-    '@redis/client': 5.10.0

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseClientToken } from '@common/database/constants/database.constant';
+import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -69,7 +69,7 @@ export async function createDatabaseService(
                 provide: DatabaseClientFactory,
                 useValue: databaseClientFactory,
             },
-            { provide: DatabaseClientToken, useValue: client },
+            { provide: DatabaseClient, useValue: client },
         ],
     }).compile();
 

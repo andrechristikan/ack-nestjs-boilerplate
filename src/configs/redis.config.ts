@@ -9,6 +9,8 @@ export interface IConfigRedis {
     queue: {
         url: string;
         namespace: string;
+        connectTimeoutInMs: number;
+        maxRetriesPerRequest: number;
     };
     commandTimeoutInMs: number;
     connectTimeoutInMs: number;
@@ -24,6 +26,8 @@ export default registerAs('redis', (): IConfigRedis => {
         queue: {
             url: process.env.QUEUE_REDIS_URL!,
             namespace: 'Queue',
+            connectTimeoutInMs: ms('5s'),
+            maxRetriesPerRequest: 1,
         },
         commandTimeoutInMs: ms('2s'),
         connectTimeoutInMs: ms('5s'),

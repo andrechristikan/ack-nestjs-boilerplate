@@ -1,7 +1,7 @@
 import type { IDatabaseModelRelations } from '@common/database/interfaces/database.extension.interface';
 
 /** @public */
-export const DatabaseClientToken = Symbol('DatabaseClient');
+export const DatabaseClient = Symbol('DatabaseClient');
 
 /** @public */
 export const DatabaseQueryTargetRegex = /^db\.(\w+)\.(\w+)\(/;

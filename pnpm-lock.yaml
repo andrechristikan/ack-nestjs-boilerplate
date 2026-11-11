@@ -162,9 +162,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@redis/client': 5.10.0
-
 importers:
 
   .:
@@ -187,9 +184,6 @@ importers:
       '@faker-js/faker':
         specifier: ^10.6.0
         version: 10.6.0
-      '@keyv/redis':
-        specifier: ^5.1.6
-        version: 5.1.6(keyv@5.6.0)
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.0.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/core@12.0.3)(bullmq@6.3.8(ioredis@5.11.1(supports-color@10.2.2)))
@@ -223,9 +217,6 @@ importers:
       '@prisma/client':
         specifier: ^6.19.0
         version: 6.19.0(prisma@6.19.0(typescript@6.0.3))(typescript@6.0.3)
-      '@redis/client':
-        specifier: 5.10.0
-        version: 5.10.0
       '@sentry/nestjs':
         specifier: ^10.75.0
         version: 10.75.0(@nestjs/common@12.0.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/core@12.0.3)(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
@@ -280,15 +271,15 @@ importers:
       helmet:
         specifier: ^8.3.0
         version: 8.3.0
+      ioredis:
+        specifier: ^5.11.1
+        version: 5.11.1(supports-color@10.2.2)
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
       jwks-rsa:
         specifier: ^4.1.0
         version: 4.1.0(supports-color@10.2.2)
-      keyv:
-        specifier: ^5.6.0
-        version: 5.6.0
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
@@ -1410,12 +1401,6 @@ packages:
     peerDependencies:
       keyv: ^5.6.0
 
-  '@keyv/redis@5.1.6':
-    resolution: {integrity: sha512-eKvW6pspvVaU5dxigaIDZr635/Uw6urTXL3gNbY9WTR8d3QigZQT+r8gxYSEOsw4+1cCBsC4s7T2ptR0WC9LfQ==}
-    engines: {node: '>= 18'}
-    peerDependencies:
-      keyv: ^5.6.0
-
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
@@ -1852,6 +1837,7 @@ packages:
   '@opentelemetry/sdk-trace-base@2.10.0':
     resolution: {integrity: sha512-GuYQQT7QD2EeO8lcZLRQzcbOyhqAzL+6WWTKTU9mSUBYBazkEDl+VrQcXQhbB08OWM9anD1aHleVadzulpOaUQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 
@@ -2184,10 +2170,6 @@ packages:
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
 
-  '@redis/client@5.10.0':
-    resolution: {integrity: sha512-JXmM4XCoso6C75Mr3lhKA3eNxSzkYi3nCzxDIKY+YOszYsJjuKbFgVtguVPbLMOttN4iu2fXoc2BGhdnYhIOxA==}
-    engines: {node: '>= 18'}
-
   '@rolldown/binding-android-arm-eabi@1.2.8':
     resolution: {integrity: sha512-tN5aztYkKCte4i5SIrrz5yK/HMjEuCqCSCJa418jOV8tZ1cBY3YF2otxB1ktPxzsLA1BeTqwapK0bfjxNvHJVw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2389,6 +2371,9 @@ packages:
   '@smithy/core@3.33.3':
     resolution: {integrity: sha512-CsOeKq/9kA3y6VJHt+/+VTCtBaxJ4OTFpgrjIUhPpDIKxBci1k2bJaQASF2h/ELWrulGp+t97DZ0mevfAD8idg==}
     engines: {node: '>=18.0.0'}
+    deprecated: |-
+      Deprecated due to a bug in custom logger data redaction. Upgrade to the latest version. If you used a custom logger with this
+        version, review your logs and rotate any credentials or other secrets. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.4.16':
     resolution: {integrity: sha512-QfuLWAkLzptffFW980AFeHZFdqds2B64rpEd3uJ6lgs3xVn9QegGMUgUcj+4d7dRrAsya3r58ZKpku97WcFb4w==}
@@ -2604,9 +2589,6 @@ packages:
 
   '@types/multer@2.2.0':
     resolution: {integrity: sha512-3U1troeqGV8Ntp7Q3klwf4zr23VEoqYVocYXaswm9+8z3O9UHDYAqLxjJ/h550iRADTjKdOdhhasXw6gD6kYtg==}
-
-  '@types/node@26.4.1':
-    resolution: {integrity: sha512-k97ENvZWtvA6yqz5/FS6a7duDgOPEeOQOc2iKS/nY6mX6qJUKtLnWzQS+Xj6tXweyj6ZcTAK2Qecetnvi9nCLA==}
 
   '@types/node@26.6.2':
     resolution: {integrity: sha512-X1P21scMv4zGKLYqjdGjaKa7COa0RKVYYZZN/NfvLQ1JegxFhdhpZG/Lyn8AXx6CDUavKAd11v6BvfpkDByK8g==}
@@ -3358,10 +3340,6 @@ packages:
 
   cluster-key-slot@1.1.1:
     resolution: {integrity: sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw==}
-    engines: {node: '>=0.10.0'}
-
-  cluster-key-slot@1.1.2:
-    resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
 
   color-convert@2.0.1:
@@ -4226,10 +4204,6 @@ packages:
     resolution: {integrity: sha512-i1ydyHrqcIxXkWh/uBmVkzCvIuq5yiK2ATndIe5XxKholrG/MTYP9xGYka4sQhrbIAgGjL2B6NOE7rFaiF3fXw==}
     engines: {node: '>=18'}
 
-  google-auth-library@11.0.2:
-    resolution: {integrity: sha512-vzpgPutxrghPsnjrjpzLX2bdv8IOL719Rh0oEjGnQu8YCIbnbMuTTQ5zU9LcKvLdOPgCxBwppbvnhgW90Qna5Q==}
-    engines: {node: '>=22'}
-
   google-auth-library@11.1.0:
     resolution: {integrity: sha512-YIBq5KNoHQrZ9PM4PeodDBqqBGlSTIxh1zibN8u3zNIO9UJg8gvKuCpdKV7fWXhsZ2zRkU6FhGrgKNgLJ2IRgw==}
     engines: {node: '>=22'}
@@ -4308,9 +4282,6 @@ packages:
 
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
-
-  hookified@1.14.0:
-    resolution: {integrity: sha512-pi1ynXIMFx/uIIwpWJ/5CEtOHLGtnUB0WhGeeYT+fKcQ+WCQbm3/rrkAXnpfph++PgepNqPdTC2WTj8A6k6zoQ==}
 
   hookified@1.15.1:
     resolution: {integrity: sha512-MvG/clsADq1GPM2KGo2nyfaWVyn9naPiXrqIe4jYjXNZQt238kWyOGrsyc/DmRAQ+Re6yeo6yX/yoNCG5KAEVg==}
@@ -5013,6 +4984,7 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+    deprecated: This package is no longer needed on supported Node.js versions. Node.js 16+ includes AbortController and AbortSignal as built-in globals. All Node.js versions requiring this polyfill are end-of-life. Use the built-in globals instead.
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -5988,9 +5960,6 @@ packages:
   unbzip2-stream@1.4.3:
     resolution: {integrity: sha512-mlExGW4w71ebDJviH16lQLtZS32VKqsSfk80GCfUlwT/4/hNRFsoscrF/c++9xinkMzECL1uL9DDwXqFWkruPg==}
 
-  undici-types@8.3.0:
-    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
-
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
@@ -6338,9 +6307,6 @@ packages:
     engines: {node: '>=22.14.0'}
     peerDependencies:
       zod: ^4.0.0
-
-  zod@4.5.4:
-    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
   zod@4.6.5:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
@@ -7375,8 +7341,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.6.2
 
-  '@ioredis/commands@1.10.0':
-    optional: true
+  '@ioredis/commands@1.10.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -7422,13 +7387,6 @@ snapshots:
     dependencies:
       hashery: 1.5.1
       hookified: 1.15.1
-      keyv: 5.6.0
-
-  '@keyv/redis@5.1.6(keyv@5.6.0)':
-    dependencies:
-      '@redis/client': 5.10.0
-      cluster-key-slot: 1.1.2
-      hookified: 1.14.0
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
@@ -8004,10 +7962,6 @@ snapshots:
   '@protobufjs/utf8@1.1.0':
     optional: true
 
-  '@redis/client@5.10.0':
-    dependencies:
-      cluster-key-slot: 1.1.2
-
   '@rolldown/binding-android-arm-eabi@1.2.8':
     optional: true
 
@@ -8287,7 +8241,7 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
 
   '@types/bytes@3.1.6': {}
 
@@ -8303,7 +8257,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
 
   '@types/cookiejar@2.1.5': {}
 
@@ -8331,7 +8285,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.1.0':
     dependencies:
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -8358,7 +8312,7 @@ snapshots:
   '@types/jsonwebtoken@9.0.10':
     dependencies:
       '@types/ms': 2.1.0
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
 
   '@types/lodash-es@4.17.12':
     dependencies:
@@ -8375,10 +8329,6 @@ snapshots:
   '@types/multer@2.2.0':
     dependencies:
       '@types/express': 5.0.6
-
-  '@types/node@26.4.1':
-    dependencies:
-      undici-types: 8.3.0
 
   '@types/node@26.6.2':
     dependencies:
@@ -8413,18 +8363,18 @@ snapshots:
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
 
   '@types/superagent@8.1.9':
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
       form-data: 4.0.5
 
   '@types/supertest@7.2.1':
@@ -9225,10 +9175,7 @@ snapshots:
 
   clone@1.0.4: {}
 
-  cluster-key-slot@1.1.1:
-    optional: true
-
-  cluster-key-slot@1.1.2: {}
+  cluster-key-slot@1.1.1: {}
 
   color-convert@2.0.1:
     dependencies:
@@ -9504,8 +9451,7 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  denque@2.1.0:
-    optional: true
+  denque@2.1.0: {}
 
   depd@2.0.0: {}
 
@@ -10272,18 +10218,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  google-auth-library@11.0.2(supports-color@10.2.2):
-    dependencies:
-      base64-js: 1.5.1
-      ecdsa-sig-formatter: 1.0.11
-      gaxios: 7.1.4(supports-color@10.2.2)
-      gcp-metadata: 9.0.3(supports-color@10.2.2)
-      google-logging-utils: 2.0.1
-      jws: 4.0.1
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
   google-auth-library@11.1.0(supports-color@10.2.2):
     dependencies:
       base64-js: 1.5.1
@@ -10331,7 +10265,7 @@ snapshots:
       '@grpc/proto-loader': 0.8.0
       '@opentelemetry/api': 1.9.1
       duplexify: 4.1.3
-      google-auth-library: 11.0.2(supports-color@10.2.2)
+      google-auth-library: 11.1.0(supports-color@10.2.2)
       google-logging-utils: 2.0.1
       node-fetch: 3.3.2
       object-hash: 3.0.0
@@ -10413,8 +10347,6 @@ snapshots:
   helmet@8.3.0: {}
 
   help-me@5.0.0: {}
-
-  hookified@1.14.0: {}
 
   hookified@1.15.1: {}
 
@@ -10544,7 +10476,6 @@ snapshots:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   ip-address@10.2.0: {}
 
@@ -10735,7 +10666,7 @@ snapshots:
       tinyglobby: 0.2.17
       unbash: 4.0.11
       yaml: 2.9.1
-      zod: 4.5.4
+      zod: 4.6.5
 
   lazy@1.0.11: {}
 
@@ -11445,7 +11376,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 26.4.1
+      '@types/node': 26.6.2
       long: 5.3.2
     optional: true
 
@@ -11513,13 +11444,11 @@ snapshots:
 
   real-require@0.2.0: {}
 
-  redis-errors@1.2.0:
-    optional: true
+  redis-errors@1.2.0: {}
 
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
-    optional: true
 
   reflect-metadata@0.2.2: {}
 
@@ -11810,8 +11739,7 @@ snapshots:
 
   stackback@0.0.2: {}
 
-  standard-as-callback@2.1.0:
-    optional: true
+  standard-as-callback@2.1.0: {}
 
   statuses@2.0.2: {}
 
@@ -12141,8 +12069,6 @@ snapshots:
       buffer: 5.7.1
       through: 2.3.8
 
-  undici-types@8.3.0: {}
-
   undici-types@8.9.0: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
@@ -12462,7 +12388,5 @@ snapshots:
   zod-openapi@6.0.2(zod@4.6.5):
     dependencies:
       zod: 4.6.5
-
-  zod@4.5.4: {}
 
   zod@4.6.5: {}

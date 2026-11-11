@@ -9,7 +9,7 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { DatabaseModule } from '@common/database/database.module';
 import { PaginationModule } from '@common/pagination/pagination.module';
 import { ApiKeyModule } from '@modules/api-key/api-key.module';
-import { RedisCacheModule } from '@common/redis/redis.module';
+import { RedisModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
@@ -40,7 +40,7 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         MessageModule.forRoot(),
         LoggerModule.forRoot(),
         SentryModule.forRoot(),
-        RedisCacheModule.forRoot(),
+        RedisModule.forRoot(),
         QueueModule.forRoot(),
         CacheModule.forRoot(),
         DatabaseModule.forRoot(),

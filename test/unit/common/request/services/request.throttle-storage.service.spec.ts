@@ -3,13 +3,13 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type Keyv from 'keyv';
 import { CacheService } from '@common/cache/services/cache.service';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
+import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('RequestThrottleStorageService', () => {
     const configGet = vi.fn<(key: string) => string>();
@@ -25,8 +25,7 @@ describe('RequestThrottleStorageService', () => {
         isBlocked: false,
         timeToBlockExpire: 0,
     };
-    const redisClient = { eval: vi.fn() };
-    const keyv = { store: { getClient: vi.fn() } } as unknown as Keyv;
+    const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     let service: RequestThrottleStorageService;
 
@@ -46,15 +45,12 @@ describe('RequestThrottleStorageService', () => {
         helperStringService.fillPattern.mockImplementation(
             (pattern, tokens) => `${pattern}::${tokens.name}::${tokens.tracker}`
         );
-        (
-            keyv.store as unknown as { getClient: ReturnType<typeof vi.fn> }
-        ).getClient.mockResolvedValue(redisClient);
         cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestThrottleStorageService,
-                { provide: RedisClientCachedProvider, useValue: keyv },
+                { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
                 {
                     provide: HelperStringService,
@@ -69,7 +65,7 @@ describe('RequestThrottleStorageService', () => {
 
     describe('increment', () => {
         it('builds the three keys and evaluates the script with the given arguments', async () => {
-            redisClient.eval.mockResolvedValue([1, 500, 0, 0]);
+            redis.eval.mockResolvedValue([1, 500, 0, 0]);
 
             await service.increment('tracker-1', 1000, 5, 2000, 'default');
 
@@ -85,18 +81,20 @@ describe('RequestThrottleStorageService', () => {
                 'ThrottleSeq:{name}:{tracker}',
                 { name: 'default', tracker: 'tracker-1' }
             );
-            expect(redisClient.eval).toHaveBeenCalledWith(expect.any(String), {
-                keys: [
-                    'Throttle:{name}:{tracker}::default::tracker-1',
-                    'ThrottleBlock:{name}:{tracker}::default::tracker-1',
-                    'ThrottleSeq:{name}:{tracker}::default::tracker-1',
-                ],
-                arguments: ['1000', '5', '2000'],
-            });
+            expect(redis.eval).toHaveBeenCalledWith(
+                expect.any(String),
+                3,
+                'Throttle:{name}:{tracker}::default::tracker-1',
+                'ThrottleBlock:{name}:{tracker}::default::tracker-1',
+                'ThrottleSeq:{name}:{tracker}::default::tracker-1',
+                '1000',
+                '5',
+                '2000'
+            );
         });
 
         it('returns an unblocked record with seconds rounded up from the script result', async () => {
-            redisClient.eval.mockResolvedValue([1, 500, 0, 0]);
+            redis.eval.mockResolvedValue([1, 500, 0, 0]);
 
             const result = await service.increment(
                 'tracker-1',
@@ -115,7 +113,7 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('returns a blocked record with the block expiry in seconds', async () => {
-            redisClient.eval.mockResolvedValue([6, 0, 1, 1500]);
+            redis.eval.mockResolvedValue([6, 0, 1, 1500]);
 
             const result = await service.increment(
                 'tracker-1',
@@ -134,7 +132,7 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('fails open and warns once per throttler when the script result is not an array', async () => {
-            redisClient.eval.mockResolvedValue('not-an-array');
+            redis.eval.mockResolvedValue('not-an-array');
 
             const result = await service.increment(
                 'tracker-1',
@@ -153,7 +151,7 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('fails open and warns once per throttler when the script result is too short', async () => {
-            redisClient.eval.mockResolvedValue([1, 2, 0]);
+            redis.eval.mockResolvedValue([1, 2, 0]);
 
             const result = await service.increment(
                 'tracker-1',
@@ -172,7 +170,7 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('fails open and warns once per throttler when a script result value is non-numeric', async () => {
-            redisClient.eval.mockResolvedValue([1, 'nope', 0, 0]);
+            redis.eval.mockResolvedValue([1, 'nope', 0, 0]);
 
             const result = await service.increment(
                 'tracker-1',
@@ -191,8 +189,8 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('throws RedisUnavailableException carrying the caught error as rawError when the client rejects with a connection error', async () => {
-            const error = new Error('connection lost');
-            redisClient.eval.mockRejectedValue(error);
+            const error = new Error('Connection is closed.');
+            redis.eval.mockRejectedValue(error);
             cacheService.isConnectionError.mockReturnValue(true);
 
             await expect(
@@ -213,7 +211,7 @@ describe('RequestThrottleStorageService', () => {
 
         it('fails open and warns once per throttler when the client rejects with any other error', async () => {
             const error = new Error('ERR Error running script');
-            redisClient.eval.mockRejectedValue(error);
+            redis.eval.mockRejectedValue(error);
 
             const result = await service.increment(
                 'tracker-1',
@@ -233,7 +231,7 @@ describe('RequestThrottleStorageService', () => {
         });
 
         it('fails open and warns once per throttler when the client rejects with a non-Error value', async () => {
-            redisClient.eval.mockRejectedValue('script failed');
+            redis.eval.mockRejectedValue('script failed');
 
             const result = await service.increment(
                 'tracker-1',
@@ -270,12 +268,6 @@ describe('RequestThrottleStorageService', () => {
                 'Throttle:{name}:{tracker}',
                 { name: 'default', tracker: 'tracker-1' }
             );
-        });
-    });
-
-    describe('getClient', () => {
-        it('resolves the redis client through the keyv store', async () => {
-            await expect(service['getClient']()).resolves.toBe(redisClient);
         });
     });
 

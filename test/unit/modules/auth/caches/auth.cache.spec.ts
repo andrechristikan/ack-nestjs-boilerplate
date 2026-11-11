@@ -3,11 +3,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type Keyv from 'keyv';
-import type KeyvRedis from '@keyv/redis';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
-import { stubStoreClient } from '@test/unit/helpers/test.unit.cache.helper';
+import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumDevicePlatform,
@@ -25,14 +23,7 @@ describe('AuthCache', () => {
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const keyvGet =
-        vi.fn<
-            (key: string) => Promise<IAuthTwoFactorChallengeCache | undefined>
-        >();
-    const keyv: MockProxy<Keyv> = mock<Keyv>({
-        get: keyvGet as unknown as Keyv['get'],
-    });
-    const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
+    const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     let cache: AuthCache;
 
@@ -45,7 +36,6 @@ describe('AuthCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        (keyv as unknown as { store: KeyvRedis<string> }).store = store;
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
@@ -59,7 +49,7 @@ describe('AuthCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthCache,
-                { provide: RedisClientCachedProvider, useValue: keyv },
+                { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
                 {
                     provide: HelperStringService,
@@ -72,7 +62,7 @@ describe('AuthCache', () => {
     });
 
     describe('setTwoFactorChallenge', () => {
-        it('stores the challenge payload under a random token with the configured ttl', async () => {
+        it('stores the challenge payload as JSON under a random token with the configured ttl as PX', async () => {
             helperStringService.random.mockReturnValue('random-token');
             const cachePayload: IAuthTwoFactorChallengeCache = {
                 userId: 'user-1',
@@ -87,43 +77,44 @@ describe('AuthCache', () => {
                 challengeToken: 'random-token',
                 expiresInMs: 300000,
             });
-            expect(keyv.set).toHaveBeenCalledWith(
+            expect(redis.set).toHaveBeenCalledWith(
                 'TwoFactorChallenge:random-token',
-                cachePayload,
+                JSON.stringify(cachePayload),
+                'PX',
                 300000
             );
         });
     });
 
     describe('getTwoFactorChallenge', () => {
-        it('returns the cached challenge payload', async () => {
+        it('returns the challenge payload parsed from the JSON entry', async () => {
             const cachePayload: IAuthTwoFactorChallengeCache = {
                 userId: 'user-1',
                 device,
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
             };
-            keyvGet.mockResolvedValue(cachePayload);
+            redis.get.mockResolvedValue(JSON.stringify(cachePayload));
 
             const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toEqual(cachePayload);
-            expect(keyvGet).toHaveBeenCalledWith(
+            expect(redis.get).toHaveBeenCalledWith(
                 'TwoFactorChallenge:token-value'
             );
         });
 
         it('returns null when the challenge is not cached', async () => {
-            keyvGet.mockResolvedValue(undefined);
+            redis.get.mockResolvedValue(null);
 
             const result = await cache.getTwoFactorChallenge('token-value');
 
             expect(result).toBeNull();
         });
 
-        it('rethrows a store error', async () => {
-            const failure = new Error('redis down');
-            keyvGet.mockRejectedValue(failure);
+        it('rethrows a Redis error', async () => {
+            const failure = new Error('Connection is closed.');
+            redis.get.mockRejectedValue(failure);
 
             await expect(
                 cache.getTwoFactorChallenge('token-value')
@@ -139,61 +130,27 @@ describe('AuthCache', () => {
             loginWith: EnumUserLoginWith.credential,
         };
 
-        it('claims the challenge with GETDEL on the prefixed key and returns the deserialized payload', async () => {
-            const client = stubStoreClient({ keyv, store });
-            client.getDel.mockResolvedValue('serialized-challenge');
-            keyv.deserializeData.mockResolvedValue({
-                value: cachePayload,
-            });
+        it('claims the challenge with GETDEL on the unprefixed key and returns the parsed payload', async () => {
+            redis.getdel.mockResolvedValue(JSON.stringify(cachePayload));
 
             const result = await cache.consumeTwoFactorChallenge('token-value');
 
             expect(result).toEqual(cachePayload);
-            expect(store.createKeyPrefix).toHaveBeenCalledWith(
-                'TwoFactorChallenge:token-value',
-                'cache'
-            );
-            expect(client.getDel).toHaveBeenCalledWith(
-                'prefixed-TwoFactorChallenge:token-value'
-            );
-            expect(keyv.deserializeData).toHaveBeenCalledWith(
-                'serialized-challenge'
+            expect(redis.getdel).toHaveBeenCalledWith(
+                'TwoFactorChallenge:token-value'
             );
         });
 
         it('returns null when no challenge is stored', async () => {
-            const client = stubStoreClient({ keyv, store });
-            client.getDel.mockResolvedValue(null);
-
-            const result = await cache.consumeTwoFactorChallenge('token-value');
-
-            expect(result).toBeNull();
-            expect(keyv.deserializeData).not.toHaveBeenCalled();
-        });
-
-        it('returns null when the claimed value deserializes to nothing', async () => {
-            const client = stubStoreClient({ keyv, store });
-            client.getDel.mockResolvedValue('serialized-challenge');
-            keyv.deserializeData.mockResolvedValue(undefined);
+            redis.getdel.mockResolvedValue(null);
 
             const result = await cache.consumeTwoFactorChallenge('token-value');
 
             expect(result).toBeNull();
         });
 
-        it('returns null when the deserialized entry carries no value', async () => {
-            const client = stubStoreClient({ keyv, store });
-            client.getDel.mockResolvedValue('serialized-challenge');
-            keyv.deserializeData.mockResolvedValue({ value: undefined });
-
-            const result = await cache.consumeTwoFactorChallenge('token-value');
-
-            expect(result).toBeNull();
-        });
-
-        it('throws RedisUnavailableException when the store fails, not the invalid-challenge exception', async () => {
-            const client = stubStoreClient({ keyv, store });
-            client.getDel.mockRejectedValue(new Error('redis down'));
+        it('throws RedisUnavailableException when Redis fails, not the invalid-challenge exception', async () => {
+            redis.getdel.mockRejectedValue(new Error('Connection is closed.'));
 
             await expect(
                 cache.consumeTwoFactorChallenge('token-value')

@@ -1,4 +1,4 @@
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -7,8 +7,7 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type KeyvRedis from '@keyv/redis';
-import type Keyv from 'keyv';
+import type { Redis } from 'ioredis';
 
 @Injectable()
 export class AuthCache {
@@ -17,7 +16,7 @@ export class AuthCache {
     private readonly twoFactorChallengeTtlInMs: number;
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
     ) {
@@ -27,10 +26,6 @@ export class AuthCache {
         this.twoFactorChallengeTtlInMs = this.configService.get<number>(
             'auth.twoFactor.challengeTtlInMs'
         )!;
-    }
-
-    private getStore(): KeyvRedis<string> {
-        return this.keyv.store as KeyvRedis<string>;
     }
 
     private buildTwoFactorChallengeKey(token: string): string {
@@ -46,9 +41,10 @@ export class AuthCache {
     ): Promise<IAuthTwoFactorChallenge> {
         const challengeToken = this.helperStringService.random(48);
         const key = this.buildTwoFactorChallengeKey(challengeToken);
-        await this.keyv.set<IAuthTwoFactorChallengeCache>(
+        await this.redis.set(
             key,
-            cachePayload,
+            JSON.stringify(cachePayload),
+            'PX',
             this.twoFactorChallengeTtlInMs
         );
 
@@ -59,37 +55,25 @@ export class AuthCache {
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
         const key = this.buildTwoFactorChallengeKey(token);
-        const cached = await this.keyv.get<IAuthTwoFactorChallengeCache>(key);
+        const raw = await this.redis.get(key);
 
-        return cached ?? null;
+        return raw === null ? null : JSON.parse(raw);
     }
 
-    /** Claims the challenge with one GETDEL on the store client, so one caller alone receives it; null when none is stored, and a store failure throws RedisUnavailableException. */
+    /** Claims the challenge with one GETDEL on the cache client, so one caller alone receives it; null when none is stored, and a Redis failure throws RedisUnavailableException. */
     async consumeTwoFactorChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
-        const store = this.getStore();
-        const challengeKey = this.buildTwoFactorChallengeKey(token);
-        const key = store.createKeyPrefix(challengeKey, store.namespace);
+        const key = this.buildTwoFactorChallengeKey(token);
         let claimed: string | null;
         try {
-            const client = await store.getClient();
-            claimed = await client.getDel(key);
+            claimed = await this.redis.getdel(key);
         } catch (error: unknown) {
             this.logger.error(error, 'Two-factor challenge claim failed');
 
             throw new RedisUnavailableException();
         }
 
-        if (claimed === null) {
-            return null;
-        }
-
-        const entry =
-            await this.keyv.deserializeData<IAuthTwoFactorChallengeCache>(
-                claimed
-            );
-
-        return entry?.value ?? null;
+        return claimed === null ? null : JSON.parse(claimed);
     }
 }

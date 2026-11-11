@@ -10,7 +10,7 @@ paths:
 
 # Queues and notifications
 
-BullMQ runs on two clients `RedisModule.forRoot()` owns on `redis.queue.url` (`cache.md`); never open another Redis client. Every queue inherits `QueueModule.forRoot()`'s producer client (`RedisQueueClientToken`, `<app>-<env>:queue`): `enableOfflineQueue: false`, `redis.queue.connectTimeoutInMs`, `redis.queue.maxRetriesPerRequest`, no `keyPrefix`; an enqueue against a down Redis rejects fast. The worker client, `RedisQueueWorkerClient` (`<app>-<env>:processor`), keeps the offline queue on and `maxRetriesPerRequest: null`: a worker waits out an outage.
+BullMQ runs on two clients `RedisModule.forRoot()` owns on `redis.queue.url` (`cache.md`); never open another Redis client. Every queue inherits `QueueModule.forRoot()`'s producer client (`RedisQueueClient`, `<app>-<env>:queue`): `enableOfflineQueue: false`, `redis.queue.connectTimeoutInMs`, `redis.queue.maxRetriesPerRequest`, no `keyPrefix`; an enqueue against a down Redis rejects fast. The worker client, `RedisQueueWorkerClient` (`<app>-<env>:processor`), keeps the offline queue on and `maxRetriesPerRequest: null`: a worker waits out an outage.
 
 ## Where things live
 
