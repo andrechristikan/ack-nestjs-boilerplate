@@ -3,7 +3,7 @@ import type { INotificationEmailQueuePayload } from '@modules/notification/inter
 import { NotificationEmailSecurityService } from '@modules/notification/services/notification.email.security.service';
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()

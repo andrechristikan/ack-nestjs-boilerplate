@@ -5,8 +5,7 @@
     "queue": {
         "purgeLogins": "Purged revoked session logins.",
         "error": {
-            "unknownProcess": "No {process} job handler exists.",
-            "enqueuePurgeLogins": "Enqueue session login purge failed."
+            "unknownProcess": "No {process} job handler exists."
         }
     },
     "error": {

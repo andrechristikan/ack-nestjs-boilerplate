@@ -2,7 +2,7 @@ import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()

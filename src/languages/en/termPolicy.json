@@ -17,9 +17,7 @@
         "copyContent": "Copied term policy {termPolicyId} content to the public bucket.",
         "error": {
             "copyContent": "Copy of term policy {termPolicyId} content to the public bucket failed.",
-            "enqueueCopyContent": "Enqueue term policy content copy failed.",
-            "unknownProcess": "No {process} job handler exists.",
-            "enqueueDeleteContent": "Enqueue term policy content delete failed."
+            "unknownProcess": "No {process} job handler exists."
         }
     },
     "error": {

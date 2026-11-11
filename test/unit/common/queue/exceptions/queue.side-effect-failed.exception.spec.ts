@@ -1,0 +1,21 @@
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueSideEffectFailedException } from '@common/queue/exceptions/queue.side-effect-failed.exception';
+
+describe('QueueSideEffectFailedException', () => {
+    describe('constructor', () => {
+        it('carries the description as message, chains the raw error as the cause, and is fatal', () => {
+            const rawError = new Error('redis down');
+
+            const exception = new QueueSideEffectFailedException(
+                'enqueue welcome',
+                rawError
+            );
+
+            expect(exception).toBeInstanceOf(QueueException);
+            expect(exception.message).toBe('enqueue welcome');
+            expect(exception.rawError).toBe(rawError);
+            expect(exception.cause).toBe(rawError);
+            expect(exception.isFatal).toBe(true);
+        });
+    });
+});

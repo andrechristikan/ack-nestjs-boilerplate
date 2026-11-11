@@ -11,13 +11,12 @@ import {
 } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleService } from '@modules/role/services/role.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -32,13 +31,12 @@ import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.upd
 describe('UserUpdateStatusByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -96,7 +94,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -105,11 +103,10 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 UserUpdateStatusByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -166,9 +163,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             });
         });
 
-        it('gates the rank, writes the status and the revoke on one transaction, purges after commit, and stages the revoke-all rows before the status rows', async () => {
+        it('gates the rank, writes the status and the revoke on one transaction and stages the revoke-all rows before the status rows after commit', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -187,9 +184,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
             userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userBlocked
             );
@@ -225,12 +219,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 'updateStatus',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-cinder',
-                revoked
-            );
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminSessionRevokeAll,
                 metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
@@ -279,7 +268,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             );
         });
 
-        it('purges an empty list and stages no revoke-all row when no session was open', async () => {
+        it('stages no revoke-all row when no session was open', async () => {
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
             sessionService.revokeActiveByUserInTx.mockResolvedValue([]);
 
@@ -287,11 +276,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 'user-cinder',
                 { status: EnumUserStatus.inactive },
                 admin
-            );
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-cinder',
-                []
             );
             expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
         });
@@ -312,7 +296,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
         });
 
@@ -338,10 +321,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledTimes(
                 1
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-cinder',
-                revoked
-            );
             expect(activityLogService.prepare).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: EnumActivityLogAction.userBlocked,
@@ -349,9 +328,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             );
         });
 
-        it('purges and stages nothing and wraps the failure when the transaction fails', async () => {
+        it('stages nothing and wraps the failure when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
@@ -361,13 +340,12 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     admin
                 )
             ).rejects.toMatchObject({ rawError: cause });
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows the status exception of the guarded write unchanged', async () => {
             const failure = new UserStatusInvalidException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -381,7 +359,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         it('answers UserStatusInvalidException when the guarded write conflicts', async () => {
             const conflict = new Error('write-conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -398,7 +376,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 messagePath: 'user.error.statusInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -415,7 +392,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

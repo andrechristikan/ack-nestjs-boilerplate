@@ -3,7 +3,8 @@ import type { Mock } from 'vitest';
 import type { CacheService } from '@common/cache/services/cache.service';
 import type { MessageService } from '@common/message/services/message.service';
 import type { SentryService } from '@common/sentry/services/sentry.service';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import type { OutboxService } from '@modules/outbox/services/outbox.service';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 
 export function buildQueueJob<T, R, N extends string>(data: T): Job<T, R, N> {
     return {
@@ -31,7 +32,8 @@ export interface IQueueProcessorDoubles {
 export function buildQueueProcessor(
     sentryService: SentryService,
     messageService: MessageService,
-    cacheService: CacheService
+    cacheService: CacheService,
+    outboxService: OutboxService
 ): IQueueProcessorDoubles {
     const handle = vi.fn();
     const processor = Object.assign(
@@ -39,6 +41,7 @@ export function buildQueueProcessor(
             sentryService,
             messageService,
             cacheService,
+            outboxService,
         ]),
         { handle }
     );

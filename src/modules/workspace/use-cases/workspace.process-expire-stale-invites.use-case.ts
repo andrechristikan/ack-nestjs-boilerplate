@@ -1,7 +1,7 @@
 import { MessageService } from '@common/message/services/message.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()

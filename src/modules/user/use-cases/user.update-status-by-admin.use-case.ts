@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -10,7 +10,6 @@ import type { User } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -31,10 +30,9 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -55,7 +53,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         let row: User;
         let revoked: ISessionRef[] | null;
         try {
-            ({ row, revoked } = await this.databaseService.withTransaction(
+            ({ row, revoked } = await this.outboxService.withTransaction(
                 async tx => {
                     const updated =
                         await this.userService.updateStatusByAdminInTx(
@@ -109,34 +107,30 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                 metadata: targetMetadata,
             }),
         ];
-        if (revoked !== null) {
-            await this.sessionQueue.purgeLogins(userId, revoked);
-
-            if (revoked.length > 0) {
-                const revokeAllActorMetadata =
-                    this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
-                        userId,
-                        revoked.length
-                    );
-                const revokeAllTargetMetadata =
-                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                        user.id,
-                        revoked.length
-                    );
-                const revokeAllActivityLogs = [
-                    this.activityLogService.prepare({
-                        action: EnumActivityLogAction.adminSessionRevokeAll,
-                        metadata: revokeAllActorMetadata,
-                    }),
-                    this.activityLogService.prepare({
-                        action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                        userId,
-                        createdBy: user.id,
-                        metadata: revokeAllTargetMetadata,
-                    }),
-                ];
-                this.activityLogService.stagePrepared(revokeAllActivityLogs);
-            }
+        if (revoked !== null && revoked.length > 0) {
+            const revokeAllActorMetadata =
+                this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
+                    userId,
+                    revoked.length
+                );
+            const revokeAllTargetMetadata =
+                this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                    user.id,
+                    revoked.length
+                );
+            const revokeAllActivityLogs = [
+                this.activityLogService.prepare({
+                    action: EnumActivityLogAction.adminSessionRevokeAll,
+                    metadata: revokeAllActorMetadata,
+                }),
+                this.activityLogService.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    userId,
+                    createdBy: user.id,
+                    metadata: revokeAllTargetMetadata,
+                }),
+            ];
+            this.activityLogService.stagePrepared(revokeAllActivityLogs);
         }
 
         this.activityLogService.stagePrepared(statusActivityLogs);

@@ -33,7 +33,7 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
@@ -70,7 +70,7 @@ describe('UserAuthService', () => {
         mock<AuthTwoFactorService>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -152,7 +152,7 @@ describe('UserAuthService', () => {
                 },
                 { provide: AuthUtil, useValue: authUtil },
                 { provide: SessionUtil, useValue: sessionUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -732,7 +732,7 @@ describe('UserAuthService', () => {
         };
 
         beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             helperDateService.create.mockReturnValue(now);
@@ -763,7 +763,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
@@ -805,7 +805,6 @@ describe('UserAuthService', () => {
             expect(
                 sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
-            expect(fresh.revoked).toEqual([]);
             expect(fresh.isNewDevice).toBe(true);
 
             deviceService.upsertForLoginInTx.mockResolvedValue({
@@ -830,7 +829,6 @@ describe('UserAuthService', () => {
                 'user-halcyon',
                 now
             );
-            expect(repeat.revoked).toBe(revokedRef);
             expect(repeat.isNewDevice).toBe(false);
         });
 
@@ -854,7 +852,7 @@ describe('UserAuthService', () => {
                 affected
             );
 
-            const result = await service.createTokenAndSession(
+            await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -868,7 +866,6 @@ describe('UserAuthService', () => {
             expect(
                 sessionService.revokeByDeviceOwnershipIdsInTx
             ).toHaveBeenCalledWith(tx, otherOwnershipIds, 'user-halcyon', now);
-            expect(result.affected).toBe(affected);
         });
 
         it('creates the session expiring loginAt plus the refresh lifetime', async () => {
@@ -924,8 +921,6 @@ describe('UserAuthService', () => {
                 jti: 'jti-halcyon',
                 requestLog,
                 isNewDevice: true,
-                revoked: [],
-                affected: [],
                 revokeStages: [],
             });
         });
@@ -1003,12 +998,12 @@ describe('UserAuthService', () => {
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.contextMissing,
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('signs no tokens when the transaction fails', async () => {
             const failure = new RedisUnavailableException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 service.createTokenAndSession(

@@ -3,11 +3,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
-import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type { ITermPolicyCopyContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyProcessCopyContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-copy-content.use-case';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('TermPolicyProcessCopyContentUseCase', () => {
@@ -41,13 +39,7 @@ describe('TermPolicyProcessCopyContentUseCase', () => {
         };
 
         it('hands the payload to the term policy domain and reports the destination', async () => {
-            const job = buildQueueJob<
-                ITermPolicyCopyContentPayload,
-                unknown,
-                EnumTermPolicyProcess
-            >(copyPayload);
-
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(copyPayload);
 
             expect(termPolicyService.copyContent).toHaveBeenCalledWith(
                 copyPayload
@@ -68,13 +60,8 @@ describe('TermPolicyProcessCopyContentUseCase', () => {
                 true
             );
             termPolicyService.copyContent.mockRejectedValue(failure);
-            const job = buildQueueJob<
-                ITermPolicyCopyContentPayload,
-                unknown,
-                EnumTermPolicyProcess
-            >(copyPayload);
 
-            const rejection = useCase.execute(job);
+            const rejection = useCase.execute(copyPayload);
 
             await expect(rejection).rejects.toBe(failure);
         });

@@ -1,19 +1,17 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log.enum';
 import type {
     IActivityLogCreate,
     IActivityLogCreateManyPayload,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
-import { Job } from 'bullmq';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ActivityLogProcessCreateManyUseCase implements IAppUseCase<
-    [Job<IActivityLogCreateManyPayload, unknown, EnumActivityLogProcess>],
+    [IActivityLogCreateManyPayload],
     IQueueResponse
 > {
     constructor(
@@ -23,10 +21,10 @@ export class ActivityLogProcessCreateManyUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        job: Job<IActivityLogCreateManyPayload, unknown, EnumActivityLogProcess>
+        data: IActivityLogCreateManyPayload
     ): Promise<IQueueResponse> {
         const rows: IActivityLogCreate[] = [];
-        for (const row of job.data.rows) {
+        for (const row of data.rows) {
             const createdAt = this.helperDateService.createFromIso(
                 row.createdAt
             );

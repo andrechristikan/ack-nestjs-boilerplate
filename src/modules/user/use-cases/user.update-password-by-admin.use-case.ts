@@ -1,4 +1,4 @@
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -12,7 +12,6 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -33,10 +32,9 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly roleService: RoleService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -56,8 +54,8 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
             ),
         ]);
 
-        const { row, passwordHistoryId, revoked } =
-            await this.databaseService.withTransaction(async tx => {
+        const { row, passwordHistoryId } =
+            await this.outboxService.withTransaction(async tx => {
                 const row = await this.userService.updatePasswordInTx(
                     tx,
                     userId,
@@ -78,15 +76,14 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                     tx,
                     userId
                 );
-                const revoked =
-                    await this.sessionService.revokeActiveByUserInTx(
-                        tx,
-                        userId,
-                        user.id,
-                        password.passwordCreated
-                    );
+                await this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    user.id,
+                    password.passwordCreated
+                );
 
-                return { row, passwordHistoryId: passwordHistory.id, revoked };
+                return { row, passwordHistoryId: passwordHistory.id };
             });
 
         const actorMetadata = this.userUtil.mapActivityLogActorMetadata(row);
@@ -112,19 +109,16 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         const passwordExpiredAt = this.helperDateService.formatToIso(
             password.passwordExpired
         );
-        await Promise.all([
-            this.sessionQueue.purgeLogins(userId, revoked),
-            this.notificationQueue.sendTemporaryPasswordByAdmin(
-                recipient,
-                {
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-                user.id,
-                passwordHistoryId
-            ),
-        ]);
+        await this.notificationQueue.sendTemporaryPasswordByAdmin(
+            recipient,
+            {
+                password: passwordString,
+                passwordCreatedAt,
+                passwordExpiredAt,
+            },
+            user.id,
+            passwordHistoryId
+        );
 
         this.activityLogService.stagePrepared(activityLogs);
 

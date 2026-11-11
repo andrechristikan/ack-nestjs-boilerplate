@@ -4,10 +4,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
-import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
-import { QueueException } from '@queues/exceptions/queue.exception';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 
@@ -41,13 +39,7 @@ describe('UserProcessDeletePhotoUseCase', () => {
 
     describe('execute', () => {
         it('hands the photo key and its bucket access to the user profile domain and reports the key', async () => {
-            const job = buildQueueJob<
-                IUserDeletePhotoPayload,
-                unknown,
-                EnumUserProcess
-            >(payload);
-
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(userProfileService.deletePhotoObject).toHaveBeenCalledWith(
                 'photo-profile/user-1/old.png',
@@ -62,25 +54,17 @@ describe('UserProcessDeletePhotoUseCase', () => {
         it('rethrows the domain failure so BullMQ retries the job', async () => {
             const failure = new Error('s3 down');
             userProfileService.deletePhotoObject.mockRejectedValue(failure);
-            const job = buildQueueJob<
-                IUserDeletePhotoPayload,
-                unknown,
-                EnumUserProcess
-            >(payload);
 
-            const rejection = useCase.execute(job);
+            const rejection = useCase.execute(payload);
 
             await expect(rejection).rejects.toBe(failure);
         });
 
         it('throws a fatal QueueException when the access names no bucket', async () => {
-            const job = buildQueueJob<
-                IUserDeletePhotoPayload,
-                unknown,
-                EnumUserProcess
-            >({ ...payload, access: 'unknown' });
-
-            const rejection = useCase.execute(job);
+            const rejection = useCase.execute({
+                ...payload,
+                access: 'unknown',
+            });
 
             await expect(rejection).rejects.toMatchObject({
                 constructor: QueueException,

@@ -13,6 +13,9 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -35,8 +38,13 @@ import { UserPasswordRepository } from '@modules/user/repositories/user.password
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserQueue } from '@modules/user/queues/user.queue';
+import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Duration } from 'luxon';
 
 describe('UserPasswordService', () => {
@@ -51,7 +59,10 @@ describe('UserPasswordService', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const userTwoFactorService: MockProxy<UserTwoFactorService> =
+        mock<UserTwoFactorService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -65,6 +76,13 @@ describe('UserPasswordService', () => {
     let service: UserPasswordService;
 
     const tx = {} as IDatabaseTransactionClient;
+    const lockoutEffect: IOutboxEffect = {
+        queue: EnumUserQueue.user,
+        name: EnumUserProcess.lockout,
+        data: { userId: 'user-hollow' },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
     const usedAt = new Date('2026-03-01T00:00:00.000Z');
     const now = new Date('2026-03-01T00:00:00.000Z');
 
@@ -186,7 +204,12 @@ describe('UserPasswordService', () => {
                 },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserService, useValue: userService },
-                { provide: UserQueue, useValue: userQueue },
+                {
+                    provide: UserTwoFactorService,
+                    useValue: userTwoFactorService,
+                },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: ConfigService, useValue: configService },
@@ -228,27 +251,41 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('incrementPasswordAttempt', () => {
-        it('returns true when the repository counts the attempt within the max', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(3);
+    describe('countPasswordAttempt', () => {
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+        });
+
+        it('returns null without counting when the user has no password', async () => {
+            const passwordless: IUser = { ...baseUser, password: null };
 
             await expect(
-                service.incrementPasswordAttempt('user-hollow')
-            ).resolves.toBe(true);
+                service.countPasswordAttempt(passwordless)
+            ).resolves.toBeNull();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('counts the attempt on the outbox tx and adds no row within the budget', async () => {
+            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
+
+            await expect(
+                service.countPasswordAttempt(baseUser)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+                isAttemptCounted: true,
+                lockoutStages: [],
+            });
             expect(
-                userRepository.incrementPasswordAttempt
-            ).toHaveBeenCalledWith('user-hollow', 5);
+                userRepository.incrementPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 5);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('returns false when the repository refuses the attempt at the max', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
-
-            await expect(
-                service.incrementPasswordAttempt('user-hollow')
-            ).resolves.toBe(false);
-        });
-
-        it('returns true without counting when attempt tracking is off', async () => {
+        it('returns a counted attempt without opening a transaction when attempt tracking is off', async () => {
             configGet.mockImplementation(key =>
                 key === 'auth.password.attempt' ? false : configValues[key]
             );
@@ -271,7 +308,12 @@ describe('UserPasswordService', () => {
                         useValue: helperDateService,
                     },
                     { provide: UserService, useValue: userService },
-                    { provide: UserQueue, useValue: userQueue },
+                    {
+                        provide: UserTwoFactorService,
+                        useValue: userTwoFactorService,
+                    },
+                    { provide: OutboxService, useValue: outboxService },
+                    { provide: DatabaseUtil, useValue: databaseUtil },
                     { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                     {
                         provide: FeatureFlagService,
@@ -283,45 +325,62 @@ describe('UserPasswordService', () => {
             const untracked = module.get(UserPasswordService);
 
             await expect(
-                untracked.incrementPasswordAttempt('user-hollow')
-            ).resolves.toBe(true);
-            expect(
-                userRepository.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('countPasswordAttempt', () => {
-        it('returns null without counting when the user has no password', async () => {
-            const passwordless: IUser = { ...baseUser, password: null };
-
-            await expect(
-                service.countPasswordAttempt(passwordless)
-            ).resolves.toBeNull();
-            expect(
-                userRepository.incrementPasswordAttempt
-            ).not.toHaveBeenCalled();
-            expect(userQueue.lockout).not.toHaveBeenCalled();
-        });
-
-        it('returns the counted attempt without enqueueing a lockout within the budget', async () => {
-            userRepository.incrementPasswordAttempt.mockResolvedValue(1);
-
-            await expect(
-                service.countPasswordAttempt(baseUser)
+                untracked.countPasswordAttempt(baseUser)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
                 lockoutStages: [],
             });
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
-                userRepository.incrementPasswordAttempt
-            ).toHaveBeenCalledWith('user-hollow', 5);
-            expect(userQueue.lockout).not.toHaveBeenCalled();
+                userRepository.incrementPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
         });
 
-        it('returns an uncounted attempt with the lockout stages and enqueues one lockout when the budget is spent', async () => {
+        it('throws the max-attempt exception with no row on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.countPasswordAttempt(baseUser)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                statusCodeKey: 'passwordAttemptMax',
+                messagePath: 'user.error.passwordAttemptMax',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException unchanged', async () => {
+            const failure = new DatabaseUnavailableException();
+            outboxService.withTransaction.mockRejectedValue(failure);
+
+            await expect(service.countPasswordAttempt(baseUser)).rejects.toBe(
+                failure
+            );
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.countPasswordAttempt(baseUser)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+        });
+
+        it('adds the lockout row on the outbox tx and returns an uncounted attempt with the lockout stages when the budget is spent', async () => {
             const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] =
                 [
                     {
@@ -335,7 +394,10 @@ describe('UserPasswordService', () => {
                         createdBy: 'user-hollow',
                     },
                 ];
-            userRepository.incrementPasswordAttempt.mockResolvedValue(null);
+            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
+                false
+            );
+            userTwoFactorService.lockoutEffect.mockReturnValue(lockoutEffect);
 
             await expect(
                 service.countPasswordAttempt(baseUser)
@@ -345,8 +407,18 @@ describe('UserPasswordService', () => {
                 isAttemptCounted: false,
                 lockoutStages,
             });
-            expect(userQueue.lockout).toHaveBeenCalledTimes(1);
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-hollow');
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userRepository.incrementPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 5);
+            expect(userTwoFactorService.lockoutEffect).toHaveBeenCalledWith(
+                'user-hollow'
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                lockoutEffect
+            );
         });
     });
 

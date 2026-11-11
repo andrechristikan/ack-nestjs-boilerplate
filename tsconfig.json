@@ -38,7 +38,6 @@
             "@modules/*": ["./src/modules/*.ts"],
             "@router/*": ["./src/router/*.ts"],
             "@migration/*": ["./src/migration/*.ts"],
-            "@queues/*": ["./src/queues/*.ts"],
             "@test/*": ["./test/*.ts"],
             "@generated/*": ["./src/generated/*.ts"],
             "@instrument": ["./src/instrument.ts"],

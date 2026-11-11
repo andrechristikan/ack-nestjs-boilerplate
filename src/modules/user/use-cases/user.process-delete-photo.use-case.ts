@@ -1,17 +1,15 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
-import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
-import { QueueException } from '@queues/exceptions/queue.exception';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
-import { Job } from 'bullmq';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserProcessDeletePhotoUseCase implements IAppUseCase<
-    [Job<IUserDeletePhotoPayload, unknown, EnumUserProcess>],
+    [IUserDeletePhotoPayload],
     IQueueResponse
 > {
     constructor(
@@ -19,10 +17,8 @@ export class UserProcessDeletePhotoUseCase implements IAppUseCase<
         private readonly messageService: MessageService
     ) {}
 
-    async execute(
-        job: Job<IUserDeletePhotoPayload, unknown, EnumUserProcess>
-    ): Promise<IQueueResponse> {
-        const { key, access: storedAccess } = job.data;
+    async execute(data: IUserDeletePhotoPayload): Promise<IQueueResponse> {
+        const { key, access: storedAccess } = data;
         const access =
             Object.values(EnumAwsS3Accessibility).find(
                 value => value === storedAccess

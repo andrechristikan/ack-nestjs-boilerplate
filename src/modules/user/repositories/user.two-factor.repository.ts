@@ -255,26 +255,17 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         return count > 0;
     }
 
-    async incrementAttempt(
+    async incrementAttemptInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         maxAttempt: number
-    ): Promise<number | null> {
-        const { count } =
-            await this.databaseService.client.twoFactor.updateMany({
-                where: { userId, attempt: { lt: maxAttempt } },
-                data: { attempt: { increment: 1 } },
-            });
-        if (count === 0) {
-            return null;
-        }
+    ): Promise<boolean> {
+        const { count } = await tx.twoFactor.updateMany({
+            where: { userId, attempt: { lt: maxAttempt } },
+            data: { attempt: { increment: 1 } },
+        });
 
-        const twoFactor =
-            await this.databaseService.client.twoFactor.findUnique({
-                where: { userId },
-                select: { attempt: true },
-            });
-
-        return twoFactor?.attempt ?? null;
+        return count > 0;
     }
 
     async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {

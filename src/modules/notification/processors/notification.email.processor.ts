@@ -1,14 +1,15 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
@@ -63,6 +64,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
+        protected readonly outboxService: OutboxService,
         private readonly notificationEmailProcessChangePasswordUseCase: NotificationEmailProcessChangePasswordUseCase,
         private readonly notificationEmailProcessWelcomeUseCase: NotificationEmailProcessWelcomeUseCase,
         private readonly notificationEmailProcessWelcomeSocialUseCase: NotificationEmailProcessWelcomeSocialUseCase,
@@ -82,7 +84,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         private readonly notificationEmailProcessWorkspaceJoinAcceptedUseCase: NotificationEmailProcessWorkspaceJoinAcceptedUseCase,
         private readonly notificationEmailProcessWorkspaceJoinRejectedUseCase: NotificationEmailProcessWorkspaceJoinRejectedUseCase
     ) {
-        super(sentryService, messageService, cacheService);
+        super(sentryService, messageService, cacheService, outboxService);
     }
 
     protected async handle(

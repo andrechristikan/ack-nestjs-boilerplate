@@ -7,9 +7,9 @@ import type {
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { Job } from 'bullmq';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()

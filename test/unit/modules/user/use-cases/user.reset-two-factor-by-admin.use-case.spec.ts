@@ -10,7 +10,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -20,7 +20,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleService } from '@modules/role/services/role.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
@@ -43,13 +42,12 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
 
@@ -144,7 +142,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
@@ -165,11 +163,10 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
             ],
         }).compile();
@@ -193,9 +190,9 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             });
         });
 
-        it('gates the rank, resets and revokes on one transaction, purges, notifies, and stages both rows', async () => {
+        it('gates the rank, resets and revokes on one transaction, notifies, and stages both rows', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -214,9 +211,6 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
 
             await expect(
                 useCase.execute('user-marten', admin)
@@ -255,12 +249,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                 'resetInTx',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-marten',
-                revoked
-            );
             expect(
                 notificationQueue.sendResetTwoFactorByAdmin
             ).toHaveBeenCalledWith(recipient, 'admin-marten');
@@ -289,7 +278,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                 'rank'
             );
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('resets nothing when the recipient read rejects', async () => {
@@ -300,18 +289,17 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             await expect(useCase.execute('user-marten', admin)).rejects.toThrow(
                 'read'
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('purges, notifies, and stages nothing when the transaction fails', async () => {
+        it('notifies and stages nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(useCase.execute('user-marten', admin)).rejects.toBe(
                 cause
             );
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendResetTwoFactorByAdmin
             ).not.toHaveBeenCalled();

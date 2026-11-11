@@ -37,13 +37,14 @@ import { NotificationProcessWorkspaceJoinRequestUseCase } from '@modules/notific
 import { NotificationProcessWorkspaceJoinAcceptedUseCase } from '@modules/notification/use-cases/notification.process-workspace-join-accepted.use-case';
 import { NotificationProcessWorkspaceJoinRejectedUseCase } from '@modules/notification/use-cases/notification.process-workspace-join-rejected.use-case';
 import { Job } from 'bullmq';
-import { QueueException } from '@queues/exceptions/queue.exception';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
 @QueueProcessor(EnumNotificationQueue.notification)
 export class NotificationProcessor extends QueueProcessorBase {
@@ -51,6 +52,7 @@ export class NotificationProcessor extends QueueProcessorBase {
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
+        protected readonly outboxService: OutboxService,
         private readonly notificationProcessNewDeviceLoginUseCase: NotificationProcessNewDeviceLoginUseCase,
         private readonly notificationProcessWelcomeByAdminUseCase: NotificationProcessWelcomeByAdminUseCase,
         private readonly notificationProcessTemporaryPasswordByAdminUseCase: NotificationProcessTemporaryPasswordByAdminUseCase,
@@ -70,7 +72,7 @@ export class NotificationProcessor extends QueueProcessorBase {
         private readonly notificationProcessWorkspaceJoinAcceptedUseCase: NotificationProcessWorkspaceJoinAcceptedUseCase,
         private readonly notificationProcessWorkspaceJoinRejectedUseCase: NotificationProcessWorkspaceJoinRejectedUseCase
     ) {
-        super(sentryService, messageService, cacheService);
+        super(sentryService, messageService, cacheService, outboxService);
     }
 
     protected async handle(

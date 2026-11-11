@@ -45,9 +45,7 @@
         "lockout": "Locked out user that spent its attempt budget.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",
-            "photoAccessInvalid": "User photo {key} names no S3 bucket access {access}.",
-            "enqueueDeletePhoto": "Enqueue previous user photo delete failed.",
-            "enqueueLockout": "Enqueue user lockout failed."
+            "photoAccessInvalid": "User photo {key} names no S3 bucket access {access}."
         }
     },
     "error": {

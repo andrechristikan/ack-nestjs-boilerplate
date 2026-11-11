@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
@@ -22,6 +21,10 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
+import {
+    EnumSessionProcess,
+    EnumSessionQueue,
+} from '@modules/session/enums/session.enum';
 import type { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
@@ -34,10 +37,12 @@ import type {
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 @Injectable()
 export class SessionService {
@@ -47,10 +52,22 @@ export class SessionService {
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService,
         private readonly deviceService: DeviceService,
-        private readonly sessionQueue: SessionQueue,
-        private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly outboxService: OutboxService
     ) {}
+
+    private purgeLoginsEffect(
+        userId: string,
+        sessions: ISessionRef[]
+    ): IOutboxEffect {
+        return {
+            queue: EnumSessionQueue.session,
+            name: EnumSessionProcess.purgeLogins,
+            data: { userId, sessions },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
+    }
 
     private groupRefsByUser(
         sessions: ISessionUserRef[]
@@ -116,7 +133,7 @@ export class SessionService {
         }
     }
 
-    /** Stores the login entry; on a store failure revokes the session, enqueues its cache purge, and rethrows. */
+    /** Stores the login entry; on a store failure revokes the session with its cache purge row and rethrows. */
     async setLoginOrRevoke(
         userId: string,
         sessionId: string,
@@ -125,8 +142,7 @@ export class SessionService {
         try {
             await this.setLogin(userId, sessionId, jti);
         } catch (error: unknown) {
-            const revoked = await this.revokeIfActive(userId, sessionId);
-            await this.sessionQueue.purgeLogins(userId, revoked);
+            await this.revokeIfActive(userId, sessionId);
 
             if (error instanceof AppBaseException) {
                 throw error;
@@ -202,22 +218,38 @@ export class SessionService {
         );
     }
 
-    /** Revokes the session as its own user; returns the ref to purge, or an empty list when it was already revoked. */
+    /** Revokes the session as its own user with its cache purge row in one transaction; returns the revoked ref, or an empty list when it was already revoked or a write conflict lost. */
     async revokeIfActive(
         userId: string,
         sessionId: string
     ): Promise<ISessionRef[]> {
         const revokedAt = this.helperDateService.create();
-        const isRevoked = await this.sessionRepository.revoke(
-            userId,
-            sessionId,
-            userId,
-            revokedAt
-        );
 
-        return isRevoked ? [{ id: sessionId }] : [];
+        try {
+            await this.outboxService.withTransaction(async tx =>
+                this.revokeInTx(tx, userId, sessionId, userId, revokedAt)
+            );
+        } catch (err: unknown) {
+            if (err instanceof SessionNotFoundException) {
+                return [];
+            }
+
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                return [];
+            }
+
+            throw new AppUnknownException(err);
+        }
+
+        return [{ id: sessionId }];
     }
 
+    /** Revokes the session on the caller's transaction and adds its cache purge row; no match throws SessionNotFoundException. */
     async revokeInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -235,23 +267,33 @@ export class SessionService {
         if (!isRevoked) {
             throw new SessionNotFoundException();
         }
+
+        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
+        await this.outboxService.addInTx(tx, effect);
     }
 
+    /** Revokes the user's active sessions on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
     async revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
-        return this.sessionRepository.revokeActiveByUserInTx(
+        const sessions = await this.sessionRepository.revokeActiveByUserInTx(
             tx,
             userId,
             revokedBy,
             revokedAt
         );
+        if (sessions.length > 0) {
+            const effect = this.purgeLoginsEffect(userId, sessions);
+            await this.outboxService.addInTx(tx, effect);
+        }
+
+        return sessions;
     }
 
-    /** Revokes the user's active sessions, then every device ownership, on the caller's transaction; returns the revoked session refs. */
+    /** Revokes the user's active sessions with their cache purge row, then every device ownership, on the caller's transaction; returns the revoked session refs. */
     async revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -274,6 +316,7 @@ export class SessionService {
         return sessions;
     }
 
+    /** Revokes the live sessions of a device ownership on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
     async revokeByDeviceOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -281,15 +324,23 @@ export class SessionService {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
-        return this.sessionRepository.revokeByDeviceOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            revokedBy,
-            revokedAt
-        );
+        const sessions =
+            await this.sessionRepository.revokeByDeviceOwnershipInTx(
+                tx,
+                userId,
+                deviceOwnershipId,
+                revokedBy,
+                revokedAt
+            );
+        if (sessions.length > 0) {
+            const effect = this.purgeLoginsEffect(userId, sessions);
+            await this.outboxService.addInTx(tx, effect);
+        }
+
+        return sessions;
     }
 
+    /** Revokes the live sessions of the device ownerships on the caller's transaction and adds one cache purge row per affected user; returns the revoked refs grouped per user. */
     async revokeByDeviceOwnershipIdsInTx(
         tx: IDatabaseTransactionClient,
         deviceOwnershipIds: string[],
@@ -304,39 +355,78 @@ export class SessionService {
                 revokedAt
             );
 
-        return this.groupRefsByUser(sessions);
+        const grouped = this.groupRefsByUser(sessions);
+        if (grouped.length > 0) {
+            const effects = grouped.map(group =>
+                this.purgeLoginsEffect(group.userId, group.sessions)
+            );
+            await this.outboxService.addManyInTx(tx, effects);
+        }
+
+        return grouped;
     }
 
+    /** Revokes the session as its own user with its cache purge row in one transaction; a write conflict throws SessionNotFoundException. */
     async revoke(userId: string, sessionId: string): Promise<void> {
         const revokedAt = this.helperDateService.create();
-        const isRevoked = await this.sessionRepository.revoke(
-            userId,
-            sessionId,
-            userId,
-            revokedAt
-        );
-        if (!isRevoked) {
-            throw new SessionNotFoundException();
+
+        try {
+            await this.outboxService.withTransaction(async tx =>
+                this.revokeInTx(tx, userId, sessionId, userId, revokedAt)
+            );
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new SessionNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
         }
     }
 
+    /** Revokes the session as an admin with its cache purge row in one transaction; a write conflict throws SessionNotFoundException. */
     async revokeByAdmin(
         userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISession> {
-        const session = await this.sessionRepository.revokeByAdmin(
-            userId,
-            sessionId,
-            revokedBy,
-            revokedAt
-        );
-        if (session === null) {
-            throw new SessionNotFoundException();
-        }
+        try {
+            return await this.outboxService.withTransaction(async tx => {
+                const session = await this.sessionRepository.revokeByAdminInTx(
+                    tx,
+                    userId,
+                    sessionId,
+                    revokedBy,
+                    revokedAt
+                );
+                if (session === null) {
+                    throw new SessionNotFoundException();
+                }
 
-        return session;
+                const effect = this.purgeLoginsEffect(userId, [
+                    { id: sessionId },
+                ]);
+                await this.outboxService.addInTx(tx, effect);
+
+                return session;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new SessionNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     assertNotSelf(userId: string, revokedBy: string): void {
@@ -345,24 +435,41 @@ export class SessionService {
         }
     }
 
+    /** Revokes every active session of the user with one cache purge row in one transaction; none revoked or a write conflict throws SessionNotFoundException. */
     async revokeAllByAdmin(
         userId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
-        const sessions = await this.sessionRepository.revokeActiveByUser(
-            userId,
-            revokedBy,
-            revokedAt
-        );
-        if (sessions.length === 0) {
-            throw new SessionNotFoundException();
-        }
+        try {
+            return await this.outboxService.withTransaction(async tx => {
+                const sessions = await this.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    revokedBy,
+                    revokedAt
+                );
+                if (sessions.length === 0) {
+                    throw new SessionNotFoundException();
+                }
 
-        return sessions;
+                return sessions;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new SessionNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
-    /** Revokes the live sessions of a device ownership and removes the ownership in one transaction; a write conflict throws DeviceNotFoundException. */
+    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership in one transaction; a write conflict throws DeviceNotFoundException. */
     async removeDeviceOwnership(
         userId: string,
         deviceOwnershipId: string,
@@ -371,7 +478,7 @@ export class SessionService {
         const now = this.helperDateService.create();
 
         try {
-            return await this.databaseService.withTransaction(async tx => {
+            return await this.outboxService.withTransaction(async tx => {
                 const revokedSessions = await this.revokeByDeviceOwnershipInTx(
                     tx,
                     userId,

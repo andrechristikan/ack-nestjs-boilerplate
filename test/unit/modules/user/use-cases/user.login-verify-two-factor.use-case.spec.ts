@@ -35,11 +35,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
-import type {
-    ISessionPurgeLoginsPayload,
-    ISessionRef,
-} from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type {
@@ -64,7 +59,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         mock<NotificationQueue>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const authTwoFactorService: MockProxy<AuthTwoFactorService> =
         mock<AuthTwoFactorService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -198,15 +192,12 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         ...baseUser,
         twoFactor: enabledTwoFactor,
     };
-    const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
     const session: IUserLoginSession = {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
         requestLog,
         isNewDevice: true,
-        revoked: [],
-        affected: [],
         revokeStages: [],
     };
     const challenge: IAuthTwoFactorChallengeCache = {
@@ -252,7 +243,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                     useValue: authTwoFactorService,
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -352,10 +342,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 now
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
             );
             expect(authTwoFactorService.consumeChallenge).toHaveBeenCalledWith(
                 'challenge-token'
@@ -500,7 +486,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             expect(
                 userAuthService.createTokenAndSession
             ).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(
                 authTwoFactorService.consumeChallenge
@@ -569,16 +554,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
     });
 
     describe('startSession', () => {
-        const affected: ISessionPurgeLoginsPayload[] = [
-            {
-                userId: 'user-thistle',
-                sessions: [
-                    { id: 'session-thistle-1' },
-                    { id: 'session-thistle-2' },
-                ],
-            },
-            { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
-        ];
         const thistleStage: IActivityLogStageInput<EnumActivityLogAction> = {
             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
             userId: 'user-thistle',
@@ -616,12 +591,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
         });
 
-        it('sets the login and purges the revoked sessions after the service call', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                revoked: revokedRef,
-            });
-
+        it('sets the login after the service call', async () => {
             await useCase['startSession'](...startArgs);
 
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
@@ -629,31 +599,8 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 'session-bramble',
                 'jti-bramble'
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
-            );
-        });
-
-        it('purges once per affected user', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                affected,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(3);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
             );
         });
 
@@ -682,7 +629,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
-        it('stages the revoke rows after the enqueues only when revokeStages is not empty', async () => {
+        it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
             const callOrder: string[] = [];
             await useCase['startSession'](...startArgs);
 
@@ -690,11 +637,10 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
 
             userAuthService.createTokenAndSession.mockResolvedValue({
                 ...session,
-                affected,
                 revokeStages: [thistleStage, cloverStage],
             });
-            sessionQueue.purgeLogins.mockImplementation(async userId => {
-                callOrder.push(`purge:${userId}`);
+            sessionService.setLoginOrRevoke.mockImplementation(async () => {
+                callOrder.push('setLoginOrRevoke');
             });
             activityLogService.prepare
                 .mockReturnValueOnce({ ...activityLog, userId: 'user-thistle' })
@@ -717,12 +663,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 { ...activityLog, userId: 'user-thistle' },
                 { ...activityLog, userId: 'user-clover' },
             ]);
-            expect(callOrder).toEqual([
-                'purge:user-bramble',
-                'purge:user-thistle',
-                'purge:user-clover',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['setLoginOrRevoke', 'stagePrepared']);
         });
 
         it('returns the session tokens', async () => {
@@ -740,7 +681,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });

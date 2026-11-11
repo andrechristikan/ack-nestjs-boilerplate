@@ -1,4 +1,8 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -25,10 +29,11 @@ import type {
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
-import { UserQueue } from '@modules/user/queues/user.queue';
+import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -51,7 +56,9 @@ export class UserPasswordService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
-        private readonly userQueue: UserQueue,
+        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly outboxService: OutboxService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
         private readonly configService: ConfigService
@@ -147,6 +154,41 @@ export class UserPasswordService {
         };
     }
 
+    private async incrementPasswordAttempt(userId: string): Promise<boolean> {
+        if (!this.passwordAttemptEnabled) {
+            return true;
+        }
+
+        try {
+            return await this.outboxService.withTransaction(async tx => {
+                const isCounted =
+                    await this.userRepository.incrementPasswordAttemptInTx(
+                        tx,
+                        userId,
+                        this.passwordMaxAttempt
+                    );
+                if (!isCounted) {
+                    const effect =
+                        this.userTwoFactorService.lockoutEffect(userId);
+                    await this.outboxService.addInTx(tx, effect);
+                }
+
+                return isCounted;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new UserPasswordAttemptMaxException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
     async resetPasswordAttempt(userId: string): Promise<User> {
         return this.userService.resetPasswordAttempt(userId);
     }
@@ -161,21 +203,7 @@ export class UserPasswordService {
         return { password, passwordString };
     }
 
-    /** Counts one password attempt before the password is compared; false when the attempt budget is spent, true without counting when attempt tracking is off. */
-    async incrementPasswordAttempt(userId: string): Promise<boolean> {
-        if (!this.passwordAttemptEnabled) {
-            return true;
-        }
-
-        const attempt = await this.userRepository.incrementPasswordAttempt(
-            userId,
-            this.passwordMaxAttempt
-        );
-
-        return attempt !== null;
-    }
-
-    /** Counts one password attempt for a user holding a password and enqueues the lockout job when the budget is spent; null for a passwordless user, isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise. */
+    /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row in the count's transaction; null for a passwordless user, isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise; a write conflict throws UserPasswordAttemptMaxException. */
     async countPasswordAttempt(
         user: IUser
     ): Promise<IUserCredentialAttempt | null> {
@@ -186,7 +214,6 @@ export class UserPasswordService {
 
         const isAttemptCounted = await this.incrementPasswordAttempt(user.id);
         if (!isAttemptCounted) {
-            await this.userQueue.lockout(user.id);
             const lockoutStages = this.buildPasswordLockoutStages(user.id);
 
             return {

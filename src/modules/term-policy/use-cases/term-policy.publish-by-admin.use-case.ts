@@ -8,7 +8,6 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
@@ -21,7 +20,6 @@ export class TermPolicyPublishByAdminUseCase implements IAppUseCase<
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationQueue: NotificationQueue,
-        private readonly termPolicyQueue: TermPolicyQueue,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -45,7 +43,7 @@ export class TermPolicyPublishByAdminUseCase implements IAppUseCase<
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const { termPolicy: published, copy } =
+        const { termPolicy: published } =
             await this.termPolicyService.publishByAdmin(termPolicyId);
         const activityLogs = [
             this.prepareActivityLog(
@@ -59,19 +57,16 @@ export class TermPolicyPublishByAdminUseCase implements IAppUseCase<
         const recipientCutoffAt = this.helperDateService.formatToIso(
             published.publishedAt!
         );
-        await Promise.all([
-            this.termPolicyQueue.copyContent(copy),
-            this.notificationQueue.sendPublishTermPolicy(
-                {
-                    termPolicyId: published.id,
-                    type: published.type,
-                    version: published.version,
-                    recipientCutoffAt,
-                    resendNonce: null,
-                },
-                updatedBy
-            ),
-        ]);
+        await this.notificationQueue.sendPublishTermPolicy(
+            {
+                termPolicyId: published.id,
+                type: published.type,
+                version: published.version,
+                recipientCutoffAt,
+                resendNonce: null,
+            },
+            updatedBy
+        );
 
         return {};
     }

@@ -21,7 +21,7 @@ import {
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()

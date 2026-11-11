@@ -1,15 +1,13 @@
 import { MessageService } from '@common/message/services/message.service';
-import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type { ITermPolicyCopyContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
-import { Job } from 'bullmq';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class TermPolicyProcessCopyContentUseCase implements IAppUseCase<
-    [Job<ITermPolicyCopyContentPayload, unknown, EnumTermPolicyProcess>],
+    [ITermPolicyCopyContentPayload],
     IQueueResponse
 > {
     constructor(
@@ -18,10 +16,10 @@ export class TermPolicyProcessCopyContentUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        job: Job<ITermPolicyCopyContentPayload, unknown, EnumTermPolicyProcess>
+        data: ITermPolicyCopyContentPayload
     ): Promise<IQueueResponse> {
-        const { termPolicyId, destination } = job.data;
-        await this.termPolicyService.copyContent(job.data);
+        const { termPolicyId, destination } = data;
+        await this.termPolicyService.copyContent(data);
 
         const message = this.messageService.setMessage(
             'termPolicy.queue.copyContent',

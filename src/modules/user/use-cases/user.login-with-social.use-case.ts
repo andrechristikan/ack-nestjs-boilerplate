@@ -22,7 +22,6 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -69,7 +68,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly countryService: CountryService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
@@ -211,7 +209,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -236,10 +234,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 user.id,
                 session.sessionId,
                 session.jti
-            ),
-            this.sessionQueue.purgeLogins(user.id, session.revoked),
-            ...session.affected.map(({ userId, sessions }) =>
-                this.sessionQueue.purgeLogins(userId, sessions)
             ),
         ];
         if (session.isNewDevice) {
@@ -271,7 +265,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         return session.tokens;
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -319,7 +313,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         };
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,

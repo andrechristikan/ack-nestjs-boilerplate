@@ -83,7 +83,10 @@ export interface ITermPolicyRepository {
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy>;
-    deleteDraft(termPolicyId: string): Promise<boolean>;
+    deleteDraftInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<boolean>;
     updateContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],

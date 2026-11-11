@@ -33,11 +33,6 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
-import type {
-    ISessionPurgeLoginsPayload,
-    ISessionRef,
-} from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -78,7 +73,6 @@ describe('UserLoginCredentialUseCase', () => {
         mock<WorkspaceMemberService>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -214,15 +208,12 @@ describe('UserLoginCredentialUseCase', () => {
         otpauthUrl: 'otpauth://totp/secret',
         secret: 'secret',
     };
-    const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
     const session: IUserLoginSession = {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
         requestLog,
         isNewDevice: true,
-        revoked: [],
-        affected: [],
         revokeStages: [],
     };
     beforeEach(async () => {
@@ -259,7 +250,6 @@ describe('UserLoginCredentialUseCase', () => {
                 },
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 {
@@ -322,7 +312,7 @@ describe('UserLoginCredentialUseCase', () => {
             userAuthService.verifyCredential.mockResolvedValue(true);
         });
 
-        it('logs the user in through the service and purges the revoked sessions of a repeat device after it', async () => {
+        it('logs the user in through the service on a repeat device and stages after it', async () => {
             const callOrder: string[] = [];
             userAuthService.createTokenAndSession.mockImplementation(
                 async () => {
@@ -331,13 +321,9 @@ describe('UserLoginCredentialUseCase', () => {
                     return {
                         ...session,
                         isNewDevice: false,
-                        revoked: revokedRef,
                     };
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                callOrder.push('purgeLogins');
-            });
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
@@ -366,10 +352,6 @@ describe('UserLoginCredentialUseCase', () => {
                 EnumUserLoginWith.credential,
                 now
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
                 1,
                 []
@@ -380,7 +362,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(callOrder).toEqual([
                 'stagePrepared',
                 'createTokenAndSession',
-                'purgeLogins',
                 'stagePrepared',
             ]);
         });
@@ -510,7 +491,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userAuthService.createTokenAndSession
             ).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(userAuthService.verifyCredential).not.toHaveBeenCalled();
         });
 
@@ -963,16 +943,6 @@ describe('UserLoginCredentialUseCase', () => {
     });
 
     describe('startSession', () => {
-        const affected: ISessionPurgeLoginsPayload[] = [
-            {
-                userId: 'user-thistle',
-                sessions: [
-                    { id: 'session-thistle-1' },
-                    { id: 'session-thistle-2' },
-                ],
-            },
-            { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
-        ];
         const thistleStage: IActivityLogStageInput<EnumActivityLogAction> = {
             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
             userId: 'user-thistle',
@@ -1010,12 +980,7 @@ describe('UserLoginCredentialUseCase', () => {
             );
         });
 
-        it('sets the login and purges the revoked sessions after the service call', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                revoked: revokedRef,
-            });
-
+        it('sets the login after the service call', async () => {
             await useCase['startSession'](...startArgs);
 
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
@@ -1023,31 +988,8 @@ describe('UserLoginCredentialUseCase', () => {
                 'session-bramble',
                 'jti-bramble'
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
-            );
-        });
-
-        it('purges once per affected user', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                affected,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(3);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
             );
         });
 
@@ -1076,7 +1018,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
-        it('stages the revoke rows after the enqueues only when revokeStages is not empty', async () => {
+        it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
             const callOrder: string[] = [];
             await useCase['startSession'](...startArgs);
 
@@ -1084,11 +1026,10 @@ describe('UserLoginCredentialUseCase', () => {
 
             userAuthService.createTokenAndSession.mockResolvedValue({
                 ...session,
-                affected,
                 revokeStages: [thistleStage, cloverStage],
             });
-            sessionQueue.purgeLogins.mockImplementation(async userId => {
-                callOrder.push(`purge:${userId}`);
+            sessionService.setLoginOrRevoke.mockImplementation(async () => {
+                callOrder.push('setLoginOrRevoke');
             });
             activityLogService.prepare
                 .mockReturnValueOnce({ ...activityLog, userId: 'user-thistle' })
@@ -1111,12 +1052,7 @@ describe('UserLoginCredentialUseCase', () => {
                 { ...activityLog, userId: 'user-thistle' },
                 { ...activityLog, userId: 'user-clover' },
             ]);
-            expect(callOrder).toEqual([
-                'purge:user-bramble',
-                'purge:user-thistle',
-                'purge:user-clover',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['setLoginOrRevoke', 'stagePrepared']);
         });
 
         it('returns the session tokens', async () => {
@@ -1134,7 +1070,6 @@ describe('UserLoginCredentialUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });

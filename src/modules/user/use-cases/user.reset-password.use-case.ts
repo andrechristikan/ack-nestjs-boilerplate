@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -15,8 +15,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -45,10 +43,9 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -122,9 +119,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
             activityLogs.push(verifyTwoFactorActivityLog);
         }
 
-        let revoked: ISessionRef[];
         try {
-            revoked = await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 await this.userService.updatePasswordInTx(
                     tx,
                     reset.userId,
@@ -149,13 +145,12 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     tx,
                     reset.userId
                 );
-                const sessions =
-                    await this.sessionService.revokeActiveByUserInTx(
-                        tx,
-                        reset.userId,
-                        reset.userId,
-                        password.passwordCreated
-                    );
+                await this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    reset.userId,
+                    reset.userId,
+                    password.passwordCreated
+                );
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
                         tx,
@@ -163,8 +158,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                 }
-
-                return sessions;
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -178,10 +171,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-        await Promise.all([
-            this.sessionQueue.purgeLogins(reset.userId, revoked),
-            this.notificationQueue.sendResetPassword(recipient, reset.id),
-        ]);
+        await this.notificationQueue.sendResetPassword(recipient, reset.id);
 
         this.activityLogService.stagePrepared(activityLogs);
 

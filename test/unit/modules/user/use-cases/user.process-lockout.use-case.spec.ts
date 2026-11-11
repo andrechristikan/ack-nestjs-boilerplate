@@ -3,11 +3,10 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import { MessageService } from '@common/message/services/message.service';
 import { UserProcessLockoutUseCase } from '@modules/user/use-cases/user.process-lockout.use-case';
@@ -16,8 +15,7 @@ describe('UserProcessLockoutUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -31,7 +29,7 @@ describe('UserProcessLockoutUseCase', () => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -41,8 +39,7 @@ describe('UserProcessLockoutUseCase', () => {
                 UserProcessLockoutUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: SessionQueue, useValue: sessionQueue },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -51,9 +48,9 @@ describe('UserProcessLockoutUseCase', () => {
     });
 
     describe('execute', () => {
-        it('deactivates the user and revokes its sessions and devices on one transaction, then purges the revoked sessions after commit', async () => {
+        it('deactivates the user and revokes its sessions and devices on one transaction', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -72,9 +69,6 @@ describe('UserProcessLockoutUseCase', () => {
 
                 return revoked;
             });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
 
             const result = await useCase.execute('user-1');
 
@@ -87,16 +81,11 @@ describe('UserProcessLockoutUseCase', () => {
                 'user-1',
                 now
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-1',
-                revoked
-            );
             expect(calls).toEqual([
                 'begin',
                 'deactivate',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
             expect(result).toEqual({
                 message: 'user.queue.lockout',
@@ -104,27 +93,25 @@ describe('UserProcessLockoutUseCase', () => {
             });
         });
 
-        it('revokes nothing and hands no session to the purge when the account is already inactive', async () => {
+        it('revokes nothing and counts no session when the account is already inactive', async () => {
             userService.deactivateForMaxAttemptInTx.mockResolvedValue(false);
 
             const result = await useCase.execute('user-1');
 
             expect(sessionService.revokeAllByUserInTx).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith('user-1', []);
             expect(result).toEqual({
                 message: 'user.queue.lockout',
                 countSessions: 0,
             });
         });
 
-        it('rethrows the transaction failure and purges nothing so BullMQ retries the job', async () => {
+        it('rethrows the transaction failure so BullMQ retries the job', async () => {
             const failure = new Error('database down');
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
 
             const rejection = useCase.execute('user-1');
 
             await expect(rejection).rejects.toBe(failure);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
         });
     });
 });

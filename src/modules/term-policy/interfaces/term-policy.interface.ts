@@ -60,7 +60,6 @@ export interface ITermPolicyCopyContentPayload {
 
 export interface ITermPolicyPublish {
     termPolicy: TermPolicy;
-    copy: ITermPolicyCopyContentPayload;
 }
 
 export interface ITermPolicyAcceptanceCreate {

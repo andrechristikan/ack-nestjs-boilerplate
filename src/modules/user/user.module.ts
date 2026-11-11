@@ -2,7 +2,6 @@ import { AwsModule } from '@common/aws/aws.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueueFactory } from '@modules/user/factories/user.queue.factory';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
 import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/user.mobile-number.analytic.repository';
@@ -67,7 +66,6 @@ import { Module } from '@nestjs/common';
         UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,
         UserMobileNumberAnalyticService,
-        UserQueue,
     ],
     exports: [
         UserService,
@@ -88,7 +86,6 @@ import { Module } from '@nestjs/common';
         UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,
         UserMobileNumberAnalyticService,
-        UserQueue,
     ],
     imports: [
         AwsModule,

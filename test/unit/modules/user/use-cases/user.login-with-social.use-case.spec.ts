@@ -55,11 +55,6 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import type {
-    ISessionPurgeLoginsPayload,
-    ISessionRef,
-} from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
@@ -123,7 +118,6 @@ describe('UserLoginWithSocialUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -262,15 +256,12 @@ describe('UserLoginWithSocialUseCase', () => {
         otpauthUrl: 'otpauth://totp/secret',
         secret: 'secret',
     };
-    const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
     const session: IUserLoginSession = {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
         requestLog,
         isNewDevice: true,
-        revoked: [],
-        affected: [],
         revokeStages: [],
     };
     const country: Country = {
@@ -440,7 +431,6 @@ describe('UserLoginWithSocialUseCase', () => {
                 { provide: CountryService, useValue: countryService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
@@ -1228,16 +1218,6 @@ describe('UserLoginWithSocialUseCase', () => {
     });
 
     describe('startSession', () => {
-        const affected: ISessionPurgeLoginsPayload[] = [
-            {
-                userId: 'user-thistle',
-                sessions: [
-                    { id: 'session-thistle-1' },
-                    { id: 'session-thistle-2' },
-                ],
-            },
-            { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
-        ];
         const thistleStage: IActivityLogStageInput<EnumActivityLogAction> = {
             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
             userId: 'user-thistle',
@@ -1275,12 +1255,7 @@ describe('UserLoginWithSocialUseCase', () => {
             );
         });
 
-        it('sets the login and purges the revoked sessions after the service call', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                revoked: revokedRef,
-            });
-
+        it('sets the login after the service call', async () => {
             await useCase['startSession'](...startArgs);
 
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
@@ -1288,31 +1263,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 'session-bramble',
                 'jti-bramble'
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
-            );
-        });
-
-        it('purges once per affected user', async () => {
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                affected,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(3);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-thistle',
-                affected[0]!.sessions
-            );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-clover',
-                affected[1]!.sessions
             );
         });
 
@@ -1341,7 +1293,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
-        it('stages the revoke rows after the enqueues only when revokeStages is not empty', async () => {
+        it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
             const callOrder: string[] = [];
             await useCase['startSession'](...startArgs);
 
@@ -1349,11 +1301,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             userAuthService.createTokenAndSession.mockResolvedValue({
                 ...session,
-                affected,
                 revokeStages: [thistleStage, cloverStage],
             });
-            sessionQueue.purgeLogins.mockImplementation(async userId => {
-                callOrder.push(`purge:${userId}`);
+            sessionService.setLoginOrRevoke.mockImplementation(async () => {
+                callOrder.push('setLoginOrRevoke');
             });
             activityLogService.prepare
                 .mockReturnValueOnce({ ...activityLog, userId: 'user-thistle' })
@@ -1376,12 +1327,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 { ...activityLog, userId: 'user-thistle' },
                 { ...activityLog, userId: 'user-clover' },
             ]);
-            expect(callOrder).toEqual([
-                'purge:user-bramble',
-                'purge:user-thistle',
-                'purge:user-clover',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['setLoginOrRevoke', 'stagePrepared']);
         });
 
         it('returns the session tokens', async () => {
@@ -1399,7 +1345,6 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });

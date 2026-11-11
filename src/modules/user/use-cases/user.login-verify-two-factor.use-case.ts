@@ -13,7 +13,6 @@ import { NotificationService } from '@modules/notification/services/notification
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
@@ -34,13 +33,12 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phases 3B and 3C). */
+    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -65,10 +63,6 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
                 user.id,
                 session.sessionId,
                 session.jti
-            ),
-            this.sessionQueue.purgeLogins(user.id, session.revoked),
-            ...session.affected.map(({ userId, sessions }) =>
-                this.sessionQueue.purgeLogins(userId, sessions)
             ),
         ];
         if (session.isNewDevice) {

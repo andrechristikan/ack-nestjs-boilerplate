@@ -11,14 +11,13 @@ import {
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
@@ -39,12 +38,11 @@ describe('UserDisableTwoFactorUseCase', () => {
         mock<UserTwoFactorService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
 
     let useCase: UserDisableTwoFactorUseCase;
 
@@ -133,7 +131,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
@@ -148,10 +146,9 @@ describe('UserDisableTwoFactorUseCase', () => {
                 },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
             ],
         }).compile();
         useCase = module.get(UserDisableTwoFactorUseCase);
@@ -163,14 +160,14 @@ describe('UserDisableTwoFactorUseCase', () => {
             code: '123456',
         };
 
-        it('verifies, disables and revokes on one transaction, purges after commit, then stages the row', async () => {
+        it('verifies, disables and revokes on one transaction, then stages the row after commit', async () => {
             const calls: string[] = [];
             userTwoFactorService.verify.mockImplementation(async () => {
                 calls.push('verify');
 
                 return verified;
             });
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -187,9 +184,6 @@ describe('UserDisableTwoFactorUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
             activityLogService.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
@@ -227,16 +221,11 @@ describe('UserDisableTwoFactorUseCase', () => {
                 'disableInTx',
                 'revokeSessions',
                 'commit',
-                'purge',
                 'stage',
             ]);
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userDisableTwoFactor,
             });
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-marten',
-                revoked
-            );
             expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
                 1,
                 []
@@ -270,13 +259,12 @@ describe('UserDisableTwoFactorUseCase', () => {
                     code: '000000',
                 })
             ).rejects.toBe(failure);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers AuthTwoFactorNotEnabledException on a write conflict', async () => {
             const conflict = new Error('write conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -291,27 +279,25 @@ describe('UserDisableTwoFactorUseCase', () => {
                 messagePath: 'auth.error.twoFactorNotEnabled',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
-        it('rethrows an app exception of the transaction unchanged, purging and staging nothing', async () => {
+        it('rethrows an app exception of the transaction unchanged, staging nothing', async () => {
             const failure = new AuthTwoFactorNotEnabledException();
             userTwoFactorService.disableInTx.mockRejectedValue(failure);
 
             await expect(useCase.execute(user, dto)).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
-        it('wraps any other transaction failure in the unknown exception, purging and staging nothing', async () => {
+        it('wraps any other transaction failure in the unknown exception, staging nothing', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(useCase.execute(user, dto)).rejects.toMatchObject({
@@ -319,7 +305,6 @@ describe('UserDisableTwoFactorUseCase', () => {
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
             });
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
@@ -374,7 +359,7 @@ describe('UserDisableTwoFactorUseCase', () => {
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(userTwoFactorService.disableInTx).not.toHaveBeenCalled();
         });

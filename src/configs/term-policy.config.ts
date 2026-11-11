@@ -7,8 +7,7 @@ export interface IConfigTermPolicy {
     content: {
         maxSizeInBytes: number;
     };
-    jobId: {
-        deleteContentPattern: string;
+    idempotencyKey: {
         copyContentPattern: string;
     };
 }
@@ -19,8 +18,7 @@ export default registerAs('termPolicy', (): IConfigTermPolicy => ({
     content: {
         maxSizeInBytes: bytes('10mb') ?? 0,
     },
-    jobId: {
-        deleteContentPattern: '{process}-{nonce}',
+    idempotencyKey: {
         copyContentPattern: '{process}-{termPolicyId}',
     },
 }));

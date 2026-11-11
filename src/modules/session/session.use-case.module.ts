@@ -1,5 +1,4 @@
 import { DeviceModule } from '@modules/device/device.module';
-import { SessionProcessor } from '@modules/session/processors/session.processor';
 import { SessionModule } from '@modules/session/session.module';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
 import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
@@ -18,7 +17,6 @@ import { Module } from '@nestjs/common';
         SessionRevokeByAdminUseCase,
         SessionRevokeAllByAdminUseCase,
         SessionProcessPurgeLoginsUseCase,
-        SessionProcessor,
     ],
     exports: [
         SessionGetListOffsetByAdminUseCase,

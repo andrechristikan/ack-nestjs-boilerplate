@@ -1,7 +1,6 @@
 import { NotificationModule } from '@modules/notification/notification.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { UserModule } from '@modules/user/user.module';
-import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
 import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
 import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
 import { WorkspaceGetCurrentUseCase } from '@modules/workspace/use-cases/workspace.get-current.use-case';
@@ -66,7 +65,6 @@ import { Module } from '@nestjs/common';
         WorkspaceGetMembersListByAdminUseCase,
         WorkspaceProcessExpireStaleInvitesUseCase,
         WorkspaceProcessExpireStaleJoinRequestsUseCase,
-        WorkspaceProcessor,
     ],
     exports: [
         WorkspaceGetListCursorByMemberUseCase,

@@ -18,7 +18,6 @@ import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
@@ -28,7 +27,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const deviceOwnership: IDeviceOwnership = {
@@ -131,7 +129,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: RoleService, useValue: roleService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
@@ -184,7 +181,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             });
         });
 
-        it('checks the rank, removes attributed to the admin, purges, and stages the actor and target rows', async () => {
+        it('checks the rank, removes attributed to the admin, and stages the actor and target rows', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
             deviceService.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
@@ -226,10 +223,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 createdBy: 'admin-1',
                 metadata: targetMetadata,
             });
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-1',
-                revokedSessions
-            );
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 actorActivityLog,
                 targetActivityLog,
@@ -257,7 +250,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             ]);
         });
 
-        it('purges and stages nothing when the removal throws', async () => {
+        it('stages nothing when the removal throws', async () => {
             const notFound = new DeviceNotFoundException();
             roleService.getOneByUserId.mockResolvedValue(userRole);
             sessionService.removeDeviceOwnership.mockRejectedValue(notFound);
@@ -265,7 +258,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
             await expect(
                 useCase.execute('user-1', 'device-ownership-1', admin)
             ).rejects.toBe(notFound);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -283,7 +275,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 useCase.execute('user-1', 'device-ownership-1', admin)
             ).rejects.toBe(rankForbidden);
             expect(sessionService.removeDeviceOwnership).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

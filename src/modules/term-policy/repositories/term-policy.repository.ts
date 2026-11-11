@@ -255,14 +255,16 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async deleteDraft(termPolicyId: string): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.termPolicy.deleteMany({
-                where: {
-                    id: termPolicyId,
-                    status: EnumTermPolicyStatus.draft,
-                },
-            });
+    async deleteDraftInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<boolean> {
+        const { count } = await tx.termPolicy.deleteMany({
+            where: {
+                id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
+            },
+        });
 
         return count > 0;
     }

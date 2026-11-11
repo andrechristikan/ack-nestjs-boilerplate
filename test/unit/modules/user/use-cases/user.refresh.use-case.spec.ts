@@ -36,7 +36,6 @@ import { SessionService } from '@modules/session/services/session.service';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
@@ -49,7 +48,6 @@ import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-cas
 describe('UserRefreshUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -183,7 +181,6 @@ describe('UserRefreshUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -266,7 +263,6 @@ describe('UserRefreshUseCase', () => {
                 tokens
             );
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'updateJtiInTx',
                 'updateLoginInTx',
@@ -328,7 +324,7 @@ describe('UserRefreshUseCase', () => {
             });
         });
 
-        it('enqueues an empty purge and answers revoked when the jti compare-and-set matches no row of an already revoked session', async () => {
+        it('answers revoked when the jti compare-and-set matches no row of an already revoked session', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -348,14 +344,10 @@ describe('UserRefreshUseCase', () => {
                 'user-bramble',
                 'session-bramble'
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
             expect(sessionService.updateLogin).not.toHaveBeenCalled();
         });
 
-        it('revokes the session after the commit, purges it, stages the revoke row, and answers revoked when the jti compare-and-set matches no row', async () => {
+        it('revokes the session after the commit, stages the revoke row, and answers revoked when the jti compare-and-set matches no row', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -378,9 +370,6 @@ describe('UserRefreshUseCase', () => {
 
                 return revokedRef;
             });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                callOrder.push('purgeLogins');
-            });
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
@@ -393,10 +382,6 @@ describe('UserRefreshUseCase', () => {
                 'user-bramble',
                 'session-bramble'
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeSession,
             });
@@ -408,7 +393,6 @@ describe('UserRefreshUseCase', () => {
             expect(callOrder).toEqual([
                 'committed',
                 'revokeIfActive',
-                'purgeLogins',
                 'stagePrepared',
             ]);
         });
@@ -430,11 +414,6 @@ describe('UserRefreshUseCase', () => {
             await expectSessionRevoked(
                 useCase.execute(baseUser, 'refresh-token')
             );
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                revokedRef
-            );
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
         });
 
@@ -452,11 +431,6 @@ describe('UserRefreshUseCase', () => {
 
             await expectSessionRevoked(
                 useCase.execute(baseUser, 'refresh-token')
-            );
-
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
             );
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
@@ -507,10 +481,6 @@ describe('UserRefreshUseCase', () => {
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(sessionService.revokeIfActive).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-bramble',
-                []
-            );
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
             );

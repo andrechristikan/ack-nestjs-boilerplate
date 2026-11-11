@@ -1,5 +1,5 @@
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 
 describe('NotificationEmailDeliveryUnknownException', () => {
     const message = 'notification.queue.email.error.deliveryUnknown';

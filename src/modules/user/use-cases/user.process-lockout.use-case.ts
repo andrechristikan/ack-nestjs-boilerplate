@@ -1,10 +1,9 @@
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -16,15 +15,14 @@ export class UserProcessLockoutUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
-        private readonly sessionQueue: SessionQueue,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly messageService: MessageService
     ) {}
 
     async execute(userId: string): Promise<IQueueResponse> {
         const now = this.helperDateService.create();
-        const revoked = await this.databaseService.withTransaction(async tx => {
+        const revoked = await this.outboxService.withTransaction(async tx => {
             const isDeactivated =
                 await this.userService.deactivateForMaxAttemptInTx(tx, userId);
             if (!isDeactivated) {
@@ -40,7 +38,6 @@ export class UserProcessLockoutUseCase implements IAppUseCase<
 
             return sessions;
         });
-        await this.sessionQueue.purgeLogins(userId, revoked);
 
         const message = this.messageService.setMessage('user.queue.lockout');
 

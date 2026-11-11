@@ -4,9 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { EnumSessionProcess } from '@modules/session/enums/session.enum';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SessionProcessPurgeLoginsUseCase } from '@modules/session/use-cases/session.process-purge-logins.use-case';
@@ -44,13 +42,7 @@ describe('SessionProcessPurgeLoginsUseCase', () => {
 
     describe('execute', () => {
         it('hands the job sessions to the session domain and reports the count', async () => {
-            const job = buildQueueJob<
-                ISessionPurgeLoginsPayload,
-                unknown,
-                EnumSessionProcess
-            >(payload);
-
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(sessionService.deleteLogins).toHaveBeenCalledWith('user-1', [
                 { id: 'session-1' },
@@ -68,13 +60,8 @@ describe('SessionProcessPurgeLoginsUseCase', () => {
         it('rethrows the domain failure so BullMQ retries the job', async () => {
             const failure = new Error('redis down');
             sessionService.deleteLogins.mockRejectedValue(failure);
-            const job = buildQueueJob<
-                ISessionPurgeLoginsPayload,
-                unknown,
-                EnumSessionProcess
-            >(payload);
 
-            const rejection = useCase.execute(job);
+            const rejection = useCase.execute(payload);
 
             await expect(rejection).rejects.toBe(failure);
         });

@@ -14,6 +14,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -30,7 +32,10 @@ import type {
     IUser,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import { UserQueue } from '@modules/user/queues/user.queue';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -43,7 +48,7 @@ describe('UserTwoFactorService', () => {
         mock<AuthTwoFactorUtil>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -142,7 +147,7 @@ describe('UserTwoFactorService', () => {
                 { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
                 { provide: SentryService, useValue: sentryService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: UserQueue, useValue: userQueue },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -341,6 +346,12 @@ describe('UserTwoFactorService', () => {
     });
 
     describe('countAttempt', () => {
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+        });
+
         const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] = [
             {
                 action: EnumActivityLogAction.userRevokeAllSessions,
@@ -354,30 +365,81 @@ describe('UserTwoFactorService', () => {
             },
         ];
 
-        it('returns a counted attempt with no lockout stages within the budget', async () => {
-            userTwoFactorRepository.incrementAttempt.mockResolvedValue(2);
+        it('counts the attempt on the outbox tx and adds no row within the budget', async () => {
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                true
+            );
 
             await expect(service.countAttempt(baseUser)).resolves.toEqual({
                 isAttemptCounted: true,
                 lockoutStages: [],
             });
             expect(
-                userTwoFactorRepository.incrementAttempt
-            ).toHaveBeenCalledWith('user-quartz', 5);
-            expect(userQueue.lockout).not.toHaveBeenCalled();
+                userTwoFactorRepository.incrementAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('returns an uncounted attempt with the lockout stages and enqueues the lockout when the guarded increment finds the budget spent', async () => {
-            userTwoFactorRepository.incrementAttempt.mockResolvedValue(null);
+        it('throws the max-attempt exception with no row on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(service.countAttempt(baseUser)).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
+                statusCodeKey: 'twoFactorAttemptMax',
+                messagePath: 'auth.error.twoFactorAttemptMax',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException unchanged', async () => {
+            const failure = new DatabaseUnavailableException();
+            outboxService.withTransaction.mockRejectedValue(failure);
+
+            await expect(service.countAttempt(baseUser)).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('database exploded');
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(service.countAttempt(baseUser)).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+        });
+
+        it('adds the lockout row on the outbox tx and returns an uncounted attempt with the lockout stages when the guarded increment finds the budget spent', async () => {
+            const lockoutEffect: IOutboxEffect = {
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.lockout,
+                data: { userId: 'user-quartz' },
+                priority: EnumQueuePriority.high,
+                idempotencyKey: null,
+            };
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                false
+            );
 
             await expect(service.countAttempt(baseUser)).resolves.toEqual({
                 isAttemptCounted: false,
                 lockoutStages,
             });
-            expect(userQueue.lockout).toHaveBeenCalledOnce();
-            expect(userQueue.lockout).toHaveBeenCalledWith('user-quartz');
-            expect(userQueue.lockout).toHaveBeenCalledAfter(
-                userTwoFactorRepository.incrementAttempt
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userTwoFactorRepository.incrementAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                lockoutEffect
             );
         });
     });
@@ -463,7 +525,7 @@ describe('UserTwoFactorService', () => {
                 userTwoFactorRepository.resetTwoFactorAttempt
             ).toHaveBeenCalledWith('user-quartz');
             expect(
-                userTwoFactorRepository.incrementAttempt
+                userTwoFactorRepository.incrementAttemptInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -664,7 +726,7 @@ describe('UserTwoFactorService', () => {
                 userTwoFactorRepository.resetTwoFactorAttempt
             ).toHaveBeenCalledWith('user-quartz');
             expect(
-                userTwoFactorRepository.incrementAttempt
+                userTwoFactorRepository.incrementAttemptInTx
             ).not.toHaveBeenCalled();
         });
 

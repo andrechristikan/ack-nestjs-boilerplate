@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -9,8 +9,6 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { SessionService } from '@modules/session/services/session.service';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -26,8 +24,7 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -64,12 +61,10 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
             }),
         ];
         const now = this.helperDateService.create();
-        let revoked: ISessionRef[];
         try {
-            revoked = await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 await this.userTwoFactorService.disableInTx(tx, user.id);
-
-                return this.sessionService.revokeActiveByUserInTx(
+                await this.sessionService.revokeActiveByUserInTx(
                     tx,
                     user.id,
                     user.id,
@@ -88,8 +83,6 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        await this.sessionQueue.purgeLogins(user.id, revoked);
 
         this.activityLogService.stagePrepared(activityLogs);
 

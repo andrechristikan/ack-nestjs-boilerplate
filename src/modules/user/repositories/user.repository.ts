@@ -360,10 +360,14 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
+    async updatePhotoProfileInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        photo: IAwsS3
+    ): Promise<User> {
         const plainPhoto = this.databaseUtil.toPlainObject(photo);
 
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 photo: plainPhoto,
@@ -462,11 +466,12 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async incrementPasswordAttempt(
+    async incrementPasswordAttemptInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         maxAttempt: number
-    ): Promise<number | null> {
-        const { count } = await this.databaseService.client.user.updateMany({
+    ): Promise<boolean> {
+        const { count } = await tx.user.updateMany({
             where: {
                 id: userId,
                 deletedAt: null,
@@ -474,16 +479,8 @@ export class UserRepository implements IUserRepository {
             },
             data: { passwordAttempt: { increment: 1 } },
         });
-        if (count === 0) {
-            return null;
-        }
 
-        const user = await this.databaseService.client.user.findFirst({
-            where: { id: userId, deletedAt: null },
-            select: { passwordAttempt: true },
-        });
-
-        return user?.passwordAttempt ?? null;
+        return count > 0;
     }
 
     async resetPasswordAttempt(userId: string): Promise<User> {

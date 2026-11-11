@@ -51,10 +51,11 @@ export interface IUserTwoFactorRepository {
         userId: string
     ): Promise<TwoFactor>;
     markTotpUsed(userId: string, step: number): Promise<boolean>;
-    incrementAttempt(
+    incrementAttemptInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         maxAttempt: number
-    ): Promise<number | null>;
+    ): Promise<boolean>;
     resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;
     resetTwoFactorAttemptInTx(
         tx: IDatabaseTransactionClient,

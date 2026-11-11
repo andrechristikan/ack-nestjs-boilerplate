@@ -4,7 +4,6 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -18,7 +17,6 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly roleService: RoleService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -64,8 +62,6 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
             });
             activityLogs.push(targetActivityLog);
         }
-
-        await this.sessionQueue.purgeLogins(userId, [{ id: sessionId }]);
 
         this.activityLogService.stagePrepared(activityLogs);
 

@@ -6,7 +6,7 @@ import { EnumNotificationPushProcess } from '@modules/notification/enums/notific
 import type { INotificationPushCleanupTokenEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 
 describe('NotificationPushProcessCleanupTokensUseCase', () => {

@@ -1,5 +1,4 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
-import { ActivityLogProcessor } from '@modules/activity-log/processors/activity-log.processor';
 import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
 import { ActivityLogGetListOffsetByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-workspace.use-case';
@@ -15,7 +14,6 @@ import { Module } from '@nestjs/common';
         ActivityLogGetListOffsetByWorkspaceUseCase,
         ActivityLogGetListCursorByWorkspaceUseCase,
         ActivityLogProcessCreateManyUseCase,
-        ActivityLogProcessor,
     ],
     exports: [
         ActivityLogGetListOffsetByUserUseCase,

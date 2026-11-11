@@ -1,4 +1,4 @@
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -12,10 +12,7 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { DeviceService } from '@modules/device/services/device.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type {
-    ISessionPurgeLoginsPayload,
-    ISessionRef,
-} from '@modules/session/interfaces/session.interface';
+import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserCredentialInvalidException } from '@modules/user/exceptions/user.credential-invalid.exception';
@@ -54,7 +51,7 @@ export class UserAuthService {
         private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -168,7 +165,7 @@ export class UserAuthService {
         }
     }
 
-    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, and stamps the login in one transaction; returns the tokens and what the caller enqueues and stages after commit. */
+    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, and stamps the login in one transaction; returns the tokens and the activity stages the caller stages after commit. */
     async createTokenAndSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -186,24 +183,22 @@ export class UserAuthService {
             })
         );
         const now = this.helperDateService.create();
-        const { isNewDevice, revoked, affected, deviceOwnershipId } =
-            await this.databaseService.withTransaction(async tx => {
+        const { isNewDevice, affected, deviceOwnershipId } =
+            await this.outboxService.withTransaction(async tx => {
                 const upserted = await this.deviceService.upsertForLoginInTx(
                     tx,
                     user.id,
                     device,
                     now
                 );
-                let revokedSessions: ISessionRef[] = [];
                 if (!upserted.isNewDevice) {
-                    revokedSessions =
-                        await this.sessionService.revokeByDeviceOwnershipInTx(
-                            tx,
-                            user.id,
-                            upserted.deviceOwnership.id,
-                            user.id,
-                            now
-                        );
+                    await this.sessionService.revokeByDeviceOwnershipInTx(
+                        tx,
+                        user.id,
+                        upserted.deviceOwnership.id,
+                        user.id,
+                        now
+                    );
                 }
                 const otherOwnershipIds =
                     await this.deviceService.getOtherOwnershipIdsByDeviceInTx(
@@ -241,7 +236,6 @@ export class UserAuthService {
 
                 return {
                     isNewDevice: upserted.isNewDevice,
-                    revoked: revokedSessions,
                     affected: affectedSessions,
                     deviceOwnershipId: upserted.deviceOwnership.id,
                 };
@@ -274,8 +268,6 @@ export class UserAuthService {
             jti,
             requestLog,
             isNewDevice,
-            revoked,
-            affected,
             revokeStages,
         };
     }

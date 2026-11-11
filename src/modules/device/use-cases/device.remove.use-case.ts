@@ -3,7 +3,6 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -15,7 +14,6 @@ export class DeviceRemoveUseCase implements IAppUseCase<
     constructor(
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly deviceService: DeviceService
     ) {}
 
@@ -42,8 +40,6 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                 metadata,
             }),
         ];
-
-        await this.sessionQueue.purgeLogins(userId, revokedSessions);
 
         this.activityLogService.stagePrepared(activityLogs);
 

@@ -29,7 +29,7 @@ import type {
     INotificationWorkspaceJoinRejectedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import { EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationEmailQueue', () => {

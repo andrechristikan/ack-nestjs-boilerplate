@@ -28,13 +28,14 @@ import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notif
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
-import { QueueException } from '@queues/exceptions/queue.exception';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
 @QueueProcessor(EnumNotificationQueue.notificationPush, {
     limiter: {
@@ -47,6 +48,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
+        protected readonly outboxService: OutboxService,
         private readonly notificationPushProcessNewDeviceLoginUseCase: NotificationPushProcessNewDeviceLoginUseCase,
         private readonly notificationPushProcessResetTwoFactorByAdminUseCase: NotificationPushProcessResetTwoFactorByAdminUseCase,
         private readonly notificationPushProcessTemporaryPasswordByAdminUseCase: NotificationPushProcessTemporaryPasswordByAdminUseCase,
@@ -59,7 +61,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         private readonly notificationPushProcessCleanupTokensUseCase: NotificationPushProcessCleanupTokensUseCase,
         private readonly notificationPushProcessCleanupStaleTokensUseCase: NotificationPushProcessCleanupStaleTokensUseCase
     ) {
-        super(sentryService, messageService, cacheService);
+        super(sentryService, messageService, cacheService, outboxService);
     }
 
     protected async handle(

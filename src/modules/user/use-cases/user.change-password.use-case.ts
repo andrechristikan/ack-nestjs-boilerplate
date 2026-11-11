@@ -1,4 +1,4 @@
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -11,7 +11,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -41,10 +40,9 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService
+        private readonly outboxService: OutboxService
     ) {}
 
     /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
@@ -127,8 +125,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             activityLogs.push(verifyTwoFactorActivityLog);
         }
 
-        const { passwordHistoryId, revoked } =
-            await this.databaseService.withTransaction(async tx => {
+        const passwordHistoryId = await this.outboxService.withTransaction(
+            async tx => {
                 await this.userService.updatePasswordInTx(
                     tx,
                     user.id,
@@ -149,13 +147,12 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     tx,
                     user.id
                 );
-                const revoked =
-                    await this.sessionService.revokeActiveByUserInTx(
-                        tx,
-                        user.id,
-                        user.id,
-                        password.passwordCreated
-                    );
+                await this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    user.id,
+                    user.id,
+                    password.passwordCreated
+                );
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
                         tx,
@@ -164,15 +161,13 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     );
                 }
 
-                return { passwordHistoryId: passwordHistory.id, revoked };
-            });
-        await Promise.all([
-            this.sessionQueue.purgeLogins(user.id, revoked),
-            this.notificationQueue.sendChangePassword(
-                recipient,
-                passwordHistoryId
-            ),
-        ]);
+                return passwordHistory.id;
+            }
+        );
+        await this.notificationQueue.sendChangePassword(
+            recipient,
+            passwordHistoryId
+        );
 
         this.activityLogService.stagePrepared(activityLogs);
 

@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
@@ -12,8 +11,12 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
@@ -23,6 +26,10 @@ import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-p
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
+import {
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
     ITermPolicyContent,
@@ -32,25 +39,62 @@ import type {
     ITermPolicyPublish,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus, Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyService {
+    private readonly copyContentIdempotencyKeyPattern: string;
+
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly messageService: MessageService,
-        private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly termPolicyQueue: TermPolicyQueue,
-        private readonly helperArrayService: HelperArrayService
-    ) {}
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperStringService: HelperStringService,
+        private readonly outboxService: OutboxService,
+        private readonly configService: ConfigService
+    ) {
+        this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
+            'termPolicy.idempotencyKey.copyContentPattern'
+        )!;
+    }
+
+    private deleteContentEffect(path: string): IOutboxEffect {
+        return {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.deleteContent,
+            data: { path },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+    }
+
+    private copyContentEffect(
+        payload: ITermPolicyCopyContentPayload
+    ): IOutboxEffect {
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.copyContentIdempotencyKeyPattern,
+            {
+                process: EnumTermPolicyProcess.copyContent,
+                termPolicyId: payload.termPolicyId,
+            }
+        );
+
+        return {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.copyContent,
+            data: payload,
+            priority: EnumQueuePriority.high,
+            idempotencyKey,
+        };
+    }
 
     private validateUniqueLanguages(
         contents: TermPolicyContentRequestDto[]
@@ -198,18 +242,29 @@ export class TermPolicyService {
                 termPolicy.type,
                 termPolicy.version
             );
-            const isDeleted =
-                await this.termPolicyRepository.deleteDraft(termPolicyId);
-            if (!isDeleted) {
-                throw new TermPolicyStatusInvalidException();
-            }
+            await this.outboxService.withTransaction(async tx => {
+                const isDeleted =
+                    await this.termPolicyRepository.deleteDraftInTx(
+                        tx,
+                        termPolicyId
+                    );
+                if (!isDeleted) {
+                    throw new TermPolicyStatusInvalidException();
+                }
 
-            await this.termPolicyQueue.deleteContent(contentPath);
+                const effect = this.deleteContentEffect(contentPath);
+                await this.outboxService.addInTx(tx, effect);
+            });
 
             return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new TermPolicyStatusInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -257,7 +312,7 @@ export class TermPolicyService {
             );
 
             const published =
-                await this.databaseService.withTransaction<TermPolicy>(
+                await this.outboxService.withTransaction<TermPolicy>(
                     async tx => {
                         const isPublished =
                             await this.termPolicyRepository.publishInTx(
@@ -293,14 +348,18 @@ export class TermPolicyService {
                             throw new TermPolicyStatusInvalidException();
                         }
 
+                        const effect = this.copyContentEffect({
+                            termPolicyId,
+                            contents,
+                            destination,
+                        });
+                        await this.outboxService.addInTx(tx, effect);
+
                         return row;
                     }
                 );
 
-            return {
-                termPolicy: published,
-                copy: { termPolicyId, contents, destination },
-            };
+            return { termPolicy: published };
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

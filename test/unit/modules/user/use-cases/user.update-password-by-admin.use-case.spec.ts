@@ -14,7 +14,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -26,7 +26,6 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -47,11 +46,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -140,7 +138,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-01T00:00:00.000Z'
         );
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getRecipient.mockResolvedValue(recipient);
@@ -162,10 +160,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -187,9 +184,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             });
         });
 
-        it('gates the actor rank, writes the password, history, and revoke on one transaction, purges after commit, notifies, and stages both rows', async () => {
+        it('gates the actor rank, writes the password, history, and revoke on one transaction, notifies after commit, and stages both rows', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -218,9 +215,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
 
             await expect(
                 useCase.execute('user-linden', admin)
@@ -272,12 +266,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-linden',
-                revoked
-            );
             expect(
                 notificationQueue.sendTemporaryPasswordByAdmin
             ).toHaveBeenCalledWith(
@@ -315,7 +304,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'rank'
             );
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the recipient read rejects', async () => {
@@ -326,19 +315,17 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             await expect(useCase.execute('user-linden', admin)).rejects.toThrow(
                 'read'
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('purges, notifies, and stages nothing when the transaction fails', async () => {
+        it('notifies and stages nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(useCase.execute('user-linden', admin)).rejects.toBe(
                 cause
             );
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendTemporaryPasswordByAdmin
             ).not.toHaveBeenCalled();

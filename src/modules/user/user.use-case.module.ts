@@ -3,7 +3,6 @@ import { DeviceModule } from '@modules/device/device.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { ProjectModule } from '@modules/project/project.module';
-import { UserProcessor } from '@modules/user/processors/user.processor';
 import { UserModule } from '@modules/user/user.module';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
@@ -89,7 +88,6 @@ import { Module } from '@nestjs/common';
         UserSendVerificationEmailUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessLockoutUseCase,
-        UserProcessor,
     ],
     exports: [
         UserLoginWithSocialUseCase,

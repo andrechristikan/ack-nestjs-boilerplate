@@ -166,13 +166,14 @@ export class SessionRepository implements ISessionRepository {
         return count > 0;
     }
 
-    async revoke(
+    async revokeByAdminInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<boolean> {
-        const { count } = await this.databaseService.client.session.updateMany({
+    ): Promise<ISession | null> {
+        const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,
                 userId,
@@ -184,55 +185,21 @@ export class SessionRepository implements ISessionRepository {
                 revokedById: revokedBy,
             },
         });
+        if (count === 0) {
+            return null;
+        }
 
-        return count > 0;
-    }
-
-    async revokeByAdmin(
-        userId: string,
-        sessionId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<ISession | null> {
-        return this.databaseService.withTransaction(async tx => {
-            const { count } = await tx.session.updateMany({
-                where: {
-                    id: sessionId,
-                    userId,
-                    isRevoked: false,
+        return tx.session.findFirst({
+            where: { id: sessionId, userId },
+            include: {
+                user: {
+                    select: UserRefSelect,
                 },
-                data: {
-                    isRevoked: true,
-                    revokedAt,
-                    revokedById: revokedBy,
+                revokedBy: {
+                    select: UserRefSelect,
                 },
-            });
-            if (count === 0) {
-                return null;
-            }
-
-            return tx.session.findFirst({
-                where: { id: sessionId, userId },
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                    revokedBy: {
-                        select: UserRefSelect,
-                    },
-                },
-            });
+            },
         });
-    }
-
-    async revokeActiveByUser(
-        userId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<ISessionRef[]> {
-        return this.databaseService.withTransaction(async tx =>
-            this.revokeActiveByUserInTx(tx, userId, revokedBy, revokedAt)
-        );
     }
 
     async revokeActiveByUserInTx(

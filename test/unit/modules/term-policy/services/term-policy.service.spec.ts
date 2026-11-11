@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -16,13 +17,16 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
@@ -39,13 +43,16 @@ import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/excep
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import {
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
-import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 
@@ -55,11 +62,16 @@ describe('TermPolicyService', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
     const helperArrayService: MockProxy<HelperArrayService> =
         mock<HelperArrayService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const configGet = vi.fn<(key: string) => string | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -117,8 +129,8 @@ describe('TermPolicyService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        configGet.mockReturnValue('{process}-{termPolicyId}');
         awsS3Service.isInitialized.mockReturnValue(true);
-        termPolicyQueue.deleteContent.mockResolvedValue();
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
         termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
         termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
@@ -134,10 +146,11 @@ describe('TermPolicyService', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: MessageService, useValue: messageService },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 { provide: HelperArrayService, useValue: helperArrayService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
 
@@ -601,6 +614,39 @@ describe('TermPolicyService', () => {
     });
 
     describe('deleteByAdmin', () => {
+        const deleteContentEffect: IOutboxEffect = {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.deleteContent,
+            data: { path: 'term-policies/privacy/1' },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+
+        it('deletes the draft and adds the content delete row on one outbox tx', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
+
+            const result = await service.deleteByAdmin('term-policy-1');
+
+            expect(result).toBe(draftTermPolicy);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(termPolicyRepository.deleteDraftInTx).toHaveBeenCalledWith(
+                tx,
+                'term-policy-1'
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                deleteContentEffect
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.deleteDraftInTx
+            );
+        });
+
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 
@@ -637,14 +683,17 @@ describe('TermPolicyService', () => {
             });
         });
 
-        it('throws TermPolicyStatusInvalidException and enqueues nothing when the guarded delete removes no row', async () => {
+        it('throws TermPolicyStatusInvalidException and adds no row when the guarded delete removes no row', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.deleteDraft.mockResolvedValue(false);
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue(false);
 
-            const promise = service.deleteByAdmin('term-policy-1');
-
-            await expect(promise).rejects.toMatchObject({
+            await expect(
+                service.deleteByAdmin('term-policy-1')
+            ).rejects.toMatchObject({
                 constructor: TermPolicyStatusInvalidException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
@@ -654,64 +703,63 @@ describe('TermPolicyService', () => {
                     ],
                 messagePath: 'termPolicy.error.statusInvalid',
             });
-            expect(termPolicyQueue.deleteContent).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('deletes the draft term policy and enqueues the content delete', async () => {
+        it('throws TermPolicyStatusInvalidException when the delete transaction hits a write conflict', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.deleteDraft.mockResolvedValue(true);
-
-            const result = await service.deleteByAdmin('term-policy-1');
-
-            expect(result).toBe(draftTermPolicy);
-            expect(termPolicyRepository.deleteDraft).toHaveBeenCalledWith(
-                'term-policy-1'
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'write conflict',
+                { code: 'P2034', clientVersion: 'test' }
             );
-            expect(termPolicyQueue.deleteContent).toHaveBeenCalledWith(
-                'term-policies/privacy/1'
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
             );
+
+            await expect(
+                service.deleteByAdmin('term-policy-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'termPolicy.error.statusInvalid',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('does not call S3 in the request', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.deleteDraft.mockResolvedValue(true);
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
 
             await service.deleteByAdmin('term-policy-1');
 
             expect(awsS3Service.deleteDir).not.toHaveBeenCalled();
         });
 
-        it('enqueues the content delete after the repository delete resolves', async () => {
-            const calls: string[] = [];
+        it('adds no row when the guarded delete rejects', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.deleteDraft.mockImplementation(async () => {
-                calls.push('delete');
-
-                return true;
-            });
-            termPolicyQueue.deleteContent.mockImplementation(async () => {
-                calls.push('enqueue');
-            });
-
-            await service.deleteByAdmin('term-policy-1');
-
-            expect(calls).toEqual(['delete', 'enqueue']);
-        });
-
-        it('enqueues nothing when the repository delete rejects', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
-            termPolicyRepository.deleteDraft.mockRejectedValue(
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            termPolicyRepository.deleteDraftInTx.mockRejectedValue(
                 new Error('delete failed')
             );
 
             await expect(
                 service.deleteByAdmin('term-policy-1')
             ).rejects.toBeInstanceOf(AppUnknownException);
-            expect(termPolicyQueue.deleteContent).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while deleting', async () => {
@@ -736,11 +784,33 @@ describe('TermPolicyService', () => {
             });
         });
 
+        it('wraps a mapped database error that is not a write conflict in AppUnknownException', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
+            const cause = new Prisma.PrismaClientKnownRequestError(
+                'unavailable',
+                { code: 'P2024', clientVersion: 'test' }
+            );
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseUnavailableException()
+            );
+
+            await expect(
+                service.deleteByAdmin('term-policy-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: cause,
+            });
+        });
+
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getPath.mockReturnValue('term-policies/privacy/1');
             const cause = new Error('delete failed');
-            termPolicyRepository.deleteDraft.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.deleteByAdmin('term-policy-1')
@@ -783,8 +853,8 @@ describe('TermPolicyService', () => {
                     'public/term-policies/privacy/1'
                 );
                 awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-                databaseService.withTransaction.mockImplementation(async fn =>
-                    fn(tx)
+                outboxService.withTransaction.mockImplementation(
+                    async fn => fn(tx) as never
                 );
                 termPolicyRepository.publishInTx.mockResolvedValue(true);
                 termPolicyRepository.findOneByIdInTx.mockResolvedValue(
@@ -851,7 +921,7 @@ describe('TermPolicyService', () => {
                     messagePath: 'termPolicy.error.statusInvalid',
                 });
                 expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
             });
 
             it('throws TermPolicyStatusInvalidException for an archived policy before any S3 or write', async () => {
@@ -867,7 +937,7 @@ describe('TermPolicyService', () => {
                     statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 });
                 expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
             });
 
             it('throws TermPolicyStatusInvalidException when publishInTx loses the race', async () => {
@@ -892,7 +962,7 @@ describe('TermPolicyService', () => {
 
             it('wraps a failure after the archive in AppUnknownException', async () => {
                 const cause = new Error('commit failed');
-                databaseService.withTransaction.mockImplementation(async fn => {
+                outboxService.withTransaction.mockImplementation(async fn => {
                     await fn(tx);
 
                     throw cause;
@@ -914,17 +984,59 @@ describe('TermPolicyService', () => {
                 ).toHaveBeenCalled();
             });
 
-            it('publishes the public keys, archives the earlier published versions, and returns the row with the copy payload', async () => {
-                const result = await service.publishByAdmin('term-policy-1');
-
-                expect(result).toEqual({
-                    termPolicy: publishedTermPolicy,
-                    copy: {
+            it('adds the content copy row keyed by the term policy on the publish tx after the guards', async () => {
+                const copyContentEffect: IOutboxEffect = {
+                    queue: EnumTermPolicyQueue.termPolicy,
+                    name: EnumTermPolicyProcess.copyContent,
+                    data: {
                         termPolicyId: 'term-policy-1',
                         contents: [contentEn],
                         destination: 'public/term-policies/privacy/1',
                     },
-                });
+                    priority: EnumQueuePriority.high,
+                    idempotencyKey: 'copyContent-term-policy-1',
+                };
+                helperStringService.fillPattern.mockReturnValue(
+                    'copyContent-term-policy-1'
+                );
+
+                await service.publishByAdmin('term-policy-1');
+
+                expect(configGet).toHaveBeenCalledWith(
+                    'termPolicy.idempotencyKey.copyContentPattern'
+                );
+                expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                    '{process}-{termPolicyId}',
+                    {
+                        process: EnumTermPolicyProcess.copyContent,
+                        termPolicyId: 'term-policy-1',
+                    }
+                );
+                expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+                expect(outboxService.addInTx).toHaveBeenCalledWith(
+                    tx,
+                    copyContentEffect
+                );
+                expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                    termPolicyRepository.existsNewerPublishedInTx
+                );
+            });
+
+            it('adds no row when a newer version of the type is already published', async () => {
+                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
+                    true
+                );
+
+                await expect(
+                    service.publishByAdmin('term-policy-1')
+                ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
+                expect(outboxService.addInTx).not.toHaveBeenCalled();
+            });
+
+            it('publishes the public keys, archives the earlier published versions, and returns the row', async () => {
+                const result = await service.publishByAdmin('term-policy-1');
+
+                expect(result).toEqual({ termPolicy: publishedTermPolicy });
                 expect(
                     termPolicyUtil.getContentPublicPath
                 ).toHaveBeenCalledWith(EnumTermPolicyType.privacy, 1);
@@ -945,12 +1057,11 @@ describe('TermPolicyService', () => {
                 ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
             });
 
-            it('calls no S3 copy or enqueue while publishing', async () => {
+            it('calls no S3 copy while publishing', async () => {
                 await service.publishByAdmin('term-policy-1');
 
                 expect(awsS3Service.copyItems).not.toHaveBeenCalled();
                 expect(awsS3Service.copyItem).not.toHaveBeenCalled();
-                expect(termPolicyQueue.copyContent).not.toHaveBeenCalled();
             });
         });
 
@@ -1011,7 +1122,7 @@ describe('TermPolicyService', () => {
                 messagePath: 'aws.error.s3NotConfigured',
             });
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
                 termPolicyRepository.archivePublishedByTypeInTx
             ).not.toHaveBeenCalled();
@@ -1027,7 +1138,7 @@ describe('TermPolicyService', () => {
                 'write conflict',
                 { code: 'P2034', clientVersion: 'test' }
             );
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -1057,7 +1168,7 @@ describe('TermPolicyService', () => {
                 code: 'P2002',
                 clientVersion: 'test',
             });
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
@@ -1079,7 +1190,7 @@ describe('TermPolicyService', () => {
                 'unavailable',
                 { code: 'P2024', clientVersion: 'test' }
             );
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseUnavailableException()
             );
@@ -1100,8 +1211,8 @@ describe('TermPolicyService', () => {
                 'public/term-policies/privacy/1'
             );
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
             );
             termPolicyRepository.publishInTx.mockResolvedValue(true);
             termPolicyRepository.findOneByIdInTx.mockResolvedValue(null);
@@ -1152,7 +1263,7 @@ describe('TermPolicyService', () => {
             );
             awsS3Service.mapPresign.mockReturnValue(publicEnItem);
             const cause = new Error('transaction failed');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.publishByAdmin('term-policy-1')

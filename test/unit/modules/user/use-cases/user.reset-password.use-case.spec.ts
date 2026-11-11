@@ -20,7 +20,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -35,7 +35,6 @@ import type { INotificationRecipient } from '@modules/notification/interfaces/no
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -68,11 +67,10 @@ describe('UserResetPasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserResetPasswordUseCase;
@@ -185,7 +183,7 @@ describe('UserResetPasswordUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getRecipient.mockResolvedValue(recipient);
@@ -216,10 +214,9 @@ describe('UserResetPasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -247,9 +244,9 @@ describe('UserResetPasswordUseCase', () => {
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('checks the history, hashes, writes on one transaction, purges after commit, notifies, and stages', async () => {
+        it('checks the history, hashes, writes on one transaction, notifies after commit, and stages', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -283,9 +280,6 @@ describe('UserResetPasswordUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
 
             await expect(useCase.execute(dto)).resolves.toEqual({});
 
@@ -352,12 +346,7 @@ describe('UserResetPasswordUseCase', () => {
                 'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-linden',
-                revoked
-            );
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
                 recipient,
                 'forgot-linden'
@@ -506,7 +495,7 @@ describe('UserResetPasswordUseCase', () => {
             );
             expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks and writes nothing when the reset lookup rejects', async () => {
@@ -515,7 +504,7 @@ describe('UserResetPasswordUseCase', () => {
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the history check rejects', async () => {
@@ -523,7 +512,7 @@ describe('UserResetPasswordUseCase', () => {
             passwordHistoryService.assertNew.mockRejectedValue(failure);
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
         });
 
@@ -533,22 +522,20 @@ describe('UserResetPasswordUseCase', () => {
             );
 
             await expect(useCase.execute(dto)).rejects.toThrow('read');
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('rethrows a typed exception the transaction raises', async () => {
             const failure = new UserTokenInvalidException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
             const conflict = new Error('write conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -559,20 +546,18 @@ describe('UserResetPasswordUseCase', () => {
                 messagePath: 'user.error.verificationTokenInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendResetPassword).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(useCase.execute(dto)).rejects.toMatchObject({
                 rawError: cause,
             });
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
         });
     });
 });

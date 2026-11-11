@@ -1,4 +1,4 @@
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 
 /** @public */
 export class NotificationEmailDeliveryUnknownException extends QueueException {

@@ -15,6 +15,7 @@ export interface IConfigQueue {
         activityLogBackoffDelayInMs: number;
         termPolicyBackoffDelayInMs: number;
         userBackoffDelayInMs: number;
+        outboxBackoffDelayInMs: number;
     };
 }
 
@@ -32,5 +33,6 @@ export default registerAs('queue', (): IConfigQueue => ({
         activityLogBackoffDelayInMs: ms('10s'),
         termPolicyBackoffDelayInMs: ms('10s'),
         userBackoffDelayInMs: ms('10s'),
+        outboxBackoffDelayInMs: ms('10s'),
     },
 }));

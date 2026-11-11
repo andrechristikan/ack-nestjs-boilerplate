@@ -16,7 +16,7 @@ import { EnumNotificationProcess } from '@modules/notification/enums/notificatio
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type { INotificationTermPolicyBatchRecipientEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { MessageService } from '@common/message/services/message.service';
 

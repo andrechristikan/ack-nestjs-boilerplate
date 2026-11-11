@@ -18,7 +18,6 @@ import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-f
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISession } from '@modules/session/interfaces/session.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
 
@@ -27,7 +26,6 @@ describe('SessionRevokeByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
@@ -148,7 +146,6 @@ describe('SessionRevokeByAdminUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -156,7 +153,7 @@ describe('SessionRevokeByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('checks rank, revokes, purges and stages the actor row alone when the admin revokes their own session', async () => {
+        it('checks rank, revokes, and stages the actor row alone when the admin revokes their own session', async () => {
             roleService.getOneByUserId.mockResolvedValue(superAdminRole);
             helperDateService.create.mockReturnValue(revokedAt);
             sessionService.revokeByAdmin.mockResolvedValue(session);
@@ -189,9 +186,6 @@ describe('SessionRevokeByAdminUseCase', () => {
                 'root-1',
                 revokedAt
             );
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith('root-1', [
-                { id: 'session-1' },
-            ]);
             expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 actorActivityLog,
@@ -257,11 +251,10 @@ describe('SessionRevokeByAdminUseCase', () => {
 
             await expect(rejection).rejects.toBe(rankForbidden);
             expect(sessionService.revokeByAdmin).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('purges and stages nothing when the domain throws', async () => {
+        it('stages nothing when the domain throws', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(revokedAt);
             const failure = new SessionNotFoundException();
@@ -270,7 +263,6 @@ describe('SessionRevokeByAdminUseCase', () => {
             const rejection = useCase.execute('user-1', 'session-1', admin);
 
             await expect(rejection).rejects.toBe(failure);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

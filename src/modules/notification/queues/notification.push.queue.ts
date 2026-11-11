@@ -21,9 +21,9 @@ import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { QueueBase } from '@queues/bases/queue.base';
+import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import { EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 @Injectable()
 export class NotificationPushQueue extends QueueBase implements OnModuleInit {

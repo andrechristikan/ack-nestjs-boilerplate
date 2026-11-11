@@ -7,7 +7,7 @@ import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { LoggerHttpMethodPrefixRegex } from '@common/logger/constants/logger.constant';
 import { SentryUtil } from '@common/sentry/utils/sentry.util';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 
 const appConfigs = appConfigFunction();
 const loggerConfigs = loggerConfigFunction();

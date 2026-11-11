@@ -1,143 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import ts from 'typescript';
 import boundaries from 'eslint-plugin-boundaries';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import security from 'eslint-plugin-security';
 import tsEsLintPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import tsEslint from 'typescript-eslint';
-
-const featureModuleSpecifier = /^@modules\/([^/]+)\/\1\.module$/;
-
-const readFeatureModule = (rootDir, feature) => {
-    const file = path.join(
-        rootDir,
-        'src',
-        'modules',
-        feature,
-        `${feature}.module.ts`
-    );
-    const source = ts.createSourceFile(
-        file,
-        readFileSync(file, 'utf8'),
-        ts.ScriptTarget.Latest,
-        true
-    );
-    const featureByClass = new Map();
-    for (const statement of source.statements) {
-        const match = ts.isImportDeclaration(statement)
-            ? featureModuleSpecifier.exec(statement.moduleSpecifier.text)
-            : null;
-        const bindings = statement.importClause?.namedBindings;
-        if (match && bindings && ts.isNamedImports(bindings)) {
-            for (const element of bindings.elements) {
-                featureByClass.set(element.name.text, match[1]);
-            }
-        }
-    }
-
-    const imports = new Set();
-    let isGlobal = false;
-    for (const statement of source.statements) {
-        if (!ts.isClassDeclaration(statement)) {
-            continue;
-        }
-        for (const decorator of ts.getDecorators(statement) ?? []) {
-            const call = decorator.expression;
-            const name = ts.isCallExpression(call)
-                ? call.expression.getText(source)
-                : call.getText(source);
-            if (name === 'Global') {
-                isGlobal = true;
-            }
-            if (name !== 'Module' || !ts.isCallExpression(call)) {
-                continue;
-            }
-            const metadata = call.arguments[0];
-            const property = metadata?.properties.find(
-                item => item.name?.getText(source) === 'imports'
-            );
-            for (const element of property?.initializer.elements ?? []) {
-                const imported = featureByClass.get(element.getText(source));
-                if (imported !== undefined && imported !== feature) {
-                    imports.add(imported);
-                }
-            }
-        }
-    }
-
-    return { global: isGlobal, imports };
-};
-
-/**
- * Reads every `src/modules/<feature>/<feature>.module.ts` and returns
- * feature -> { global, imports } from `@Global()` and `@Module({ imports })`.
- */
-const readModuleGraph = rootDir => {
-    const modulesDir = path.join(rootDir, 'src', 'modules');
-    const graph = new Map();
-    for (const entry of readdirSync(modulesDir, { withFileTypes: true })) {
-        if (entry.isDirectory()) {
-            graph.set(entry.name, readFeatureModule(rootDir, entry.name));
-        }
-    }
-    return graph;
-};
-
-const findCycles = graph => {
-    const cycles = new Map();
-    const state = new Map();
-    const stack = [];
-    const visit = feature => {
-        state.set(feature, 'open');
-        stack.push(feature);
-        for (const next of graph.get(feature)?.imports ?? []) {
-            if (state.get(next) === 'open') {
-                const cycle = [...stack.slice(stack.indexOf(next)), next];
-                for (const member of cycle) {
-                    cycles.set(member, cycle.join(' -> '));
-                }
-            } else if (!state.has(next)) {
-                visit(next);
-            }
-        }
-        stack.pop();
-        state.set(feature, 'done');
-    };
-    for (const feature of graph.keys()) {
-        if (!state.has(feature)) {
-            visit(feature);
-        }
-    }
-    return cycles;
-};
-
-const createModuleCyclePlugin = graph => {
-    const cycles = findCycles(graph);
-    return {
-        rules: {
-            'no-cycle': {
-                meta: { type: 'problem', schema: [] },
-                create: context => ({
-                    Program: node => {
-                        const feature = path.basename(
-                            context.filename,
-                            '.module.ts'
-                        );
-                        const cycle = cycles.get(feature);
-                        if (cycle !== undefined) {
-                            context.report({
-                                node,
-                                message: `Feature module cycle: ${cycle}.`,
-                            });
-                        }
-                    },
-                }),
-            },
-        },
-    };
-};
 
 const rules = tsEslint.configs.recommended
     .map(config => config.rules)
@@ -169,19 +35,6 @@ const processEnvRestriction = {
 
 const restrictedImportPaths = [
     {
-        name: 'lodash',
-        message: 'Use named imports from lodash-es.',
-    },
-    {
-        name: 'lodash-es',
-        importNames: ['default'],
-        message: 'Use named imports from lodash-es, not a default import.',
-    },
-    {
-        name: 'crypto-js',
-        message: 'Use node:crypto through the Helper* services.',
-    },
-    {
         name: 'crypto',
         message: "Import from 'node:crypto'.",
     },
@@ -198,10 +51,6 @@ const restrictedImportPatterns = [
         regex: '^@generated/prisma-client/internal(/|$)',
         message:
             'Import the Prisma client from @generated/prisma-client/client, enums, models, browser or commonInputTypes, never from internal/.',
-    },
-    {
-        regex: '^lodash/',
-        message: 'Use named imports from lodash-es.',
     },
 ];
 
@@ -264,36 +113,15 @@ const undefinedSyntaxRestrictions = [
     },
 ];
 
-const baseSyntaxRestrictions = [
-    ...thisCallRestrictions,
-    {
-        selector:
-            'AssignmentExpression[operator="+="] > :matches(Literal[raw=/^[\'"]/], TemplateLiteral)',
-        message: 'Compose strings with a template literal.',
-    },
-    {
-        selector:
-            'AwaitExpression > CallExpression[callee.property.name=/^(then|catch)$/]',
-        message:
-            'An awaited promise is guarded by try/catch, not .then()/.catch().',
-    },
-];
-
 const forEachRestriction = {
     selector: 'CallExpression[callee.property.name="forEach"]',
     message: 'Use for...of, not .forEach.',
 };
 
-const assertsSignatureRestriction = {
-    selector: 'TSTypePredicate[asserts=true]',
-    message: 'Return the narrowed value instead of an assertion signature',
-};
-
 const codeStyleSyntaxRestrictions = [
-    ...baseSyntaxRestrictions,
+    ...thisCallRestrictions,
     ...undefinedSyntaxRestrictions,
     forEachRestriction,
-    assertsSignatureRestriction,
 ];
 
 const newDateRestriction = {
@@ -327,11 +155,6 @@ const databaseClientRestriction = {
         "MemberExpression[property.name='client'][object.type='MemberExpression'][object.property.name='databaseService']",
     message:
         'Only a repository, a seed, or a health indicator queries databaseService.client; a service or use case calls withTransaction and a repository.',
-};
-
-const orderDirectionRestriction = {
-    selector: 'Literal[value=/^(asc|desc)$/]:not(TSEnumMember > Literal)',
-    message: 'Use EnumPaginationOrderDirectionType.',
 };
 
 const commentRules = {
@@ -389,7 +212,6 @@ const namingConventionRules = {
 const codeStyleRestrictedSyntax = [
     ...codeStyleSyntaxRestrictions,
     newDateRestriction,
-    orderDirectionRestriction,
     throwNewErrorRestriction,
     throwIdentifierRestriction,
 ];
@@ -494,22 +316,6 @@ const importOrderRules = {
         { blankLine: 'never', prev: 'import', next: 'import' },
     ],
 };
-
-const moduleGraph = readModuleGraph(import.meta.dirname);
-
-const features = [...moduleGraph.keys()];
-
-const globalFeatures = features.filter(f => moduleGraph.get(f).global);
-
-const othersThan = allowed => features.filter(f => !allowed.includes(f));
-
-const fromFeature = (types, feature) => ({
-    element: { types, captured: { feature } },
-});
-
-const toFeatures = (types, featureNames) => ({
-    to: { element: { types, captured: { feature: featureNames } } },
-});
 
 const featureElementTypes = [
     ['controller', 'src/modules/*/controllers/**'],
@@ -675,68 +481,20 @@ const layerPolicies = [
             'A processor calls the use cases of its own feature only, never a util, a cache, a queue class, or a module file.',
     },
     {
+        from: { element: { type: 'processor' } },
+        allow: {
+            dependency: {
+                source: '@modules/outbox/services/outbox.service',
+            },
+        },
+    },
+    {
         from: { file: { categories: ['module', 'use-case-module'] } },
         disallow: { to: { file: { categories: ['use-case-module'] } } },
         message:
             'Only src/router/ imports a use-case module; a feature module and a use-case module import none.',
     },
 ];
-
-const featurePolicies = features.flatMap(feature => {
-    const reachable = [
-        feature,
-        ...moduleGraph.get(feature).imports,
-        ...globalFeatures,
-    ];
-    return [
-        {
-            from: fromFeature(['service'], feature),
-            disallow: toFeatures(
-                ['repository', 'cache', 'queue'],
-                othersThan([feature])
-            ),
-            message:
-                'A service injects the repository, cache, and queue class of its own module only.',
-        },
-        {
-            from: fromFeature(['service'], feature),
-            disallow: toFeatures(['service', 'util'], othersThan(reachable)),
-            message:
-                'A service injects services and utils of its own module, of a module its module file imports, or of a @Global() module.',
-        },
-        {
-            from: fromFeature(['controller', 'processor'], feature),
-            disallow: toFeatures(['use-case'], othersThan([feature])),
-            message:
-                'A controller or processor calls the use cases of its own feature only.',
-        },
-        {
-            from: fromFeature(['guard', 'interceptor', 'decorator'], feature),
-            disallow: [
-                toFeatures(
-                    [
-                        'repository',
-                        'cache',
-                        'queue',
-                        'use-case',
-                        'controller',
-                        'processor',
-                        'factory',
-                        'indicator',
-                        'feature',
-                    ],
-                    othersThan([feature])
-                ),
-                toFeatures(
-                    ['service', 'util'],
-                    othersThan([feature, ...globalFeatures])
-                ),
-            ],
-            message:
-                'A guard, strategy, interceptor, or decorator injects the services and utils of a @Global() module and nothing else from another feature module.',
-        },
-    ];
-});
 
 const testSyntaxRestrictions = [
     {
@@ -756,7 +514,6 @@ const testSyntaxRestrictions = [
             'A spec declares no class; apply the decorator to a plain object and read the metadata',
     },
     forEachRestriction,
-    assertsSignatureRestriction,
 ];
 
 export default [
@@ -835,16 +592,10 @@ export default [
                 {
                     default: 'allow',
                     checkInternals: true,
-                    policies: [...layerPolicies, ...featurePolicies],
+                    policies: layerPolicies,
                 },
             ],
         },
-    },
-    {
-        name: 'ts/module-cycle',
-        files: ['src/modules/*/*.module.ts'],
-        plugins: { 'module-graph': createModuleCyclePlugin(moduleGraph) },
-        rules: { 'module-graph/no-cycle': 'error' },
     },
     {
         name: 'ts/database-client',

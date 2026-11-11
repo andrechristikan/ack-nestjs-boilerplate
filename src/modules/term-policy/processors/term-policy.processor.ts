@@ -7,13 +7,14 @@ import type {
 import { TermPolicyProcessCopyContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-copy-content.use-case';
 import { TermPolicyProcessDeleteContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-delete-content.use-case';
 import { Job } from 'bullmq';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
-import { QueueException } from '@queues/exceptions/queue.exception';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
 @QueueProcessor(EnumTermPolicyQueue.termPolicy)
 export class TermPolicyProcessor extends QueueProcessorBase {
@@ -21,31 +22,25 @@ export class TermPolicyProcessor extends QueueProcessorBase {
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
+        protected readonly outboxService: OutboxService,
         private readonly termPolicyProcessDeleteContentUseCase: TermPolicyProcessDeleteContentUseCase,
         private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase
     ) {
-        super(sentryService, messageService, cacheService);
+        super(sentryService, messageService, cacheService, outboxService);
     }
 
     protected async handle(
-        job: Job<unknown, IQueueResponse, EnumTermPolicyProcess>
+        job: Job<unknown, IQueueResponse, EnumTermPolicyProcess>,
+        data: unknown
     ): Promise<IQueueResponse> {
         switch (job.name) {
             case EnumTermPolicyProcess.deleteContent:
                 return await this.termPolicyProcessDeleteContentUseCase.execute(
-                    job as Job<
-                        ITermPolicyDeleteContentPayload,
-                        IQueueResponse,
-                        EnumTermPolicyProcess
-                    >
+                    data as ITermPolicyDeleteContentPayload
                 );
             case EnumTermPolicyProcess.copyContent:
                 return await this.termPolicyProcessCopyContentUseCase.execute(
-                    job as Job<
-                        ITermPolicyCopyContentPayload,
-                        IQueueResponse,
-                        EnumTermPolicyProcess
-                    >
+                    data as ITermPolicyCopyContentPayload
                 );
             default: {
                 const message = this.messageService.setMessage(

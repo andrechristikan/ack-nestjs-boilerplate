@@ -4,7 +4,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { DeviceService } from '@modules/device/services/device.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -18,7 +17,6 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
         private readonly roleService: RoleService,
-        private readonly sessionQueue: SessionQueue,
         private readonly deviceService: DeviceService
     ) {}
 
@@ -63,8 +61,6 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
             });
             activityLogs.push(targetActivityLog);
         }
-
-        await this.sessionQueue.purgeLogins(userId, revokedSessions);
 
         this.activityLogService.stagePrepared(activityLogs);
 

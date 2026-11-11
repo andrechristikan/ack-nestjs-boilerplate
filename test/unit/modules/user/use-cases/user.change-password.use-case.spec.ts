@@ -18,7 +18,7 @@ import type {
     User,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
@@ -33,7 +33,6 @@ import type { INotificationRecipient } from '@modules/notification/interfaces/no
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -70,11 +69,10 @@ describe('UserChangePasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserChangePasswordUseCase;
 
@@ -181,7 +179,7 @@ describe('UserChangePasswordUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getRecipient.mockResolvedValue(recipient);
@@ -213,10 +211,9 @@ describe('UserChangePasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
         useCase = module.get(UserChangePasswordUseCase);
@@ -260,7 +257,7 @@ describe('UserChangePasswordUseCase', () => {
                     return passwordAttempt;
                 }
             );
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -271,9 +268,9 @@ describe('UserChangePasswordUseCase', () => {
             ).toHaveBeenCalledTimes(1);
         });
 
-        it('verifies the old password and history, hashes, writes on one transaction, purges after commit, notifies, and stages the row', async () => {
+        it('verifies the old password and history, hashes, writes on one transaction, notifies after commit, and stages the row', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -302,9 +299,6 @@ describe('UserChangePasswordUseCase', () => {
                     return revoked;
                 }
             );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
 
             await expect(useCase.execute(user, dto)).resolves.toEqual({});
 
@@ -322,7 +316,6 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userAuthService.assertPasswordAttempt
             ).toHaveBeenCalledBefore(passwordHistoryService.assertNew);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledTimes(1);
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
@@ -371,12 +364,7 @@ describe('UserChangePasswordUseCase', () => {
                 'markUnusedResetsUsed',
                 'revokeSessions',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-linden',
-                revoked
-            );
             expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
                 recipient,
                 'history-linden'
@@ -401,7 +389,7 @@ describe('UserChangePasswordUseCase', () => {
                 userAuthService.assertPasswordAttempt
             ).not.toHaveBeenCalled();
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
@@ -429,7 +417,7 @@ describe('UserChangePasswordUseCase', () => {
                 null
             );
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('rejects an expired password after a match', async () => {
@@ -439,7 +427,7 @@ describe('UserChangePasswordUseCase', () => {
             await expect(useCase.execute(user, dto)).rejects.toBe(failure);
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('verifies two-factor, records the verification on the transaction, and stages the verify row when two-factor is enabled', async () => {
@@ -529,8 +517,7 @@ describe('UserChangePasswordUseCase', () => {
                     method: EnumAuthTwoFactorMethod.code,
                 })
             ).rejects.toBe(failure);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws the method-required exception without counting an attempt', async () => {
@@ -558,7 +545,7 @@ describe('UserChangePasswordUseCase', () => {
             );
             expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('stages both lockout rows after the spent count and throws AuthTwoFactorAttemptMaxException when the two-factor budget is spent', async () => {
@@ -627,8 +614,7 @@ describe('UserChangePasswordUseCase', () => {
                 userTwoFactorService.assertAttemptCounted
             ).toHaveBeenCalledWith(false);
             expect(calls).toEqual(['stage', 'countAttempt', 'stage', 'assert']);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
         });
@@ -639,7 +625,7 @@ describe('UserChangePasswordUseCase', () => {
 
             await expect(useCase.execute(user, dto)).rejects.toBe(failure);
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordNotMatchException on a wrong password under the max and keeps the attempt', async () => {
@@ -659,7 +645,7 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userPasswordService.resetPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
@@ -729,8 +715,7 @@ describe('UserChangePasswordUseCase', () => {
                 activityLog,
             ]);
             expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
                 spent,
                 'old-password'
@@ -745,16 +730,14 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(useCase.execute(user, dto)).rejects.toThrow('read');
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('purges, notifies, and stages nothing when the transaction fails', async () => {
+        it('notifies and stages nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(useCase.execute(user, dto)).rejects.toBe(cause);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendChangePassword).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared

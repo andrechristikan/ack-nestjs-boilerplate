@@ -11,6 +11,7 @@ import {
 import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
@@ -34,11 +35,13 @@ import type {
     IUserTwoFactorVerifyInput,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 @Injectable()
 export class UserTwoFactorService {
@@ -50,7 +53,7 @@ export class UserTwoFactorService {
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly sentryService: SentryService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly userQueue: UserQueue,
+        private readonly outboxService: OutboxService,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
@@ -165,6 +168,46 @@ export class UserTwoFactorService {
         ];
     }
 
+    private async incrementAttempt(userId: string): Promise<boolean> {
+        try {
+            return await this.outboxService.withTransaction(async tx => {
+                const isCounted =
+                    await this.userTwoFactorRepository.incrementAttemptInTx(
+                        tx,
+                        userId,
+                        this.maxAttempt
+                    );
+                if (!isCounted) {
+                    const effect = this.lockoutEffect(userId);
+                    await this.outboxService.addInTx(tx, effect);
+                }
+
+                return isCounted;
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new AuthTwoFactorAttemptMaxException();
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    lockoutEffect(userId: string): IOutboxEffect {
+        return {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.lockout,
+            data: { userId },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
+    }
+
     async getOneForLoginVerify(userId: string): Promise<IUser> {
         const user = await this.getOneEnabledForLogin(userId);
         if (user.twoFactor?.requiredSetup) {
@@ -190,20 +233,16 @@ export class UserTwoFactorService {
         return { user, pendingSecret };
     }
 
-    /** Counts one two-factor attempt before the code is checked and enqueues the lockout job when the budget is spent; isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise. */
+    /** Counts one two-factor attempt before the code is checked and, when the budget is spent, adds the lockout row in the count's transaction; isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise; a write conflict throws AuthTwoFactorAttemptMaxException. */
     async countAttempt(user: IUser): Promise<IUserTwoFactorAttempt> {
-        const attempt = await this.userTwoFactorRepository.incrementAttempt(
-            user.id,
-            this.maxAttempt
-        );
-        if (attempt === null) {
-            await this.userQueue.lockout(user.id);
+        const isAttemptCounted = await this.incrementAttempt(user.id);
+        if (!isAttemptCounted) {
             const lockoutStages = this.buildTwoFactorLockoutStages(user.id);
 
-            return { isAttemptCounted: false, lockoutStages };
+            return { isAttemptCounted, lockoutStages };
         }
 
-        return { isAttemptCounted: true, lockoutStages: [] };
+        return { isAttemptCounted, lockoutStages: [] };
     }
 
     assertAttemptCounted(isAttemptCounted: boolean): void {

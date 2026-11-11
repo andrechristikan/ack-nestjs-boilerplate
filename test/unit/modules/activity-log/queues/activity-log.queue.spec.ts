@@ -17,7 +17,7 @@ import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumActivityLogQueue } from '@modules/activity-log/enums/activity-log.enum';
-import { EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 describe('ActivityLogQueue', () => {

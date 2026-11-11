@@ -22,7 +22,7 @@ import type {
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { NotificationPushProcessNewDeviceLoginUseCase } from '@modules/notification/use-cases/notification.push.process-new-device-login.use-case';
 
 describe('NotificationPushProcessNewDeviceLoginUseCase', () => {

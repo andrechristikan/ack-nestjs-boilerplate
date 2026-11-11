@@ -2,18 +2,15 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
@@ -52,9 +49,8 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly userProfileService: UserProfileService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
@@ -129,71 +125,68 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         await this.assertPasswordMatched(user, password ?? null);
 
         const now = this.helperDateService.create();
-        let deleted: User;
-        let revoked: ISessionRef[];
         let workspaceIds: string[];
         try {
-            ({ deleted, revoked, workspaceIds } =
-                await this.databaseService.withTransaction(
-                    async tx => {
-                        await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
+            workspaceIds = await this.outboxService.withTransaction(
+                async tx => {
+                    await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
+                        tx,
+                        userId
+                    );
+                    const ownedIds =
+                        await this.workspaceService.softDeleteOwnedByUserInTx(
                             tx,
-                            userId
-                        );
-                        const ownedIds =
-                            await this.workspaceService.softDeleteOwnedByUserInTx(
-                                tx,
-                                userId,
-                                now
-                            );
-                        await this.cascadeDeletedWorkspacesInTx(
-                            tx,
-                            ownedIds,
                             userId,
                             now
                         );
-                        await this.workspaceJoinRequestService.cancelPendingByRequesterInTx(
-                            tx,
-                            userId
-                        );
-                        await this.workspaceInviteService.revokeAllPendingByEmailInTx(
-                            tx,
-                            user.email
-                        );
-                        await this.workspaceMemberService.removeByUserInTx(
-                            tx,
-                            userId
-                        );
-                        await this.projectMemberService.removeByUserInTx(
-                            tx,
-                            userId
-                        );
-                        await this.userMobileNumberService.removeByUserInTx(
-                            tx,
-                            userId
-                        );
-                        await this.userTwoFactorService.removeInTx(tx, userId);
-                        const sessions =
-                            await this.sessionService.revokeAllByUserInTx(
-                                tx,
-                                userId,
-                                userId,
-                                now
-                            );
-                        const row = await this.userService.deleteSelfInTx(
-                            tx,
-                            user,
-                            now
-                        );
+                    await this.cascadeDeletedWorkspacesInTx(
+                        tx,
+                        ownedIds,
+                        userId,
+                        now
+                    );
+                    await this.workspaceJoinRequestService.cancelPendingByRequesterInTx(
+                        tx,
+                        userId
+                    );
+                    await this.workspaceInviteService.revokeAllPendingByEmailInTx(
+                        tx,
+                        user.email
+                    );
+                    await this.workspaceMemberService.removeByUserInTx(
+                        tx,
+                        userId
+                    );
+                    await this.projectMemberService.removeByUserInTx(
+                        tx,
+                        userId
+                    );
+                    await this.userMobileNumberService.removeByUserInTx(
+                        tx,
+                        userId
+                    );
+                    await this.userTwoFactorService.removeInTx(tx, userId);
+                    await this.sessionService.revokeAllByUserInTx(
+                        tx,
+                        userId,
+                        userId,
+                        now
+                    );
+                    const deleted = await this.userService.deleteSelfInTx(
+                        tx,
+                        user,
+                        now
+                    );
+                    await this.userProfileService.deleteOwnedPhotoInTx(
+                        tx,
+                        userId,
+                        deleted.photo
+                    );
 
-                        return {
-                            deleted: row,
-                            revoked: sessions,
-                            workspaceIds: ownedIds,
-                        };
-                    },
-                    { timeout: this.deleteSelfTimeoutInMs }
-                ));
+                    return ownedIds;
+                },
+                { timeout: this.deleteSelfTimeoutInMs }
+            );
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -206,11 +199,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        await Promise.all([
-            this.sessionQueue.purgeLogins(userId, revoked),
-            this.userProfileService.deleteOwnedPhoto(userId, deleted.photo),
-        ]);
 
         const workspaceActivityLogs = workspaceIds.map(workspaceId =>
             this.activityLogService.prepare({

@@ -1,5 +1,4 @@
 import { NotificationModule } from '@modules/notification/notification.module';
-import { TermPolicyProcessor } from '@modules/term-policy/processors/term-policy.processor';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
 import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
@@ -38,7 +37,6 @@ import { Module } from '@nestjs/common';
         TermPolicyResendEmailByAdminUseCase,
         TermPolicyProcessDeleteContentUseCase,
         TermPolicyProcessCopyContentUseCase,
-        TermPolicyProcessor,
     ],
     exports: [
         TermPolicyGetListUserAcceptedUseCase,

@@ -13,7 +13,8 @@ import { RedisModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
-import { QueueModule } from '@queues/queue.module';
+import { QueueModule } from '@common/queue/queue.module';
+import { OutboxModule } from '@modules/outbox/outbox.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
@@ -60,6 +61,7 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         PolicyModule,
         TermPolicyModule,
         SessionModule,
+        OutboxModule,
     ],
 })
 export class CommonModule {}

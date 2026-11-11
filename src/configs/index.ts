@@ -25,6 +25,7 @@ import WorkspaceConfig from '@configs/workspace.config';
 import ProjectConfig from '@configs/project.config';
 import AnalyticConfig from '@configs/analytic.config';
 import ActivityLogConfig from '@configs/activity-log.config';
+import OutboxConfig from '@configs/outbox.config';
 
 export default [
     AppConfig,
@@ -54,4 +55,5 @@ export default [
     ProjectConfig,
     AnalyticConfig,
     ActivityLogConfig,
+    OutboxConfig,
 ];

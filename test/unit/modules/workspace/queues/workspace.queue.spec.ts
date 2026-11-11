@@ -8,7 +8,7 @@ import type { Queue } from 'bullmq';
 import { CacheService } from '@common/cache/services/cache.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
-import { EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { MessageService } from '@common/message/services/message.service';

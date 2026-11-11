@@ -14,12 +14,11 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -47,12 +46,11 @@ import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -131,7 +129,7 @@ describe('UserDeleteSelfUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -140,10 +138,9 @@ describe('UserDeleteSelfUseCase', () => {
                 UserDeleteSelfUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: UserPasswordService, useValue: userPasswordService },
@@ -245,12 +242,12 @@ describe('UserDeleteSelfUseCase', () => {
             expect(
                 userPasswordService.countPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('verifies the password, cascades the owned workspaces and every membership on one transaction, purges after commit, and stages the revoke-all row before the delete row', async () => {
+        it('verifies the password, cascades the owned workspaces and every membership on one transaction and stages the revoke-all row before the delete row after commit', async () => {
             const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -338,9 +335,11 @@ describe('UserDeleteSelfUseCase', () => {
 
                 return { ...baseUser, photo: null };
             });
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
+            userProfileService.deleteOwnedPhotoInTx.mockImplementation(
+                async () => {
+                    calls.push('deletePhotoRow');
+                }
+            );
 
             await expect(useCase.execute(baseUser, dto)).resolves.toEqual({});
 
@@ -405,17 +404,12 @@ describe('UserDeleteSelfUseCase', () => {
                 'removeTwoFactor',
                 'revokeSessions',
                 'deleteUser',
+                'deletePhotoRow',
                 'commit',
-                'purge',
             ]);
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-cinder',
-                revoked
-            );
-            expect(userProfileService.deleteOwnedPhoto).toHaveBeenCalledWith(
-                'user-cinder',
-                null
-            );
+            expect(
+                userProfileService.deleteOwnedPhotoInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder', null);
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-cinder',
@@ -445,7 +439,6 @@ describe('UserDeleteSelfUseCase', () => {
             ).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
             expect(databaseUtil.toException).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
@@ -494,7 +487,7 @@ describe('UserDeleteSelfUseCase', () => {
         it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
             await useCase.execute(baseUser, dto);
 
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 30000 }
             );
@@ -502,7 +495,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('answers UserNotFoundException on a write conflict', async () => {
             const conflict = new Error('write-conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
@@ -514,21 +507,17 @@ describe('UserDeleteSelfUseCase', () => {
             });
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
-        it('stages one workspaceDeleted row per deleted workspace after the purge', async () => {
+        it('stages one workspaceDeleted row per deleted workspace after the commit', async () => {
             const calls: string[] = [];
             workspaceService.softDeleteOwnedByUserInTx.mockResolvedValueOnce([
                 'workspace-one',
                 'workspace-two',
             ]);
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
-            });
             activityLogService.prepare.mockImplementation(input => {
                 calls.push(`prepare:${input.action}`);
 
@@ -556,7 +545,6 @@ describe('UserDeleteSelfUseCase', () => {
                 `prepare:${EnumActivityLogAction.userRevokeAllSessions}`,
                 `prepare:${EnumActivityLogAction.userDeleteSelf}`,
                 'stage',
-                'purge',
                 `prepare:${EnumActivityLogAction.workspaceDeleted}`,
                 `prepare:${EnumActivityLogAction.workspaceDeleted}`,
                 'stage',
@@ -626,7 +614,7 @@ describe('UserDeleteSelfUseCase', () => {
                 counted,
                 null
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('rejects an expired password after a match', async () => {
@@ -635,7 +623,7 @@ describe('UserDeleteSelfUseCase', () => {
 
             await expect(useCase.execute(baseUser, dto)).rejects.toBe(failure);
 
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
         });
 
@@ -649,8 +637,7 @@ describe('UserDeleteSelfUseCase', () => {
                 counted,
                 'plain-password'
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
@@ -711,8 +698,7 @@ describe('UserDeleteSelfUseCase', () => {
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([activityLog, activityLog]);
             expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
                 spent,
                 'plain-password'
@@ -723,7 +709,7 @@ describe('UserDeleteSelfUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('hands the stored photo to the profile domain', async () => {
+        it('hands the stored photo to the profile domain on the same tx', async () => {
             userService.deleteSelfInTx.mockResolvedValue({
                 ...baseUser,
                 photo,
@@ -731,23 +717,23 @@ describe('UserDeleteSelfUseCase', () => {
 
             await useCase.execute(baseUser, dto);
 
-            expect(userProfileService.deleteOwnedPhoto).toHaveBeenCalledWith(
-                'user-cinder',
-                photo
-            );
+            expect(
+                userProfileService.deleteOwnedPhotoInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder', photo);
         });
 
         it('wraps an unknown error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(useCase.execute(baseUser, dto)).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
-            expect(userProfileService.deleteOwnedPhoto).not.toHaveBeenCalled();
+            expect(
+                userProfileService.deleteOwnedPhotoInTx
+            ).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);

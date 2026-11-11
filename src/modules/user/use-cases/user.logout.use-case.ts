@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -10,7 +10,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -23,8 +22,7 @@ export class UserLogoutUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -41,7 +39,7 @@ export class UserLogoutUseCase implements IAppUseCase<
         ];
         const now = this.helperDateService.create();
         try {
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 await this.sessionService.revokeInTx(
                     tx,
                     userId,
@@ -69,8 +67,6 @@ export class UserLogoutUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        await this.sessionQueue.purgeLogins(userId, [{ id: sessionId }]);
 
         this.activityLogService.stagePrepared(logoutLogs);
 

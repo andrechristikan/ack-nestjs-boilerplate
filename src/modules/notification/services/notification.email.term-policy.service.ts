@@ -15,7 +15,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { QueueException } from '@queues/exceptions/queue.exception';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()

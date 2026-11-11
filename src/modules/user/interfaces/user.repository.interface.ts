@@ -88,7 +88,11 @@ export interface IUserRepository {
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<User>;
-    updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User>;
+    updatePhotoProfileInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        photo: IAwsS3
+    ): Promise<User>;
     deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -116,10 +120,11 @@ export interface IUserRepository {
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
     ): Promise<User>;
-    incrementPasswordAttempt(
+    incrementPasswordAttemptInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         maxAttempt: number
-    ): Promise<number | null>;
+    ): Promise<boolean>;
     resetPasswordAttempt(userId: string): Promise<User>;
     deactivateForMaxAttemptInTx(
         tx: IDatabaseTransactionClient,

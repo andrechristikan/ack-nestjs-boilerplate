@@ -7,7 +7,7 @@ import type {
     INotificationEmailQueuePayload,
     INotificationEmailResult,
 } from '@modules/notification/interfaces/notification.interface';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { NotificationEmailProcessWorkspaceJoinAcceptedUseCase } from '@modules/notification/use-cases/notification.email.process-workspace-join-accepted.use-case';
 

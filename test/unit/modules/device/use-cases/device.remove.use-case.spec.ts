@@ -11,7 +11,6 @@ import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activi
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 
@@ -19,7 +18,6 @@ describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const deviceOwnership: IDeviceOwnership = {
@@ -76,7 +74,6 @@ describe('DeviceRemoveUseCase', () => {
                 DeviceRemoveUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionQueue, useValue: sessionQueue },
                 { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
@@ -99,17 +96,10 @@ describe('DeviceRemoveUseCase', () => {
             workspaceId: null,
         };
 
-        it('removes the ownership as the owner, purges after the removal, and stages the owner activity', async () => {
-            const calls: string[] = [];
-            sessionService.removeDeviceOwnership.mockImplementation(
-                async () => {
-                    calls.push('remove');
-
-                    return { deviceOwnership, revokedSessions };
-                }
-            );
-            sessionQueue.purgeLogins.mockImplementation(async () => {
-                calls.push('purge');
+        it('removes the ownership as the owner and stages the owner activity', async () => {
+            sessionService.removeDeviceOwnership.mockResolvedValue({
+                deviceOwnership,
+                revokedSessions,
             });
             deviceService.mapActivityLogMetadata.mockReturnValue(metadata);
             activityLogService.prepare.mockReturnValue(activityLog);
@@ -125,7 +115,6 @@ describe('DeviceRemoveUseCase', () => {
                 'device-ownership-1',
                 'user-1'
             );
-            expect(calls).toEqual(['remove', 'purge']);
             expect(deviceService.mapActivityLogMetadata).toHaveBeenCalledWith(
                 deviceOwnership,
                 1
@@ -136,23 +125,18 @@ describe('DeviceRemoveUseCase', () => {
                 createdBy: 'user-1',
                 metadata,
             });
-            expect(sessionQueue.purgeLogins).toHaveBeenCalledWith(
-                'user-1',
-                revokedSessions
-            );
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
         });
 
-        it('purges and stages nothing when the removal throws', async () => {
+        it('stages nothing when the removal throws', async () => {
             const notFound = new DeviceNotFoundException();
             sessionService.removeDeviceOwnership.mockRejectedValue(notFound);
 
             await expect(
                 useCase.execute('user-1', 'device-ownership-1')
             ).rejects.toBe(notFound);
-            expect(sessionQueue.purgeLogins).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

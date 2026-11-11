@@ -686,6 +686,30 @@ model ProjectMember {
   @@map("ProjectMembers")
 }
 
+model Outbox {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  queue          String
+  name           String
+  data           Json
+  priority       Int
+  idempotencyKey String
+  status         EnumOutboxStatus
+  attempts       Int              @default(0)
+  lastError      String?
+  enqueuedAt     DateTime?
+  completedAt    DateTime?
+  failedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@index(fields: [status, createdAt])
+  @@unique(fields: [queue, name, idempotencyKey])
+  @@map("Outboxes")
+}
+
 type UserPhoto {
   bucket       String
   key          String
@@ -1030,4 +1054,11 @@ enum EnumProjectMemberRole {
   admin
   member
   viewer
+}
+
+enum EnumOutboxStatus {
+  pending
+  enqueued
+  completed
+  failed
 }

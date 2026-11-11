@@ -1,8 +1,5 @@
 import { DeviceModule } from '@modules/device/device.module';
 import { NotificationModule } from '@modules/notification/notification.module';
-import { NotificationEmailProcessor } from '@modules/notification/processors/notification.email.processor';
-import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
-import { NotificationPushProcessor } from '@modules/notification/processors/notification.push.processor';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
 import { NotificationGetListUserSettingUseCase } from '@modules/notification/use-cases/notification.get-list-user-setting.use-case';
 import { NotificationMarkAsReadUseCase } from '@modules/notification/use-cases/notification.mark-as-read.use-case';
@@ -113,9 +110,6 @@ import { Module } from '@nestjs/common';
         NotificationPushProcessWorkspaceJoinRejectedUseCase,
         NotificationPushProcessCleanupTokensUseCase,
         NotificationPushProcessCleanupStaleTokensUseCase,
-        NotificationProcessor,
-        NotificationEmailProcessor,
-        NotificationPushProcessor,
     ],
     exports: [
         NotificationGetListCursorUseCase,

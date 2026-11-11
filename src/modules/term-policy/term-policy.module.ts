@@ -1,7 +1,6 @@
 import { AwsModule } from '@common/aws/aws.module';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyQueueFactory } from '@modules/term-policy/factories/term-policy.queue.factory';
-import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
 import { TermPolicyAnalyticRepository } from '@modules/term-policy/repositories/term-policy.analytic.repository';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -28,7 +27,6 @@ import { Global, Module } from '@nestjs/common';
         TermPolicyUtil,
         TermPolicyAnalyticService,
         TermPolicyAcceptanceAnalyticService,
-        TermPolicyQueue,
     ],
     exports: [
         TermPolicyService,
@@ -37,7 +35,6 @@ import { Global, Module } from '@nestjs/common';
         TermPolicyUtil,
         TermPolicyAnalyticService,
         TermPolicyAcceptanceAnalyticService,
-        TermPolicyQueue,
     ],
     imports: [
         AwsModule,

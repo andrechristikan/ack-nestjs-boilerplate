@@ -54,23 +54,13 @@ export interface ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<boolean>;
-    revoke(
-        userId: string,
-        sessionId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<boolean>;
-    revokeByAdmin(
+    revokeByAdminInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISession | null>;
-    revokeActiveByUser(
-        userId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<ISessionRef[]>;
     revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

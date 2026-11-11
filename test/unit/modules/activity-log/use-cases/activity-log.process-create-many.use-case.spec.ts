@@ -7,9 +7,7 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { EnumActivityLogProcess } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interfaces/activity-log.interface';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';
 import { ActivityLogProcessCreateManyUseCase } from '@modules/activity-log/use-cases/activity-log.process-create-many.use-case';
 
@@ -70,13 +68,8 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
     describe('execute', () => {
         it('passes the rows with a date createdAt to the domain and reports the count', async () => {
             helperDateService.createFromIso.mockReturnValue(createdAt);
-            const job = buildQueueJob<
-                IActivityLogCreateManyPayload,
-                unknown,
-                EnumActivityLogProcess
-            >(payload);
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(helperDateService.createFromIso).toHaveBeenCalledWith(
                 '2026-01-01T00:00:00.000Z'
@@ -94,13 +87,8 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
             const failure = new Error('database down');
             helperDateService.createFromIso.mockReturnValue(createdAt);
             activityLogService.createMany.mockRejectedValue(failure);
-            const job = buildQueueJob<
-                IActivityLogCreateManyPayload,
-                unknown,
-                EnumActivityLogProcess
-            >(payload);
 
-            const rejection = useCase.execute(job);
+            const rejection = useCase.execute(payload);
 
             await expect(rejection).rejects.toBe(failure);
         });

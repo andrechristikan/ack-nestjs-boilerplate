@@ -33,9 +33,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { QueueBase } from '@queues/bases/queue.base';
+import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
-import { EnumQueuePriority } from '@queues/enums/queue.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()

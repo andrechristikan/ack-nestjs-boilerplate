@@ -1,4 +1,4 @@
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -8,7 +8,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -28,10 +27,9 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -68,23 +66,19 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
             EnumNotificationKind.resetTwoFactorByAdmin
         );
         const now = this.helperDateService.create();
-        const revoked = await this.databaseService.withTransaction(async tx => {
+        await this.outboxService.withTransaction(async tx => {
             await this.userTwoFactorService.resetByAdminInTx(tx, userId);
-
-            return this.sessionService.revokeActiveByUserInTx(
+            await this.sessionService.revokeActiveByUserInTx(
                 tx,
                 userId,
                 user.id,
                 now
             );
         });
-        await Promise.all([
-            this.sessionQueue.purgeLogins(userId, revoked),
-            this.notificationQueue.sendResetTwoFactorByAdmin(
-                recipient,
-                user.id
-            ),
-        ]);
+        await this.notificationQueue.sendResetTwoFactorByAdmin(
+            recipient,
+            user.id
+        );
 
         this.activityLogService.stagePrepared(activityLogs);
 

@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotFound } from '@aws-sdk/client-s3';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
@@ -16,6 +17,7 @@ import type {
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
@@ -28,11 +30,13 @@ import type {
     IUserUpdatePhotoProfile,
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
-import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 @Injectable()
 export class UserProfileService {
@@ -46,8 +50,8 @@ export class UserProfileService {
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly userQueue: UserQueue,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly outboxService: OutboxService,
         private readonly configService: ConfigService
     ) {
         this.photoFilenameRandomLength = this.configService.get<number>(
@@ -75,7 +79,18 @@ export class UserProfileService {
         return size <= this.photoMaxSizeInBytes;
     }
 
-    private async deletePreviousPhoto(
+    private deletePhotoEffect(userId: string, photo: UserPhoto): IOutboxEffect {
+        return {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.deletePhoto,
+            data: { userId, key: photo.key, access: photo.access },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+    }
+
+    private async deletePreviousPhotoInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         previousPhoto: UserPhoto | null,
         currentKey: string
@@ -84,11 +99,28 @@ export class UserProfileService {
             return;
         }
 
-        await this.deleteOwnedPhoto(userId, previousPhoto);
+        await this.deleteOwnedPhotoInTx(tx, userId, previousPhoto);
     }
 
-    /** Enqueues the photo delete; does nothing when the photo is null or not under the profile path of the user. */
-    async deleteOwnedPhoto(
+    private async replacePhotoProfile(
+        userId: string,
+        previousPhoto: UserPhoto | null,
+        photo: IAwsS3
+    ): Promise<void> {
+        await this.outboxService.withTransaction(async tx => {
+            await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
+            await this.deletePreviousPhotoInTx(
+                tx,
+                userId,
+                previousPhoto,
+                photo.key
+            );
+        });
+    }
+
+    /** Adds the photo delete row on the caller's transaction; adds nothing when the photo is null or not under the profile path of the user. */
+    async deleteOwnedPhotoInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         photo: UserPhoto | null
     ): Promise<void> {
@@ -101,7 +133,8 @@ export class UserProfileService {
             return;
         }
 
-        await this.userQueue.deletePhoto(userId, photo);
+        const effect = this.deletePhotoEffect(userId, photo);
+        await this.outboxService.addInTx(tx, effect);
     }
 
     createRandomFilenamePhotoProfileWithPath(
@@ -216,9 +249,7 @@ export class UserProfileService {
                 throw new UserNotFoundException();
             }
 
-            await this.userRepository.updatePhotoProfile(userId, aws);
-
-            await this.deletePreviousPhoto(userId, user.photo, aws.key);
+            await this.replacePhotoProfile(userId, user.photo, aws);
 
             return;
         } catch (err: unknown) {
@@ -279,9 +310,7 @@ export class UserProfileService {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            await this.userRepository.updatePhotoProfile(userId, aws);
-
-            await this.deletePreviousPhoto(userId, user.photo, aws.key);
+            await this.replacePhotoProfile(userId, user.photo, aws);
 
             return;
         } catch (err: unknown) {

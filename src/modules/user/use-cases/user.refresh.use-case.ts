@@ -14,7 +14,6 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUserLoginRefresh } from '@modules/user/interfaces/user.login.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -31,7 +30,6 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly authJwtService: AuthJwtService,
         private readonly activityLogService: ActivityLogService,
-        private readonly sessionQueue: SessionQueue,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -144,12 +142,8 @@ export class UserRefreshUseCase implements IAppUseCase<
             user,
             refreshToken
         );
-        if (tokens === null) {
-            await this.sessionQueue.purgeLogins(user.id, revoked);
-
-            if (revoked.length > 0) {
-                this.activityLogService.stagePrepared(reuseLogs);
-            }
+        if (revoked.length > 0) {
+            this.activityLogService.stagePrepared(reuseLogs);
         }
 
         const refreshed = this.sessionService.getRefreshedTokens(tokens);

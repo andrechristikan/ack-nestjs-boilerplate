@@ -23,9 +23,6 @@ export interface IConfigUser {
         emailPattern: string;
         usernamePattern: string;
     };
-    jobId: {
-        deletePhotoPattern: string;
-    };
 }
 
 export default registerAs('user', (): IConfigUser => ({
@@ -48,8 +45,5 @@ export default registerAs('user', (): IConfigUser => ({
         timeoutInMs: ms('30s'),
         emailPattern: 'deleted.{id}.{email}',
         usernamePattern: 'deleted.{id}.{username}',
-    },
-    jobId: {
-        deletePhotoPattern: '{process}-{nonce}',
     },
 }));
