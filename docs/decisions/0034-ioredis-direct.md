@@ -20,4 +20,4 @@ Every Redis connection is an ioredis client `RedisModule.forRoot()` creates. `Ca
 ## Consequences
 
 - One connection-error classifier, `CacheService.isConnectionError`, covers ioredis messages, error names, and socket codes.
-- Every cache class is a thin typed wrapper over `readThrough` and `invalidate`, with no try/catch of its own, and passes unprefixed keys (`cache.md`).
+- A read-through cache class holds key builders, public TTLs, and `delete<Subject>` (one `invalidate` call), and its service calls `CacheService.readThrough` with unprefixed keys; `SessionCache` and `AuthCache` write on the cache client directly (`cache.md`, Class shape).
