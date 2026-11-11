@@ -516,6 +516,28 @@ describe('DatabaseExtensionFactory', () => {
                 factory['stampCreate']('ApiKey', 'not-a-payload', 'actor-1')
             ).not.toThrow();
         });
+
+        it('stamps the top-level payload and leaves every relation write verb untouched', () => {
+            const relations = {
+                policies: { create: { name: 'nested' } },
+                users: {
+                    createMany: { data: [{ name: 'many' }] },
+                    connectOrCreate: [{ create: { name: 'coc' } }],
+                    upsert: [
+                        { create: { name: 'uc' }, update: { name: 'uu' } },
+                    ],
+                },
+            };
+            const payload: IDatabaseData = structuredClone(relations);
+
+            factory['stampCreate']('Role', payload, 'actor-1');
+
+            expect(payload).toEqual({
+                ...relations,
+                createdBy: 'actor-1',
+                updatedBy: 'actor-1',
+            });
+        });
     });
 
     describe('stampUpdate', () => {
@@ -550,115 +572,22 @@ describe('DatabaseExtensionFactory', () => {
 
             expect(payload).toEqual({ name: 'a' });
         });
-    });
 
-    describe('stampRelations', () => {
-        it('does nothing when no model is given', () => {
-            expect(() =>
-                factory['stampRelations'](null, { user: {} }, 'actor-1')
-            ).not.toThrow();
-        });
-
-        it('does nothing when the model has no relations', () => {
-            const payload: IDatabaseData = { name: 'a' };
-
-            factory['stampRelations']('ApiKey', payload, 'actor-1');
-
-            expect(payload).toEqual({ name: 'a' });
-        });
-
-        it('recurses into a write-payload relation field and skips a non-payload one', () => {
-            const payload: IDatabaseData = {
-                user: { create: { name: 'nested' } },
-                mobileNumber: 'not-a-payload',
+        it('stamps the top-level updatedBy and leaves every relation write verb untouched', () => {
+            const relations = {
+                policies: {
+                    update: [{ where: { id: '1' }, data: { name: 'u' } }],
+                    updateMany: [{ where: {}, data: { name: 'um' } }],
+                    upsert: [
+                        { create: { name: 'uc' }, update: { name: 'uu' } },
+                    ],
+                },
             };
+            const payload: IDatabaseData = structuredClone(relations);
 
-            factory['stampRelations']('Verification', payload, 'actor-1');
+            factory['stampUpdate']('Role', payload, 'actor-1');
 
-            expect(payload.user).toMatchObject({
-                create: { name: 'nested', createdBy: 'actor-1' },
-            });
-        });
-    });
-
-    describe('stampNestedWrite', () => {
-        it('does nothing on an empty container', () => {
-            const container: IDatabaseData = {};
-
-            expect(() =>
-                factory['stampNestedWrite']('ApiKey', container, 'actor-1')
-            ).not.toThrow();
-        });
-
-        it('stamps every write verb a relation container can hold', () => {
-            const container: IDatabaseData = {
-                create: { name: 'create' },
-                createMany: { data: [{ name: 'createMany' }] },
-                connectOrCreate: [{ create: { name: 'connectOrCreate' } }],
-                upsert: [
-                    {
-                        create: { name: 'upsert-create' },
-                        update: { name: 'upsert-update' },
-                    },
-                ],
-                update: [{ where: { id: '1' }, data: { name: 'to-many' } }],
-                updateMany: [
-                    { where: {}, data: { name: 'update-many-entry' } },
-                ],
-            };
-
-            factory['stampNestedWrite']('ApiKey', container, 'actor-1');
-
-            expect(container.create).toMatchObject({ createdBy: 'actor-1' });
-            expect((container.createMany as IDatabaseData).data).toMatchObject([
-                { createdBy: 'actor-1' },
-            ]);
-            expect(
-                (container.connectOrCreate as IDatabaseData[])[0]!.create
-            ).toMatchObject({ createdBy: 'actor-1' });
-            expect(
-                (container.upsert as IDatabaseData[])[0]!.create
-            ).toMatchObject({ createdBy: 'actor-1' });
-            expect(
-                (container.upsert as IDatabaseData[])[0]!.update
-            ).toMatchObject({ updatedBy: 'actor-1' });
-            expect(
-                (container.update as IDatabaseData[])[0]!.data as IDatabaseData
-            ).toMatchObject({ updatedBy: 'actor-1' });
-            expect(
-                (container.updateMany as IDatabaseData[])[0]!
-                    .data as IDatabaseData
-            ).toMatchObject({ updatedBy: 'actor-1' });
-        });
-
-        it('skips createMany when it is not a write payload', () => {
-            const container: IDatabaseData = { createMany: 'not-a-payload' };
-
-            expect(() =>
-                factory['stampNestedWrite']('ApiKey', container, 'actor-1')
-            ).not.toThrow();
-        });
-    });
-
-    describe('stampNestedUpdateEntry', () => {
-        it('stamps entry.data when the entry is a to-many { where, data } shape', () => {
-            const entry: IDatabaseData = {
-                where: { id: '1' },
-                data: { name: 'a' },
-            };
-
-            factory['stampNestedUpdateEntry']('ApiKey', entry, 'actor-1');
-
-            expect(entry.data).toMatchObject({ updatedBy: 'actor-1' });
-            expect(entry).not.toHaveProperty(EnumDatabaseAuditField.updatedBy);
-        });
-
-        it('stamps the entry itself when it is a to-one update payload', () => {
-            const entry: IDatabaseData = { name: 'a' };
-
-            factory['stampNestedUpdateEntry']('ApiKey', entry, 'actor-1');
-
-            expect(entry).toMatchObject({ updatedBy: 'actor-1' });
+            expect(payload).toEqual({ ...relations, updatedBy: 'actor-1' });
         });
     });
 });

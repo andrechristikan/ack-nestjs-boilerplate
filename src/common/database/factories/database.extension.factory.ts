@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
-import { DatabaseModelRelations } from '@common/database/constants/database.constant';
 import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
 import type { IDatabaseExtension } from '@common/database/interfaces/database.client.interface';
 import type {
     IDatabaseData,
     IDatabaseModelContext,
-    IDatabaseModelRelation,
     IDatabaseRestoreArgs,
+    IDatabaseSoftDeletable,
     IDatabaseSoftDeleteArgs,
+    IDatabaseSoftDeleteResult,
 } from '@common/database/interfaces/database.extension.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
@@ -86,8 +86,6 @@ export class DatabaseExtensionFactory {
             if (hasUpdatedByField && payload.updatedBy == null) {
                 payload.updatedBy = actor;
             }
-
-            this.stampRelations(model, payload, actor);
         }
     }
 
@@ -106,87 +104,7 @@ export class DatabaseExtensionFactory {
             if (hasUpdatedByField && payload.updatedBy == null) {
                 payload.updatedBy = actor;
             }
-
-            this.stampRelations(model, payload, actor);
         }
-    }
-
-    private stampRelations(
-        model: Prisma.ModelName | null,
-        payload: IDatabaseData,
-        actor: string
-    ): void {
-        if (!model) {
-            return;
-        }
-
-        const relations: IDatabaseModelRelation = DatabaseModelRelations[model];
-
-        for (const [field, relatedModel] of Object.entries(relations)) {
-            const value = payload[field];
-            const isPayload = this.isWritePayload(value);
-            if (!isPayload) {
-                continue;
-            }
-
-            this.stampNestedWrite(relatedModel, value, actor);
-        }
-    }
-
-    private stampNestedWrite(
-        model: Prisma.ModelName,
-        container: IDatabaseData,
-        actor: string
-    ): void {
-        this.stampCreate(model, container.create, actor);
-
-        const createMany = container.createMany;
-        const isCreateManyPayload = this.isWritePayload(createMany);
-        if (isCreateManyPayload) {
-            this.stampCreate(model, createMany.data, actor);
-        }
-
-        const connectOrCreatePayloads = this.toWritePayloads(
-            container.connectOrCreate
-        );
-
-        for (const entry of connectOrCreatePayloads) {
-            this.stampCreate(model, entry.create, actor);
-        }
-
-        const upsertPayloads = this.toWritePayloads(container.upsert);
-
-        for (const entry of upsertPayloads) {
-            this.stampCreate(model, entry.create, actor);
-            this.stampUpdate(model, entry.update, actor);
-        }
-
-        const updatePayloads = this.toWritePayloads(container.update);
-
-        for (const entry of updatePayloads) {
-            this.stampNestedUpdateEntry(model, entry, actor);
-        }
-
-        const updateManyPayloads = this.toWritePayloads(container.updateMany);
-
-        for (const entry of updateManyPayloads) {
-            this.stampNestedUpdateEntry(model, entry, actor);
-        }
-    }
-
-    private stampNestedUpdateEntry(
-        model: Prisma.ModelName,
-        entry: IDatabaseData,
-        actor: string
-    ): void {
-        const data = entry.data;
-        const isDataPayload = this.isWritePayload(data);
-        if (isDataPayload) {
-            this.stampUpdate(model, data, actor);
-            return;
-        }
-
-        this.stampUpdate(model, entry, actor);
     }
 
     build(): IDatabaseExtension {
@@ -246,14 +164,14 @@ export class DatabaseExtensionFactory {
                     // Must stay a method, not an arrow: Prisma.getExtensionContext
                     // reads `this` as the model delegate the call was made on.
                     async softDelete<T>(
-                        this: T,
-                        args: IDatabaseSoftDeleteArgs
-                    ): Promise<unknown> {
+                        this: IDatabaseSoftDeletable<T>,
+                        args: IDatabaseSoftDeleteArgs<T>
+                    ): Promise<IDatabaseSoftDeleteResult<T>> {
                         const actor = getActor();
-                        const data = args.data ?? {};
+                        const data: IDatabaseData = args.data ?? {};
                         const context = Prisma.getExtensionContext(
                             this
-                        ) as unknown as IDatabaseModelContext;
+                        ) as unknown as IDatabaseModelContext<T>;
 
                         return context.update({
                             where: args.where,
@@ -266,14 +184,14 @@ export class DatabaseExtensionFactory {
                         });
                     },
                     async restore<T>(
-                        this: T,
-                        args: IDatabaseRestoreArgs
-                    ): Promise<unknown> {
+                        this: IDatabaseSoftDeletable<T>,
+                        args: IDatabaseRestoreArgs<T>
+                    ): Promise<IDatabaseSoftDeleteResult<T>> {
                         const actor = getActor();
-                        const data = args.data ?? {};
+                        const data: IDatabaseData = args.data ?? {};
                         const context = Prisma.getExtensionContext(
                             this
-                        ) as unknown as IDatabaseModelContext;
+                        ) as unknown as IDatabaseModelContext<T>;
 
                         return context.update({
                             where: args.where,

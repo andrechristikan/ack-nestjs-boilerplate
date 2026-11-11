@@ -1,5 +1,6 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
@@ -9,6 +10,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
+import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -23,6 +25,7 @@ import { ResponseSerializationException } from '@common/response/exceptions/resp
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AppGeneralFilter', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -30,6 +33,7 @@ describe('AppGeneralFilter', () => {
         mock<ResponseMetadataService>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const response: MockProxy<Response> = mock<Response>();
     const httpArgumentsHost: MockProxy<
         ReturnType<ArgumentsHost['switchToHttp']>
@@ -71,7 +75,9 @@ describe('AppGeneralFilter', () => {
                 },
                 { provide: SentryService, useValue: sentryService },
                 DatabaseUtil,
+                { provide: ConfigService, useValue: buildConfigService({}) },
                 { provide: CacheService, useValue: cacheService },
+                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
 
@@ -79,6 +85,24 @@ describe('AppGeneralFilter', () => {
     });
 
     describe('catch', () => {
+        const serverSelectionTimeout = new Prisma.PrismaClientKnownRequestError(
+            'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
+            { code: 'P2010', clientVersion: '6.19.0' }
+        );
+        const initializationError = new Prisma.PrismaClientInitializationError(
+            'cannot reach database',
+            '6.19.0'
+        );
+        const databaseUnavailableBody = {
+            statusCode: EnumDatabaseStatusCodeError.unavailable,
+            statusCodeKey:
+                EnumDatabaseStatusCodeError[
+                    EnumDatabaseStatusCodeError.unavailable
+                ],
+            module: 'database',
+            message: 'Internal Server Error',
+        };
+
         it('responds 500 with the app unknown error envelope for an unmapped error', async () => {
             await filter.catch(new Error('boom'), argumentsHost);
 
@@ -190,12 +214,79 @@ describe('AppGeneralFilter', () => {
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
+        it('logs and reports a P2010 server selection timeout first in the database window', async () => {
+            databaseService.isFirstUnavailableInWindow.mockReturnValue(true);
+
+            await filter.catch(serverSelectionTimeout, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...databaseUnavailableBody,
+                metadata,
+            });
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+        });
+
+        it('answers 503 without a report for a P2010 server selection timeout inside the database window', async () => {
+            databaseService.isFirstUnavailableInWindow.mockReturnValue(false);
+
+            await filter.catch(serverSelectionTimeout, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...databaseUnavailableBody,
+                metadata,
+            });
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+        });
+
+        it('logs and reports a PrismaClientInitializationError first in the database window', async () => {
+            databaseService.isFirstUnavailableInWindow.mockReturnValue(true);
+
+            await filter.catch(initializationError, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...databaseUnavailableBody,
+                metadata,
+            });
+            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+        });
+
+        it('answers 503 without a report for a PrismaClientInitializationError inside the database window', async () => {
+            databaseService.isFirstUnavailableInWindow.mockReturnValue(false);
+
+            await filter.catch(initializationError, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...databaseUnavailableBody,
+                metadata,
+            });
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+        });
+
         it('reports every other 5xx without consulting the window', async () => {
             const error = new Error('boom');
 
             await filter.catch(error, argumentsHost);
 
             expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+            expect(
+                databaseService.isFirstUnavailableInWindow
+            ).not.toHaveBeenCalled();
             expect(sentryService.captureException).toHaveBeenCalledWith(error);
         });
 

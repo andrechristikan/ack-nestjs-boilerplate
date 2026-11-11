@@ -385,7 +385,7 @@ export class UserRepository implements IUserRepository {
                 deletedAt,
                 status: EnumUserStatus.inactive,
             },
-        }) as Promise<User>;
+        });
     }
 
     async claimUsername(

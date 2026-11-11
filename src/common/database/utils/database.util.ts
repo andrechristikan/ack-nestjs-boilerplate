@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
 import {
     DatabaseIdInvalidCode,
+    DatabaseRawQueryFailedCode,
     DatabaseTransactionExpiredCode,
     DatabaseUnavailableCodes,
+    DatabaseUnavailableMessages,
     DatabaseUniqueConstraintCode,
     DatabaseUrlCensoredValue,
     DatabaseWriteConflictCode,
@@ -18,6 +21,25 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 
 @Injectable()
 export class DatabaseUtil {
+    private readonly serverSelectionTimeoutInMs: number;
+    private readonly connectTimeoutInMs: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.serverSelectionTimeoutInMs = this.configService.get<number>(
+            'database.serverSelectionTimeoutInMs'
+        )!;
+        this.connectTimeoutInMs = this.configService.get<number>(
+            'database.connectTimeoutInMs'
+        )!;
+    }
+
+    /** Appends the configured server-selection and connect timeouts to a connection url; the caller passes a url that carries neither parameter. */
+    buildClientUrl(url: string): string {
+        const separator = url.includes('?') ? '&' : '?';
+
+        return `${url}${separator}serverSelectionTimeoutMS=${this.serverSelectionTimeoutInMs}&connectTimeoutMS=${this.connectTimeoutInMs}`;
+    }
+
     checkIdIsValid(id: string): boolean {
         return ObjectId.isValid(id);
     }
@@ -78,7 +100,7 @@ export class DatabaseUtil {
         );
     }
 
-    /** Maps a Prisma write conflict, malformed id, expired transaction, or connection failure to its exception; null for any other error. */
+    /** Maps a Prisma write conflict, malformed id, expired transaction, connection failure, or server-selection timeout to its exception; null for any other error. */
     toException(error: unknown): AppBaseException | null {
         if (error instanceof Prisma.PrismaClientInitializationError) {
             return new DatabaseUnavailableException();
@@ -101,6 +123,15 @@ export class DatabaseUtil {
         }
 
         if (DatabaseUnavailableCodes.includes(error.code)) {
+            return new DatabaseUnavailableException();
+        }
+
+        if (
+            error.code === DatabaseRawQueryFailedCode &&
+            DatabaseUnavailableMessages.some(message =>
+                error.message.includes(message)
+            )
+        ) {
             return new DatabaseUnavailableException();
         }
 

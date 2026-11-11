@@ -194,7 +194,7 @@ export class CacheService {
         }
     }
 
-    /** True at most once per key per redis.warnWindowInMs; records the key. */
+    /** True at most once per key per redis.warnWindowInMs; a true call records the key. */
     isFirstInWindow(key: string): boolean {
         const date = this.helperDateService.create();
         const now = date.getTime();

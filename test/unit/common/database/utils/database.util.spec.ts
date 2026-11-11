@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Prisma } from '@generated/prisma-client/client';
@@ -7,6 +8,7 @@ import { DatabaseTransactionExpiredException } from '@common/database/exceptions
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('DatabaseUtil', () => {
     let util: DatabaseUtil;
@@ -15,10 +17,56 @@ describe('DatabaseUtil', () => {
         vi.resetAllMocks();
 
         const module: TestingModule = await Test.createTestingModule({
-            providers: [DatabaseUtil],
+            providers: [
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        'database.serverSelectionTimeoutInMs': 5000,
+                        'database.connectTimeoutInMs': 5000,
+                    }),
+                },
+            ],
         }).compile();
 
         util = module.get(DatabaseUtil);
+    });
+
+    describe('buildClientUrl', () => {
+        it('appends both timeouts with a question mark to a url with no query', () => {
+            expect(util.buildClientUrl('mongodb://h:27017/db')).toBe(
+                'mongodb://h:27017/db?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000'
+            );
+        });
+
+        it('appends both timeouts with an ampersand to a url with a query', () => {
+            expect(
+                util.buildClientUrl('mongodb://h:27017/db?replicaSet=rs0')
+            ).toBe(
+                'mongodb://h:27017/db?replicaSet=rs0&serverSelectionTimeoutMS=5000&connectTimeoutMS=5000'
+            );
+        });
+
+        it('carries the configured server selection and connect timeouts', async () => {
+            const module: TestingModule = await Test.createTestingModule({
+                providers: [
+                    DatabaseUtil,
+                    {
+                        provide: ConfigService,
+                        useValue: buildConfigService({
+                            'database.serverSelectionTimeoutInMs': 1000,
+                            'database.connectTimeoutInMs': 2000,
+                        }),
+                    },
+                ],
+            }).compile();
+
+            expect(
+                module.get(DatabaseUtil).buildClientUrl('mongodb://h:27017/db')
+            ).toBe(
+                'mongodb://h:27017/db?serverSelectionTimeoutMS=1000&connectTimeoutMS=2000'
+            );
+        });
     });
 
     describe('checkIdIsValid', () => {
@@ -210,6 +258,26 @@ describe('DatabaseUtil', () => {
             expect(util.toException(error)).toBeInstanceOf(
                 DatabaseUnavailableException
             );
+        });
+
+        it('maps a P2010 server selection timeout to DatabaseUnavailableException', () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
+                { code: 'P2010', clientVersion: '6.19.0' }
+            );
+
+            expect(util.toException(error)).toBeInstanceOf(
+                DatabaseUnavailableException
+            );
+        });
+
+        it('returns null for a P2010 error that is no server selection timeout', () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Transactions are not supported by this deployment',
+                { code: 'P2010', clientVersion: '6.19.0' }
+            );
+
+            expect(util.toException(error)).toBeNull();
         });
 
         it('returns null for a known request error with an unrelated code', () => {

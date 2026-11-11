@@ -2,7 +2,9 @@ import type { Prisma } from '@generated/prisma-client/client';
 import type * as runtime from '@prisma/client/runtime/library';
 import type {
     IDatabaseRestoreArgs,
+    IDatabaseSoftDeletable,
     IDatabaseSoftDeleteArgs,
+    IDatabaseSoftDeleteResult,
 } from '@common/database/interfaces/database.extension.interface';
 
 export interface IDatabaseClientOptions extends Prisma.PrismaClientOptions {
@@ -11,8 +13,14 @@ export interface IDatabaseClientOptions extends Prisma.PrismaClientOptions {
 
 interface IDatabaseExtensionModel {
     $allModels: {
-        softDelete<T>(this: T, args: IDatabaseSoftDeleteArgs): Promise<unknown>;
-        restore<T>(this: T, args: IDatabaseRestoreArgs): Promise<unknown>;
+        softDelete<T>(
+            this: IDatabaseSoftDeletable<T>,
+            args: IDatabaseSoftDeleteArgs<T>
+        ): Promise<IDatabaseSoftDeleteResult<T>>;
+        restore<T>(
+            this: IDatabaseSoftDeletable<T>,
+            args: IDatabaseRestoreArgs<T>
+        ): Promise<IDatabaseSoftDeleteResult<T>>;
     };
 }
 
@@ -54,4 +62,5 @@ export interface IDatabaseQueryLog {
     model: string | null;
     action: string | null;
     duration: number;
+    isSlow: boolean;
 }

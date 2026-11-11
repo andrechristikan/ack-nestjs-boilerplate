@@ -5,6 +5,7 @@ import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseData } from '@common/database/interfaces/database.extension.interface';
 import type { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -55,9 +56,10 @@ export function extractDatabaseExtension(
 }
 
 export async function createDatabaseService(
-    configValues: Record<string, boolean>,
+    configValues: Record<string, boolean | number>,
     databaseClientFactory: MockProxy<DatabaseClientFactory>,
-    client: MockProxy<IDatabaseClient>
+    client: MockProxy<IDatabaseClient>,
+    helperDateService: MockProxy<HelperDateService>
 ): Promise<DatabaseService> {
     const configService = buildConfigService(configValues);
 
@@ -70,6 +72,7 @@ export async function createDatabaseService(
                 useValue: databaseClientFactory,
             },
             { provide: DatabaseClient, useValue: client },
+            { provide: HelperDateService, useValue: helperDateService },
         ],
     }).compile();
 

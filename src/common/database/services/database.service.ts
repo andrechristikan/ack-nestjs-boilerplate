@@ -9,6 +9,8 @@ import {
     DatabaseQueryTargetRegex,
 } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IDatabaseClient,
     IDatabaseQueryLog,
@@ -20,21 +22,32 @@ import type {
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly isDebugMode: boolean;
+    private readonly slowQueryThresholdInMs: number;
+    private readonly warnWindowInMs: number;
+    private readonly warnedAtByKey: Map<string, number> = new Map();
     readonly client: IDatabaseClient;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly databaseClientFactory: DatabaseClientFactory,
         @Inject(DatabaseClient)
-        private readonly databaseClient: IDatabaseClient
+        private readonly databaseClient: IDatabaseClient,
+        private readonly helperDateService: HelperDateService
     ) {
         this.isDebugMode = this.configService.get<boolean>('database.debug')!;
+        this.slowQueryThresholdInMs = this.configService.get<number>(
+            'database.slowQueryThresholdInMs'
+        )!;
+        this.warnWindowInMs = this.configService.get<number>(
+            'database.warnWindowInMs'
+        )!;
         this.client = this.databaseClient;
     }
 
     private async connect(): Promise<void> {
         try {
             await this.client.$connect();
+            await this.client.$runCommandRaw({ ping: 1 });
             this.logger.log('Successfully connected to the database');
         } catch (error: unknown) {
             throw new AppUnknownException(
@@ -54,8 +67,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async setupLogging(): Promise<void> {
+        this.databaseClientFactory.$on('query', this.logQuery.bind(this));
+
         if (this.isDebugMode) {
-            this.databaseClientFactory.$on('query', this.logQuery.bind(this));
             this.databaseClientFactory.$on('error', this.logError.bind(this));
             this.databaseClientFactory.$on('warn', this.logWarn.bind(this));
             this.databaseClientFactory.$on('info', this.logInfo.bind(this));
@@ -69,13 +83,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             model: match?.[1] ?? null,
             action: match?.[2] ?? null,
             duration: event.duration,
+            isSlow: event.duration >= this.slowQueryThresholdInMs,
         };
     }
 
     private logQuery(event: Prisma.QueryEvent): void {
         const queryLog = this.describeQuery(event);
 
-        this.logger.verbose(queryLog, 'A Prisma query was executed');
+        if (queryLog.isSlow) {
+            this.logger.warn(queryLog, 'A slow Prisma query was executed');
+        } else if (this.isDebugMode) {
+            this.logger.verbose(queryLog, 'A Prisma query was executed');
+        }
     }
 
     private logError(event: Prisma.LogEvent): void {
@@ -116,5 +135,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         options?: IDatabaseTransactionOptions
     ): Promise<T> {
         return this.client.$transaction(async tx => fn(tx), options);
+    }
+
+    /** True at most once per database.warnWindowInMs; a true call records its time. */
+    isFirstUnavailableInWindow(): boolean {
+        const date = this.helperDateService.create();
+        const now = date.getTime();
+        const key = DatabaseUnavailableException.name;
+        const recorded = this.warnedAtByKey.get(key);
+        const recordedAt = recorded ?? null;
+        if (recordedAt !== null && now - recordedAt < this.warnWindowInMs) {
+            return false;
+        }
+
+        this.warnedAtByKey.set(key, now);
+
+        return true;
     }
 }
