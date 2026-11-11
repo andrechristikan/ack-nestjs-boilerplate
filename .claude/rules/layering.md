@@ -1,6 +1,6 @@
 # Layering
 
-One reason to change per role: `Controller → Use case → Service → Repository → DatabaseService`, with `Processor → Use case` on the queue side. New module: `.claude/skills/ack-work/references/add-module.md`. `src/migration/` sits outside this layering (`seeding.md`).
+One reason to change per role: `Controller → Use case → Service → Repository → DatabaseService`, with `Processor → Use case` on the queue side. New module: `.claude/skills/ack-build/references/add-module.md`. `src/migration/` sits outside this layering (`seeding.md`).
 
 ## Roles
 
@@ -42,7 +42,7 @@ Lower and higher come from `imports:`: a module is lower than every module whose
 ## `@Global()`
 
 - A `<Module>Module` carries `@Global()` only when a guard, strategy, interceptor, or decorator injects its classes: `ActivityLogModule`, `ApiKeyModule`, `AuthModule`, `FeatureFlagModule`, `PolicyModule`, `RoleModule`, `SessionModule`, `TermPolicyModule`. A use-case module is never global.
-- In the kit, `RequestThrottleModule` and `QueueModule` (its `forRoot()`, the shared BullMQ config only) carry `@Global()`.
+- In the kit, `RequestThrottleModule`, `RedisModule` (the Redis clients), and `QueueModule` (the shared BullMQ config only) carry `@Global()`.
 - `@Global()` removes the import, never the rank (`cross-module.md`).
 - `src/common/common.module.ts` imports each global module once, and `RequestMiddlewareModule` imports `RequestThrottleModule` into `ThrottlerModule.forRootAsync`; beyond that, no module imports a `@Global()` module except its own use-case module.
 

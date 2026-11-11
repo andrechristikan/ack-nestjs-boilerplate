@@ -774,6 +774,7 @@ export default [
             'src/generated/**',
             'generated/*',
             '.superpowers/*',
+            '.scratch/*',
             'logs/*',
             'keys/*',
             '.warmup/*',

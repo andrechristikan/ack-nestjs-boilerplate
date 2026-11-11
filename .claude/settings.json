@@ -1,7 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/claude-code-settings.json",
     "attribution": { "commit": "", "pr": "", "sessionUrl": false },
-    "plansDirectory": ".superpowers/plans",
+    "plansDirectory": ".scratch/plans",
     "permissions": {
         "defaultMode": "acceptEdits",
         "allow": [
@@ -13,13 +13,11 @@
             "WebFetch",
             "WebSearch",
             "Agent(general-purpose)",
-            "Agent(explorer)",
-            "Agent(planner)",
+            "Agent(Explore)",
             "Agent(coder)",
             "Agent(reviewer)",
             "Agent(writer)",
             "Agent(tester)",
-            "Agent(harness)",
             "Agent(debugger)",
             "Bash"
         ],
@@ -30,6 +28,7 @@
             "Bash(gh pr create:*)",
             "Bash(gh pr edit:*)",
             "Bash(gh pr comment:*)",
+            "Bash(gh issue create:*)",
             "Bash(gh api --method POST:*)",
             "Bash(gh release:*)",
             "Bash(pnpm publish:*)",
@@ -81,54 +80,10 @@
             "Bash(mongosh:*)",
             "Bash(mongo:*)",
             "Bash(redis-cli:*)",
-            "Edit(/docs/superpowers/**)",
             "Read(/.env)",
             "Read(/keys/**)",
             "Read(/generated/vault/**)",
             "Read(/.claude/settings.local.json)",
-            "Skill(caveman:caveman-compress)",
-            "Skill(caveman:caveman-compress *)",
-            "Skill(caveman:caveman-init)",
-            "Skill(caveman:caveman-init *)",
-            "Skill(caveman:caveman-setup)",
-            "Skill(caveman:caveman-setup *)",
-            "Skill(caveman:caveman-discover)",
-            "Skill(caveman:caveman-discover *)",
-            "Skill(caveman:caveman-commit)",
-            "Skill(caveman:caveman-commit *)",
-            "Skill(caveman:lean-build)",
-            "Skill(caveman:lean-build *)",
-            "Skill(caveman:safe-refactor)",
-            "Skill(caveman:safe-refactor *)",
-            "Skill(caveman:migration)",
-            "Skill(caveman:migration *)",
-            "Skill(caveman:surgical-patch)",
-            "Skill(caveman:surgical-patch *)",
-            "Skill(caveman:verify-and-stop)",
-            "Skill(caveman:verify-and-stop *)",
-            "Skill(caveman:investigate-first)",
-            "Skill(caveman:investigate-first *)",
-            "Skill(caveman:caveman-explore)",
-            "Skill(caveman:caveman-explore *)",
-            "Skill(caveman:caveman-review)",
-            "Skill(caveman:caveman-review *)",
-            "Skill(caveman:cavecrew)",
-            "Skill(caveman:cavecrew *)",
-            "Skill(caveman:caveman-learn)",
-            "Skill(caveman:caveman-learn *)",
-            "Skill(caveman:caveman-manage)",
-            "Skill(caveman:caveman-manage *)",
-            "Skill(caveman:caveman-optimize)",
-            "Skill(caveman:caveman-optimize *)",
-            "Skill(caveman:caveman-stats)",
-            "Skill(caveman:caveman-stats *)",
-            "Skill(caveman:caveman-evidence-review)",
-            "Skill(caveman:caveman-evidence-review *)",
-            "Agent(caveman:cavecrew-builder)",
-            "Agent(caveman:cavecrew-investigator)",
-            "Agent(caveman:cavecrew-reviewer)",
-            "Agent(caveman:docs:AGENTS)",
-            "Agent(caveman:docs:CLAUDE)",
             "Monitor",
             "Workflow"
         ],
@@ -136,30 +91,6 @@
     },
     "env": {
         "BASH_DEFAULT_TIMEOUT_MS": "600000"
-    },
-    "extraKnownMarketplaces": {
-        "caveman": {
-            "source": { "source": "github", "repo": "JuliusBrussee/caveman" }
-        },
-        "humanizer": {
-            "source": { "source": "github", "repo": "blader/humanizer" }
-        },
-        "diagram-design": {
-            "source": {
-                "source": "github",
-                "repo": "cathrynlavery/diagram-design"
-            }
-        },
-        "anthropic-agent-skills": {
-            "source": { "source": "github", "repo": "anthropics/skills" }
-        }
-    },
-    "enabledPlugins": {
-        "superpowers@claude-plugins-official": true,
-        "caveman@caveman": true,
-        "humanizer@humanizer": true,
-        "diagram-design@diagram-design": true,
-        "example-skills@anthropic-agent-skills": true
     },
     "hooks": {
         "PreToolUse": [

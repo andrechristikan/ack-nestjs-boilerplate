@@ -197,6 +197,7 @@ See [package.json][ref-package-json] for the full list.
 - **Docker Compose**: MongoDB replica set, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
 - **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
 - **Docs**: 30+ guides, including the [status code catalog][ref-doc-status-codes]
+- **AI harness**: Claude Code skills, agents, rules, and hooks for a design, plan, and build flow, with a Copilot digest ([docs][ref-doc-ai-harness])
 
 ## Quick Start
 
@@ -395,3 +396,4 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [ref-doc-project]: docs/project.md
 [ref-doc-analytic]: docs/analytic.md
 [ref-doc-status-codes]: docs/status-codes.md
+[ref-doc-ai-harness]: docs/ai-harness.md

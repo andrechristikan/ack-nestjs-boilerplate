@@ -2,7 +2,7 @@ New names in this example, not in the checkout: the `isActive` country field, th
 
 # Example: a PR description
 
-`writer` writes `generated/docs/pr-country-inactive.md` for the change in `.claude/skills/ack-work/references/example-plan.md`. It fills `.github/pull_request_template.md` as on disk: the same headings and checkbox labels, every HTML comment dropped, each `…` replaced. A row whose surface the change does not touch stays unticked with `none`.
+`writer` writes `generated/docs/pr-country-inactive.md` for a change that adds an `isActive` flag to `Country`. It fills `.github/pull_request_template.md` as on disk: the same headings and checkbox labels, every HTML comment dropped, each `…` replaced. A row whose surface the change does not touch stays unticked with `none`.
 
 ```markdown
 ## Summary

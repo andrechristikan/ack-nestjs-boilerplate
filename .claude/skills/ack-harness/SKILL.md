@@ -1,81 +1,65 @@
 ---
 name: ack-harness
 description: >-
-    Reworks the AI configuration (.claude/**, AGENTS.md, .github/copilot-instructions.md) through the harness agent from a requirement settled with the owner, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-work, ack-spec), docs/ (ack-doc), or prisma/ (ack-work).
-blurb: '.claude, AGENTS.md, copilot-instructions.md'
+    Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision records in docs/decisions/, and docs/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
+blurb: '.claude, AGENTS.md, copilot digest, decision records'
 disable-model-invocation: true
-argument-hint: '<settled requirement: files, the change, expected outcomes> | diagnose [session id | last]'
+argument-hint: '<the change: files, what changes, expected outcome> | diagnose [session id | last]'
 ---
 
 !`git status --short` !`git diff --name-only HEAD`
 
 # ack-harness
 
-You orchestrate one `harness` dispatch and verify what it wrote. This skill runs in the session because the requirement is settled with the owner. `harness` writes `.claude/**`, `AGENTS.md`, and `.github/copilot-instructions.md`; this skill does not edit those trees, and no other agent runs while `harness` is writing because it would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`. The project is a boilerplate with no external client: a rule states the correct shape and every call site changes with it (`../ack-work/references/dispatch.md`, Every dispatch). If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`. Pass `run_in_background: false` on every Agent call (`../ack-work/references/dispatch.md`, Foreground dispatch).
+Requirement: $ARGUMENTS
+
+The session settles the requirement with the owner, writes the files itself, and verifies them. No agent runs while the session writes: an agent would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`.
 
 ## 1. Settle
 
+- Ask with `AskUserQuestion` what changes, which files, what stays out, and the expected outcome, until nothing material is open. Do not re-ask what the owner named. The settled requirement takes the shape of `references/example-requirement.md`.
+- Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: a line Claude would follow without being told, or could find by reading the code, is not added. Prefer deleting a line to adding one.
+- A fact that has to hold every time is a hook or a `deny` entry, not a sentence.
+
 With `diagnose`:
 
-- Locate the transcript under `~/.claude/projects/<encoded project path>/`, where the encoded path is the absolute repository path with `/` replaced by `-`. A session id names `<id>.jsonl`; `last` is the newest `.jsonl` there other than the current session.
-- Invoke `superpowers:diagnosing-superpowers` on it.
-- Put its findings (a skill not invoked, a step skipped, an agent working outside its dispatch, a plan ignored, tokens spent on noise) to the owner with `AskUserQuestion` as candidate changes. The ones the owner keeps become the requirement.
+- Locate the transcript under `~/.claude/projects/<encoded project path>/`, the absolute repository path with `/` replaced by `-`. A session id names `<id>.jsonl`; `last` is the newest `.jsonl` other than the current session.
+- Read it for: a skill step skipped, an agent working outside its dispatch, a ticket ignored, a question the code answers put to the owner, tokens spent on noise.
+- Put the findings to the owner as candidate changes. The ones the owner keeps are the requirement.
 
-Without `diagnose`: ask with `AskUserQuestion` what changes, which files, what stays out, and what the expected outcome is, until nothing material is open. Do not re-ask what the owner named. The settled requirement takes the shape of `references/example-requirement.md`.
+## 2. Write
 
-When the files list contains a `.claude/skills/**/SKILL.md`, invoke `superpowers:writing-skills` here and carry the points that apply into the dispatch under `Writing rules`: the description states what the skill does, when to use it, and what it is not for, with no workflow summary; the critical steps come first; the file stays within its word budget; long material goes to `references/`.
+- Verify every path, class, script, and flag against the checkout before writing it: `package.json`, `vitest.config.ts`, `docker-compose.yml`, `.husky/`, `.commitlintrc`, `eslint.config.mjs`, `knip.json`, the source file itself.
+- A skill, an agent, or a rule: follow `.claude/skills/writing-for-agents/SKILL.md`. Where it and `.claude/rules/authoring.md` differ, the rule wins.
+- A decision record: the shape in `.claude/rules/authoring.md`, Decision records, each claim taken from a source the owner names, and one index line in `docs/decisions/README.md`.
+- A change to the flow, a skill, an agent, or the copied-skill set updates `docs/ai-harness.md` in the same run.
+- A `src/` defect found on the way is one row in `generated/docs/report-src-sweep.md`, not a fix.
 
-## 2. Dispatch `harness`
-
-```
-Agent: harness
-Requirement: <the settled requirement>
-Files: <every path to write, delete, or leave alone, named>
-Scope: .claude/**, AGENTS.md, .github/copilot-instructions.md; nothing else
-Expected outcomes: <what each file says when done>
-Verify before writing: every path, class, script, and flag against the checkout
-  (package.json, vitest.config.ts, docker-compose.yml, .husky/, .commitlintrc,
-  eslint.config.mjs, knip.json, the source file itself)
-Writing rules: .claude/rules/authoring.md, Harness files; budgets from that section;
-  final state only
-A src/ defect found on the way: append a row to generated/docs/report-src-sweep.md,
-  do not fix it
-Report: files written with wc -w, files deleted, what each file now says, the
-  verification output, every src/ finding recorded, one line per thing noticed outside
-  the scope
-```
-
-Add the Every dispatch block from `../ack-work/references/dispatch.md`. A follow-up dispatch is a fresh instance reading the tree as the previous one left it.
+The copied skills (the folders `skills-lock.json` names) are never edited. Adapt one in the `ack-*` skill or the agent that follows it. Update them with `pnpm skills:update`, then re-read each `ack-*` departure against the new text.
 
 ## 3. Verify
 
-Invoke `superpowers:verification-before-completion`, then run and quote the output:
-
 ```bash
-jq . .claude/settings.json .claude/hooks/*.json >/dev/null
-for f in .claude/hooks/*.sh; do bash -n "$f" && test -x "$f"; done
-echo '{}' | bash .claude/hooks/roster.sh
-printf 'add a bio field to the user profile' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # no key: one <jev_route> block, off
-printf '.superpowers/plans/2026-11-05-x.md' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh route   # a .superpowers/ path: Route: resume, no call
-printf '{"request":"x","route":"fix","location":"src/modules/user/services/user.service.ts:40"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh level   # no key: one <jev_level> block, off
-grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees --exclude=settings.local.json   # all-caps emphasis: empty
-wc -w .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md .claude/skills/*/references/*.md
+bash .claude/hooks/check.sh
 ```
 
-Every `.md` with frontmatter opens with `---` on line 1; a rule's `paths:` is a YAML list; a skill or agent `description` is `>-`. No file names a deleted file, a retired agent, or a retired skill. Word budgets by `wc -w`: `.claude/rules/authoring.md`, Harness files.
-
-A path permission rule in `.claude/settings.json` takes the `Edit(path)` form only: `Edit` rules cover every file-editing tool, and a `Write(path)` rule never matches.
-
-A check that fails goes back to `harness` in one fix dispatch, then the block runs again.
+- Every line it prints is a defect: fix it and run it again.
+- When a skill, an agent, or a rule body changed, dispatch `reviewer` with `Depth: harness` and the changed paths. Confirm or reject each finding by opening the file.
+- A path permission in `.claude/settings.json` takes the `Edit(path)` form only: `Edit` rules cover every file-editing tool, and a `Write(path)` rule never matches.
 
 ## Boundaries
 
-No `src/`, `test/`, `docs/`, `prisma/`, and no `.github/**` beyond the Copilot digest. No DB or seed command. Commits go through `ask`; propose the subject only (`.claude/CLAUDE.md`, Etiquette).
+- No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/decisions/` and `docs/ai-harness.md`, no `.github/**` beyond the Copilot digest.
+- No database or seed command.
+- Commits go through `ask`; propose the subject only.
 
 ## Hand back
 
-The settled requirement; for `diagnose`, the transcript read and each finding the owner kept or dropped; what `harness` changed and what each file now says; the verification output; every `src/` finding recorded rather than fixed; one line per thing noticed outside the scope.
+- The settled requirement; for `diagnose`, the transcript read and each finding kept or dropped.
+- Each file written or deleted, with `wc -w` and what it now says.
+- The `check.sh` output and the reviewer's findings with their state.
+- Every `src/` finding recorded rather than fixed.
 
 ## Next
 
-`/ack-work` with the pin for a recorded `src/` finding that is a confirmed no-flow bug, or with the symptom for one whose cause is not in hand or that changes a flow.
+`/ack-debug` with the symptom for a recorded `src/` finding.

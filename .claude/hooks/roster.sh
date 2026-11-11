@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# SessionStart startup|clear: print the user-invocable skill roster to the terminal.
+# SessionStart startup|clear: print the ack-* skill roster to the terminal.
 # systemMessage is the field that reaches the terminal as a plain notice; it opens with a newline because the terminal prints its hook prefix on the first line.
-# One line per skill from .claude/skills/*/SKILL.md: its frontmatter blurb, else the first sentence of description.
-# ack-work comes first, the rest alphabetical; skills with user-invocable: false are skipped.
+# One line per .claude/skills/ack-*/SKILL.md: its frontmatter blurb, else the first sentence of description.
+# The flow comes first (ack-design, ack-plan, ack-build), the rest alphabetical; copied skills are not listed, and skills with user-invocable: false are skipped.
 set -uo pipefail
 
 root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
@@ -13,8 +13,10 @@ python3 - "$dir" <<'PY'
 import json, os, re, sys
 
 dir_ = sys.argv[1]
+flow = ['ack-design', 'ack-plan', 'ack-build']
+names = [n for n in os.listdir(dir_) if n.startswith('ack-')]
 rows = []
-for name in sorted(os.listdir(dir_), key=lambda n: (n != 'ack-work', n)):
+for name in sorted(names, key=lambda n: (flow.index(n) if n in flow else len(flow), n)):
     f = os.path.join(dir_, name, 'SKILL.md')
     if not os.path.isfile(f):
         continue

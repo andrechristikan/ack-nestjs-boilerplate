@@ -1,12 +1,11 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit tests for code that exists through tester, to 100% coverage per file; integration and e2e are held. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour, a symptom whose cause is not in hand, or a src/ change from a plan or a pin (ack-work).
-blurb: 'unit tests to 100% for existing code'
+    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration and e2e are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behaviour (ack-design), a red spec whose cause is unknown (ack-debug), or a src/ fix.
+blurb: 'unit specs to 100% for existing code; the code wins'
 disable-model-invocation: true
-model: sonnet
-effort: high
 context: fork
+agent: tester
 argument-hint: '<module or path filter, or the failing suite>'
 ---
 
@@ -14,82 +13,72 @@ argument-hint: '<module or path filter, or the failing suite>'
 
 # ack-spec
 
-You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed no-flow repair, test-first. On the coverage path the code wins: a spec asserts what `src/` does. A fork cannot ask the owner: every question is a hand-back. Every dispatch carries the block in `.claude/skills/ack-work/references/dispatch.md`, Every dispatch, and runs as its Foreground dispatch section gives; both bind. If a `superpowers:*` skill is not installed, stop and say `claude plugin install superpowers@claude-plugins-official`.
+Scope: $ARGUMENTS
+
+You are `tester`, running in a fork. A fork cannot ask the owner: every question is a hand-back line. The code on disk is the specification: a spec asserts what `src/` does. A defect in `src/` is logged, not fixed.
 
 ## 1. Scope
 
-Run the suite for the named scope and kind and read the failure; the scope is a Vitest path filter. Clear the cache before believing a coverage gap.
+The scope is a Vitest path filter. Run it and read the failures. Clear the cache before believing a coverage gap.
 
 ```bash
 pnpm test <scope>
 pnpm exec vitest --clearCache
 ```
 
-Kind: `unit` continues. Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so a request for either is a hand-back naming the hold.
+Integration and e2e are held (`.claude/rules/testing.md`): a request for either is a hand-back naming the hold.
 
 ## 2. Classify
 
-Every defect the run surfaces, and every defect `tester` hands back, is classified before anyone writes:
+Classify every failure and every gap before writing:
 
-| Class | Meaning | Route |
+| Class | Meaning | What you do |
 | --- | --- | --- |
-| spec wrong | the code moved and the spec was left behind, or the spec asserts a wish | `tester` |
-| no-flow bug | confirmed defect; contract, guard stack, status code, and call order stay | `coder`, test-first |
-| flow or decision | route, DTO, status code, guard, who may do what, or when; or two readings | hand back the question, or a sweep row |
-| cause unknown | a red spec whose cause is not in hand: neither a stale spec nor a pinned defect | hand back the symptom, Next `/ack-work` |
+| spec wrong | the code moved and the spec stayed, or the spec asserts a wish | repair the spec to what `src/` does |
+| gap | behaviour in `src/` with no spec | write the spec |
+| orphan | a green spec whose subject moved | move it to mirror the subject, add no assertion |
+| defect | `src/` is wrong: a contract, a guard, a status code, a call order | keep the spec green against current behaviour; open a sweep row |
+| cause unknown | a red spec that is neither stale nor a known defect | hand back the symptom and name `/ack-debug` |
 
-A pinned no-flow bug (files, cause at `file:line`, the change) goes straight to `coder`. A flow change is a hand-back naming `/ack-work`.
+## 3. Cover
 
-## 3. Repair, through `coder`
+1. Run `bash .claude/hooks/rules.sh <every file you touch>` and read each rule it prints. `.claude/rules/testing.md` binds every `test/` file.
+2. Read the subject file completely before writing a line. Sibling specs are the style guide.
+3. Write or repair the specs. Run the narrowest filter, then the module.
 
-Dispatch one `coder` per pinned no-flow bug (template `../ack-work/references/dispatch.md`, Coder, Pin form): files, cause at `file:line`, the change, `Scope` limited to those files and their `test/` mirrors. `Rules to read:` is the output of `bash .claude/hooks/rules.sh` over that `Scope`, pasted. Acceptance: the red spec quoted, then `pnpm typecheck` and `pnpm test <module>` green.
-
-## 4. Cover, through `tester`
-
-Dispatch `tester` (filled: `references/example-sweep-row.md`):
-
-```
-Agent: tester
-Scope: <src paths in scope and their test/ mirrors>
-Kind: unit
-Bar: 100% statements, branches, functions, and lines on every file in scope
-Source of truth: the code as it is on disk, including repairs this run landed
-Mode: cover | repair | relocate only (move green specs, no new assertion)
-Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
-Report: specs written or repaired; per-file coverage rows; every line that cannot be
-  covered without changing src/, with file:line and why; defects noticed, each with
-  file:line, unfixed.
-```
-
-Add the Every dispatch block from `../ack-work/references/dispatch.md`. `tester` edits `src/` only as `.claude/agents/tester.md`, Not this agent, allows.
-
-## 5. Reach 100%
-
-Re-run the scope, then, for unit, run the full coverage suite; this is the only skill that does:
+## 4. Reach 100%
 
 ```bash
 pnpm test <scope>
-pnpm test:cov
+pnpm test:cov <scope>
 ```
 
-Read the per-file rows, not the exit code (`references/sweep-log.md`, Coverage reading). A file in scope still short of 100 is another `tester` dispatch. The one thing that stops the loop is a line that cannot be covered without changing `src/`: classify it in step 2. Excluded paths (`vitest.config.ts` `coverage.exclude`) are not a gap here.
+- Read the per-file rows, not the exit code (`references/sweep-log.md`, Coverage reading).
+- A file in scope short of 100 gets another pass.
+- A line no input can reach without changing `src/` is a sweep row.
+- Paths under `coverage.exclude` in `vitest.config.ts` are not a gap.
 
-## 6. Sweep log
+## 5. Sweep log
 
-`generated/docs/report-src-sweep.md` holds open defects only. Append one open row per flow, decision, or unreachable-line finding, under its heading (`references/example-sweep-row.md`); at the end of every run re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`). No SOLVED marker.
+`generated/docs/report-src-sweep.md` holds open defects only.
 
-## 7. Verify
-
-Invoke `superpowers:verification-before-completion`. The evidence is the output this run produced: the coverage totals with the command that produced them, every spec run with its filter and its `Tests` line, and each `coder` repair's red and green lines.
+- Append one row per defect or unreachable line, under its heading (`references/example-sweep-row.md`).
+- At the end of the run, re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`).
 
 ## Boundaries
 
-Do not write a spec or a repair yourself; dispatch. Do not delete, `.skip`, or weaken a spec, lower a threshold, extend the exclude list, or add an ignore comment. Do not run the owner's DB and seed commands (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`). No boot. Commits go through `ask`; propose the subject only.
+- No `src/` edit beyond a typo that blocks compilation and changes no behaviour.
+- No deleted, skipped, or weakened spec; no threshold lowered; no exclude entry; no ignore comment.
+- No owner database command, no boot, no commit.
 
 ## Hand back
 
-Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow or decision handed back or logged; per-file coverage with the command; files at 100 and files short with the reason; sweep rows opened and rows deleted; one line per thing noticed outside the scope.
+- Specs written, repaired, or moved, by file.
+- Per-file coverage rows with the command that produced them; files at 100 and files short with the lines and why.
+- Sweep rows opened and rows deleted.
+- Each red spec whose cause is unknown, with its failing line.
+- One line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-work` for a flow change the owner approved, or a failing spec whose cause is not pinned.
+`/ack-debug` for a red spec whose cause is unknown, or for a sweep row the owner wants fixed. `/ack-design` when the fix changes a flow.

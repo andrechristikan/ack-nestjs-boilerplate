@@ -120,6 +120,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
 - `.forEach` is a lint error in `src/` and `test/`; iterate with `for...of`.
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
+- Claude Code and GitHub Copilot get these standards from the harness in `.claude/`: [AI Harness Documentation][ref-doc-ai-harness].
 
 ### Strict null convention
 
@@ -258,3 +259,4 @@ Open a [Discussion][ref-discussions], not an issue.
 [ref-code-of-conduct]: ./CODE_OF_CONDUCT.md
 [ref-conventional-commits]: https://www.conventionalcommits.org/
 [ref-discussions]: https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions
+[ref-doc-ai-harness]: docs/ai-harness.md

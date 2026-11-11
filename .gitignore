@@ -85,7 +85,8 @@ tmp/
 .claude/todos.json
 .claude/scheduled-tasks/
 
-## Superpowers skill output (specs, plans, sdd notes) — never docs/
+## Work artifacts of the ack-* skills (spec, tickets, plan index per feature), never docs/
+.scratch/
 .superpowers/
 
 ## Cursor

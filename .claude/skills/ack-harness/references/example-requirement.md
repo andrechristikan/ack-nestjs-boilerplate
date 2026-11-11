@@ -2,7 +2,7 @@ New names in this example, not in the checkout: the `.claude/settings.local.json
 
 # Example: a settled requirement
 
-Step 1 of `SKILL.md` ends with a requirement in this shape: Files, Changes, Expected outcomes, Decisions. Step 2 fills the `harness` dispatch from it: `Requirement:` takes the whole text, `Files:` its Files section, `Expected outcomes:` its Expected outcomes section, and `Decisions:` its Decisions section, verbatim.
+Step 1 of `SKILL.md` ends with a requirement in this shape: Files, Changes, Expected outcomes, Decisions. Step 2 writes from it, and step 3 checks each expected outcome.
 
 ```markdown
 # Harness requirement: guard-write.sh denies a write to the local settings file

@@ -1,0 +1,80 @@
+---
+name: ack-build
+description: >-
+    Builds every ticket of an approved plan, one ticket per coder dispatch and test-first, and does not stop until the feature is done: gates, review, hand-back. Use with a plan path under .scratch/, also to resume a build. Not for a plan the owner has not approved (ack-plan) or a bug whose cause is unknown (ack-debug).
+blurb: 'build every ticket test-first, gates, review'
+disable-model-invocation: true
+argument-hint: '<a .scratch/ plan path>'
+---
+
+!`git status --short`
+
+# ack-build
+
+Input: $ARGUMENTS
+
+The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `reviewer` judges the feature, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Every Agent call runs in the foreground; wait for each hand-back and read it before the next step.
+
+## Start
+
+- A `plan.md` whose first line is not `**Approved:** yes`: stop and name `/ack-plan`.
+- Tickets already `done`: name the first ticket that is not, and continue from it.
+
+## 1. Build
+
+Work the frontier until every ticket is `done`. One ticket at a time: two coders in one working tree collide. Do not stop between tickets.
+
+For each ticket whose blockers are `done`, in number order:
+
+1. Dispatch `coder` at the model and effort its plan row gives:
+
+```
+Agent: coder
+Ticket: <the ticket path>
+Spec: <the spec path>
+Seam: <the ticket's Seam line>
+First failing spec: <the ticket's line>
+Procedure: <the ticket's add-<topic>.md, or none>
+Decisions to honour: <the plan's line>
+Rules to read: <the output of bash .claude/hooks/rules.sh over the modules the ticket touches, pasted>
+```
+
+2. A `DONE` hand-back that quotes each spec failing, then passing: tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
+3. `NEEDS_CONTEXT`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: answer from the spec when it answers. Otherwise ask the owner with `AskUserQuestion`; the answer joins the spec's `## Owner decisions` before the next dispatch.
+4. One check still failing after two coder dispatches: dispatch `debugger` with the symptom, then one `coder` with its pin. Stop with the evidence when the cause stays unknown.
+5. A schema delta in a hand-back: add the owner's `pnpm db:migrate` to the plan's `## Owner commands`.
+
+Stop before the last ticket only when:
+
+- The spec is wrong or ambiguous in a way that changes behaviour.
+- The work reaches a module or a dependency no ticket names.
+- A rule has to change first: name `/ack-harness`.
+
+## 2. Prove
+
+1. Run `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and `pnpm test <filter>` for each module the build touched. Read the output, not only the exit code (`.claude/CLAUDE.md`, Gotchas).
+2. Run `pnpm test:cov <filter>` and read the row of each file the build changed. A row under 100 is behaviour without a spec: one more `coder` dispatch on that ticket.
+3. Name the spec or the command that proves each acceptance criterion of each ticket. A criterion without proof goes back to step 1.
+4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/rules/docker.md`, Boot, gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
+
+## 3. Review
+
+1. Dispatch `reviewer` with `Depth: feature`, the spec path, the plan path, the changed paths (`git diff --name-only HEAD` plus `git ls-files --others --exclude-standard`), the `rules.sh` output over them, and the gate output from step 2.
+2. Open the file behind each finding. Confirm it or reject it with a reason.
+3. Each confirmed Critical or Important finding goes to one `coder` dispatch as a pin, failing spec first. A Minor finding is parked in the hand-back.
+4. Dispatch one more `reviewer`, over the fixed findings only. A Critical or Important finding still open goes to the owner.
+
+## Hand back
+
+- The acceptance criteria as a table: ticket, criterion, proof, status.
+- Each deviation from the spec, with its reason.
+- Each decision and assumption made during the build.
+- The reviewer's findings: confirmed and fixed, rejected with the reason, parked.
+- The plan's `## Owner commands`.
+- The `docs/` pages the change makes stale, as a list: name `/ack-doc`.
+- A new command, path pattern, or convention the harness does not describe, or a decision-record candidate: name `/ack-harness`.
+- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`. Wait for the owner.
+
+## Next
+
+`/ack-pr` once the work is committed.

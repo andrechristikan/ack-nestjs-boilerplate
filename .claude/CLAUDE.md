@@ -4,48 +4,69 @@
 
 ## Claude-specific
 
-Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and hooks. `/plan` and Shift+Tab enter plan mode; its files land in `.superpowers/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
+Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and hooks. `/plan` and Shift+Tab enter plan mode; its files land in `.scratch/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
 
 ### Skills
 
-`ack-work` is the one skill the session may invoke, on its own judgment when the request is code work beyond a question it can answer from what it has read; the owner's request goes in verbatim as the argument. The owner types the other four: each carries `disable-model-invocation: true`, so its description stays out of the model's context. No agent preloads or invokes an `/ack-*` skill, and no skill starts another: each ends with a Next line naming the command the owner types. A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
+The owner types every `/ack-*` skill: each carries `disable-model-invocation: true`. No agent invokes one, and no skill starts another: each ends with a Next line naming the command the owner types. A feature runs through three, each in a fresh session:
 
-| Skill | Mode | Reason |
+| Skill | Runs in | Does |
 | --- | --- | --- |
-| `/ack-work` | session | asks the owner at a plan, a decision, a fix, and a harness change |
-| `/ack-spec` | fork | tester and coverage loop; needs no owner answer |
-| `/ack-doc` | session | an ambiguous scope and every CONFLICT ask the owner |
-| `/ack-pr` | session | `git push` and `gh pr` writes run on the owner's go-ahead |
-| `/ack-harness` | session | settling the requirement and `diagnose` need the owner's conversation |
+| `/ack-design` | session | question rounds with the owner, the test seams, the spec |
+| `/ack-plan` | session, `reviewer` | tickets, the plan index, a cold read, the owner's approval |
+| `/ack-build` | session, `coder`, `reviewer` | every ticket test-first, gates, review |
 
-- `/ack-work`: routed code work through explorer, debugger, planner, coder, and reviewer, then writer and harness, each after the owner's yes.
-- `/ack-spec`: creates or repairs unit tests for code that exists; test and coverage prove it.
-- `/ack-doc`: `docs/*.md`, `docs/decisions/`, root people files, `.github/**` but `copilot-instructions.md`; writer, then a reader test.
-- `/ack-pr`: pull requests end to end: description, create, comment, review replies, version notes; merge is an ask.
-- `/ack-harness`: `.claude/**`, `AGENTS.md`, `copilot-instructions.md` through harness; `diagnose` reads a transcript.
+The rest stand alone, when the owner calls one:
 
-Every `ack-work` route that writes stops at the plan-file gate for the owner's yes (`.claude/skills/ack-work/references/gate.md`). `coder` reads the `.claude/skills/ack-work/references/add-<topic>.md` a task names (module, status code, queue, seed, notification). The `superpowers` plugin's using-superpowers session-start text does not apply outside an `/ack-*` skill; inside one, a `superpowers:*` skill runs only at the step that names it or through an agent's `skills:` preload. A skill in context is not invoked again for a reply, a clarifying question, or a later step of the same run: its text applies. Outside `writer`, which preloads them, `doc-coauthoring` and `diagram-design` run when the owner names them. Plugins: `enabledPlugins` (`.claude/settings.json`) enables but does not download a plugin; `extraKnownMarketplaces` registers marketplaces when the folder is trusted. Once per machine, run `claude plugin install <name>@<marketplace> --scope project` for `superpowers@claude-plugins-official`, `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`, and `example-skills@anthropic-agent-skills`; `typesafe@typesafe-ai` and `andrej-karpathy-skills@karpathy-skills` take `--scope user`.
+| Skill | Runs in | Does |
+| --- | --- | --- |
+| `/ack-debug` | session, `debugger`, `coder`, `reviewer` | a symptom to its root cause, then the fix |
+| `/ack-spec` | fork, as `tester` | unit specs for code that exists; the code wins |
+| `/ack-doc` | session, `writer` | docs against the code; the code wins |
+| `/ack-pr` | session, `writer` | a pull request, its description, comments, version notes |
+| `/ack-harness` | session | `.claude/**`, `AGENTS.md`, the Copilot digest, decision records |
 
-### Routing
+- A request for a feature or a cross-module change that arrives without a skill: name `/ack-design` and wait. A question, a lookup, or an edit inside one file needs none.
+- A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
+- `coder` reads the `.claude/skills/ack-build/references/add-<topic>.md` a ticket names: module, status code, queue, seed, notification.
 
-- TypeSafe's Jev runs only inside `ack-work`, through `.claude/hooks/jev.sh`, never as a hook: `route` on the request as the first action of step 1, `level` once the location is known, `followup` after files changed. Each prints one block the session reads.
-- Without `TYPESAFE_API_KEY`, or with `JEV_ROUTER_DISABLED=1`, `route` and `level` print `off` and `followup` prints nothing; a failed call prints `unavailable`; `ack-work` then decides from its own tables. Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
-- Questions and thresholds live in `.claude/hooks/jev.json`; tune them with `/typesafe:typesafe-ai`. An agent's floor is its frontmatter `model` and `effort`, both.
+### Copied skills
+
+The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their licence texts are in `.claude/skills/licenses/`.
+
+- They are never edited (`guard-write.sh` denies it). An `ack-*` skill or an agent follows one by path or preloads it, and states its departures.
+- Where a copied skill and a rule, an `ack-*` skill, or an agent file differ, the copied skill loses.
+- `pnpm skills:update` updates them; `/ack-harness` then re-reads each departure.
+- `ponytail` runs at `full` wherever code is written, `ultra` in `/ack-design` and `/ack-harness`. `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
+
+### Work artifacts
+
+`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case:
+
+- `.scratch/<feature>/spec.md`: the spec, from `/ack-design`.
+- `.scratch/<feature>/issues/<NN>-<slug>.md`: one ticket per file, from `/ack-plan`. `**Status:**` is `ready-for-agent`, then `done`.
+- `.scratch/<feature>/plan.md`: the index a person reads: approval, ticket order, the level each ticket runs at, status, evidence.
+
+A platform issue is created only when the owner asks; `gh issue create` is an `ask`. `generated/docs/` holds the sweep log and PR, comment, and version text, never a spec, a plan, or an agent report.
+
+### Levels
+
+- `/ack-plan` sets the model and effort `coder` and `reviewer` run each ticket at. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
+- Without `TYPESAFE_API_KEY`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; `/ack-plan` then uses its own table.
+- No agent runs below its frontmatter `model` and `effort`, or above opus, high (`max` in `.claude/hooks/jev.json`, beside the questions and thresholds).
+- Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
 
 ### Agents
 
 Skills dispatch the agents in `.claude/agents/`:
 
-- `explorer`: locates code, reads a third-party contract, assesses approaches.
-- `planner`: writes a `feature` plan file from the approved design.
+- `coder`: builds one ticket or one pin in `src/`, test-first, seeds and the run surface included.
+- `reviewer`: judges a plan, a feature, a pin, or the harness; reports, does not fix.
 - `debugger`: reproduces a symptom, finds its root cause, reports a pin.
-- `coder`: implements a pin or a plan task in `src/`, test-first where behaviour changes, seeds and the run surface included.
-- `tester`: writes or repairs unit tests under `test/unit/` for code that exists.
-- `reviewer`: judges a scope at a depth; reports, does not fix.
+- `tester`: writes or repairs unit specs under `test/unit/` for code that exists.
 - `writer`: `docs/`, the root people files, `.github/` markdown, PR and version text.
-- `harness`: the AI configuration: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
-An agent missing something hands the question back; the session asks the owner and dispatches again.
+The session locates code with the built-in `Explore` agent. An agent missing something hands the question back; the session asks the owner and dispatches again.
 
 ### Gotchas
 
@@ -67,7 +88,6 @@ An agent missing something hands the question back; the session asks the owner a
 - The working tree on disk is the source, unstaged and untracked files included; list changes with `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
 - Every commit in a series leaves `pre-commit` green (`AGENTS.md`, Commit gates). A commit touching neither `src/` nor `test/` passes `--no-verify`, which skips `commit-msg` (commitlint) too, so check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks, and a red gate is fixed, not skipped.
-- Working artifacts are gitignored. `.superpowers/` takes only `plans/` (`YYYY-MM-DD-<slug>.md`), `specs/` (designs), and `sdd/` (build ledgers and briefs). `generated/docs/` holds the sweep log and PR, comment, and version text, never a plan or an agent report. What prose may not cite: `.claude/rules/authoring.md`, Documentation prose and Harness files.
 - Run every command in the foreground, bounded (`timeout 60` on the boot's log wait, which never ends on its own; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/rules/docker.md`, Boot), which stay up for the next boot. Wait for each Agent hand-back, never poll.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on; ask when two readings would produce different work.

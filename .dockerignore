@@ -87,6 +87,8 @@ tmp/
 
 # AI Tools
 .claude/
+.scratch/
+skills-lock.json
 .cursor/
 .cursorignore
 .cursorindexingignore
