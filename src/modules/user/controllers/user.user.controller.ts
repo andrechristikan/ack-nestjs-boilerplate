@@ -1,6 +1,10 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -41,8 +45,9 @@ export class UserUserController {
     async deleteSelf(
         @UserCurrent() user: IUser,
         @Body({ schema: UserDeleteSelfRequestSchema })
-        body: UserDeleteSelfRequestDto
+        body: UserDeleteSelfRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userDeleteSelfUseCase.execute(user, body);
+        return this.userDeleteSelfUseCase.execute(user, body, context);
     }
 }

@@ -11,8 +11,10 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
     Prisma,
 } from '@generated/prisma-client/client';
@@ -21,6 +23,7 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
@@ -74,6 +77,7 @@ export class WorkspaceInviteService {
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly userService: UserService,
         private readonly notificationService: NotificationService,
+        private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
@@ -179,6 +183,46 @@ export class WorkspaceInviteService {
                 inviteAcceptLink: claimLink,
             }
         );
+    }
+
+    private inviteActivityEffects(
+        action: EnumActivityLogAction,
+        byAdminAction: EnumActivityLogAction,
+        workspaceId: string,
+        actorId: string,
+        workspaceInviteId: string,
+        inviteeUserId: string | null,
+        context: IRequestContext
+    ): IOutboxEffect[] {
+        const actorEntry = this.activityLogService.recordEffect(
+            {
+                action,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+                metadata:
+                    inviteeUserId === null
+                        ? { workspaceInviteId }
+                        : { workspaceInviteId, targetUserId: inviteeUserId },
+            },
+            context
+        );
+        if (inviteeUserId === null || inviteeUserId === actorId) {
+            return [actorEntry];
+        }
+
+        const inviteeEntry = this.activityLogService.recordEffect(
+            {
+                action: byAdminAction,
+                userId: inviteeUserId,
+                createdBy: actorId,
+                workspaceId,
+                metadata: { actorUserId: actorId },
+            },
+            context
+        );
+
+        return [actorEntry, inviteeEntry];
     }
 
     private isInviteEmailMatch(inviteEmail: string, email: string): boolean {
@@ -354,12 +398,13 @@ export class WorkspaceInviteService {
         }
     }
 
-    /** Creates the pending invite and adds its notification row in one transaction per attempt, dispatched after the commit. */
+    /** Creates the pending invite and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async createInvite(
         workspaceId: string,
         actorId: string,
         create: IWorkspaceInviteCreate,
-        notice: IWorkspaceInviteNotice
+        notice: IWorkspaceInviteNotice,
+        context: IRequestContext
     ): Promise<IWorkspaceInviteIssued> {
         const workspaceInviteId = this.databaseUtil.createId();
         const noncePattern = this.helperStringService.fillPattern(
@@ -398,6 +443,16 @@ export class WorkspaceInviteService {
                             notice
                         );
                         await this.outboxService.addInTx(tx, effect);
+                        const entries = this.inviteActivityEffects(
+                            EnumActivityLogAction.workspaceInviteCreated,
+                            EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+                            workspaceId,
+                            actorId,
+                            created.id,
+                            notice.inviteeUserId,
+                            context
+                        );
+                        await this.outboxService.addManyInTx(tx, entries);
 
                         return created;
                     }
@@ -479,12 +534,13 @@ export class WorkspaceInviteService {
         return existing;
     }
 
-    /** Rotates the invite token and adds its notification row in one transaction per attempt, dispatched after the commit. */
+    /** Rotates the invite token and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async resendInvite(
         workspaceInviteId: string,
         expiryDuration: EnumWorkspaceInviteExpiry | null,
         actorId: string,
-        notice: IWorkspaceInviteNotice
+        notice: IWorkspaceInviteNotice,
+        context: IRequestContext
     ): Promise<IWorkspaceInviteIssued> {
         const resentAt = this.helperDateService.create();
 
@@ -514,6 +570,16 @@ export class WorkspaceInviteService {
                             notice
                         );
                         await this.outboxService.addInTx(tx, effect);
+                        const entries = this.inviteActivityEffects(
+                            EnumActivityLogAction.workspaceInviteResent,
+                            EnumActivityLogAction.workspaceInviteResentByAdmin,
+                            rotated.workspaceId,
+                            actorId,
+                            workspaceInviteId,
+                            notice.inviteeUserId,
+                            context
+                        );
+                        await this.outboxService.addManyInTx(tx, entries);
 
                         return rotated;
                     }
@@ -547,11 +613,46 @@ export class WorkspaceInviteService {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    async revokeInvite(workspaceInviteId: string): Promise<void> {
-        const revoked =
-            await this.workspaceInviteRepository.revoke(workspaceInviteId);
-        if (!revoked) {
-            throw new WorkspaceInviteAlreadyProcessedException();
+    /** Revokes the pending invite and adds its activity entries in one transaction, dispatched after the commit. */
+    async revokeInvite(
+        workspaceInviteId: string,
+        workspaceId: string,
+        actorId: string,
+        inviteeUserId: string | null,
+        context: IRequestContext
+    ): Promise<void> {
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                const revoked = await this.workspaceInviteRepository.revokeInTx(
+                    tx,
+                    workspaceInviteId
+                );
+                if (!revoked) {
+                    throw new WorkspaceInviteAlreadyProcessedException();
+                }
+
+                const entries = this.inviteActivityEffects(
+                    EnumActivityLogAction.workspaceInviteRevoked,
+                    EnumActivityLogAction.workspaceInviteRevokedByAdmin,
+                    workspaceId,
+                    actorId,
+                    workspaceInviteId,
+                    inviteeUserId,
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, entries);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceInviteAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
         }
     }
 

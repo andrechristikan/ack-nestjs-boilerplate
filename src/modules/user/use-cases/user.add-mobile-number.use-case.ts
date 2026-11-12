@@ -1,6 +1,5 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
@@ -10,24 +9,19 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserAddMobileNumberUseCase implements IAppUseCase<
-    [string, UserAddMobileNumberRequestDto],
+    [string, UserAddMobileNumberRequestDto, IRequestContext],
     IResponseReturn<IUserMobileNumber>
 > {
     constructor(
         private readonly userMobileNumberService: UserMobileNumberService,
-        private readonly countryService: CountryService,
-        private readonly activityLogService: ActivityLogService
+        private readonly countryService: CountryService
     ) {}
 
     async execute(
         userId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userAddMobileNumber,
-            }),
-        ];
         const [country, isDuplicate] = await Promise.all([
             this.countryService.getOne(countryId),
             this.userMobileNumberService.existsMobileNumber(
@@ -44,10 +38,9 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
                 phoneCode,
             },
             country.phoneCode,
-            isDuplicate
+            isDuplicate,
+            context
         );
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return { data: mobileNumber };
     }

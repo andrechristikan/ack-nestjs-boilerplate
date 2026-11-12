@@ -3,7 +3,11 @@ import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/pr
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -144,12 +148,14 @@ export class ProjectUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body({ schema: ProjectCreateRequestSchema })
-        body: ProjectCreateRequestDto
+        body: ProjectCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Project>> {
         return this.projectCreateUseCase.execute(
             workspace.id,
             workspaceMember.userId,
-            body
+            body,
+            context
         );
     }
 
@@ -200,12 +206,14 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body({ schema: ProjectUpdateRequestSchema })
-        body: ProjectUpdateRequestDto
+        body: ProjectUpdateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Project>> {
         return this.projectUpdateUseCase.execute(
             project,
             workspaceMember.userId,
-            body
+            body,
+            context
         );
     }
 
@@ -231,12 +239,14 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body({ schema: ProjectUpdateSlugRequestSchema })
-        body: ProjectUpdateSlugRequestDto
+        body: ProjectUpdateSlugRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Project>> {
         return this.projectUpdateSlugUseCase.execute(
             project,
             workspaceMember.userId,
-            body
+            body,
+            context
         );
     }
 
@@ -254,11 +264,13 @@ export class ProjectUserController {
     @Delete('/delete/:projectId')
     async softDelete(
         @ProjectCurrent() project: Project,
-        @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
+        @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.projectSoftDeleteUseCase.execute(
             project,
-            workspaceMember.userId
+            workspaceMember.userId,
+            context
         );
     }
 
@@ -309,12 +321,14 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body({ schema: ProjectMemberAssignRequestSchema })
-        body: ProjectMemberAssignRequestDto
+        body: ProjectMemberAssignRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IProjectMember>> {
         return this.projectAssignMemberUseCase.execute(
             project,
             workspaceMember,
-            body
+            body,
+            context
         );
     }
 
@@ -340,13 +354,15 @@ export class ProjectUserController {
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
-        body: ProjectMemberUpdateRoleRequestDto
+        body: ProjectMemberUpdateRoleRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.projectUpdateMemberRoleUseCase.execute(
             project,
             workspaceMember,
             projectMemberId,
-            body
+            body,
+            context
         );
     }
 
@@ -370,12 +386,14 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
-        projectMemberId: string
+        projectMemberId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.projectRemoveMemberUseCase.execute(
             project,
             workspaceMember,
-            projectMemberId
+            projectMemberId,
+            context
         );
     }
 
@@ -395,8 +413,13 @@ export class ProjectUserController {
     @Post('/member/:projectId/leave')
     async memberLeave(
         @ProjectCurrent() project: Project,
-        @ProjectMemberCurrent() projectMember: ProjectMember
+        @ProjectMemberCurrent() projectMember: ProjectMember,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.projectLeaveUseCase.execute(project, projectMember);
+        return this.projectLeaveUseCase.execute(
+            project,
+            projectMember,
+            context
+        );
     }
 }

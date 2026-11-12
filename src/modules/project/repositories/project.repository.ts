@@ -1,5 +1,3 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -96,48 +94,40 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: IProjectCreate,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    throw new AppUnknownException(error);
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return tx.project.create({
+            data: {
+                workspaceId,
+                name,
+                slug,
+                description,
+                deletedAt: null,
+            },
+        });
     }
 
-    async updateDetails(
+    async updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         projectId: string,
         { name, description }: IProjectUpdate
     ): Promise<Project> {
-        return this.databaseService.client.project.update({
+        return tx.project.update({
             where: { id: projectId },
             data: { name, description },
         });
     }
 
-    async updateSlug(projectId: string, slug: string): Promise<Project> {
-        return this.databaseService.client.project.update({
+    async updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        slug: string
+    ): Promise<Project> {
+        return tx.project.update({
             where: { id: projectId },
             data: {
                 slug,

@@ -42,12 +42,21 @@ export interface IWorkspaceRepository {
         slug: string,
         workspaceId: string
     ): Promise<Workspace>;
-    updateDetails(
+    updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: IWorkspaceUpdate
     ): Promise<Workspace>;
-    updateIsPublic(workspaceId: string, isPublic: boolean): Promise<Workspace>;
-    updateSlug(workspaceId: string, slug: string): Promise<Workspace>;
+    updateIsPublicInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        isPublic: boolean
+    ): Promise<Workspace>;
+    updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        slug: string
+    ): Promise<Workspace>;
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

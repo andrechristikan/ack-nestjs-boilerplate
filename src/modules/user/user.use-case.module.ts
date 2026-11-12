@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { CountryModule } from '@modules/country/country.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { NotificationModule } from '@modules/notification/notification.module';
@@ -43,6 +44,7 @@ import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-emai
 import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessLockoutUseCase } from '@modules/user/use-cases/user.process-lockout.use-case';
+import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
@@ -88,6 +90,7 @@ import { Module } from '@nestjs/common';
         UserSendVerificationEmailUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessLockoutUseCase,
+        UserProcessImportByAdminUseCase,
     ],
     exports: [
         UserLoginWithSocialUseCase,
@@ -129,8 +132,10 @@ import { Module } from '@nestjs/common';
         UserSendVerificationEmailUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessLockoutUseCase,
+        UserProcessImportByAdminUseCase,
     ],
     imports: [
+        ActivityLogModule,
         CountryModule,
         DeviceModule,
         PasswordHistoryModule,

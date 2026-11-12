@@ -10,8 +10,10 @@ import type {
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
@@ -19,6 +21,7 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSwitchUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -28,6 +31,10 @@ describe('WorkspaceSwitchUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx = mock<IDatabaseTransactionClient>();
+    const context = buildRequestContext('user-1');
+    const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -52,18 +59,14 @@ describe('WorkspaceSwitchUseCase', () => {
         role: EnumWorkspaceMemberRole.member,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceCreated,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceSwitchUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(entry);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -75,6 +78,7 @@ describe('WorkspaceSwitchUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
 
@@ -84,7 +88,7 @@ describe('WorkspaceSwitchUseCase', () => {
     describe('execute', () => {
         const body: WorkspaceSwitchRequestDto = { workspaceId: 'workspace-1' };
 
-        it('guards the workspace then the membership, prepares the switched activity, sets the last workspace, and stages it', async () => {
+        it('guards the workspace then the membership, then sets the last workspace and adds the switched entry on one tx', async () => {
             const callOrder: string[] = [];
             workspaceService.validateWorkspaceGuard.mockImplementation(
                 async () => {
@@ -100,27 +104,23 @@ describe('WorkspaceSwitchUseCase', () => {
                     return workspaceMember;
                 }
             );
-            activityLogService.prepare.mockImplementation(() => {
-                callOrder.push('prepare');
-
-                return stagedActivityLog;
-            });
-            userService.setLastWorkspace.mockImplementation(async () => {
+            userService.setLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('setLastWorkspace');
             });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
+            outboxService.addInTx.mockImplementation(async () => {
+                callOrder.push('addEntry');
+
+                return 'outbox-1';
             });
 
-            const result = await useCase.execute('user-1', body);
+            const result = await useCase.execute('user-1', body, context);
 
             expect(result).toEqual({});
             expect(callOrder).toEqual([
                 'workspaceGuard',
                 'memberGuard',
-                'prepare',
                 'setLastWorkspace',
-                'stage',
+                'addEntry',
             ]);
             expect(
                 workspaceService.validateWorkspaceGuard
@@ -128,16 +128,21 @@ describe('WorkspaceSwitchUseCase', () => {
             expect(
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceSwitched,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-            });
-            expect(userService.setLastWorkspace).toHaveBeenCalledWith(
+            expect(userService.setLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
                 'user-1',
                 'workspace-1'
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.workspaceSwitched,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('stops before the membership guard when the workspace guard rejects', async () => {
@@ -146,16 +151,15 @@ describe('WorkspaceSwitchUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-1', body)
+                useCase.execute('user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
             expect(
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).not.toHaveBeenCalled();
-            expect(userService.setLastWorkspace).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('switches nothing and stages nothing when the membership guard rejects', async () => {
+        it('opens no transaction when the membership guard rejects', async () => {
             workspaceService.validateWorkspaceGuard.mockResolvedValue(
                 workspace
             );
@@ -164,10 +168,9 @@ describe('WorkspaceSwitchUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-1', body)
+                useCase.execute('user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceMemberForbiddenException);
-            expect(userService.setLastWorkspace).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

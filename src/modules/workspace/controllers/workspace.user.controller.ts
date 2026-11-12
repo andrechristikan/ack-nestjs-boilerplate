@@ -7,7 +7,11 @@ import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/reques
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -173,9 +177,10 @@ export class WorkspaceUserController {
     async create(
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceCreateRequestSchema })
-        body: WorkspaceCreateRequestDto
+        body: WorkspaceCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceCreateUseCase.execute(userId, body);
+        return this.workspaceCreateUseCase.execute(userId, body, context);
     }
 
     @Doc({ summary: 'get the current workspace (`x-workspace-id`)' })
@@ -214,9 +219,15 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceUpdateRequestSchema })
-        body: WorkspaceUpdateRequestDto
+        body: WorkspaceUpdateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceUpdateUseCase.execute(workspace.id, userId, body);
+        return this.workspaceUpdateUseCase.execute(
+            workspace.id,
+            userId,
+            body,
+            context
+        );
     }
 
     @Doc({
@@ -239,12 +250,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceUpdateIsPublicRequestSchema })
-        body: WorkspaceUpdateIsPublicRequestDto
+        body: WorkspaceUpdateIsPublicRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceUpdateIsPublicUseCase.execute(
             workspace.id,
             userId,
-            body
+            body,
+            context
         );
     }
 
@@ -265,12 +278,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceUpdateSlugRequestSchema })
-        body: WorkspaceUpdateSlugRequestDto
+        body: WorkspaceUpdateSlugRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceUpdateSlugUseCase.execute(
             workspace.id,
             userId,
-            body
+            body,
+            context
         );
     }
 
@@ -290,9 +305,10 @@ export class WorkspaceUserController {
     async switch(
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceSwitchRequestSchema })
-        body: WorkspaceSwitchRequestDto
+        body: WorkspaceSwitchRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceSwitchUseCase.execute(userId, body);
+        return this.workspaceSwitchUseCase.execute(userId, body, context);
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -311,12 +327,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember,
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
-        body: WorkspaceTransferOwnershipRequestDto
+        body: WorkspaceTransferOwnershipRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceTransferOwnershipUseCase.execute(
             workspace.id,
             member,
-            body
+            body,
+            context
         );
     }
 
@@ -334,9 +352,14 @@ export class WorkspaceUserController {
     @Post('/leave')
     async leave(
         @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() member: WorkspaceMember
+        @WorkspaceMemberCurrent() member: WorkspaceMember,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceLeaveUseCase.execute(workspace.id, member);
+        return this.workspaceLeaveUseCase.execute(
+            workspace.id,
+            member,
+            context
+        );
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
@@ -352,9 +375,14 @@ export class WorkspaceUserController {
     @Delete('/delete')
     async softDelete(
         @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string
+        @AuthJwtPayload('userId') userId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceSoftDeleteUseCase.execute(workspace.id, userId);
+        return this.workspaceSoftDeleteUseCase.execute(
+            workspace.id,
+            userId,
+            context
+        );
     }
 
     @Doc({ summary: 'list members of the current workspace' })
@@ -395,13 +423,15 @@ export class WorkspaceUserController {
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
-        body: WorkspaceMemberUpdateRoleRequestDto
+        body: WorkspaceMemberUpdateRoleRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceUpdateMemberRoleUseCase.execute(
             workspace.id,
             actorMember,
             workspaceMemberId,
-            body
+            body,
+            context
         );
     }
 
@@ -420,12 +450,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
-        workspaceMemberId: string
+        workspaceMemberId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRemoveMemberUseCase.execute(
             workspace.id,
             actorMember,
-            workspaceMemberId
+            workspaceMemberId,
+            context
         );
     }
 
@@ -470,12 +502,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
-        body: WorkspaceInviteCreateRequestDto
+        body: WorkspaceInviteCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         return this.workspaceCreateInviteUseCase.execute(
             workspace,
             userId,
-            body
+            body,
+            context
         );
     }
 
@@ -502,13 +536,15 @@ export class WorkspaceUserController {
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
-        body: WorkspaceInviteResendRequestDto
+        body: WorkspaceInviteResendRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         return this.workspaceResendInviteUseCase.execute(
             workspace,
             userId,
             workspaceInviteId,
-            body
+            body,
+            context
         );
     }
 
@@ -527,12 +563,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
-        workspaceInviteId: string
+        workspaceInviteId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRevokeInviteUseCase.execute(
             workspace.id,
             userId,
-            workspaceInviteId
+            workspaceInviteId,
+            context
         );
     }
 
@@ -553,9 +591,15 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('email') email: string,
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
-        body: WorkspaceInviteClaimRequestDto
+        body: WorkspaceInviteClaimRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceClaimInviteUseCase.execute(userId, email, body);
+        return this.workspaceClaimInviteUseCase.execute(
+            userId,
+            email,
+            body,
+            context
+        );
     }
 
     @Doc({
@@ -575,9 +619,14 @@ export class WorkspaceUserController {
     async joinRequestCreate(
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
-        body: WorkspaceJoinRequestCreateRequestDto
+        body: WorkspaceJoinRequestCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
-        return this.workspaceCreateJoinRequestUseCase.execute(userId, body);
+        return this.workspaceCreateJoinRequestUseCase.execute(
+            userId,
+            body,
+            context
+        );
     }
 
     @Doc({ summary: 'list join requests for the current workspace' })
@@ -623,12 +672,14 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
-        workspaceJoinRequestId: string
+        workspaceJoinRequestId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceAcceptJoinRequestUseCase.execute(
             workspace,
             userId,
-            workspaceJoinRequestId
+            workspaceJoinRequestId,
+            context
         );
     }
 
@@ -650,13 +701,15 @@ export class WorkspaceUserController {
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
-        body: WorkspaceJoinRequestRejectRequestDto
+        body: WorkspaceJoinRequestRejectRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRejectJoinRequestUseCase.execute(
             workspace,
             userId,
             workspaceJoinRequestId,
-            body
+            body,
+            context
         );
     }
 }

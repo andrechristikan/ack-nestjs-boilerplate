@@ -3,9 +3,8 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -20,7 +19,6 @@ import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
-    IUser,
     IUserCreateWithWorkspaceInput,
     IUserSignUp,
     IUserVerificationEmailCreate,
@@ -36,7 +34,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserSignUpUseCase implements IAppUseCase<
-    [UserSignUpRequestDto],
+    [UserSignUpRequestDto, IRequestContext],
     IResponseReturn<void>
 > {
     private readonly userRoleName: string;
@@ -67,20 +65,11 @@ export class UserSignUpUseCase implements IAppUseCase<
         )!;
     }
 
-    private stageActivities(
-        stages: IActivityLogStageInput<EnumActivityLogAction>[]
-    ): void {
-        const activityLogs = stages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-
-        this.activityLogService.stagePrepared(activityLogs);
-    }
-
     private async createSignUpUser(
         input: IUserCreateWithWorkspaceInput,
-        emailVerification: IUserVerificationEmailCreate
-    ): Promise<IUser> {
+        emailVerification: IUserVerificationEmailCreate,
+        context: IRequestContext
+    ): Promise<void> {
         const inputs = [input];
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -89,7 +78,7 @@ export class UserSignUpUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                const users = await this.outboxService.withTransaction(
+                await this.outboxService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -152,17 +141,24 @@ export class UserSignUpUseCase implements IAppUseCase<
                             EnumNotificationKind.verificationEmail,
                             verificationContext
                         );
+                        const stages = this.userCreateUtil.buildStages(
+                            UserCreateContract.signUp,
+                            inputs,
+                            created
+                        );
+                        const entries = stages.map(stage =>
+                            this.activityLogService.recordEffect(stage, context)
+                        );
                         await this.outboxService.addManyInTx(tx, [
+                            ...entries,
                             welcome,
                             verification,
                         ]);
-
-                        return created;
                     },
                     { timeout: this.createTimeoutInMs }
                 );
 
-                return users[0]!;
+                return;
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
                     error,
@@ -184,17 +180,20 @@ export class UserSignUpUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    async execute({
-        countryId,
-        email,
-        username,
-        password,
-        inviteToken,
-        name,
-        from,
-        cookies,
-        marketing,
-    }: UserSignUpRequestDto): Promise<IResponseReturn<void>> {
+    async execute(
+        {
+            countryId,
+            email,
+            username,
+            password,
+            inviteToken,
+            name,
+            from,
+            cookies,
+            marketing,
+        }: UserSignUpRequestDto,
+        context: IRequestContext
+    ): Promise<IResponseReturn<void>> {
         const signUp: IUserSignUp = {
             countryId,
             email,
@@ -230,13 +229,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                 roleId: role.id,
                 workspaceContext,
             });
-        const created = await this.createSignUpUser(input, emailVerification);
-        const stages = this.userCreateUtil.buildStages(
-            UserCreateContract.signUp,
-            [input],
-            [created]
-        );
-        this.stageActivities(stages);
+        await this.createSignUpUser(input, emailVerification, context);
 
         return {};
     }

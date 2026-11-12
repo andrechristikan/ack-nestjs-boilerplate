@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -17,11 +18,13 @@ export interface IFeatureFlagRepository {
     ): Promise<IResponsePaginationReturn<FeatureFlag>>;
     findOneByKey(key: string): Promise<FeatureFlag | null>;
     findOneById(id: string): Promise<FeatureFlag | null>;
-    updateStatus(
+    updateStatusInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag | null>;
-    updateMetadata(
+    updateMetadataInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
     ): Promise<FeatureFlag>;

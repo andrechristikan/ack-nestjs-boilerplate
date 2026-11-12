@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
@@ -38,10 +39,10 @@ import { Module } from '@nestjs/common';
         NotificationEmailTermPolicyService,
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
-        NotificationPushQueue,
         NotificationUtil,
     ],
     imports: [
+        ActivityLogModule,
         DeviceModule,
         AwsModule,
         BullModule.registerQueueAsync(

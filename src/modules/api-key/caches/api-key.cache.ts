@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
-import { CacheService } from '@common/cache/services/cache.service';
 
 @Injectable()
 export class ApiKeyCache {
@@ -10,10 +9,7 @@ export class ApiKeyCache {
     private readonly apiKeyLeaseKeyPattern: string;
     private readonly apiKeyLeaseTtlInMs: number;
 
-    constructor(
-        private readonly cacheService: CacheService,
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.apiKeyKeyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
         )!;
@@ -45,11 +41,5 @@ export class ApiKeyCache {
     /** The entry key and its lease key. */
     buildApiKeyKeys(key: string): string[] {
         return [this.buildApiKeyKey(key), this.buildApiKeyLeaseKey(key)];
-    }
-
-    /** Deletes the entry and its lease; a connection error throws RedisUnavailableException. */
-    async deleteApiKey(key: string): Promise<void> {
-        const keys = this.buildApiKeyKeys(key);
-        await this.cacheService.invalidate(keys);
     }
 }

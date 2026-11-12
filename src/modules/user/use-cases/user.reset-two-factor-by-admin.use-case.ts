@@ -1,4 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -16,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
-    [string, IUser],
+    [string, IUser, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -31,7 +32,11 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async execute(userId: string, user: IUser): Promise<IResponseReturn<void>> {
+    async execute(
+        userId: string,
+        user: IUser,
+        context: IRequestContext
+    ): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, user.id);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -40,24 +45,6 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
         this.userService.assertUnblocked(target);
 
         this.userTwoFactorService.assertEnabled(target);
-
-        const actorMetadata = this.userUtil.mapActivityLogActorMetadata(target);
-        const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
-            target,
-            user.id
-        );
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.adminUserResetTwoFactor,
-                metadata: actorMetadata,
-            }),
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
-                userId,
-                createdBy: user.id,
-                metadata: targetMetadata,
-            }),
-        ];
 
         const now = this.helperDateService.create();
         await this.outboxService.withTransaction(async tx => {
@@ -75,10 +62,34 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
                 EnumNotificationKind.resetTwoFactorByAdmin,
                 { userId, proceedBy: user.id, snapshot }
             );
-            await this.outboxService.addInTx(tx, effect);
+            const actorMetadata =
+                this.userUtil.mapActivityLogActorMetadata(target);
+            const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
+                target,
+                user.id
+            );
+            const actorEntry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.adminUserResetTwoFactor,
+                    metadata: actorMetadata,
+                },
+                context
+            );
+            const targetEntry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.userResetTwoFactorByAdmin,
+                    userId,
+                    createdBy: user.id,
+                    metadata: targetMetadata,
+                },
+                context
+            );
+            await this.outboxService.addManyInTx(tx, [
+                actorEntry,
+                targetEntry,
+                effect,
+            ]);
         });
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

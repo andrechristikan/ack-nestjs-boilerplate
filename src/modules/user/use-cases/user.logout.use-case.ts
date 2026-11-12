@@ -4,6 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLogoutUseCase implements IAppUseCase<
-    [string, string, string],
+    [string, string, string, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -30,13 +31,9 @@ export class UserLogoutUseCase implements IAppUseCase<
     async execute(
         userId: string,
         sessionId: string,
-        deviceOwnershipId: string
+        deviceOwnershipId: string,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        const logoutLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userLogout,
-            }),
-        ];
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -54,6 +51,11 @@ export class UserLogoutUseCase implements IAppUseCase<
                     userId,
                     now
                 );
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userLogout },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -67,8 +69,6 @@ export class UserLogoutUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        this.activityLogService.stagePrepared(logoutLogs);
 
         return {};
     }

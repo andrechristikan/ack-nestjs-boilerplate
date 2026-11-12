@@ -1,7 +1,12 @@
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestLanguageCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -67,9 +72,14 @@ export class NotificationSharedController {
     async list(
         @Query({ schema: NotificationListRequestSchema })
         query: NotificationListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        @AuthJwtPayload('userId') userId: string,
+        @RequestLanguageCurrent() language: string | null
     ): Promise<IResponsePaginationReturn<Notification>> {
-        return this.notificationGetListCursorUseCase.execute(userId, query);
+        return this.notificationGetListCursorUseCase.execute(
+            userId,
+            query,
+            language
+        );
     }
 
     @Doc({ summary: 'get all notification settings for current user' })
@@ -133,8 +143,13 @@ export class NotificationSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body({ schema: NotificationUserSettingRequestSchema })
-        body: NotificationUserSettingRequestDto
+        body: NotificationUserSettingRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.notificationUpdateUserSettingUseCase.execute(userId, body);
+        return this.notificationUpdateUserSettingUseCase.execute(
+            userId,
+            body,
+            context
+        );
     }
 }

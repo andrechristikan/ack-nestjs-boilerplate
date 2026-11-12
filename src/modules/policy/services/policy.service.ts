@@ -1,4 +1,5 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
@@ -47,12 +48,13 @@ export class PolicyService {
         return this.policyRepository.findManyByRoleId(roleId);
     }
 
-    async createByAdmin(
+    async createByAdminInTx(
+        tx: IDatabaseTransactionClient,
         roleId: string,
         data: PolicyRequestDto
     ): Promise<Policy> {
         try {
-            return await this.policyRepository.create(roleId, data);
+            return await this.policyRepository.createInTx(tx, roleId, data);
         } catch (err: unknown) {
             const isSubjectCollision = this.databaseUtil.isUniqueCollision(
                 err,
@@ -66,12 +68,18 @@ export class PolicyService {
         }
     }
 
-    async updateByAdmin(
+    async updateByAdminInTx(
+        tx: IDatabaseTransactionClient,
         roleId: string,
         id: string,
         data: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        const updated = await this.policyRepository.update(roleId, id, data);
+        const updated = await this.policyRepository.updateInTx(
+            tx,
+            roleId,
+            id,
+            data
+        );
         if (!updated) {
             throw new PolicyNotFoundException();
         }
@@ -79,9 +87,14 @@ export class PolicyService {
         return updated;
     }
 
-    async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
+    async deleteByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        id: string
+    ): Promise<Policy> {
         // Sequential by design: gate before the work it guards
-        const policy = await this.policyRepository.findOneByRoleIdAndId(
+        const policy = await this.policyRepository.findOneByRoleIdAndIdInTx(
+            tx,
             roleId,
             id
         );
@@ -89,7 +102,7 @@ export class PolicyService {
             throw new PolicyNotFoundException();
         }
 
-        const deleted = await this.policyRepository.delete(roleId, id);
+        const deleted = await this.policyRepository.deleteInTx(tx, roleId, id);
         if (!deleted) {
             throw new PolicyNotFoundException();
         }

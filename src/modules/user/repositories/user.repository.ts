@@ -339,11 +339,12 @@ export class UserRepository implements IUserRepository {
         return tx.user.findUnique({ where: { id } });
     }
 
-    async updateProfile(
+    async updateProfileInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         { countryId, gender, name }: IUserUpdateProfile
     ): Promise<User> {
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: { name, gender, countryId },
         });
@@ -381,26 +382,15 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async claimUsername(
+    async claimUsernameInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User> {
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 username,
-            },
-        });
-    }
-
-    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
-        const today = this.helperDateService.create();
-
-        await this.databaseService.client.user.update({
-            where: { id: userId },
-            data: {
-                lastWorkspaceId: workspaceId,
-                lastWorkspaceChangedAt: today,
             },
         });
     }
@@ -500,11 +490,12 @@ export class UserRepository implements IUserRepository {
         return count > 0;
     }
 
-    async markVerifiedBySocial(
+    async markVerifiedBySocialInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         verifiedAt: Date
     ): Promise<User> {
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 isVerified: true,

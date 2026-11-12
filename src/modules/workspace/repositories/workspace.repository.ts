@@ -135,21 +135,23 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateDetails(
+    async updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+        return tx.workspace.update({
             where: { id: workspaceId },
             data: { name, description },
         });
     }
 
-    async updateIsPublic(
+    async updateIsPublicInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+        return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 isPublic,
@@ -157,8 +159,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateSlug(workspaceId: string, slug: string): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+    async updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        slug: string
+    ): Promise<Workspace> {
+        return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 slug,

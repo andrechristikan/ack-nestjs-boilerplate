@@ -8,7 +8,9 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
     EnumFeatureFlagKey,
@@ -64,6 +66,7 @@ export class UserPasswordService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
+        private readonly activityLogService: ActivityLogService,
         private readonly configService: ConfigService
     ) {
         this.passwordAttemptEnabled = this.configService.get<boolean>(
@@ -100,7 +103,7 @@ export class UserPasswordService {
 
     private buildPasswordLockoutStages(
         userId: string
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+    ): IActivityLogInput<EnumActivityLogAction>[] {
         return [
             {
                 action: EnumActivityLogAction.userRevokeAllSessions,
@@ -157,7 +160,10 @@ export class UserPasswordService {
         };
     }
 
-    private async incrementPasswordAttempt(userId: string): Promise<boolean> {
+    private async incrementPasswordAttempt(
+        userId: string,
+        context: IRequestContext
+    ): Promise<boolean> {
         if (!this.passwordAttemptEnabled) {
             return true;
         }
@@ -171,9 +177,16 @@ export class UserPasswordService {
                         this.passwordMaxAttempt
                     );
                 if (!isCounted) {
-                    const effect =
+                    const lockout =
                         this.userTwoFactorService.lockoutEffect(userId);
-                    await this.outboxService.addInTx(tx, effect);
+                    const stages = this.buildPasswordLockoutStages(userId);
+                    const entries = stages.map(stage =>
+                        this.activityLogService.recordEffect(stage, context)
+                    );
+                    await this.outboxService.addManyInTx(tx, [
+                        lockout,
+                        ...entries,
+                    ]);
                 }
 
                 return isCounted;
@@ -206,33 +219,22 @@ export class UserPasswordService {
         return { password, passwordString };
     }
 
-    /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row in the count's transaction; null for a passwordless user, isAttemptCounted false with the lockout activity stages on a spent budget, lockoutStages empty otherwise; a write conflict throws UserPasswordAttemptMaxException. */
+    /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; null for a passwordless user, isAttemptCounted false on a spent budget; a write conflict throws UserPasswordAttemptMaxException. */
     async countPasswordAttempt(
-        user: IUser
+        user: IUser,
+        context: IRequestContext
     ): Promise<IUserCredentialAttempt | null> {
         const hasPassword = this.hasPassword(user);
         if (!hasPassword) {
             return null;
         }
 
-        const isAttemptCounted = await this.incrementPasswordAttempt(user.id);
-        if (!isAttemptCounted) {
-            const lockoutStages = this.buildPasswordLockoutStages(user.id);
+        const isAttemptCounted = await this.incrementPasswordAttempt(
+            user.id,
+            context
+        );
 
-            return {
-                user,
-                hashedPassword: user.password,
-                isAttemptCounted,
-                lockoutStages,
-            };
-        }
-
-        return {
-            user,
-            hashedPassword: user.password,
-            isAttemptCounted,
-            lockoutStages: [],
-        };
+        return { user, hashedPassword: user.password, isAttemptCounted };
     }
 
     assertAttemptCounted(isAttemptCounted: boolean): void {
@@ -275,11 +277,12 @@ export class UserPasswordService {
         return { user, forgot };
     }
 
-    /** Replaces the user's unused requests with the new one and adds the forgotPassword effect in the same transaction, dispatched after the commit. */
+    /** Replaces the user's unused requests with the new one and adds the forgotPassword effect and the activity entry in the same transaction, dispatched after the commit. */
     async createForgotPassword(
         userId: string,
         email: string,
-        forgot: IUserForgotPasswordCreate
+        forgot: IUserForgotPasswordCreate,
+        context: IRequestContext
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
 
@@ -301,7 +304,15 @@ export class UserPasswordService {
                     expiredInMinutes: forgot.expiredInMinutes,
                 }
             );
-            await this.outboxService.addInTx(tx, effect);
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.userForgotPassword,
+                    userId,
+                    createdBy: userId,
+                },
+                context
+            );
+            await this.outboxService.addManyInTx(tx, [entry, effect]);
         });
     }
 

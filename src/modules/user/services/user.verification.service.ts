@@ -4,7 +4,10 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -26,6 +29,7 @@ export class UserVerificationService {
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
         private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly notificationService: NotificationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
@@ -57,8 +61,11 @@ export class UserVerificationService {
         return { verification, user };
     }
 
-    /** Marks the verification used and the user verified, and adds the verifiedEmail effect in the same transaction, dispatched after the commit. */
-    async verifyEmail(verification: Verification): Promise<void> {
+    /** Marks the verification used and the user verified, and adds the verifiedEmail effect and the activity entry in the same transaction, dispatched after the commit. */
+    async verifyEmail(
+        verification: Verification,
+        context: IRequestContext
+    ): Promise<void> {
         try {
             const verifiedAt = this.helperDateService.create();
             await this.outboxService.withTransaction(async tx => {
@@ -84,7 +91,15 @@ export class UserVerificationService {
                         reference: verification.reference,
                     }
                 );
-                await this.outboxService.addInTx(tx, effect);
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.userVerifiedEmail,
+                        userId: verification.userId,
+                        createdBy: verification.userId,
+                    },
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, [entry, effect]);
             });
 
             return;
@@ -136,36 +151,65 @@ export class UserVerificationService {
         return isResendable ? user : null;
     }
 
-    /** Marks the user verified and clears its password, password dates, and password attempt counter in the same write. */
-    async markVerifiedBySocial(userId: string): Promise<User> {
+    /** Marks the user verified and clears its password, password dates, and password attempt counter in the same write, on the caller's transaction. */
+    async markVerifiedBySocialInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<User> {
         const verifiedAt = this.helperDateService.create();
 
-        return this.userRepository.markVerifiedBySocial(userId, verifiedAt);
+        return this.userRepository.markVerifiedBySocialInTx(
+            tx,
+            userId,
+            verifiedAt
+        );
     }
 
-    /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect in the same transaction, dispatched after the commit. */
-    async sendEmail(userId: string, email: string): Promise<void> {
+    /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect and the activity entry in the same transaction, dispatched after the commit. */
+    async sendEmail(
+        userId: string,
+        email: string,
+        context: IRequestContext
+    ): Promise<void> {
+        await this.outboxService.withTransaction(async tx => {
+            await this.sendEmailInTx(tx, userId, email);
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId,
+                    createdBy: userId,
+                },
+                context
+            );
+            await this.outboxService.addInTx(tx, entry);
+        });
+    }
+
+    /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect on the caller's transaction. */
+    async sendEmailInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        email: string
+    ): Promise<void> {
         const verification = this.userVerificationUtil.createEmail();
         const today = this.helperDateService.create();
 
-        await this.outboxService.withTransaction(async tx => {
-            await this.userVerificationRepository.createReplacingActiveInTx(
-                tx,
-                userId,
-                email,
-                verification,
-                today
-            );
-            const context = this.userVerificationUtil.mapEmailContext(
-                userId,
-                verification
-            );
-            const effect = this.notificationService.notify(
-                EnumNotificationKind.verificationEmail,
-                context
-            );
-            await this.outboxService.addInTx(tx, effect);
-        });
+        await this.userVerificationRepository.createReplacingActiveInTx(
+            tx,
+            userId,
+            email,
+            verification,
+            today
+        );
+        const context = this.userVerificationUtil.mapEmailContext(
+            userId,
+            verification
+        );
+        const effect = this.notificationService.notify(
+            EnumNotificationKind.verificationEmail,
+            context
+        );
+        await this.outboxService.addInTx(tx, effect);
     }
 
     async createInTx(

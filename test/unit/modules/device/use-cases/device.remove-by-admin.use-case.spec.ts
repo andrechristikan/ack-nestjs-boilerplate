@@ -3,75 +3,38 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
-    EnumDevicePlatform,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
-import { DeviceService } from '@modules/device/services/device.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 
 describe('DeviceRemoveByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
-    const deviceOwnership: IDeviceOwnership = {
-        id: 'device-ownership-1',
-        createdAt: updatedAt,
-        createdBy: 'user-1',
-        updatedAt,
-        updatedBy: 'user-1',
-        deviceId: 'device-1',
-        userId: 'user-1',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: updatedAt,
-        notificationToken: null,
-        notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        device: {
-            id: 'device-1',
-            createdAt: updatedAt,
-            createdBy: 'user-1',
-            updatedAt,
-            updatedBy: 'user-1',
-            fingerprint: 'abc123def456ghi789jkl012mno345pq',
-            name: 'iPhone 12',
-            platform: EnumDevicePlatform.ios,
-            lastActiveAt: updatedAt,
+    const context: IRequestContext = {
+        actorUserId: 'admin-1',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
         },
-        user: {
-            id: 'user-1',
-            createdAt: updatedAt,
-            createdBy: 'user-1',
-            updatedAt,
-            updatedBy: 'user-1',
-            deletedAt: null,
-            deletedBy: null,
-            name: 'Jane Doe',
-            username: 'jane',
-            photo: null,
-        },
-        revokedBy: null,
-        _count: { sessions: 2 },
     };
     const admin: IUser = {
         id: 'admin-1',
@@ -118,6 +81,12 @@ describe('DeviceRemoveByAdminUseCase', () => {
         },
         twoFactor: null,
     };
+    const userRole: IRole = {
+        id: 'role-user',
+        name: 'user',
+        type: EnumRoleType.user,
+        isImmutable: false,
+    };
     let useCase: DeviceRemoveByAdminUseCase;
 
     beforeEach(async () => {
@@ -127,9 +96,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             providers: [
                 DeviceRemoveByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
-                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: RoleService, useValue: roleService },
-                { provide: DeviceService, useValue: deviceService },
             ],
         }).compile();
 
@@ -137,66 +104,15 @@ describe('DeviceRemoveByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        const revokedSessions = [{ id: 'session-1' }];
-        const actorMetadata = {
-            deviceOwnershipId: 'device-ownership-1',
-            deviceId: 'device-1',
-            sessionCount: 1,
-            targetUserId: 'user-1',
-            targetUsername: 'jane',
-            timestamp: updatedAt,
-        };
-        const targetMetadata = {
-            deviceOwnershipId: 'device-ownership-1',
-            deviceId: 'device-1',
-            sessionCount: 1,
-            actorUserId: 'admin-1',
-            timestamp: updatedAt,
-        };
-        const actorActivityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.adminDeviceRemove,
-            metadata: actorMetadata,
-            userId: null,
-            createdBy: null,
-            workspaceId: null,
-        };
-        const targetActivityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-            metadata: targetMetadata,
-            userId: 'user-1',
-            createdBy: 'admin-1',
-            workspaceId: null,
-        };
-        const userRole: IRole = {
-            id: 'role-user',
-            name: 'user',
-            type: EnumRoleType.user,
-            isImmutable: false,
-        };
-
-        beforeEach(() => {
-            sessionService.removeDeviceOwnership.mockResolvedValue({
-                deviceOwnership,
-                revokedSessions,
-            });
-        });
-
-        it('checks the rank, removes attributed to the admin, and stages the actor and target rows', async () => {
+        it('checks the rank, then removes attributed to the admin passing the request context', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
-            deviceService.mapActivityLogActorMetadata.mockReturnValue(
-                actorMetadata
-            );
-            deviceService.mapActivityLogTargetMetadata.mockReturnValue(
-                targetMetadata
-            );
-            activityLogService.prepare
-                .mockReturnValueOnce(actorActivityLog)
-                .mockReturnValueOnce(targetActivityLog);
+            sessionService.removeDeviceOwnershipByAdmin.mockResolvedValue();
 
             const result = await useCase.execute(
                 'user-1',
                 'device-ownership-1',
-                admin
+                admin,
+                context
             );
 
             expect(result).toEqual({});
@@ -205,60 +121,26 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(sessionService.removeDeviceOwnership).toHaveBeenCalledWith(
+            expect(
+                sessionService.removeDeviceOwnershipByAdmin
+            ).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                'admin-1'
+                'admin-1',
+                context
             );
-            expect(
-                deviceService.mapActivityLogTargetMetadata
-            ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.adminDeviceRemove,
-                metadata: actorMetadata,
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-                userId: 'user-1',
-                createdBy: 'admin-1',
-                metadata: targetMetadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-                targetActivityLog,
-            ]);
         });
 
-        it('stages only the actor row when the admin removes their own device', async () => {
-            roleService.getOneByUserId.mockResolvedValue({
-                ...userRole,
-                type: EnumRoleType.admin,
-            });
-            deviceService.mapActivityLogActorMetadata.mockReturnValue(
-                actorMetadata
-            );
-            activityLogService.prepare.mockReturnValue(actorActivityLog);
-
-            await useCase.execute('admin-1', 'device-ownership-1', admin);
-
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
-            expect(
-                deviceService.mapActivityLogTargetMetadata
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-            ]);
-        });
-
-        it('stages nothing when the removal throws', async () => {
+        it('rethrows the removal exception', async () => {
             const notFound = new DeviceNotFoundException();
             roleService.getOneByUserId.mockResolvedValue(userRole);
-            sessionService.removeDeviceOwnership.mockRejectedValue(notFound);
+            sessionService.removeDeviceOwnershipByAdmin.mockRejectedValue(
+                notFound
+            );
 
             await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin)
+                useCase.execute('user-1', 'device-ownership-1', admin, context)
             ).rejects.toBe(notFound);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('removes nothing when the actor does not outrank the target', async () => {
@@ -272,10 +154,11 @@ describe('DeviceRemoveByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin)
+                useCase.execute('user-1', 'device-ownership-1', admin, context)
             ).rejects.toBe(rankForbidden);
-            expect(sessionService.removeDeviceOwnership).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                sessionService.removeDeviceOwnershipByAdmin
+            ).not.toHaveBeenCalled();
         });
     });
 });

@@ -2,17 +2,11 @@ import type { Queue, QueueListener } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { QueueSideEffectFailedException } from '@common/queue/exceptions/queue.side-effect-failed.exception';
 
 describe('QueueBase', () => {
     const queue: MockProxy<Queue> = mock<Queue>();
-    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const description = 'enqueue notification after commit';
-    let queueBase: QueueBase;
     let errorListener: QueueListener['error'] | null = null;
 
     beforeEach(() => {
@@ -22,11 +16,7 @@ describe('QueueBase', () => {
 
             return queue;
         });
-        queueBase = Reflect.construct(QueueBase, [
-            queue,
-            sentryService,
-            cacheService,
-        ]);
+        Reflect.construct(QueueBase, [queue, cacheService]);
     });
 
     describe('constructor', () => {
@@ -52,86 +42,6 @@ describe('QueueBase', () => {
 
             expect(() => errorListener?.(error)).not.toThrow();
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-        });
-    });
-
-    describe('addSideEffect', () => {
-        it('adds the job and reports nothing when add resolves', async () => {
-            await expect(
-                queueBase['addSideEffect'](
-                    'job',
-                    { id: 1 },
-                    { priority: EnumQueuePriority.low, jobId: 'job-1' },
-                    description
-                )
-            ).resolves.toBeUndefined();
-
-            expect(queue.add).toHaveBeenCalledWith(
-                'job',
-                { id: 1 },
-                { priority: EnumQueuePriority.low, jobId: 'job-1' }
-            );
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-        });
-
-        it('resolves and reports the wrapped failure when add rejects', async () => {
-            const error = new Error('redis down');
-            queue.add.mockRejectedValue(error);
-
-            await expect(
-                queueBase['addSideEffect'](
-                    'job',
-                    { id: 1 },
-                    { priority: EnumQueuePriority.low, jobId: 'job-1' },
-                    description
-                )
-            ).resolves.toBeUndefined();
-
-            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(sentryService.captureException).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    constructor: QueueSideEffectFailedException,
-                    rawError: error,
-                    message: description,
-                })
-            );
-        });
-    });
-
-    describe('addBulkSideEffect', () => {
-        it('adds the bulk and reports nothing when addBulk resolves', async () => {
-            await expect(
-                queueBase['addBulkSideEffect'](
-                    [{ name: 'job', data: { id: 1 } }],
-                    description
-                )
-            ).resolves.toBeUndefined();
-
-            expect(queue.addBulk).toHaveBeenCalledWith([
-                { name: 'job', data: { id: 1 } },
-            ]);
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-        });
-
-        it('resolves and reports the wrapped failure when addBulk rejects', async () => {
-            const error = new Error('redis down');
-            queue.addBulk.mockRejectedValue(error);
-
-            await expect(
-                queueBase['addBulkSideEffect'](
-                    [{ name: 'job', data: { id: 1 } }],
-                    description
-                )
-            ).resolves.toBeUndefined();
-
-            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(sentryService.captureException).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    constructor: QueueSideEffectFailedException,
-                    rawError: error,
-                    message: description,
-                })
-            );
         });
     });
 });

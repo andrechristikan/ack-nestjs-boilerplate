@@ -41,6 +41,10 @@
             "title": "Term Policy Update",
             "body": "A new {type} term policy version {version} has been published. Please review it."
         },
+        "userImportResult": {
+            "title": "User import result",
+            "body": "Hi {username}, your user import has finished. The result is in your email."
+        },
         "newDeviceLogin": {
             "title": "New Device Login",
             "body": "Hi {username}, there is a new device login from {device} in {city} at {loginAt}."

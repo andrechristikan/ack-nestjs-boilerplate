@@ -1,4 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -20,7 +21,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
-    [string, IUser],
+    [string, IUser, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -36,7 +37,11 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async execute(userId: string, user: IUser): Promise<IResponseReturn<void>> {
+    async execute(
+        userId: string,
+        user: IUser,
+        context: IRequestContext
+    ): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, user.id);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -53,7 +58,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
             password.passwordExpired
         );
 
-        const row = await this.outboxService.withTransaction(async tx => {
+        await this.outboxService.withTransaction(async tx => {
             const [updated, snapshot] = await Promise.all([
                 this.userService.updatePasswordInTx(
                     tx,
@@ -90,29 +95,34 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                     snapshot,
                 }
             );
-            await this.outboxService.addInTx(tx, effect);
-
-            return updated;
+            const actorMetadata =
+                this.userUtil.mapActivityLogActorMetadata(updated);
+            const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
+                updated,
+                user.id
+            );
+            const actorEntry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.adminUserUpdatePassword,
+                    metadata: actorMetadata,
+                },
+                context
+            );
+            const targetEntry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                    userId,
+                    createdBy: user.id,
+                    metadata: targetMetadata,
+                },
+                context
+            );
+            await this.outboxService.addManyInTx(tx, [
+                actorEntry,
+                targetEntry,
+                effect,
+            ]);
         });
-
-        const actorMetadata = this.userUtil.mapActivityLogActorMetadata(row);
-        const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
-            row,
-            user.id
-        );
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.adminUserUpdatePassword,
-                metadata: actorMetadata,
-            }),
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                userId,
-                createdBy: user.id,
-                metadata: targetMetadata,
-            }),
-        ];
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

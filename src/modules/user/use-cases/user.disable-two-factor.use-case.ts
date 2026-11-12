@@ -4,6 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -17,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserDisableTwoFactorUseCase implements IAppUseCase<
-    [IUser, UserTwoFactorDisableRequestDto],
+    [IUser, UserTwoFactorDisableRequestDto, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -29,37 +30,20 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
-    private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
-        const attempt = await this.userTwoFactorService.countAttempt(user);
-        const lockoutLogs = attempt.lockoutStages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-        this.activityLogService.stagePrepared(lockoutLogs);
-
-        this.userTwoFactorService.assertAttemptCounted(
-            attempt.isAttemptCounted
-        );
-    }
-
     async execute(
         user: IUser,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         this.userTwoFactorService.assertEnabled(user);
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.assertTwoFactorAttemptCounted(user);
+        await this.userTwoFactorService.assertAttemptCounted(user, context);
         await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method,
         });
 
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userDisableTwoFactor,
-            }),
-        ];
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -70,6 +54,11 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
                     user.id,
                     now
                 );
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userDisableTwoFactor },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -83,8 +72,6 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

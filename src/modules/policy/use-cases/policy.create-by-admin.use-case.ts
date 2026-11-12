@@ -1,8 +1,8 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Policy } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyService } from '@modules/policy/services/policy.service';
@@ -14,29 +14,22 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class PolicyCreateByAdminUseCase implements IAppUseCase<
-    [string, PolicyRequestDto, IUser],
+    [string, PolicyRequestDto, IUser, IRequestContext],
     IResponseReturn<PolicyDto>
 > {
     constructor(
         private readonly policyService: PolicyService,
         private readonly roleService: RoleService,
         private readonly policyUtil: PolicyUtil,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogService: ActivityLogService,
+        private readonly outboxService: OutboxService
     ) {}
-
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        policy: Policy
-    ): IActivityLogStaged {
-        const metadata = this.policyUtil.mapActivityLogMetadata(policy);
-
-        return this.activityLogService.prepare({ action, metadata });
-    }
 
     async execute(
         roleId: string,
         body: PolicyRequestDto,
-        user: IUser
+        user: IUser,
+        context: IRequestContext
     ): Promise<IResponseReturn<PolicyDto>> {
         // Sequential by design: gate before the work it guards
         await this.roleService.assertWritableByActor(roleId, {
@@ -44,15 +37,22 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
             roleType: user.role.type,
         });
 
-        const created = await this.policyService.createByAdmin(roleId, body);
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminPolicyCreate,
-                created
-            ),
-        ];
+        const created = await this.outboxService.withTransaction(async tx => {
+            const policy = await this.policyService.createByAdminInTx(
+                tx,
+                roleId,
+                body
+            );
 
-        this.activityLogService.stagePrepared(activityLogs);
+            const metadata = this.policyUtil.mapActivityLogMetadata(policy);
+            const effect = this.activityLogService.recordEffect(
+                { action: EnumActivityLogAction.adminPolicyCreate, metadata },
+                context
+            );
+            await this.outboxService.addInTx(tx, effect);
+
+            return policy;
+        });
 
         return { data: created };
     }

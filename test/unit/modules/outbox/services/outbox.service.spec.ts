@@ -432,11 +432,13 @@ describe('OutboxService', () => {
     });
 
     describe('add', () => {
-        it('inserts the row, then dispatches it', async () => {
+        it('inserts the row, then dispatches it and returns its id', async () => {
             databaseUtil.createId.mockReturnValue('outbox-1');
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
 
-            await service.add(purgeEffect);
+            const id = await service.add(purgeEffect);
+
+            expect(id).toBe('outbox-1');
 
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({ id: 'outbox-1' }),
@@ -449,12 +451,14 @@ describe('OutboxService', () => {
     });
 
     describe('addMany', () => {
-        it('inserts the rows, then dispatches them', async () => {
+        it('inserts the rows, then dispatches them and returns their ids', async () => {
             databaseUtil.createId
                 .mockReturnValueOnce('outbox-1')
                 .mockReturnValueOnce('outbox-2');
 
-            await service.addMany([purgeEffect, purgeEffect]);
+            const ids = await service.addMany([purgeEffect, purgeEffect]);
+
+            expect(ids).toEqual(['outbox-1', 'outbox-2']);
 
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({ id: 'outbox-1' }),

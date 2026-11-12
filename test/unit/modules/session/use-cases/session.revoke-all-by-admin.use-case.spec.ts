@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -11,14 +10,12 @@ import {
 } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
@@ -26,12 +23,25 @@ import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/sessi
 describe('SessionRevokeAllByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+    const context: IRequestContext = {
+        actorUserId: 'admin-1',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
     const userRole: IRole = {
         id: 'role-user',
         name: 'user',
@@ -43,13 +53,6 @@ describe('SessionRevokeAllByAdminUseCase', () => {
         name: 'superadmin',
         type: EnumRoleType.superAdmin,
         isImmutable: false,
-    };
-    const selfActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userRevokeSession,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
     };
     const admin: IUser = {
         id: 'admin-1',
@@ -105,8 +108,6 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 SessionRevokeAllByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionUtil, useValue: sessionUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -120,7 +121,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 throw notSelf;
             });
 
-            const rejection = useCase.execute('admin-1', admin);
+            const rejection = useCase.execute('admin-1', admin, context);
 
             await expect(rejection).rejects.toBe(notSelf);
             expect(roleService.getOneByUserId).not.toHaveBeenCalled();
@@ -134,7 +135,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 throw rankForbidden;
             });
 
-            const rejection = useCase.execute('root-1', admin);
+            const rejection = useCase.execute('root-1', admin, context);
 
             await expect(rejection).rejects.toBe(rankForbidden);
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
@@ -144,7 +145,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
             expect(sessionService.revokeAllByAdmin).not.toHaveBeenCalled();
         });
 
-        it('revokes, prepares the revoke-all rows from the count and stages them', async () => {
+        it('revokes every session as the admin passing the request context', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(revokedAt);
             const refs: ISessionRef[] = [
@@ -152,27 +153,8 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 { id: 'session-2' },
             ];
             sessionService.revokeAllByAdmin.mockResolvedValue(refs);
-            const actorMetadata = { targetUserId: 'user-1', sessionCount: 2 };
-            const targetMetadata = { actorUserId: 'admin-1', sessionCount: 2 };
-            sessionUtil.mapActivityLogRevokeAllActorMetadata.mockReturnValue(
-                actorMetadata
-            );
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue(
-                targetMetadata
-            );
-            const actorActivityLog = {
-                ...selfActivityLog,
-                action: EnumActivityLogAction.adminSessionRevokeAll,
-            };
-            const targetActivityLog = {
-                ...selfActivityLog,
-                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-            };
-            activityLogService.prepare
-                .mockReturnValueOnce(actorActivityLog)
-                .mockReturnValueOnce(targetActivityLog);
 
-            const result = await useCase.execute('user-1', admin);
+            const result = await useCase.execute('user-1', admin, context);
 
             expect(result).toEqual({});
             expect(sessionService.assertNotSelf).toHaveBeenCalledWith(
@@ -186,40 +168,20 @@ describe('SessionRevokeAllByAdminUseCase', () => {
             expect(sessionService.revokeAllByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'admin-1',
-                revokedAt
+                revokedAt,
+                context
             );
-            expect(
-                sessionUtil.mapActivityLogRevokeAllActorMetadata
-            ).toHaveBeenCalledWith('user-1', 2);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('admin-1', 2);
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.adminSessionRevokeAll,
-                metadata: actorMetadata,
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                userId: 'user-1',
-                createdBy: 'admin-1',
-                metadata: targetMetadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                actorActivityLog,
-                targetActivityLog,
-            ]);
         });
 
-        it('stages nothing when the domain throws', async () => {
+        it('rethrows the domain exception', async () => {
             roleService.getOneByUserId.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(revokedAt);
             const failure = new SessionNotFoundException();
             sessionService.revokeAllByAdmin.mockRejectedValue(failure);
 
-            const rejection = useCase.execute('user-1', admin);
+            const rejection = useCase.execute('user-1', admin, context);
 
             await expect(rejection).rejects.toBe(failure);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

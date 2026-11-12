@@ -17,7 +17,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -380,15 +380,14 @@ describe('UserRegistrationService', () => {
     describe('buildCreateByAdminStages', () => {
         it('leads with the adminUserCreate row naming the created user, then the admin contract rows', () => {
             const input = { ...inputs[0]!, createdBy: 'admin-ochre' };
-            const contractStages: IActivityLogStageInput<EnumActivityLogAction>[] =
-                [
-                    {
-                        action: UserCreateContract.admin.createdAction,
-                        userId: createdUser.id,
-                        createdBy: 'admin-ochre',
-                        metadata: {},
-                    },
-                ];
+            const contractStages: IActivityLogInput<EnumActivityLogAction>[] = [
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: createdUser.id,
+                    createdBy: 'admin-ochre',
+                    metadata: {},
+                },
+            ];
             userCreateUtil.buildStages.mockReturnValue(contractStages);
 
             const result = service.buildCreateByAdminStages(input, createdUser);

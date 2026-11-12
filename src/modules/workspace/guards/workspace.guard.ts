@@ -1,6 +1,8 @@
-import { RequestWorkspaceIdStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestWorkspaceIdStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -20,7 +22,7 @@ export class WorkspaceGuard implements CanActivate {
         const workspace =
             await this.workspaceService.validateWorkspaceGuard(workspaceId);
 
-        this.requestStoreService.set(WorkspaceStoreKey, workspace);
+        this.requestStoreService.set(RequestWorkspaceStoreKey, workspace);
 
         return true;
     }

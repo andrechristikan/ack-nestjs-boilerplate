@@ -18,13 +18,11 @@ import {
     EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    WorkspaceMemberStoreKey,
-    WorkspaceStoreKey,
-} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -133,7 +131,7 @@ describe('WorkspaceMemberGuard', () => {
         it('validates membership by the stored workspace and user ids and caches it', async () => {
             requestStoreService.get.mockImplementation(
                 (key: string): unknown => {
-                    if (key === WorkspaceStoreKey) return workspace;
+                    if (key === RequestWorkspaceStoreKey) return workspace;
                     if (key === UserStoreKey) return user;
                     return null;
                 }
@@ -157,7 +155,7 @@ describe('WorkspaceMemberGuard', () => {
         it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
             requestStoreService.get.mockImplementation(
                 (key: string): unknown => {
-                    if (key === WorkspaceStoreKey) return workspace;
+                    if (key === RequestWorkspaceStoreKey) return workspace;
                     return null;
                 }
             );

@@ -1,19 +1,18 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { ITermPolicyActivityLogSubject } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
+import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
-    [string, string],
+    [string, string, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -25,41 +24,18 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        termPolicy: ITermPolicyActivityLogSubject,
-        timestamp: Date
-    ): IActivityLogStaged {
-        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
-            timestamp
-        );
-
-        return this.activityLogService.prepare({
-            action,
-            metadata,
-        });
-    }
-
     async execute(
         termPolicyId: string,
-        updatedBy: string
+        updatedBy: string,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         const termPolicy =
             await this.termPolicyService.getPublishedByAdmin(termPolicyId);
-        const timestamp = this.helperDateService.create();
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminTermPolicyResendEmail,
-                termPolicy,
-                timestamp
-            ),
-        ];
 
         const recipientCutoffAt = this.helperDateService.formatToIso(
             termPolicy.publishedAt!
         );
-        const effect = this.notificationService.resendPublishTermPolicyEffect(
+        const resend = this.notificationService.resendPublishTermPolicyEffect(
             {
                 termPolicyId: termPolicy.id,
                 type: termPolicy.type,
@@ -68,9 +44,20 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             },
             updatedBy
         );
-        await this.outboxService.add(effect);
 
-        this.activityLogService.stagePrepared(activityLogs);
+        const timestamp = this.helperDateService.create();
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            termPolicy,
+            timestamp
+        );
+        const entry = this.activityLogService.recordEffect(
+            {
+                action: EnumActivityLogAction.adminTermPolicyResendEmail,
+                metadata,
+            },
+            context
+        );
+        await this.outboxService.addMany([resend, entry]);
 
         return {};
     }

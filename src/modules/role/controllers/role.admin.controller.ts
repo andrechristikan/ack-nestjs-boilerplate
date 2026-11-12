@@ -12,7 +12,11 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -121,9 +125,10 @@ export class RoleAdminController {
     async create(
         @Body({ schema: RoleCreateRequestSchema })
         body: RoleCreateRequestDto,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleCreateByAdminUseCase.execute(body, user);
+        return this.roleCreateByAdminUseCase.execute(body, user, context);
     }
 
     @Doc({ summary: 'update data a role' })
@@ -144,9 +149,15 @@ export class RoleAdminController {
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleUpdateByAdminUseCase.execute(roleId, body, user);
+        return this.roleUpdateByAdminUseCase.execute(
+            roleId,
+            body,
+            user,
+            context
+        );
     }
 
     @Doc({ summary: 'delete data a role' })
@@ -165,8 +176,9 @@ export class RoleAdminController {
     async delete(
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.roleDeleteByAdminUseCase.execute(roleId, user);
+        return this.roleDeleteByAdminUseCase.execute(roleId, user, context);
     }
 }

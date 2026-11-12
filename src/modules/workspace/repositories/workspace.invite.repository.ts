@@ -341,19 +341,21 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async revoke(workspaceInviteId: string): Promise<boolean> {
+    async revokeInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceInviteId: string
+    ): Promise<boolean> {
         const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
-        const { count } =
-            await this.databaseService.client.workspaceInvite.updateMany({
-                where: {
-                    id: workspaceInviteId,
-                    status: EnumWorkspaceInviteStatus.pending,
-                },
-                data: {
-                    status: EnumWorkspaceInviteStatus.revoked,
-                    nonce,
-                },
-            });
+        const { count } = await tx.workspaceInvite.updateMany({
+            where: {
+                id: workspaceInviteId,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
+            data: {
+                status: EnumWorkspaceInviteStatus.revoked,
+                nonce,
+            },
+        });
 
         return count > 0;
     }

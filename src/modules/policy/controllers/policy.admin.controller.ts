@@ -1,5 +1,9 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -92,9 +96,15 @@ export class PolicyAdminController {
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyCreateByAdminUseCase.execute(roleId, body, user);
+        return this.policyCreateByAdminUseCase.execute(
+            roleId,
+            body,
+            user,
+            context
+        );
     }
 
     @Doc({ summary: 'update the action list of a role policy' })
@@ -117,13 +127,15 @@ export class PolicyAdminController {
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<PolicyDto>> {
         return this.policyUpdateByAdminUseCase.execute(
             roleId,
             policyId,
             body,
-            user
+            user,
+            context
         );
     }
 
@@ -145,8 +157,14 @@ export class PolicyAdminController {
         roleId: string,
         @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.policyDeleteByAdminUseCase.execute(roleId, policyId, user);
+        return this.policyDeleteByAdminUseCase.execute(
+            roleId,
+            policyId,
+            user,
+            context
+        );
     }
 }

@@ -9,7 +9,7 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -76,13 +76,10 @@ export class UserImportService {
         };
     }
 
-    async prepareImportByAdmin(
+    assertImportByAdminRows(
         data: IUserImport[],
-        createdBy: string,
-        role: IUserCreateRole,
-        countryId: string,
         { existing, badWords }: IUserImportUsernameChecks
-    ): Promise<IUserImportPrepared> {
+    ): void {
         const emails = data.map(item => item.email);
         const duplicateEmails = emails.filter(
             (email, index) => emails.indexOf(email) !== index
@@ -105,6 +102,16 @@ export class UserImportService {
         } else if (badWords.some(containsBadWord => containsBadWord)) {
             throw new UserUsernameContainBadWordException();
         }
+    }
+
+    async prepareImportByAdmin(
+        data: IUserImport[],
+        createdBy: string,
+        role: IUserCreateRole,
+        countryId: string
+    ): Promise<IUserImportPrepared> {
+        const emails = data.map(item => item.email);
+        const usernames = data.map(item => item.username);
 
         const totalData = data.length;
         const userIds = Array(totalData)
@@ -178,7 +185,7 @@ export class UserImportService {
     buildImportByAdminStages(
         inputs: IUserCreateWithWorkspaceInput[],
         users: IUser[]
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+    ): IActivityLogInput<EnumActivityLogAction>[] {
         const stages = this.userCreateUtil.buildStages(
             UserCreateContract.admin,
             inputs,

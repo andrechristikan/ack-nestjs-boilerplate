@@ -53,7 +53,8 @@ export interface IWorkspaceMemberRepository {
         role: EnumWorkspaceMemberRole,
         actorId: string
     ): Promise<WorkspaceMember>;
-    updateRole(
+    updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole

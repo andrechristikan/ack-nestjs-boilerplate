@@ -13,7 +13,11 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -106,9 +110,10 @@ export class ApiKeyAdminController {
     @Post('/create')
     async create(
         @Body({ schema: ApiKeyCreateRequestSchema })
-        body: ApiKeyCreateRequestDto
+        body: ApiKeyCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyCreateByAdminUseCase.execute(body);
+        return this.apiKeyCreateByAdminUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'reset secret an api key' })
@@ -128,9 +133,10 @@ export class ApiKeyAdminController {
     @Patch('/reset/:apiKeyId')
     async reset(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyResetByAdminUseCase.execute(apiKeyId);
+        return this.apiKeyResetByAdminUseCase.execute(apiKeyId, context);
     }
 
     @Doc({ summary: 'update data an api key' })
@@ -152,9 +158,10 @@ export class ApiKeyAdminController {
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyUpdateByAdminUseCase.execute(apiKeyId, body);
+        return this.apiKeyUpdateByAdminUseCase.execute(apiKeyId, body, context);
     }
 
     @Doc({ summary: 'update date of api key' })
@@ -176,9 +183,14 @@ export class ApiKeyAdminController {
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyUpdateDatesByAdminUseCase.execute(apiKeyId, body);
+        return this.apiKeyUpdateDatesByAdminUseCase.execute(
+            apiKeyId,
+            body,
+            context
+        );
     }
 
     @Doc({ summary: 'update status of an api key' })
@@ -200,9 +212,14 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
-        body: ApiKeyUpdateStatusRequestDto
+        body: ApiKeyUpdateStatusRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyUpdateStatusByAdminUseCase.execute(apiKeyId, body);
+        return this.apiKeyUpdateStatusByAdminUseCase.execute(
+            apiKeyId,
+            body,
+            context
+        );
     }
 
     @Doc({ summary: 'delete an api key' })
@@ -222,8 +239,9 @@ export class ApiKeyAdminController {
     @Delete('/delete/:apiKeyId')
     async delete(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyDeleteByAdminUseCase.execute(apiKeyId);
+        return this.apiKeyDeleteByAdminUseCase.execute(apiKeyId, context);
     }
 }

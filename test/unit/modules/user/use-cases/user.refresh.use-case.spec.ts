@@ -5,13 +5,9 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
@@ -23,7 +19,14 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
@@ -35,7 +38,6 @@ import type {
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
@@ -51,7 +53,7 @@ describe('UserRefreshUseCase', () => {
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -63,18 +65,8 @@ describe('UserRefreshUseCase', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const requestLog: IRequestLog = {
-        userAgent: {
-            ua: 'ua',
-            browser: null,
-            cpu: null,
-            device: null,
-            engine: null,
-            os: null,
-        },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
+    const context: IRequestContext = buildRequestContext('user-bramble');
+    const { requestLog } = context;
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
         roleType: EnumRoleType.user,
@@ -82,12 +74,12 @@ describe('UserRefreshUseCase', () => {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userLoginCredential,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -152,11 +144,10 @@ describe('UserRefreshUseCase', () => {
         twoFactor: null,
     };
     const committedUser: IUser = { ...baseUser, twoFactor };
-    const revokedRef: ISessionRef[] = [{ id: 'session-bramble' }];
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         helperDateService.create.mockReturnValue(now);
@@ -164,8 +155,7 @@ describe('UserRefreshUseCase', () => {
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-05T00:00:00.000Z'
         );
-        sessionService.getRequestLog.mockReturnValue(requestLog);
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockReturnValue(entryEffect);
         authJwtService.createTokens.mockReturnValue(tokens);
         Object.defineProperty(
             authJwtService,
@@ -181,7 +171,7 @@ describe('UserRefreshUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -205,7 +195,7 @@ describe('UserRefreshUseCase', () => {
             sessionId: 'session-bramble',
         };
 
-        it('rotates the session by compare-and-set, stamps the login, rotates the cached entry, and stages the refresh row in order', async () => {
+        it('rotates the session by compare-and-set, stamps the login, adds the refresh entry on the same tx, and rotates the cached entry in order', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -228,12 +218,14 @@ describe('UserRefreshUseCase', () => {
 
                 return EnumSessionCacheUpdate.updated;
             });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
+            outboxService.addInTx.mockImplementation(async () => {
+                callOrder.push('addInTx');
+
+                return 'outbox-id';
             });
 
             await expect(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             ).resolves.toEqual({ data: tokens });
 
             expect(sessionService.updateJtiInTx).toHaveBeenCalledWith(
@@ -256,9 +248,11 @@ describe('UserRefreshUseCase', () => {
                 'old-jti',
                 'new-jti'
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRefreshToken,
-            });
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userRefreshToken },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 tokens
             );
@@ -266,8 +260,8 @@ describe('UserRefreshUseCase', () => {
             expect(callOrder).toEqual([
                 'updateJtiInTx',
                 'updateLoginInTx',
+                'addInTx',
                 'updateLogin',
-                'stagePrepared',
             ]);
         });
 
@@ -283,7 +277,7 @@ describe('UserRefreshUseCase', () => {
             );
 
             await expect(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             ).resolves.toEqual({ data: tokens });
 
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
@@ -294,21 +288,6 @@ describe('UserRefreshUseCase', () => {
             expect(sessionService.revokeIfActive).not.toHaveBeenCalled();
         });
 
-        it('throws RequestContextMissingException before reading the token when the store has no request log', async () => {
-            sessionService.getRequestLog.mockImplementation(() => {
-                throw new RequestContextMissingException(RequestLogStoreKey);
-            });
-
-            await expect(
-                useCase.execute(baseUser, 'refresh-token')
-            ).rejects.toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                messagePath: 'request.error.contextMissing',
-            });
-            expect(authJwtService.payloadToken).not.toHaveBeenCalled();
-        });
-
         it('throws AuthJwtRefreshTokenInvalidException when the token carries no jti', async () => {
             authJwtService.payloadToken.mockReturnValue(payload);
             authJwtService.getRefreshJti.mockImplementation(() => {
@@ -316,7 +295,7 @@ describe('UserRefreshUseCase', () => {
             });
 
             await expect(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
@@ -334,20 +313,21 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActive.mockResolvedValue([]);
+            sessionService.revokeIfActive.mockResolvedValue();
 
             await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             );
 
             expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
-                'session-bramble'
+                'session-bramble',
+                context
             );
             expect(sessionService.updateLogin).not.toHaveBeenCalled();
         });
 
-        it('revokes the session after the commit, stages the revoke row, and answers revoked when the jti compare-and-set matches no row', async () => {
+        it('revokes the session with the passed context after the commit and answers revoked when the jti compare-and-set matches no row', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -357,9 +337,9 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
+            sessionService.revokeIfActive.mockResolvedValue();
             const callOrder: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
+            outboxService.withTransaction.mockImplementation(async fn => {
                 const result = await fn(tx);
                 callOrder.push('committed');
 
@@ -367,34 +347,24 @@ describe('UserRefreshUseCase', () => {
             });
             sessionService.revokeIfActive.mockImplementation(async () => {
                 callOrder.push('revokeIfActive');
-
-                return revokedRef;
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
             });
 
             await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             );
 
             expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
                 'user-bramble',
-                'session-bramble'
+                'session-bramble',
+                context
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSession,
-            });
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
             );
             expect(userService.updateLoginInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(sessionService.updateLogin).not.toHaveBeenCalled();
-            expect(callOrder).toEqual([
-                'committed',
-                'revokeIfActive',
-                'stagePrepared',
-            ]);
+            expect(callOrder).toEqual(['committed', 'revokeIfActive']);
         });
 
         it('revokes the session and answers revoked when the cached jti is not the one presented', async () => {
@@ -409,55 +379,17 @@ describe('UserRefreshUseCase', () => {
             sessionService.updateLogin.mockResolvedValue(
                 EnumSessionCacheUpdate.mismatch
             );
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
+            sessionService.revokeIfActive.mockResolvedValue();
 
             await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
+            );
+            expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
+                'user-bramble',
+                'session-bramble',
+                context
             );
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-        });
-
-        it('stages no reuse row when nothing was revoked', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.getRefreshedTokens.mockImplementation(() => {
-                throw new SessionRevokedException();
-            });
-            sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActive.mockResolvedValue([]);
-
-            await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
-            );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('stages the reuse row when a session was revoked', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.getRefreshedTokens.mockImplementation(() => {
-                throw new SessionRevokedException();
-            });
-            sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActive.mockResolvedValue(revokedRef);
-
-            await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
-            );
-
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSession,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('answers SessionRevokedException on a write conflict and revokes nothing', async () => {
@@ -470,13 +402,13 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             const conflict = new Error('write conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             await expectSessionRevoked(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             );
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -494,13 +426,12 @@ describe('UserRefreshUseCase', () => {
                 refreshed,
             });
             const failure = new SessionRevokedException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps any other failure raised while rotating the session in the unknown exception', async () => {
@@ -510,17 +441,16 @@ describe('UserRefreshUseCase', () => {
                 refreshed,
             });
             const failure = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(baseUser, 'refresh-token')
+                useCase.execute(baseUser, 'refresh-token', context)
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: failure,
             });
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

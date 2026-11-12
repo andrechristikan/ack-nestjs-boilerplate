@@ -2,19 +2,22 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
@@ -36,7 +39,8 @@ export class WorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
@@ -84,11 +88,12 @@ export class WorkspaceMemberService {
 
     private async transferOwnershipGuarded(
         workspaceId: string,
-        fromMemberId: string,
-        targetMember: WorkspaceMember
+        actorMember: WorkspaceMember,
+        targetMember: WorkspaceMember,
+        context: IRequestContext
     ): Promise<void> {
         try {
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 const ownedCount =
                     await this.workspaceRepository.countByOwnerInTx(
                         tx,
@@ -102,7 +107,7 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.promoteToOwnerInTx(
                         tx,
                         workspaceId,
-                        fromMemberId,
+                        actorMember.id,
                         targetMember.id
                     );
                 if (!promoted) {
@@ -113,11 +118,36 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.demoteOwnerInTx(
                         tx,
                         workspaceId,
-                        fromMemberId
+                        actorMember.id
                     );
                 if (!demoted) {
                     throw new WorkspaceMemberPeerForbiddenException();
                 }
+
+                const ownerEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                        userId: actorMember.userId,
+                        createdBy: actorMember.userId,
+                        workspaceId,
+                        metadata: { targetUserId: targetMember.userId },
+                    },
+                    context
+                );
+                const newOwnerEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                        userId: targetMember.userId,
+                        createdBy: actorMember.userId,
+                        workspaceId,
+                        metadata: { actorUserId: actorMember.userId },
+                    },
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, [
+                    ownerEntry,
+                    newOwnerEntry,
+                ]);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -219,10 +249,12 @@ export class WorkspaceMemberService {
         return reviewers.map(reviewer => reviewer.userId);
     }
 
+    /** Swaps the owner and adds both activity entries in one transaction, dispatched after the commit. */
     async transferOwnership(
         workspaceId: string,
         actorMember: WorkspaceMember,
-        targetUserId: string
+        targetUserId: string,
+        context: IRequestContext
     ): Promise<void> {
         if (targetUserId === actorMember.userId) {
             throw new WorkspaceSelfTransferException();
@@ -239,8 +271,9 @@ export class WorkspaceMemberService {
 
         await this.transferOwnershipGuarded(
             workspaceId,
-            actorMember.id,
-            targetMember
+            actorMember,
+            targetMember,
+            context
         );
     }
 
@@ -281,12 +314,14 @@ export class WorkspaceMemberService {
         );
     }
 
+    /** Swaps the role guarded by the role read and adds both activity entries in one transaction, dispatched after the commit. */
     async updateMemberRole(
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string,
-        newRole: EnumWorkspaceMemberRole
-    ): Promise<WorkspaceMember> {
+        newRole: EnumWorkspaceMemberRole,
+        context: IRequestContext
+    ): Promise<void> {
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
@@ -302,16 +337,56 @@ export class WorkspaceMemberService {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        const updated = await this.workspaceMemberRepository.updateRole(
-            targetMember.id,
-            targetMember.role,
-            newRole
-        );
-        if (!updated) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                const updated =
+                    await this.workspaceMemberRepository.updateRoleInTx(
+                        tx,
+                        targetMember.id,
+                        targetMember.role,
+                        newRole
+                    );
+                if (!updated) {
+                    throw new WorkspaceMemberPeerForbiddenException();
+                }
 
-        return targetMember;
+                const actorEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceMemberRoleUpdated,
+                        userId: actorMember.userId,
+                        createdBy: actorMember.userId,
+                        workspaceId,
+                        metadata: { targetUserId: targetMember.userId },
+                    },
+                    context
+                );
+                const targetEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                        userId: targetMember.userId,
+                        createdBy: actorMember.userId,
+                        workspaceId,
+                        metadata: { actorUserId: actorMember.userId },
+                    },
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, [
+                    actorEntry,
+                    targetEntry,
+                ]);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceMemberPeerForbiddenException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async removeMemberInTx(

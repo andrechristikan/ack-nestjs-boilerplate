@@ -7,9 +7,19 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyType,
+} from '@generated/prisma-client/client';
 import { Prisma } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -33,6 +43,31 @@ describe('TermPolicyAcceptanceService', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const context: IRequestContext = {
+        actorUserId: 'user-1',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: 'entry',
+    };
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -55,6 +90,7 @@ describe('TermPolicyAcceptanceService', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -387,7 +423,8 @@ describe('TermPolicyAcceptanceService', () => {
 
             const promise = service.userAccept(
                 'user-1',
-                EnumTermPolicyType.privacy
+                EnumTermPolicyType.privacy,
+                context
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -413,7 +450,8 @@ describe('TermPolicyAcceptanceService', () => {
 
             const promise = service.userAccept(
                 'user-1',
-                EnumTermPolicyType.privacy
+                EnumTermPolicyType.privacy,
+                context
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -443,7 +481,8 @@ describe('TermPolicyAcceptanceService', () => {
 
             const promise = service.userAccept(
                 'user-1',
-                EnumTermPolicyType.privacy
+                EnumTermPolicyType.privacy,
+                context
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -464,7 +503,11 @@ describe('TermPolicyAcceptanceService', () => {
                 fn(tx)
             );
 
-            await service.userAccept('user-1', EnumTermPolicyType.privacy);
+            await service.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy,
+                context
+            );
 
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
@@ -492,6 +535,32 @@ describe('TermPolicyAcceptanceService', () => {
             );
         });
 
+        it('adds the userAcceptTermPolicy entry from the passed context on the same tx', async () => {
+            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+                [latest]
+            );
+            notificationService.notify.mockReturnValue({
+                ...entryEffect,
+                idempotencyKey: 'notify',
+            });
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            outboxService.withTransaction.mockImplementation(async fn =>
+                fn(tx)
+            );
+
+            await service.userAccept(
+                'user-1',
+                EnumTermPolicyType.privacy,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userAcceptTermPolicy },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+        });
+
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             const rawError = new Error('write failed');
             outboxService.withTransaction.mockRejectedValue(rawError);
@@ -500,7 +569,8 @@ describe('TermPolicyAcceptanceService', () => {
 
             const promise = service.userAccept(
                 'user-1',
-                EnumTermPolicyType.privacy
+                EnumTermPolicyType.privacy,
+                context
             );
 
             await expect(promise).rejects.toMatchObject({

@@ -3,14 +3,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 
 describe('ApiKeyCache', () => {
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -33,7 +31,6 @@ describe('ApiKeyCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyCache,
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -68,17 +65,6 @@ describe('ApiKeyCache', () => {
     describe('buildApiKeyKeys', () => {
         it('returns the entry and lease keys', () => {
             expect(cache.buildApiKeyKeys('local_abc123')).toEqual([
-                'ApiKey:local_abc123',
-                'ApiKey:Lease:local_abc123',
-            ]);
-        });
-    });
-
-    describe('deleteApiKey', () => {
-        it('invalidates the entry and lease keys', async () => {
-            await cache.deleteApiKey('local_abc123');
-
-            expect(cacheService.invalidate).toHaveBeenCalledWith([
                 'ApiKey:local_abc123',
                 'ApiKey:Lease:local_abc123',
             ]);

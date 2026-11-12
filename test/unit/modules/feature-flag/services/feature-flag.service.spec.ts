@@ -3,13 +3,19 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
 import { CacheService } from '@common/cache/services/cache.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
@@ -29,6 +35,8 @@ import type {
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 describe('FeatureFlagService', () => {
     const featureFlagRepository: MockProxy<FeatureFlagRepository> =
@@ -40,8 +48,22 @@ describe('FeatureFlagService', () => {
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
     let service: FeatureFlagService;
 
+    const keys = [
+        'FeatureFlag:loginWithGoogle',
+        'FeatureFlag:Lease:loginWithGoogle',
+    ];
+    const cacheEffect: IOutboxEffect = {
+        queue: EnumCacheQueue.cache,
+        name: EnumCacheProcess.invalidate,
+        data: { keys },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
     const hashForTenPercent = '0000000a'.padEnd(64, '0');
     const hashForFiftyPercent = '00000032'.padEnd(64, '0');
 
@@ -61,6 +83,11 @@ describe('FeatureFlagService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        featureFlagCache.buildFeatureFlagKeys.mockReturnValue(keys);
+        cacheService.invalidateEffect.mockReturnValue(cacheEffect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagService,
@@ -71,6 +98,7 @@ describe('FeatureFlagService', () => {
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
                 { provide: CacheService, useValue: cacheService },
                 { provide: HelperHashService, useValue: helperHashService },
+                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
         service = module.get(FeatureFlagService);
@@ -603,7 +631,7 @@ describe('FeatureFlagService', () => {
         };
 
         it('throws FeatureFlagNotFoundException when the statement misses', async () => {
-            featureFlagRepository.updateStatus.mockResolvedValue(null);
+            featureFlagRepository.updateStatusInTx.mockResolvedValue(null);
 
             await expect(
                 service.updateStatusByAdmin(
@@ -619,17 +647,18 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.notFound',
             });
-            expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
+            expect(featureFlagRepository.updateStatusInTx).toHaveBeenCalledWith(
+                tx,
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
             expect(featureFlagRepository.findOneById).not.toHaveBeenCalled();
-            expect(featureFlagCache.deleteFeatureFlag).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('updates the status and deletes the cached flag after the commit', async () => {
+        it('updates the status and adds the cache invalidation effect on the same tx', async () => {
             const updated = { ...baseFlag, isEnable: false };
-            featureFlagRepository.updateStatus.mockResolvedValue(updated);
+            featureFlagRepository.updateStatusInTx.mockResolvedValue(updated);
 
             const result = await service.updateStatusByAdmin(
                 '507f1f77bcf86cd799439011',
@@ -638,13 +667,16 @@ describe('FeatureFlagService', () => {
 
             expect(result).toBe(updated);
             expect(featureFlagRepository.findOneById).not.toHaveBeenCalled();
-            expect(featureFlagRepository.updateStatus).toHaveBeenCalledWith(
+            expect(featureFlagRepository.updateStatusInTx).toHaveBeenCalledWith(
+                tx,
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
-            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagCache.buildFeatureFlagKeys).toHaveBeenCalledWith(
                 updated.key
             );
+            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });
@@ -671,7 +703,10 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.notFound',
             });
-            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+            expect(
+                featureFlagRepository.updateMetadataInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', async () => {
@@ -692,7 +727,10 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.invalidMetadata',
             });
-            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+            expect(
+                featureFlagRepository.updateMetadataInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', async () => {
@@ -708,14 +746,17 @@ describe('FeatureFlagService', () => {
                 statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
                 messagePath: 'featureFlag.error.invalidMetadata',
             });
-            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+            expect(
+                featureFlagRepository.updateMetadataInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('updates the metadata and deletes the cached flag after the commit', async () => {
+        it('updates the metadata and adds the cache invalidation effect on the same tx', async () => {
             const stored = { ...baseFlag, metadata: { enabled: false } };
             const updated = { ...baseFlag, metadata: { enabled: true } };
             featureFlagRepository.findOneById.mockResolvedValue(stored);
-            featureFlagRepository.updateMetadata.mockResolvedValue(updated);
+            featureFlagRepository.updateMetadataInTx.mockResolvedValue(updated);
 
             const result = await service.updateMetadataByAdmin(
                 '507f1f77bcf86cd799439011',
@@ -723,13 +764,18 @@ describe('FeatureFlagService', () => {
             );
 
             expect(result).toBe(updated);
-            expect(featureFlagRepository.updateMetadata).toHaveBeenCalledWith(
+            expect(
+                featureFlagRepository.updateMetadataInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 '507f1f77bcf86cd799439011',
                 metadataUpdate
             );
-            expect(featureFlagCache.deleteFeatureFlag).toHaveBeenCalledWith(
+            expect(featureFlagCache.buildFeatureFlagKeys).toHaveBeenCalledWith(
                 updated.key
             );
+            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });

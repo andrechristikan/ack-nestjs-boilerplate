@@ -9,8 +9,8 @@ import {
     WorkspaceProtectedDocErrors,
     WorkspaceRoleMetaKey,
     WorkspaceRoleProtectedDocErrors,
-    WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
+import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
@@ -47,7 +47,7 @@ export const WorkspaceCurrent = createParamDecorator<
 >((field: IWorkspaceField | undefined): Workspace | IWorkspaceFieldValue => {
     const workspace =
         ClsServiceManager.getClsService().get<Workspace | null>(
-            WorkspaceStoreKey
+            RequestWorkspaceStoreKey
         ) ?? null;
     if (workspace === null) {
         throw new WorkspaceGuardMissingException();
@@ -61,7 +61,7 @@ export const WorkspaceCurrent = createParamDecorator<
     const value = workspace[fieldKey] ?? null;
     if (value === null) {
         throw new RequestContextMissingException(
-            `${WorkspaceStoreKey}.${field}`
+            `${RequestWorkspaceStoreKey}.${field}`
         );
     }
 

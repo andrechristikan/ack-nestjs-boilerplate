@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
@@ -20,7 +19,6 @@ describe('WorkspaceQueue', () => {
         get: configGet as ConfigService['get'],
     });
     const workspaceQueue: MockProxy<Queue> = mock<Queue>();
-    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: WorkspaceQueue;
 
@@ -44,7 +42,6 @@ describe('WorkspaceQueue', () => {
                     provide: getQueueToken(EnumWorkspaceQueue.workspace),
                     useValue: workspaceQueue,
                 },
-                { provide: SentryService, useValue: sentryService },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -134,13 +131,11 @@ describe('WorkspaceQueue', () => {
             );
         });
 
-        it('rejects and reports nothing when the scheduler upsert rejects', async () => {
+        it('rejects when the scheduler upsert rejects', async () => {
             const error = new Error('redis down');
             workspaceQueue.upsertJobScheduler.mockRejectedValue(error);
 
             await expect(queue.scheduleInviteExpirySweep()).rejects.toBe(error);
-
-            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });
 });

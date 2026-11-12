@@ -168,18 +168,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async updateRole(
+    async updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
     ): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.workspaceMember.updateMany({
-                where: { id: targetMemberId, role: expectedRole },
-                data: {
-                    role: newRole,
-                },
-            });
+        const { count } = await tx.workspaceMember.updateMany({
+            where: { id: targetMemberId, role: expectedRole },
+            data: {
+                role: newRole,
+            },
+        });
 
         return count > 0;
     }

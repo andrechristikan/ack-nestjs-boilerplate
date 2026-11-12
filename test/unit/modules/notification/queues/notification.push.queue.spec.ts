@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
@@ -15,7 +14,6 @@ import { MessageService } from '@common/message/services/message.service';
 describe('NotificationPushQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushQueue: MockProxy<Queue> = mock<Queue>();
-    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     let queue: NotificationPushQueue;
@@ -41,7 +39,6 @@ describe('NotificationPushQueue', () => {
                     ),
                     useValue: notificationPushQueue,
                 },
-                { provide: SentryService, useValue: sentryService },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
@@ -87,13 +84,11 @@ describe('NotificationPushQueue', () => {
             );
         });
 
-        it('rejects and reports nothing when the scheduler upsert rejects', async () => {
+        it('rejects when the scheduler upsert rejects', async () => {
             const error = new Error('redis down');
             notificationPushQueue.upsertJobScheduler.mockRejectedValue(error);
 
             await expect(queue.sendCleanupStaleTokens()).rejects.toBe(error);
-
-            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });
 });

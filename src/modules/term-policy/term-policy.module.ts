@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
@@ -38,6 +39,7 @@ import { Global, Module } from '@nestjs/common';
         TermPolicyAcceptanceAnalyticService,
     ],
     imports: [
+        ActivityLogModule,
         AwsModule,
         NotificationModule,
         BullModule.registerQueueAsync({

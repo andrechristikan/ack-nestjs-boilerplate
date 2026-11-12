@@ -1,12 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -17,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceLeaveUseCase implements IAppUseCase<
-    [string, WorkspaceMember],
+    [string, WorkspaceMember, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -26,25 +27,17 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly userService: UserService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async execute(
         workspaceId: string,
-        member: WorkspaceMember
+        member: WorkspaceMember,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.workspaceMemberLeft,
-                userId: member.userId,
-                createdBy: member.userId,
-                workspaceId,
-            }),
-        ];
-
         try {
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 await this.workspaceMemberService.leaveWorkspaceInTx(
                     tx,
                     member
@@ -64,6 +57,16 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
                     member.userId,
                     workspaceId
                 );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceMemberLeft,
+                        userId: member.userId,
+                        createdBy: member.userId,
+                        workspaceId,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -77,8 +80,6 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

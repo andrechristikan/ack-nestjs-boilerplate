@@ -17,7 +17,6 @@ import { QueueModule } from '@common/queue/queue.module';
 import { OutboxModule } from '@modules/outbox/outbox.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
-import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { SessionModule } from '@modules/session/session.module';
 import { PolicyModule } from '@modules/policy/policy.module';
 import { RoleModule } from '@modules/role/role.module';
@@ -53,7 +52,6 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         FileModule.forRoot(),
         FirebaseModule.forRoot(),
 
-        ActivityLogModule,
         ApiKeyModule,
         AuthModule,
         FeatureFlagModule,

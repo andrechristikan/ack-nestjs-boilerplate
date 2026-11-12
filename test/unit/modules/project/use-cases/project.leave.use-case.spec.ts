@@ -2,25 +2,17 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumActivityLogAction,
-    EnumProjectMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type {
-    IActivityLogStaged,
-    IActivityLogStageInput,
-} from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectLeaveUseCase } from '@modules/project/use-cases/project.leave.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectLeaveUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext('507f1f77bcf86cd799439033');
 
     let useCase: ProjectLeaveUseCase;
 
@@ -40,17 +32,6 @@ describe('ProjectLeaveUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockImplementation(
-            <A extends EnumActivityLogAction>(
-                input: IActivityLogStageInput<A>
-            ): IActivityLogStaged => ({
-                userId: null,
-                createdBy: null,
-                workspaceId: null,
-                ...input,
-                metadata: input.metadata ?? {},
-            })
-        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -59,7 +40,6 @@ describe('ProjectLeaveUseCase', () => {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -79,30 +59,25 @@ describe('ProjectLeaveUseCase', () => {
             updatedBy: null,
         };
 
-        it('delegates leaving the project to the domain', async () => {
-            await useCase.execute(project, member);
+        it('delegates leaving the project to the domain with the context', async () => {
+            const result = await useCase.execute(project, member, context);
 
+            expect(result).toEqual({});
             expect(projectMemberService.leaveProject).toHaveBeenCalledWith(
-                member
+                project,
+                member,
+                context
             );
         });
 
-        it('prepares the left activity log before the write and stages it after', async () => {
-            projectMemberService.leaveProject.mockImplementation(async () => {
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            });
+        it('rejects with the domain failure', async () => {
+            projectMemberService.leaveProject.mockRejectedValue(
+                new Error('boom')
+            );
 
-            await useCase.execute(project, member);
-
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                {
-                    action: EnumActivityLogAction.projectMemberLeft,
-                    userId: member.userId,
-                    createdBy: member.userId,
-                    workspaceId: project.workspaceId,
-                    metadata: {},
-                },
-            ]);
+            await expect(
+                useCase.execute(project, member, context)
+            ).rejects.toThrow('boom');
         });
     });
 });

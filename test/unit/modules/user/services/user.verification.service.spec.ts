@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -22,6 +23,8 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -44,6 +47,10 @@ describe('UserVerificationService', () => {
         mock<UserVerificationRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const requestContext = buildRequestContext(null);
+    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -136,6 +143,7 @@ describe('UserVerificationService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        activityLogService.recordEffect.mockReturnValue(entry);
         notificationService.notify.mockReturnValue(notifyEffect);
         userRepository.findOneById.mockResolvedValue(baseUser);
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
@@ -155,6 +163,7 @@ describe('UserVerificationService', () => {
                 },
                 { provide: UserRepository, useValue: userRepository },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperHashService, useValue: helperHashService },
@@ -261,7 +270,7 @@ describe('UserVerificationService', () => {
 
     describe('verifyEmail', () => {
         it('marks the verification and the user verified and adds the verifiedEmail effect in one transaction', async () => {
-            await service.verifyEmail(verification);
+            await service.verifyEmail(verification, requestContext);
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -272,12 +281,20 @@ describe('UserVerificationService', () => {
                     reference: 'VRF-flint',
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: 'user-flint',
+                    createdBy: 'user-flint',
+                },
+                requestContext
             );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                entry,
+                notifyEffect,
+            ]);
             expect(userRepository.markVerifiedInTx).toHaveBeenCalledBefore(
-                outboxService.addInTx
+                outboxService.addManyInTx
             );
 
             expect(
@@ -293,7 +310,7 @@ describe('UserVerificationService', () => {
         it('throws UserTokenInvalidException when the token was already used', async () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
 
-            const call = service.verifyEmail(verification);
+            const call = service.verifyEmail(verification, requestContext);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -301,7 +318,7 @@ describe('UserVerificationService', () => {
                 messagePath: 'user.error.verificationTokenInvalid',
             });
             expect(userRepository.markVerifiedInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
@@ -311,7 +328,7 @@ describe('UserVerificationService', () => {
                 new DatabaseWriteConflictException()
             );
 
-            const call = service.verifyEmail(verification);
+            const call = service.verifyEmail(verification, requestContext);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -324,7 +341,7 @@ describe('UserVerificationService', () => {
             const error = new UserNotFoundException();
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(verification);
+            const call = service.verifyEmail(verification, requestContext);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -338,7 +355,7 @@ describe('UserVerificationService', () => {
             const error = new Error('boom');
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(verification);
+            const call = service.verifyEmail(verification, requestContext);
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -456,8 +473,8 @@ describe('UserVerificationService', () => {
         });
     });
 
-    describe('markVerifiedBySocial', () => {
-        it('marks the user verified and returns the written row', async () => {
+    describe('markVerifiedBySocialInTx', () => {
+        it('marks the user verified on the given tx and returns the written row', async () => {
             const writtenRow = {
                 ...baseUser,
                 isVerified: true,
@@ -467,15 +484,16 @@ describe('UserVerificationService', () => {
                 passwordExpired: null,
                 passwordAttempt: 0,
             };
-            userRepository.markVerifiedBySocial.mockResolvedValue(writtenRow);
+            userRepository.markVerifiedBySocialInTx.mockResolvedValue(
+                writtenRow
+            );
 
             await expect(
-                service.markVerifiedBySocial('user-flint')
+                service.markVerifiedBySocialInTx(tx, 'user-flint')
             ).resolves.toBe(writtenRow);
-            expect(userRepository.markVerifiedBySocial).toHaveBeenCalledWith(
-                'user-flint',
-                now
-            );
+            expect(
+                userRepository.markVerifiedBySocialInTx
+            ).toHaveBeenCalledWith(tx, 'user-flint', now);
         });
     });
 
@@ -503,7 +521,11 @@ describe('UserVerificationService', () => {
             userVerificationUtil.createEmail.mockReturnValue(emailVerification);
             userVerificationUtil.mapEmailContext.mockReturnValue(context);
 
-            await service.sendEmail('user-flint', 'flint@example.com');
+            await service.sendEmail(
+                'user-flint',
+                'flint@example.com',
+                requestContext
+            );
 
             expect(userVerificationUtil.createEmail).toHaveBeenCalledWith();
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -531,6 +553,15 @@ describe('UserVerificationService', () => {
             expect(
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledBefore(outboxService.addInTx);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId: 'user-flint',
+                    createdBy: 'user-flint',
+                },
+                requestContext
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('adds no effect when the verification write throws', async () => {
@@ -540,9 +571,61 @@ describe('UserVerificationService', () => {
             );
 
             await expect(
-                service.sendEmail('user-flint', 'flint@example.com')
+                service.sendEmail(
+                    'user-flint',
+                    'flint@example.com',
+                    requestContext
+                )
             ).rejects.toThrow('boom');
             expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('sendEmailInTx', () => {
+        const emailVerification: IUserVerificationEmailCreate = {
+            reference: 'VRF-random-token',
+            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+            type: EnumVerificationType.email,
+            token: 'random-token',
+            hashedToken: 'hashed-token',
+            expiredInMinutes: 15,
+            link: 'https://example.com/verify?token=random-token',
+            resendInMinutes: 5,
+        };
+        const context: INotificationVerificationLinkContext = {
+            userId: 'user-flint',
+            proceedBy: 'user-flint',
+            link: 'https://example.com/verify?token=random-token',
+            expiredAt: '2026-03-05T00:00:00.000Z',
+            expiredInMinutes: 15,
+            reference: 'VRF-random-token',
+        };
+
+        it('replaces the active verification and adds the verificationEmail effect on the given tx without opening one', async () => {
+            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
+            userVerificationUtil.mapEmailContext.mockReturnValue(context);
+
+            await service.sendEmailInTx(tx, 'user-flint', 'flint@example.com');
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userVerificationRepository.createReplacingActiveInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-flint',
+                'flint@example.com',
+                emailVerification,
+                now
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.verificationEmail,
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
+            );
         });
     });
 

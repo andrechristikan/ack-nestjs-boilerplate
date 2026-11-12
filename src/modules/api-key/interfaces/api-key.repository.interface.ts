@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -20,25 +21,39 @@ export interface IApiKeyRepository {
         isActive: Record<string, IPaginationEqual> | null,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IApiKey>>;
-    create(
+    createInTx(
+        tx: IDatabaseTransactionClient,
         apiKeyId: string,
         { name, type, startAt, endAt }: IApiKeyCreate,
         key: string,
         hash: string
     ): Promise<IApiKey>;
-    findOneById(id: string): Promise<IApiKey | null>;
-    updateStatus(
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IApiKey | null>;
+    updateStatusInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         expectedIsActive: boolean,
         isActive: boolean
     ): Promise<IApiKey | null>;
-    updateName(id: string, name: string): Promise<IApiKey>;
-    updateDates(
+    updateNameInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        name: string
+    ): Promise<IApiKey>;
+    updateDatesInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         startAt: Date,
         endAt: Date
     ): Promise<IApiKey | null>;
-    updateHash(id: string, hash: string): Promise<IApiKey | null>;
-    delete(id: string): Promise<boolean>;
+    updateHashInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        hash: string
+    ): Promise<IApiKey | null>;
+    deleteInTx(tx: IDatabaseTransactionClient, id: string): Promise<boolean>;
     findOneByKey(key: string): Promise<ApiKey | null>;
 }

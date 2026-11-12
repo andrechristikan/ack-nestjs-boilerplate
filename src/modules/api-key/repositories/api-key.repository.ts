@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
     IPaginationEqual,
@@ -45,13 +46,14 @@ export class ApiKeyRepository implements IApiKeyRepository {
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         apiKeyId: string,
         { name, type, startAt, endAt }: IApiKeyCreate,
         key: string,
         hash: string
     ): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.create({
+        return tx.apiKey.create({
             data: {
                 id: apiKeyId,
                 name,
@@ -66,8 +68,11 @@ export class ApiKeyRepository implements IApiKeyRepository {
         });
     }
 
-    async findOneById(id: string): Promise<IApiKey | null> {
-        return this.databaseService.client.apiKey.findUnique({
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IApiKey | null> {
+        return tx.apiKey.findUnique({
             where: {
                 id,
             },
@@ -75,12 +80,13 @@ export class ApiKeyRepository implements IApiKeyRepository {
         });
     }
 
-    async updateStatus(
+    async updateStatusInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         expectedIsActive: boolean,
         isActive: boolean
     ): Promise<IApiKey | null> {
-        const { count } = await this.databaseService.client.apiKey.updateMany({
+        const { count } = await tx.apiKey.updateMany({
             where: {
                 id,
                 isActive: expectedIsActive,
@@ -93,11 +99,15 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneById(id);
+        return this.findOneByIdInTx(tx, id);
     }
 
-    async updateName(id: string, name: string): Promise<IApiKey> {
-        return this.databaseService.client.apiKey.update({
+    async updateNameInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        name: string
+    ): Promise<IApiKey> {
+        return tx.apiKey.update({
             where: {
                 id,
             },
@@ -108,12 +118,13 @@ export class ApiKeyRepository implements IApiKeyRepository {
         });
     }
 
-    async updateDates(
+    async updateDatesInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         startAt: Date,
         endAt: Date
     ): Promise<IApiKey | null> {
-        const { count } = await this.databaseService.client.apiKey.updateMany({
+        const { count } = await tx.apiKey.updateMany({
             where: {
                 id,
                 isActive: true,
@@ -127,11 +138,15 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneById(id);
+        return this.findOneByIdInTx(tx, id);
     }
 
-    async updateHash(id: string, hash: string): Promise<IApiKey | null> {
-        const { count } = await this.databaseService.client.apiKey.updateMany({
+    async updateHashInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        hash: string
+    ): Promise<IApiKey | null> {
+        const { count } = await tx.apiKey.updateMany({
             where: {
                 id,
                 isActive: true,
@@ -144,11 +159,14 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneById(id);
+        return this.findOneByIdInTx(tx, id);
     }
 
-    async delete(id: string): Promise<boolean> {
-        const { count } = await this.databaseService.client.apiKey.deleteMany({
+    async deleteInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<boolean> {
+        const { count } = await tx.apiKey.deleteMany({
             where: {
                 id,
             },

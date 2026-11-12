@@ -69,7 +69,10 @@ export interface IWorkspaceInviteRepository {
         expiredAt: Date,
         resentAt: Date
     ): Promise<WorkspaceInvite | null>;
-    revoke(workspaceInviteId: string): Promise<boolean>;
+    revokeInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceInviteId: string
+    ): Promise<boolean>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,

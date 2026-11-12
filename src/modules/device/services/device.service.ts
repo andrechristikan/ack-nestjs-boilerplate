@@ -2,8 +2,8 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -12,11 +12,13 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -27,6 +29,7 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -36,9 +39,10 @@ export class DeviceService {
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
-        private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     private resolveNotificationProvider(
@@ -237,7 +241,8 @@ export class DeviceService {
     async refresh(
         userId: string,
         deviceOwnershipId: string,
-        data: IDeviceRefresh
+        data: IDeviceRefresh,
+        context: IRequestContext
     ): Promise<void> {
         const notificationProvider = this.resolveNotificationProvider(
             data.platform,
@@ -246,7 +251,7 @@ export class DeviceService {
         const now = this.helperDateService.create();
 
         try {
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 const deviceId =
                     await this.deviceOwnershipRepository.refreshInTx(
                         tx,
@@ -272,6 +277,12 @@ export class DeviceService {
                         userId
                     );
                 }
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userDeviceRefresh },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

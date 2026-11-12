@@ -2,7 +2,10 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
@@ -21,7 +24,8 @@ export class UserMobileNumberService {
     constructor(
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userService: UserService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -48,7 +52,8 @@ export class UserMobileNumberService {
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput,
         countryPhoneCodes: string[],
-        isDuplicate: boolean
+        isDuplicate: boolean,
+        context: IRequestContext
     ): Promise<IUserMobileNumber> {
         const checkValidMobileNumber = this.checkMobileNumber(
             countryPhoneCodes,
@@ -63,7 +68,7 @@ export class UserMobileNumberService {
         }
 
         try {
-            const row = await this.databaseService.withTransaction(async tx => {
+            const row = await this.outboxService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.addInTx(tx, userId, {
                         number,
@@ -71,6 +76,12 @@ export class UserMobileNumberService {
                         phoneCode,
                     });
                 await this.userService.touchUpdatedByInTx(tx, userId);
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userAddMobileNumber },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;
             });
@@ -114,7 +125,8 @@ export class UserMobileNumberService {
         current: IUserMobileNumberSummary,
         { number, countryId, phoneCode }: IUserMobileNumberInput,
         countryPhoneCodes: string[],
-        isDuplicate: boolean
+        isDuplicate: boolean,
+        context: IRequestContext
     ): Promise<IUserMobileNumber> {
         if (isDuplicate) {
             throw new UserMobileNumberExistException();
@@ -134,7 +146,7 @@ export class UserMobileNumberService {
                 : false;
 
         try {
-            const row = await this.databaseService.withTransaction(async tx => {
+            const row = await this.outboxService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.updateInTx(
                         tx,
@@ -147,6 +159,12 @@ export class UserMobileNumberService {
                         isVerified
                     );
                 await this.userService.touchUpdatedByInTx(tx, userId);
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userUpdateMobileNumber },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;
             });
@@ -171,13 +189,14 @@ export class UserMobileNumberService {
 
     async deleteMobileNumber(
         userId: string,
-        mobileNumberId: string
+        mobileNumberId: string,
+        context: IRequestContext
     ): Promise<IUserMobileNumber> {
         // Sequential by design: gate before the work it guards
         await this.getOneMobileNumber(userId, mobileNumberId);
 
         try {
-            const row = await this.databaseService.withTransaction(async tx => {
+            const row = await this.outboxService.withTransaction(async tx => {
                 const mobileNumber =
                     await this.userMobileNumberRepository.deleteInTx(
                         tx,
@@ -188,6 +207,12 @@ export class UserMobileNumberService {
                 }
 
                 await this.userService.touchUpdatedByInTx(tx, userId);
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userDeleteMobileNumber },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;
             });

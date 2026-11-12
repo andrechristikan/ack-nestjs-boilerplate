@@ -18,6 +18,13 @@ import type {
     User,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import { UserUtil } from '@modules/user/utils/user.util';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
@@ -45,10 +52,10 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContext,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -86,6 +93,17 @@ describe('UserAuthService', () => {
         mock<RequestContextService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const context = buildRequestContext(null);
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
+    };
 
     let service: UserAuthService;
 
@@ -175,6 +193,11 @@ describe('UserAuthService', () => {
                     useValue: requestContextService,
                 },
                 { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: ActivityLogService,
+                    useValue: activityLogService,
+                },
+                { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
         service = module.get(UserAuthService);
@@ -186,45 +209,32 @@ describe('UserAuthService', () => {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
-                lockoutStages: [],
             };
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
             userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
 
             await expect(
-                service.countCredentialAttempt(baseUser.email)
+                service.countCredentialAttempt(baseUser.email, context)
             ).resolves.toEqual(counted);
             expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
                 baseUser.email
             );
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser);
+            ).toHaveBeenCalledWith(baseUser, context);
         });
 
-        it('returns the attempt with a spent budget and its lockout stages', async () => {
+        it('returns the attempt with a spent budget', async () => {
             const spent = {
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: false,
-                lockoutStages: [
-                    {
-                        action: EnumActivityLogAction.userRevokeAllSessions,
-                        userId: baseUser.id,
-                        createdBy: baseUser.id,
-                    },
-                    {
-                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                        userId: baseUser.id,
-                        createdBy: baseUser.id,
-                    },
-                ],
             };
             userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
             userPasswordService.countPasswordAttempt.mockResolvedValue(spent);
 
             await expect(
-                service.countCredentialAttempt(baseUser.email)
+                service.countCredentialAttempt(baseUser.email, context)
             ).resolves.toEqual(spent);
         });
 
@@ -232,7 +242,7 @@ describe('UserAuthService', () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
-                service.countCredentialAttempt('missing@example.com')
+                service.countCredentialAttempt('missing@example.com', context)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -254,7 +264,7 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.countCredentialAttempt('halcyon@example.com')
+                service.countCredentialAttempt('halcyon@example.com', context)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -273,7 +283,7 @@ describe('UserAuthService', () => {
             userPasswordService.countPasswordAttempt.mockResolvedValue(null);
 
             await expect(
-                service.countCredentialAttempt('halcyon@example.com')
+                service.countCredentialAttempt('halcyon@example.com', context)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -281,7 +291,7 @@ describe('UserAuthService', () => {
             });
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(passwordless);
+            ).toHaveBeenCalledWith(passwordless, context);
         });
     });
 
@@ -290,7 +300,6 @@ describe('UserAuthService', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
-            lockoutStages: [],
         };
 
         it('returns true and resets the attempt counter when the credentials are valid', async () => {
@@ -348,7 +357,6 @@ describe('UserAuthService', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
-            lockoutStages: [],
         };
 
         it('resolves and resets the attempt counter when the password matches', async () => {
@@ -449,6 +457,75 @@ describe('UserAuthService', () => {
             expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
                 baseUser.passwordExpired
             );
+        });
+    });
+
+    describe('assertCurrentPassword', () => {
+        const counted = {
+            user: baseUser,
+            hashedPassword: 'hashed-password',
+            isAttemptCounted: true,
+        };
+
+        it('counts the attempt with the context, then asserts the password of the counted attempt', async () => {
+            userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+
+            await expect(
+                service.assertCurrentPassword(
+                    baseUser,
+                    'plain-password',
+                    context
+                )
+            ).resolves.toBeUndefined();
+            expect(
+                userPasswordService.countPasswordAttempt
+            ).toHaveBeenCalledWith(baseUser, context);
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+                'plain-password',
+                'hashed-password'
+            );
+        });
+
+        it('returns without comparing when the account has no password', async () => {
+            userPasswordService.countPasswordAttempt.mockResolvedValue(null);
+
+            await expect(
+                service.assertCurrentPassword(baseUser, null, context)
+            ).resolves.toBeUndefined();
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordNotMatchException on a wrong password', async () => {
+            userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
+
+            await expect(
+                service.assertCurrentPassword(baseUser, 'wrong', context)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                messagePath: 'user.error.passwordNotMatch',
+            });
+        });
+
+        it('throws the max-attempt exception without comparing when the budget is spent', async () => {
+            userPasswordService.countPasswordAttempt.mockResolvedValue({
+                ...counted,
+                isAttemptCounted: false,
+            });
+            userPasswordService.assertAttemptCounted.mockImplementation(() => {
+                throw new UserPasswordAttemptMaxException();
+            });
+
+            await expect(
+                service.assertCurrentPassword(baseUser, 'plain', context)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+            });
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
     });
 
@@ -598,7 +675,7 @@ describe('UserAuthService', () => {
     });
 
     describe('verifyEmailBySocial', () => {
-        it('returns the user merged with the written row', async () => {
+        it('returns the user merged with the row written on one tx with the verified entry', async () => {
             const user = { ...baseUser, isVerified: false, verifiedAt: null };
             const writtenRow: User = {
                 id: 'user-halcyon',
@@ -632,18 +709,34 @@ describe('UserAuthService', () => {
                 deletedAt: null,
                 deletedBy: null,
             };
-            userVerificationService.markVerifiedBySocial.mockResolvedValue(
+            const tx = {} as IDatabaseTransactionClient;
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            userVerificationService.markVerifiedBySocialInTx.mockResolvedValue(
                 writtenRow
             );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
 
-            await expect(service.verifyEmailBySocial(user)).resolves.toEqual({
+            await expect(
+                service.verifyEmailBySocial(user, context)
+            ).resolves.toEqual({
                 ...writtenRow,
                 role: user.role,
                 twoFactor: user.twoFactor,
             });
             expect(
-                userVerificationService.markVerifiedBySocial
-            ).toHaveBeenCalledWith(user.id);
+                userVerificationService.markVerifiedBySocialInTx
+            ).toHaveBeenCalledWith(tx, user.id);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: user.id,
+                    createdBy: user.id,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
     });
 
@@ -685,6 +778,10 @@ describe('UserAuthService', () => {
             },
             ipAddress: '127.0.0.1',
             geoLocation: null,
+        };
+        const context: IRequestContext = {
+            ...buildRequestContext(null),
+            requestLog,
         };
         const tokens: IAuthToken = {
             tokenType: 'Bearer',
@@ -789,7 +886,13 @@ describe('UserAuthService', () => {
             );
             helperDateService.create.mockReturnValue(now);
             helperDateService.forward.mockImplementation(date => date);
-            sessionService.getRequestLog.mockReturnValue(requestLog);
+            userUtil.resolveLoginActivityLogAction.mockReturnValue(
+                EnumActivityLogAction.userLoginCredential
+            );
+            activityLogService.recordEffect.mockImplementation(input => ({
+                ...entryEffect,
+                idempotencyKey: `${input.action}:${input.userId ?? ''}`,
+            }));
             deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
             deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
                 []
@@ -812,7 +915,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -847,7 +951,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(requestContextService.resolveDevice).toHaveBeenCalledWith(
@@ -873,33 +978,38 @@ describe('UserAuthService', () => {
                     ipAddress: '127.0.0.1',
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                newDeviceEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                expect.objectContaining({
+                    idempotencyKey: 'userLoginCredential:user-halcyon',
+                }),
+                newDeviceEffect,
+            ]);
             expect(userService.updateLoginInTx).toHaveBeenCalledBefore(
-                outboxService.addInTx
+                outboxService.addManyInTx
             );
         });
 
         it('sends empty display parts and address when the request log has none', async () => {
-            sessionService.getRequestLog.mockReturnValue({
-                ...requestLog,
-                userAgent: {
-                    ...requestLog.userAgent,
-                    browser: null,
-                    device: null,
-                    os: null,
-                },
-                ipAddress: null,
-            });
-
             await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                {
+                    ...context,
+                    requestLog: {
+                        ...requestLog,
+                        userAgent: {
+                            ...requestLog.userAgent,
+                            browser: null,
+                            device: null,
+                            os: null,
+                        },
+                        ipAddress: null,
+                    },
+                }
             );
 
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -914,27 +1024,29 @@ describe('UserAuthService', () => {
         });
 
         it('sends empty parts inside a parsed user agent that lacks some fields', async () => {
-            sessionService.getRequestLog.mockReturnValue({
-                ...requestLog,
-                userAgent: {
-                    ...requestLog.userAgent,
-                    browser: {
-                        name: null,
-                        version: null,
-                        major: null,
-                        type: null,
-                    },
-                    device: { type: null, vendor: null, model: null },
-                    os: { name: null, version: null },
-                },
-            });
-
             await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                {
+                    ...context,
+                    requestLog: {
+                        ...requestLog,
+                        userAgent: {
+                            ...requestLog.userAgent,
+                            browser: {
+                                name: null,
+                                version: null,
+                                major: null,
+                                type: null,
+                            },
+                            device: { type: null, vendor: null, model: null },
+                            os: { name: null, version: null },
+                        },
+                    },
+                }
             );
 
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -947,7 +1059,7 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('adds no effect when the device is known', async () => {
+        it('adds only the login entry when the device is known', async () => {
             deviceService.upsertForLoginInTx.mockResolvedValue({
                 ...upsert,
                 isNewDevice: false,
@@ -958,11 +1070,16 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(notificationService.notify).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                expect.objectContaining({
+                    idempotencyKey: 'userLoginCredential:user-halcyon',
+                }),
+            ]);
         });
 
         it("revokes the user's earlier sessions on the device only when the device is not new", async () => {
@@ -975,7 +1092,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(
@@ -992,7 +1110,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(
@@ -1012,7 +1131,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(
@@ -1031,7 +1151,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(
@@ -1051,7 +1172,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(helperDateService.forward).toHaveBeenCalledWith(
@@ -1075,7 +1197,8 @@ describe('UserAuthService', () => {
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(authJwtService.createTokens).toHaveBeenCalledWith(
@@ -1093,11 +1216,10 @@ describe('UserAuthService', () => {
                 tokens,
                 sessionId: 'session-halcyon',
                 jti: 'jti-halcyon',
-                revokeStages: [],
             });
         });
 
-        it('returns one userRevokeSessionByDeviceLogin stage input per affected user, createdBy the logging-in user', async () => {
+        it('adds one userRevokeSessionByDeviceLogin entry per affected user, createdBy the logging-in user, after the login entry on the same tx', async () => {
             deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
                 otherOwnershipIds
             );
@@ -1108,12 +1230,13 @@ describe('UserAuthService', () => {
                 .mockReturnValueOnce(thistleMetadata)
                 .mockReturnValueOnce(cloverMetadata);
 
-            const result = await service.createTokenAndSession(
+            await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                context
             );
 
             expect(
@@ -1122,55 +1245,65 @@ describe('UserAuthService', () => {
             expect(
                 sessionUtil.mapActivityLogRevokeAllTargetMetadata
             ).toHaveBeenCalledWith('user-halcyon', 1);
-            expect(result.revokeStages).toEqual([
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 {
                     action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                     userId: 'user-thistle',
                     createdBy: 'user-halcyon',
                     metadata: thistleMetadata,
                 },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 {
                     action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                     userId: 'user-clover',
                     createdBy: 'user-halcyon',
                     metadata: cloverMetadata,
                 },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                expect.objectContaining({
+                    idempotencyKey: 'userLoginCredential:user-halcyon',
+                }),
+                expect.objectContaining({
+                    idempotencyKey:
+                        'userRevokeSessionByDeviceLogin:user-thistle',
+                }),
+                expect.objectContaining({
+                    idempotencyKey:
+                        'userRevokeSessionByDeviceLogin:user-clover',
+                }),
+                newDeviceEffect,
             ]);
         });
 
-        it('returns no stage inputs when no other user was signed in', async () => {
-            const result = await service.createTokenAndSession(
+        it('adds the login entry for the login method built from the passed context', async () => {
+            userUtil.resolveLoginActivityLogAction.mockReturnValue(
+                EnumActivityLogAction.userLoginGoogle
+            );
+
+            await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
+                EnumUserLoginWith.socialGoogle,
+                loginAt,
+                context
             );
 
-            expect(result.revokeStages).toEqual([]);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws RequestContextMissingException before any write when the store has no request log', async () => {
-            sessionService.getRequestLog.mockImplementation(() => {
-                throw new RequestContextMissingException(RequestLogStoreKey);
-            });
-
-            await expect(
-                service.createTokenAndSession(
-                    baseUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    loginAt
-                )
-            ).rejects.toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-            });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(userUtil.resolveLoginActivityLogAction).toHaveBeenCalledWith(
+                EnumUserLoginWith.socialGoogle
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userLoginGoogle,
+                    userId: 'user-halcyon',
+                    createdBy: 'user-halcyon',
+                },
+                context
+            );
         });
 
         it('signs no tokens when the transaction fails', async () => {
@@ -1183,7 +1316,8 @@ describe('UserAuthService', () => {
                     deviceIdentity,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential,
-                    loginAt
+                    loginAt,
+                    context
                 )
             ).rejects.toBe(failure);
             expect(authJwtService.createTokens).not.toHaveBeenCalled();
@@ -1239,7 +1373,8 @@ describe('UserAuthService', () => {
                     setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential
+                    EnumUserLoginWith.credential,
+                    context
                 )
             ).resolves.toEqual({
                 isRequiredSetup: true,
@@ -1259,7 +1394,8 @@ describe('UserAuthService', () => {
             expect(userTwoFactorService.setup).toHaveBeenCalledWith(setupUser);
             expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
                 'user-halcyon',
-                'encrypted-secret'
+                'encrypted-secret',
+                context
             );
         });
 
@@ -1277,7 +1413,8 @@ describe('UserAuthService', () => {
                     setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential
+                    EnumUserLoginWith.credential,
+                    context
                 )
             ).rejects.toBe(failure);
             expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
@@ -1289,7 +1426,8 @@ describe('UserAuthService', () => {
                     twoFactorUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential
+                    EnumUserLoginWith.credential,
+                    context
                 )
             ).resolves.toEqual({
                 isRequiredSetup: false,

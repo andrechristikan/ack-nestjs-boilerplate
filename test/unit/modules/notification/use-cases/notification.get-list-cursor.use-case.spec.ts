@@ -5,7 +5,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { MessageService } from '@common/message/services/message.service';
-import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Notification } from '@generated/prisma-client/client';
 import {
@@ -72,7 +71,7 @@ describe('NotificationGetListCursorUseCase', () => {
             });
             notificationService.getListCursor.mockResolvedValue(cursorPage);
 
-            const result = await useCase.execute('user-id', query);
+            const result = await useCase.execute('user-id', query, null);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: NotificationSharedListCursorScope,
@@ -121,7 +120,6 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...cursorPage,
                 data: [stored],
             });
-            requestStoreService.get.mockReturnValue('en');
             notificationService.toMessageProperties.mockReturnValue(
                 metadataProperties
             );
@@ -132,11 +130,9 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => `translated:${path}`
             );
 
-            const result = await useCase.execute('user-id', query);
+            const result = await useCase.execute('user-id', query, 'en');
 
-            expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestLanguageStoreKey
-            );
+            expect(requestStoreService.get).not.toHaveBeenCalled();
             expect(
                 notificationService.toMessageProperties
             ).toHaveBeenCalledWith(stored.title, stored.metadata);
@@ -191,7 +187,6 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...cursorPage,
                 data: [stored],
             });
-            requestStoreService.get.mockReturnValue(null);
             notificationService.toMessageProperties.mockReturnValue(properties);
             notificationService.toRejectReasonProperties.mockReturnValue(
                 properties
@@ -200,7 +195,7 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => path
             );
 
-            await useCase.execute('user-id', query);
+            await useCase.execute('user-id', query, null);
 
             expect(
                 notificationService.toMessageProperties
@@ -235,14 +230,13 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...cursorPage,
                 data: [stored],
             });
-            requestStoreService.get.mockReturnValue(null);
             notificationService.toMessageProperties.mockReturnValue({});
             notificationService.toRejectReasonProperties.mockReturnValue({});
             messageService.setMessage.mockImplementation(
                 (path: string) => path
             );
 
-            await useCase.execute('user-id', query);
+            await useCase.execute('user-id', query, null);
 
             expect(
                 notificationService.toRejectReasonProperties

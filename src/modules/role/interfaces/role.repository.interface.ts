@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -33,11 +34,23 @@ export interface IRoleRepository {
     findOneByName(name: string): Promise<IRole | null>;
     findOneByUserId(userId: string): Promise<IRole | null>;
     existsById(id: string): Promise<boolean>;
-    create(roleId: string, data: IRoleCreate): Promise<IRoleWithPolicies>;
-    update(
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRole | null>;
+    createInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        data: IRoleCreate
+    ): Promise<IRoleWithPolicies>;
+    updateInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         expectedType: EnumRoleType,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies | null>;
-    deleteUnused(id: string): Promise<boolean>;
+    deleteUnusedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<boolean>;
 }

@@ -2,16 +2,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceJoinRequestStatus,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceJoinRequestStatus } from '@generated/prisma-client/client';
 import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
@@ -19,6 +14,7 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateJoinRequestUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
@@ -26,8 +22,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext('user-2');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -57,18 +52,10 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         expiredAt: new Date('2026-01-09T00:00:00.000Z'),
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceJoinRequested,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceCreateJoinRequestUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -82,7 +69,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -114,7 +100,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             ]);
         });
 
-        it('gates on the flag, reads the target, creates the request with the notice, and stages the activity in order', async () => {
+        it('gates on the flag, reads the target, creates the request with the notice and the context', async () => {
             const callOrder: string[] = [];
             workspaceJoinRequestService.assertJoinRequestAllowed.mockImplementation(
                 async () => {
@@ -135,30 +121,17 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     return joinRequest;
                 }
             );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
-            });
-
-            const result = await useCase.execute('user-2', body);
+            const result = await useCase.execute('user-2', body, context);
 
             expect(result).toEqual({ data: joinRequest });
             expect(callOrder.slice(0, 2)).toEqual(['gate', 'joinable']);
-            expect(callOrder.slice(-2)).toEqual(['create', 'stage']);
+            expect(callOrder.at(-1)).toBe('create');
             expect(
                 workspaceJoinRequestService.assertJoinRequestAllowed
             ).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
             ).toHaveBeenCalledWith('user-2', 'workspace-1');
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceJoinRequested,
-                userId: 'user-2',
-                createdBy: 'user-2',
-                workspaceId: 'workspace-1',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
             expect(
                 workspaceMemberService.getReviewerUserIds
             ).toHaveBeenCalledWith('workspace-1');
@@ -175,28 +148,34 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     workspaceName: 'Acme',
                     requesterName: 'Jane Doe',
                     reviewerIds: ['reviewer-1'],
-                }
+                },
+                context
             );
         });
 
         it('passes null for an omitted message', async () => {
-            await useCase.execute('user-2', {
-                workspaceId: 'workspace-1',
-            });
+            await useCase.execute(
+                'user-2',
+                {
+                    workspaceId: 'workspace-1',
+                },
+                context
+            );
 
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(
                 'user-2',
                 { workspaceId: 'workspace-1', message: null },
-                expect.objectContaining({ reviewerIds: ['reviewer-1'] })
+                expect.objectContaining({ reviewerIds: ['reviewer-1'] }),
+                context
             );
         });
 
         it('passes an empty reviewer list when the workspace has no reviewer', async () => {
             workspaceMemberService.getReviewerUserIds.mockResolvedValue([]);
 
-            const result = await useCase.execute('user-2', body);
+            const result = await useCase.execute('user-2', body, context);
 
             expect(result).toEqual({ data: joinRequest });
             expect(
@@ -204,7 +183,8 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             ).toHaveBeenCalledWith(
                 'user-2',
                 { workspaceId: 'workspace-1', message: 'Please let me in' },
-                expect.objectContaining({ reviewerIds: [] })
+                expect.objectContaining({ reviewerIds: [] }),
+                context
             );
         });
 
@@ -214,7 +194,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-2', body)
+                useCase.execute('user-2', body, context)
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
@@ -227,7 +207,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-2', body)
+                useCase.execute('user-2', body, context)
             ).rejects.toBeInstanceOf(WorkspaceNotPublicException);
             expect(userService.getNameById).not.toHaveBeenCalled();
             expect(
@@ -235,28 +215,28 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('creates nothing and stages nothing when the reviewer read rejects', async () => {
+        it('creates nothing when the reviewer read rejects', async () => {
             const failure = new Error('read-failed');
             workspaceMemberService.getReviewerUserIds.mockRejectedValue(
                 failure
             );
 
-            await expect(useCase.execute('user-2', body)).rejects.toBe(failure);
+            await expect(useCase.execute('user-2', body, context)).rejects.toBe(
+                failure
+            );
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the create rejects', async () => {
+        it('rejects with the create failure', async () => {
             workspaceJoinRequestService.createJoinRequest.mockRejectedValue(
                 new WorkspaceNotPublicException()
             );
 
             await expect(
-                useCase.execute('user-2', body)
+                useCase.execute('user-2', body, context)
             ).rejects.toBeInstanceOf(WorkspaceNotPublicException);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

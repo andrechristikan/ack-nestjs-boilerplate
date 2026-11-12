@@ -1,4 +1,5 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
@@ -143,7 +144,8 @@ export class RoleService {
         }
     }
 
-    async createByAdmin(
+    async createByAdminInTx(
+        tx: IDatabaseTransactionClient,
         roleId: string,
         data: IRoleCreate,
         actor: IRoleActor
@@ -151,7 +153,7 @@ export class RoleService {
         this.assertActorOutranks(actor.roleType, data.type);
 
         try {
-            return await this.roleRepository.create(roleId, data);
+            return await this.roleRepository.createInTx(tx, roleId, data);
         } catch (err: unknown) {
             const isNameCollision = this.databaseUtil.isUniqueCollision(
                 err,
@@ -165,12 +167,13 @@ export class RoleService {
         }
     }
 
-    async updateByAdmin(
+    async updateByAdminInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         data: IRoleUpdate,
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.findOneById(id);
+        const role = await this.roleRepository.findOneByIdInTx(tx, id);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -184,7 +187,12 @@ export class RoleService {
             throw new RoleImmutableException();
         }
 
-        const updated = await this.roleRepository.update(id, role.type, data);
+        const updated = await this.roleRepository.updateInTx(
+            tx,
+            id,
+            role.type,
+            data
+        );
         if (!updated) {
             throw new RoleNotFoundException();
         }
@@ -192,9 +200,13 @@ export class RoleService {
         return updated;
     }
 
-    async deleteByAdmin(id: string, actor: IRoleActor): Promise<IRole> {
+    async deleteByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        actor: IRoleActor
+    ): Promise<IRole> {
         // Sequential by design: gate before the work it guards
-        const role = await this.roleRepository.findOneById(id);
+        const role = await this.roleRepository.findOneByIdInTx(tx, id);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -206,7 +218,7 @@ export class RoleService {
             throw new RoleImmutableException();
         }
 
-        const deleted = await this.roleRepository.deleteUnused(id);
+        const deleted = await this.roleRepository.deleteUnusedInTx(tx, id);
         if (!deleted) {
             throw new RoleUsedException();
         }

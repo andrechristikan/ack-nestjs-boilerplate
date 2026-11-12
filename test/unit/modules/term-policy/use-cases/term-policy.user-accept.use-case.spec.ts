@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumTermPolicyType,
     EnumUserGender,
@@ -11,8 +10,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -20,10 +18,24 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 describe('TermPolicyUserAcceptUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
+    const context: IRequestContext = {
+        actorUserId: 'user-1',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
     const user: IUser = {
         id: 'user-1',
         name: 'Andre Christi',
@@ -82,7 +94,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -90,57 +101,34 @@ describe('TermPolicyUserAcceptUseCase', () => {
     });
 
     describe('execute', () => {
-        const preparedActivityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.userAcceptTermPolicy,
-            metadata: {},
-            userId: null,
-            createdBy: null,
-            workspaceId: null,
-        };
+        it('accepts the type for the user passing the request context and returns an empty envelope', async () => {
+            termPolicyAcceptanceService.userAccept.mockResolvedValue();
 
-        beforeEach(() => {
-            activityLogService.prepare.mockReturnValue(preparedActivityLog);
-        });
-
-        it('accepts, then stages the activity log', async () => {
-            const calls: string[] = [];
-            termPolicyAcceptanceService.userAccept.mockImplementation(
-                async () => {
-                    calls.push('accept');
-                }
+            const result = await useCase.execute(
+                user,
+                { type: EnumTermPolicyType.privacy },
+                context
             );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
-            });
-
-            const result = await useCase.execute(user, {
-                type: EnumTermPolicyType.privacy,
-            });
 
             expect(result).toEqual({});
-            expect(calls).toEqual(['accept', 'stage']);
             expect(termPolicyAcceptanceService.userAccept).toHaveBeenCalledWith(
                 'user-1',
-                EnumTermPolicyType.privacy
+                EnumTermPolicyType.privacy,
+                context
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userAcceptTermPolicy,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
-            ]);
         });
 
-        it('stages nothing when the domain rejects', async () => {
+        it('rethrows the domain rejection', async () => {
             const error = new Error('already accepted');
             termPolicyAcceptanceService.userAccept.mockRejectedValue(error);
 
-            const promise = useCase.execute(user, {
-                type: EnumTermPolicyType.privacy,
-            });
-
-            await expect(promise).rejects.toBe(error);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(
+                useCase.execute(
+                    user,
+                    { type: EnumTermPolicyType.privacy },
+                    context
+                )
+            ).rejects.toBe(error);
         });
     });
 });

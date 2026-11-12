@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { EnumSessionQueue } from '@modules/session/enums/session.enum';
@@ -29,6 +30,7 @@ import { Global, Module } from '@nestjs/common';
         SessionAnalyticService,
     ],
     imports: [
+        ActivityLogModule,
         DeviceModule,
         BullModule.registerQueueAsync({
             name: EnumSessionQueue.session,

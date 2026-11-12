@@ -1,4 +1,9 @@
 import type {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
     EnumNotificationEmailProcess,
     EnumNotificationProcess,
     EnumNotificationPushProcess,
@@ -33,14 +38,32 @@ import type {
 } from '@modules/user/enums/user.enum';
 import type {
     IUserDeletePhotoPayload,
+    IUserImportByAdminPayload,
     IUserLockoutPayload,
 } from '@modules/user/interfaces/user.interface';
+import type {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
+import type { ICacheInvalidatePayload } from '@common/cache/interfaces/cache.interface';
 import type { Outbox } from '@generated/prisma-client/client';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 interface IOutboxEffectBase {
     priority: EnumQueuePriority;
     idempotencyKey: string | null;
+}
+
+interface IOutboxActivityLogCreateManyEffect extends IOutboxEffectBase {
+    queue: EnumActivityLogQueue.activityLog;
+    name: EnumActivityLogProcess.createMany;
+    data: IActivityLogCreateManyPayload;
+}
+
+interface IOutboxCacheInvalidateEffect extends IOutboxEffectBase {
+    queue: EnumCacheQueue.cache;
+    name: EnumCacheProcess.invalidate;
+    data: ICacheInvalidatePayload;
 }
 
 interface IOutboxSessionPurgeLoginsEffect extends IOutboxEffectBase {
@@ -59,6 +82,12 @@ interface IOutboxUserDeletePhotoEffect extends IOutboxEffectBase {
     queue: EnumUserQueue.user;
     name: EnumUserProcess.deletePhoto;
     data: IUserDeletePhotoPayload;
+}
+
+interface IOutboxUserImportByAdminEffect extends IOutboxEffectBase {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.importByAdmin;
+    data: IUserImportByAdminPayload;
 }
 
 interface IOutboxTermPolicyDeleteContentEffect extends IOutboxEffectBase {
@@ -122,9 +151,12 @@ interface IOutboxNotificationPushCleanupTokensEffect extends IOutboxEffectBase {
 }
 
 export type IOutboxEffect =
+    | IOutboxActivityLogCreateManyEffect
+    | IOutboxCacheInvalidateEffect
     | IOutboxSessionPurgeLoginsEffect
     | IOutboxUserLockoutEffect
     | IOutboxUserDeletePhotoEffect
+    | IOutboxUserImportByAdminEffect
     | IOutboxTermPolicyDeleteContentEffect
     | IOutboxTermPolicyCopyContentEffect
     | IOutboxNotificationNotifyEffect

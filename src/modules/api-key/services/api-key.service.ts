@@ -1,4 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -29,6 +30,7 @@ import type {
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -40,7 +42,8 @@ export class ApiKeyService {
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
-        private readonly cacheService: CacheService
+        private readonly cacheService: CacheService,
+        private readonly outboxService: OutboxService
     ) {}
 
     private isActive(apiKey: IApiKey): boolean {
@@ -125,6 +128,15 @@ export class ApiKeyService {
         return;
     }
 
+    private async addInvalidateEffectInTx(
+        tx: IDatabaseTransactionClient,
+        key: string
+    ): Promise<void> {
+        const keys = this.apiKeyCache.buildApiKeyKeys(key);
+        const effect = this.cacheService.invalidateEffect(keys);
+        await this.outboxService.addInTx(tx, effect);
+    }
+
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
@@ -137,7 +149,8 @@ export class ApiKeyService {
         );
     }
 
-    async createByAdmin(
+    async createByAdminInTx(
+        tx: IDatabaseTransactionClient,
         apiKeyId: string,
         { startAt, endAt, ...others }: IApiKeyCreate
     ): Promise<IApiKeyWithSecret> {
@@ -159,7 +172,8 @@ export class ApiKeyService {
             });
             dateWindow = { startAt: startAtDay, endAt: endAtDay };
         }
-        const created = await this.apiKeyRepository.create(
+        const created = await this.apiKeyRepository.createInTx(
+            tx,
             apiKeyId,
             {
                 ...others,
@@ -172,9 +186,13 @@ export class ApiKeyService {
         return { apiKey: created, secret };
     }
 
-    async updateStatusByAdmin(id: string, isActive: boolean): Promise<IApiKey> {
+    async updateStatusByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        isActive: boolean
+    ): Promise<IApiKey> {
         const today = this.helperDateService.create();
-        const apiKey = await this.apiKeyRepository.findOneById(id);
+        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
@@ -184,7 +202,8 @@ export class ApiKeyService {
             throw new ApiKeyExpiredException();
         }
 
-        const updated = await this.apiKeyRepository.updateStatus(
+        const updated = await this.apiKeyRepository.updateStatusInTx(
+            tx,
             id,
             apiKey.isActive,
             isActive
@@ -193,23 +212,32 @@ export class ApiKeyService {
             throw new ApiKeyNotFoundException();
         }
 
-        await this.apiKeyCache.deleteApiKey(apiKey.key);
+        await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return updated;
     }
 
-    async updateByAdmin(id: string, name: string): Promise<IApiKey> {
+    async updateByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        name: string
+    ): Promise<IApiKey> {
         // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneById(id);
+        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         const apiKey = this.getValidApiKey(found, true);
 
-        const updated = await this.apiKeyRepository.updateName(id, name);
-        await this.apiKeyCache.deleteApiKey(apiKey.key);
+        const updated = await this.apiKeyRepository.updateNameInTx(
+            tx,
+            id,
+            name
+        );
+        await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return updated;
     }
 
-    async updateDatesByAdmin(
+    async updateDatesByAdminInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         startAt: Date,
         endAt: Date
@@ -217,7 +245,7 @@ export class ApiKeyService {
         this.validateStartAtIsFuture(startAt);
 
         // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneById(id);
+        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         const apiKey = this.getValidApiKey(found, true);
 
         const newStartAt = this.helperDateService.create(startAt, {
@@ -227,7 +255,8 @@ export class ApiKeyService {
             dayOf: EnumHelperDateDayOf.end,
         });
 
-        const updated = await this.apiKeyRepository.updateDates(
+        const updated = await this.apiKeyRepository.updateDatesInTx(
+            tx,
             id,
             newStartAt,
             newEndAt
@@ -236,13 +265,16 @@ export class ApiKeyService {
             throw new ApiKeyInactiveException();
         }
 
-        await this.apiKeyCache.deleteApiKey(apiKey.key);
+        await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return updated;
     }
 
-    async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
-        const found = await this.apiKeyRepository.findOneById(id);
+    async resetByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IApiKeyWithSecret> {
+        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         const apiKey = this.getValidApiKey(found, true);
 
         const secret: string = this.createSecret();
@@ -250,29 +282,36 @@ export class ApiKeyService {
             apiKey.key,
             secret
         );
-        const updated = await this.apiKeyRepository.updateHash(id, hash);
+        const updated = await this.apiKeyRepository.updateHashInTx(
+            tx,
+            id,
+            hash
+        );
         if (!updated) {
             throw new ApiKeyInactiveException();
         }
 
-        await this.apiKeyCache.deleteApiKey(apiKey.key);
+        await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return { apiKey: updated, secret };
     }
 
-    async deleteByAdmin(id: string): Promise<IApiKey> {
+    async deleteByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IApiKey> {
         // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneById(id);
+        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
 
-        const deleted = await this.apiKeyRepository.delete(id);
+        const deleted = await this.apiKeyRepository.deleteInTx(tx, id);
         if (!deleted) {
             throw new ApiKeyNotFoundException();
         }
 
-        await this.apiKeyCache.deleteApiKey(apiKey.key);
+        await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return apiKey;
     }

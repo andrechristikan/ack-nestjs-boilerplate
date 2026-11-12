@@ -1,7 +1,11 @@
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -98,12 +102,14 @@ export class SessionAdminController {
         userId: string,
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.sessionRevokeByAdminUseCase.execute(
             userId,
             sessionId,
-            user
+            user,
+            context
         );
     }
 
@@ -129,8 +135,13 @@ export class SessionAdminController {
     async revokeAll(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeAllByAdminUseCase.execute(userId, user);
+        return this.sessionRevokeAllByAdminUseCase.execute(
+            userId,
+            user,
+            context
+        );
     }
 }

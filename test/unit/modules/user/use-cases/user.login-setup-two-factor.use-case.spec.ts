@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
     EnumUserLoginFrom,
@@ -13,8 +12,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
@@ -22,10 +20,7 @@ import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions
 import type { IAuthTwoFactorChallengeCache } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
-import type {
-    IUser,
-    IUserTwoFactorAttempt,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
 
 describe('UserLoginSetupTwoFactorUseCase', () => {
@@ -33,41 +28,14 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
         mock<UserTwoFactorService>();
     const authTwoFactorService: MockProxy<AuthTwoFactorService> =
         mock<AuthTwoFactorService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext(null);
     let useCase: UserLoginSetupTwoFactorUseCase;
 
-    const twoFactorAttempt: IUserTwoFactorAttempt = {
-        isAttemptCounted: true,
-        lockoutStages: [],
-    };
-    const twoFactorSpentAttempt: IUserTwoFactorAttempt = {
-        isAttemptCounted: false,
-        lockoutStages: [
-            {
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-bramble',
-                createdBy: 'user-bramble',
-            },
-            {
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-bramble',
-                createdBy: 'user-bramble',
-            },
-        ],
-    };
     const deviceIdentity: IDeviceIdentity = {
         fingerprint: 'device-bramble',
         name: null,
         platform: EnumDevicePlatform.web,
         notificationToken: null,
-    };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userLoginCredential,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -146,8 +114,6 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        activityLogService.prepare.mockReturnValue(activityLog);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserLoginSetupTwoFactorUseCase,
@@ -159,7 +125,6 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                     provide: AuthTwoFactorService,
                     useValue: authTwoFactorService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserLoginSetupTwoFactorUseCase);
@@ -174,22 +139,22 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                 user: twoFactorUser,
                 pendingSecret: 'pending-secret',
             });
-            userTwoFactorService.countAttempt.mockResolvedValue(
-                twoFactorAttempt
-            );
             userTwoFactorService.enableTwoFactor.mockResolvedValue([
                 'backup-one',
             ]);
         });
 
-        it('verifies the setup code against the pending secret, enables two-factor, and stages the row', async () => {
-            await expect(useCase.execute(dto)).resolves.toEqual({
+        it('counts the attempt with the passed context, verifies the setup code against the pending secret, and enables two-factor', async () => {
+            await expect(useCase.execute(dto, context)).resolves.toEqual({
                 data: { backupCodes: ['backup-one'] },
             });
 
             expect(
                 userTwoFactorService.getOneForLoginSetup
             ).toHaveBeenCalledWith('user-bramble');
+            expect(
+                userTwoFactorService.assertAttemptCounted
+            ).toHaveBeenCalledWith(twoFactorUser, context);
             expect(userTwoFactorService.verifySetupCode).toHaveBeenCalledWith(
                 twoFactorUser,
                 'pending-secret',
@@ -197,33 +162,12 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             );
             expect(userTwoFactorService.enableTwoFactor).toHaveBeenCalledWith(
                 'user-bramble',
-                'pending-secret'
-            );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userEnableTwoFactor,
-                userId: 'user-bramble',
-                createdBy: 'user-bramble',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                1,
-                []
-            );
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                2,
-                [activityLog]
-            );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledBefore(
-                userTwoFactorService.assertAttemptCounted
+                'pending-secret',
+                context
             );
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(true);
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledWith(
-                twoFactorUser
-            );
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledBefore(
-                userTwoFactorService.verifySetupCode
-            );
+            ).toHaveBeenCalledBefore(userTwoFactorService.verifySetupCode);
             expect(userTwoFactorService.verifySetupCode).toHaveBeenCalledBefore(
                 userTwoFactorService.enableTwoFactor
             );
@@ -234,7 +178,7 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                 new AuthTwoFactorChallengeInvalidException()
             );
 
-            await expect(useCase.execute(dto)).rejects.toMatchObject({
+            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
             });
@@ -243,23 +187,12 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('stages both lockout rows after the spent count before the two-factor attempt limit is answered', async () => {
-            const callOrder: string[] = [];
-            userTwoFactorService.countAttempt.mockImplementation(async () => {
-                callOrder.push('countAttempt');
+        it('answers the two-factor attempt limit of a spent count and verifies nothing', async () => {
+            userTwoFactorService.assertAttemptCounted.mockRejectedValue(
+                new AuthTwoFactorAttemptMaxException()
+            );
 
-                return twoFactorSpentAttempt;
-            });
-            userTwoFactorService.assertAttemptCounted.mockImplementation(() => {
-                callOrder.push('assert');
-
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await expect(useCase.execute(dto)).rejects.toMatchObject({
+            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
                 statusCodeKey:
@@ -269,27 +202,6 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-bramble',
-                createdBy: 'user-bramble',
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-bramble',
-                createdBy: 'user-bramble',
-            });
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([activityLog, activityLog]);
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(false);
-            expect(callOrder).toEqual([
-                'countAttempt',
-                'stagePrepared',
-                'assert',
-            ]);
             expect(userTwoFactorService.verifySetupCode).not.toHaveBeenCalled();
             expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
         });
@@ -298,12 +210,9 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             const failure = new Error('invalid code');
             userTwoFactorService.verifySetupCode.mockRejectedValue(failure);
 
-            await expect(useCase.execute(dto)).rejects.toBe(failure);
+            await expect(useCase.execute(dto, context)).rejects.toBe(failure);
 
             expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
         });
     });
 });

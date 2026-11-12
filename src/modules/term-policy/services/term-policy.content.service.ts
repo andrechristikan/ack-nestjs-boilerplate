@@ -1,11 +1,17 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -21,7 +27,10 @@ import type {
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
-import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyStatus,
+} from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -29,7 +38,11 @@ export class TermPolicyContentService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
-        private readonly termPolicyUtil: TermPolicyUtil
+        private readonly termPolicyUtil: TermPolicyUtil,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
@@ -114,7 +127,8 @@ export class TermPolicyContentService {
 
     async updateContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload
+        { key, size, language }: ITermPolicyContentUpload,
+        context: IRequestContext
     ): Promise<TermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
@@ -149,20 +163,43 @@ export class TermPolicyContentService {
                 language,
                 ...presign,
             };
-            const updated = await this.termPolicyRepository.updateContent(
-                termPolicyId,
-                contents,
-                mappedContent,
-                termPolicy.updatedAt
-            );
-            if (!updated) {
-                throw new TermPolicyStatusInvalidException();
-            }
+            await this.outboxService.withTransaction(async tx => {
+                const updated =
+                    await this.termPolicyRepository.updateContentInTx(
+                        tx,
+                        termPolicyId,
+                        contents,
+                        mappedContent,
+                        termPolicy.updatedAt
+                    );
+                if (!updated) {
+                    throw new TermPolicyStatusInvalidException();
+                }
+
+                const timestamp = this.helperDateService.create();
+                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                    termPolicy,
+                    timestamp
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyUpdateContent,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
 
             return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new TermPolicyStatusInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -171,7 +208,8 @@ export class TermPolicyContentService {
 
     async addContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload
+        { key, size, language }: ITermPolicyContentUpload,
+        context: IRequestContext
     ): Promise<TermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
@@ -206,18 +244,40 @@ export class TermPolicyContentService {
                 language,
                 ...presign,
             };
-            const added = await this.termPolicyRepository.addContent(
-                termPolicyId,
-                mappedContent
-            );
-            if (!added) {
-                throw new TermPolicyStatusInvalidException();
-            }
+            await this.outboxService.withTransaction(async tx => {
+                const added = await this.termPolicyRepository.addContentInTx(
+                    tx,
+                    termPolicyId,
+                    mappedContent
+                );
+                if (!added) {
+                    throw new TermPolicyStatusInvalidException();
+                }
+
+                const timestamp = this.helperDateService.create();
+                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                    termPolicy,
+                    timestamp
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyAddContent,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
 
             return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new TermPolicyStatusInvalidException();
             }
 
             throw new AppUnknownException(err);
@@ -226,7 +286,8 @@ export class TermPolicyContentService {
 
     async removeContentByAdmin(
         termPolicyId: string,
-        language: EnumMessageLanguage
+        language: EnumMessageLanguage,
+        context: IRequestContext
     ): Promise<TermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -240,20 +301,43 @@ export class TermPolicyContentService {
         }
 
         try {
-            const removed = await this.termPolicyRepository.removeContent(
-                termPolicyId,
-                contents,
-                { language },
-                termPolicy.updatedAt
-            );
-            if (!removed) {
-                throw new TermPolicyStatusInvalidException();
-            }
+            await this.outboxService.withTransaction(async tx => {
+                const removed =
+                    await this.termPolicyRepository.removeContentInTx(
+                        tx,
+                        termPolicyId,
+                        contents,
+                        { language },
+                        termPolicy.updatedAt
+                    );
+                if (!removed) {
+                    throw new TermPolicyStatusInvalidException();
+                }
+
+                const timestamp = this.helperDateService.create();
+                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                    termPolicy,
+                    timestamp
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyRemoveContent,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
 
             return termPolicy;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new TermPolicyStatusInvalidException();
             }
 
             throw new AppUnknownException(err);

@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueueFactory } from '@modules/workspace/factories/workspace.queue.factory';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
@@ -51,13 +52,13 @@ import { Module } from '@nestjs/common';
         WorkspaceInviteService,
         WorkspaceJoinRequestService,
         WorkspaceUtil,
-        WorkspaceQueue,
         WorkspaceAnalyticService,
         WorkspaceInviteAnalyticService,
         WorkspaceJoinRequestAnalyticService,
         WorkspaceMemberAnalyticService,
     ],
     imports: [
+        ActivityLogModule,
         NotificationModule,
         UserModule,
         BullModule.registerQueueAsync({

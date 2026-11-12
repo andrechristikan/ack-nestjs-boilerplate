@@ -12,7 +12,19 @@ import {
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -29,6 +41,10 @@ describe('RoleDeleteByAdminUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role: Role = {
@@ -87,12 +103,28 @@ describe('RoleDeleteByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminRoleCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
+    const context: IRequestContext = {
+        actorUserId: actorUser.id,
         workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: RoleDeleteByAdminUseCase;
@@ -101,13 +133,18 @@ describe('RoleDeleteByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleDeleteByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleUtil, useValue: roleUtil },
             ],
@@ -117,37 +154,68 @@ describe('RoleDeleteByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('deletes the role and returns an empty response', async () => {
-            roleService.deleteByAdmin.mockResolvedValue(roleWithPolicies);
+        it('deletes the role on the outbox transaction and returns an empty envelope', async () => {
+            roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            const result = await useCase.execute(
-                roleWithPolicies.id,
-                actorUser
-            );
+            const result = await useCase.execute(role.id, actorUser, context);
 
             expect(result).toEqual({});
-            expect(roleService.deleteByAdmin).toHaveBeenCalledWith(
-                roleWithPolicies.id,
+            expect(roleService.deleteByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                role.id,
                 actor
             );
         });
 
-        it('prepares the delete activity log from the deleted role and stages it after the write', async () => {
-            roleService.deleteByAdmin.mockResolvedValue(role);
+        it('adds the delete activity entry from the deleted role and the passed context on the same tx', async () => {
+            roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            await useCase.execute(roleWithPolicies.id, actorUser);
+            await useCase.execute(role.id, actorUser, context);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 role,
                 now
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminRoleDelete,
-                metadata,
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.adminRoleDelete, metadata },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('rethrows a typed exception of the write', async () => {
+            const failure = new RoleUsedException();
+            roleService.deleteByAdminInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(role.id, actorUser, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to RoleUsedException', async () => {
+            const conflict = new Error('conflict');
+            roleService.deleteByAdminInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(role.id, actorUser, context)
+            ).rejects.toBeInstanceOf(RoleUsedException);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            roleService.deleteByAdminInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(role.id, actorUser, context)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 });

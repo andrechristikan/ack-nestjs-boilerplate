@@ -5,7 +5,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
@@ -13,7 +12,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -22,6 +22,7 @@ import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRemoveMemberUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -35,7 +36,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const context = buildRequestContext('user-1');
+    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
+    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const member: WorkspaceMember = {
@@ -49,19 +53,14 @@ describe('WorkspaceRemoveMemberUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceMemberLeft,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceRemoveMemberUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        activityLogService.recordEffect
+            .mockReturnValueOnce(firstEntry)
+            .mockReturnValueOnce(secondEntry);
+        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -84,7 +83,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -100,7 +99,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             role: EnumWorkspaceMemberRole.member,
         };
 
-        it('removes the member and cascades on one transaction for the returned target, then stages the actor row and the target row', async () => {
+        it('removes the member and cascades on one transaction for the returned target, then adds the actor entry and the target entry on the same tx', async () => {
             const callOrder: string[] = [];
             workspaceMemberService.removeMemberInTx.mockImplementation(
                 async () => {
@@ -140,11 +139,12 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             const result = await useCase.execute(
                 'workspace-1',
                 member,
-                'member-2'
+                'member-2',
+                context
             );
 
             expect(result).toEqual({});
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceMemberService.removeMemberInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', member, 'member-2');
@@ -167,23 +167,31 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'joinRequests',
                 'lastWorkspace',
             ]);
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceMemberRemoved,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { targetUserId: 'user-2' },
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-                stagedActivityLog,
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRemoved,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { targetUserId: 'user-2' },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                firstEntry,
+                secondEntry,
             ]);
         });
 
@@ -193,7 +201,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'user-2@example.com'
             );
 
-            await useCase.execute('workspace-1', member, 'member-2');
+            await useCase.execute('workspace-1', member, 'member-2', context);
 
             expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
                 tx,
@@ -211,7 +219,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             const result = await useCase.execute(
                 'workspace-1',
                 member,
-                'member-2'
+                'member-2',
+                context
             );
 
             expect(result).toEqual({});
@@ -224,13 +233,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('runs no cascade and stages nothing when the removal rejects', async () => {
+        it('runs no cascade and adds no entry when the removal rejects', async () => {
             workspaceMemberService.removeMemberInTx.mockRejectedValue(
                 new WorkspaceMemberNotFoundException()
             );
 
             await expect(
-                useCase.execute('workspace-1', member, 'member-2')
+                useCase.execute('workspace-1', member, 'member-2', context)
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
@@ -243,7 +252,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 workspaceJoinRequestService.cancelPendingByUserInTx
             ).not.toHaveBeenCalled();
             expect(userService.clearLastWorkspaceInTx).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
@@ -254,10 +263,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             );
 
             await expect(
-                useCase.execute('workspace-1', member, 'member-2')
+                useCase.execute('workspace-1', member, 'member-2', context)
             ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
@@ -267,7 +276,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute('workspace-1', member, 'member-2')
+                useCase.execute('workspace-1', member, 'member-2', context)
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });

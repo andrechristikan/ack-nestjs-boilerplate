@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -14,12 +13,18 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
 import type {
     Prisma,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
@@ -34,6 +39,7 @@ import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.i
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceMemberService', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -41,7 +47,12 @@ describe('WorkspaceMemberService', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const context = buildRequestContext('user-1');
+    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
+    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {
@@ -71,7 +82,10 @@ describe('WorkspaceMemberService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        workspaceMemberRepository.updateRole.mockResolvedValue(true);
+        activityLogService.recordEffect
+            .mockReturnValueOnce(firstEntry)
+            .mockReturnValueOnce(secondEntry);
+        workspaceMemberRepository.updateRoleInTx.mockResolvedValue(true);
         workspaceMemberRepository.removeMemberInTx.mockResolvedValue(true);
         workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(true);
         workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(true);
@@ -85,7 +99,8 @@ describe('WorkspaceMemberService', () => {
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -297,7 +312,12 @@ describe('WorkspaceMemberService', () => {
 
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-1')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-1',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceSelfTransferException,
                 module: 'workspace',
@@ -316,25 +336,35 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
                 messagePath: 'workspace.error.memberNotFound',
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceCapReachedException for a target at the cap', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceCapReachedException,
                 module: 'workspace',
@@ -358,17 +388,22 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.countByOwnerInTx.mockResolvedValue(4);
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).resolves.toBeUndefined();
 
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2'
@@ -387,18 +422,68 @@ describe('WorkspaceMemberService', () => {
             ).toHaveBeenCalledBefore(workspaceMemberRepository.demoteOwnerInTx);
         });
 
+        it('adds the owner entry and the new owner entry after the swap on the same tx', async () => {
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+
+            await service.transferOwnership(
+                'workspace-1',
+                actor,
+                'user-2',
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { targetUserId: 'user-2' },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                firstEntry,
+                secondEntry,
+            ]);
+            expect(
+                workspaceMemberRepository.demoteOwnerInTx
+            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
+        });
+
         it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
             workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
@@ -418,17 +503,22 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
             workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).not.toHaveResolved();
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).not.toHaveResolved();
         });
 
         it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
@@ -436,13 +526,18 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             const conflict = new Error('write-conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
@@ -453,13 +548,16 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            databaseService.withTransaction.mockRejectedValue(
-                new Error('boom')
-            );
+            outboxService.withTransaction.mockRejectedValue(new Error('boom'));
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.transferOwnership('workspace-1', actor, 'user-2')
+                service.transferOwnership(
+                    'workspace-1',
+                    actor,
+                    'user-2',
+                    context
+                )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
@@ -593,6 +691,7 @@ describe('WorkspaceMemberService', () => {
     });
 
     describe('updateMemberRole', () => {
+        const tx = {} as IDatabaseTransactionClient;
         const actor = {
             ...baseMember,
             id: 'member-1',
@@ -606,6 +705,10 @@ describe('WorkspaceMemberService', () => {
             role: EnumWorkspaceMemberRole.member,
         };
 
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+        });
+
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 null
@@ -616,7 +719,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    EnumWorkspaceMemberRole.admin,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
@@ -624,7 +728,9 @@ describe('WorkspaceMemberService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
                 messagePath: 'workspace.error.memberNotFound',
             });
-            expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the actor targets itself', async () => {
@@ -638,12 +744,15 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    EnumWorkspaceMemberRole.admin,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
@@ -657,7 +766,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    EnumWorkspaceMemberRole.admin,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -665,48 +775,125 @@ describe('WorkspaceMemberService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
-            expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).not.toHaveBeenCalled();
         });
 
-        it('updates the role guarded by the role read and returns the target member', async () => {
+        it('updates the role guarded by the role read and adds both entries on one tx', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
 
-            const result = await service.updateMemberRole(
+            await service.updateMemberRole(
                 'workspace-1',
                 actor,
                 'member-2',
-                EnumWorkspaceMemberRole.admin
+                EnumWorkspaceMemberRole.admin,
+                context
             );
 
-            expect(result).toBe(target);
             expect(
                 workspaceMemberRepository.findByIdAndWorkspace
             ).toHaveBeenCalledWith('member-2', 'workspace-1');
-            expect(workspaceMemberRepository.updateRole).toHaveBeenCalledWith(
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 'member-2',
                 EnumWorkspaceMemberRole.member,
                 EnumWorkspaceMemberRole.admin
             );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRoleUpdated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { targetUserId: 'user-2' },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                firstEntry,
+                secondEntry,
+            ]);
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            workspaceMemberRepository.updateRole.mockResolvedValue(false);
+            workspaceMemberRepository.updateRoleInTx.mockResolvedValue(false);
 
             await expect(
                 service.updateMemberRole(
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    EnumWorkspaceMemberRole.admin,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
+        });
+
+        it('maps a write conflict on the role swap to WorkspaceMemberPeerForbiddenException', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                target
+            );
+            const conflict = new Error('write-conflict');
+            workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
+                conflict
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.updateMemberRole(
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    EnumWorkspaceMemberRole.admin,
+                    context
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                target
+            );
+            workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
+                new Error('boom')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.updateMemberRole(
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    EnumWorkspaceMemberRole.admin,
+                    context
+                )
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 

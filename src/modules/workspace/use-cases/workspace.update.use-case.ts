@@ -1,7 +1,6 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { Injectable } from '@nestjs/common';
@@ -9,34 +8,23 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceUpdateUseCase implements IAppUseCase<
-    [string, string, WorkspaceUpdateRequestDto],
+    [string, string, WorkspaceUpdateRequestDto, IRequestContext],
     IResponseReturn<Workspace>
 > {
-    constructor(
-        private readonly workspaceService: WorkspaceService,
-        private readonly activityLogService: ActivityLogService
-    ) {}
+    constructor(private readonly workspaceService: WorkspaceService) {}
 
     async execute(
         workspaceId: string,
         actorId: string,
-        { name, description }: WorkspaceUpdateRequestDto
+        { name, description }: WorkspaceUpdateRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<Workspace>> {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.workspaceUpdated,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId,
-            }),
-        ];
-
         const workspace = await this.workspaceService.updateWorkspace(
             workspaceId,
-            { name, description }
+            actorId,
+            { name, description },
+            context
         );
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return { data: workspace };
     }

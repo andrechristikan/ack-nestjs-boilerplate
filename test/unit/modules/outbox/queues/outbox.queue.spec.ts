@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import {
     EnumOutboxProcess,
     EnumOutboxQueue,
@@ -19,7 +18,6 @@ describe('OutboxQueue', () => {
         get: configGet as ConfigService['get'],
     });
     const outboxQueue: MockProxy<Queue> = mock<Queue>();
-    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: OutboxQueue;
 
@@ -41,7 +39,6 @@ describe('OutboxQueue', () => {
                     provide: getQueueToken(EnumOutboxQueue.outbox),
                     useValue: outboxQueue,
                 },
-                { provide: SentryService, useValue: sentryService },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],

@@ -6,13 +6,13 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -20,6 +20,7 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { WorkspaceSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.soft-delete.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSoftDeleteUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -31,7 +32,10 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const context = buildRequestContext('user-1');
+    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
+    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -40,20 +44,15 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const deletedAt = new Date('2026-01-01T00:00:00.000Z');
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceCreated,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceSoftDeleteUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect
+            .mockReturnValueOnce(firstEntry)
+            .mockReturnValueOnce(secondEntry);
         helperDateService.create.mockReturnValue(deletedAt);
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,7 +67,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     useValue: workspaceJoinRequestService,
                 },
                 { provide: ProjectService, useValue: projectService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -83,13 +82,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     });
 
     describe('execute', () => {
-        it('prepares the deleted activity, soft-deletes the workspace, its projects, its pending invites, and its pending join requests in order on one transaction, and stages it', async () => {
+        it('soft-deletes the workspace, its projects, its pending invites, and its pending join requests in order on one transaction and adds the deleted entry on it', async () => {
             const callOrder: string[] = [];
-            activityLogService.prepare.mockImplementation(() => {
-                callOrder.push('prepare');
-
-                return stagedActivityLog;
-            });
             workspaceService.softDeleteInTx.mockImplementation(async () => {
                 callOrder.push('workspace');
             });
@@ -108,14 +102,20 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     callOrder.push('joinRequests');
                 }
             );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
+            outboxService.addInTx.mockImplementation(async () => {
+                callOrder.push('addEntry');
+
+                return 'outbox-1';
             });
 
-            const result = await useCase.execute('workspace-1', 'user-1');
+            const result = await useCase.execute(
+                'workspace-1',
+                'user-1',
+                context
+            );
 
             expect(result).toEqual({});
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceService.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 'workspace-1',
@@ -131,19 +131,22 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             expect(
                 workspaceJoinRequestService.cancelPendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-            });
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.workspaceDeleted,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
             expect(callOrder).toEqual([
-                'prepare',
                 'workspace',
                 'projects',
                 'invites',
                 'joinRequests',
-                'stage',
+                'addEntry',
             ]);
         });
 
@@ -153,9 +156,9 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('workspace-1', 'user-1')
+                useCase.execute('workspace-1', 'user-1', context)
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 projectService.softDeleteByWorkspaceInTx
             ).not.toHaveBeenCalled();
@@ -165,13 +168,13 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             expect(
                 workspaceJoinRequestService.cancelPendingByWorkspaceInTx
             ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('opens the transaction with workspace.delete.timeoutInMs', async () => {
-            await useCase.execute('workspace-1', 'user-1');
+            await useCase.execute('workspace-1', 'user-1', context);
 
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 10000 }
             );
@@ -185,10 +188,10 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('workspace-1', 'user-1')
+                useCase.execute('workspace-1', 'user-1', context)
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown error', async () => {
@@ -198,9 +201,9 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute('workspace-1', 'user-1')
+                useCase.execute('workspace-1', 'user-1', context)
             ).rejects.toBeInstanceOf(AppUnknownException);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

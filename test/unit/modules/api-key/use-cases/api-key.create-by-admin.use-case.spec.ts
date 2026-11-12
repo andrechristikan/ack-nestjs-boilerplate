@@ -2,28 +2,40 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
 } from '@generated/prisma-client/client';
-import type { ApiKey } from '@generated/prisma-client/client';
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import type { ApiKey } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.create-by-admin.use-case';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyCreateByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -41,12 +53,13 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminApiKeyCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const context: IRequestContext = buildRequestContext('user-actor');
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: ApiKeyCreateByAdminUseCase;
@@ -55,7 +68,10 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -63,6 +79,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -72,23 +89,27 @@ describe('ApiKeyCreateByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('creates the api key and shapes the secret-bearing response', async () => {
-            const body: ApiKeyCreateRequestDto = {
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-            };
-            apiKeyService.createByAdmin.mockResolvedValue({
+        const body: ApiKeyCreateRequestDto = {
+            name: 'Acme Api Key',
+            type: EnumApiKeyType.default,
+        };
+        const created = { ...apiKey, secret: 'plain-secret' };
+
+        beforeEach(() => {
+            databaseUtil.createId.mockReturnValue(apiKey.id);
+            apiKeyService.createByAdminInTx.mockResolvedValue({
                 apiKey,
                 secret: 'plain-secret',
             });
-            const created = { ...apiKey, secret: 'plain-secret' };
             apiKeyUtil.mapCreate.mockReturnValue(created);
-            databaseUtil.createId.mockReturnValue(apiKey.id);
+        });
 
-            const result = await useCase.execute(body);
+        it('creates the api key on the outbox transaction and shapes the secret-bearing response', async () => {
+            const result = await useCase.execute(body, context);
 
             expect(result).toEqual({ data: created });
-            expect(apiKeyService.createByAdmin).toHaveBeenCalledWith(
+            expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 apiKey.id,
                 {
                     name: 'Acme Api Key',
@@ -103,27 +124,8 @@ describe('ApiKeyCreateByAdminUseCase', () => {
             );
         });
 
-        it('prepares the create activity log with the drawn id before the write and stages it after', async () => {
-            const body: ApiKeyCreateRequestDto = {
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-            };
-            databaseUtil.createId.mockReturnValue(apiKey.id);
-            apiKeyService.createByAdmin.mockImplementation(async () => {
-                expect(activityLogService.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.adminApiKeyCreate,
-                    metadata,
-                });
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-
-                return { apiKey, secret: 'plain-secret' };
-            });
-            apiKeyUtil.mapCreate.mockReturnValue({
-                ...apiKey,
-                secret: 'plain-secret',
-            });
-
-            await useCase.execute(body);
+        it('adds only the create activity entry with the drawn id and the passed context on the same tx', async () => {
+            await useCase.execute(body, context);
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
@@ -133,21 +135,28 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 },
                 now
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminApiKeyCreate,
+                    metadata,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
-        it('stages nothing when the domain throws', async () => {
-            const body: ApiKeyCreateRequestDto = {
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-            };
-            databaseUtil.createId.mockReturnValue(apiKey.id);
-            apiKeyService.createByAdmin.mockRejectedValue(new Error('boom'));
+        it('passes the date window through', async () => {
+            const startAt = new Date('2026-02-01T00:00:00.000Z');
+            const endAt = new Date('2026-03-01T00:00:00.000Z');
 
-            await expect(useCase.execute(body)).rejects.toThrow('boom');
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await useCase.execute({ ...body, startAt, endAt }, context);
+
+            expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                apiKey.id,
+                expect.objectContaining({ startAt, endAt })
+            );
         });
     });
 });

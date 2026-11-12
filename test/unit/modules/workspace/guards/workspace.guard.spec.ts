@@ -4,9 +4,11 @@ import type { ExecutionContext } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Workspace } from '@generated/prisma-client/client';
-import { RequestWorkspaceIdStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestWorkspaceIdStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 
@@ -65,7 +67,7 @@ describe('WorkspaceGuard', () => {
                 workspaceService.validateWorkspaceGuard
             ).toHaveBeenCalledWith('workspace-1');
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                WorkspaceStoreKey,
+                RequestWorkspaceStoreKey,
                 workspace
             );
         });

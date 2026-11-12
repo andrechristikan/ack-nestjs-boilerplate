@@ -7,6 +7,8 @@ import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -24,8 +26,10 @@ import type {
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
@@ -50,6 +54,7 @@ import type {
     IUserCreateRole,
     IUserCreateWithWorkspaceInput,
     IUserDeletedIdentity,
+    IUserImport,
     IUserList,
     IUserProfile,
     IUserRecipient,
@@ -181,10 +186,6 @@ export class UserService {
 
     async getNameById(userId: string): Promise<IWorkspaceInviteInviter | null> {
         return this.userRepository.findNameById(userId);
-    }
-
-    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
-        await this.userRepository.setLastWorkspace(userId, workspaceId);
     }
 
     async createManyInTx(
@@ -521,5 +522,18 @@ export class UserService {
         return status === EnumUserStatus.blocked
             ? EnumActivityLogAction.userBlocked
             : EnumActivityLogAction.userUpdateStatus;
+    }
+
+    importByAdminEffect(
+        rows: IUserImport[],
+        context: IRequestContext
+    ): IOutboxEffect {
+        return {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.importByAdmin,
+            data: { rows, context },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey: null,
+        };
     }
 }

@@ -1,6 +1,5 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import { Injectable } from '@nestjs/common';
@@ -8,17 +7,15 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserForgotPasswordUseCase implements IAppUseCase<
-    [UserForgotPasswordRequestDto],
+    [UserForgotPasswordRequestDto, IRequestContext],
     IResponseReturn<void>
 > {
-    constructor(
-        private readonly userPasswordService: UserPasswordService,
-        private readonly activityLogService: ActivityLogService
-    ) {}
+    constructor(private readonly userPasswordService: UserPasswordService) {}
 
-    async execute({
-        email,
-    }: UserForgotPasswordRequestDto): Promise<IResponseReturn<void>> {
+    async execute(
+        { email }: UserForgotPasswordRequestDto,
+        context: IRequestContext
+    ): Promise<IResponseReturn<void>> {
         const prepared =
             await this.userPasswordService.prepareForgotPassword(email);
         if (prepared === null) {
@@ -26,21 +23,12 @@ export class UserForgotPasswordUseCase implements IAppUseCase<
         }
 
         const { user, forgot } = prepared;
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userForgotPassword,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
-
         await this.userPasswordService.createForgotPassword(
             user.id,
             email,
-            forgot
+            forgot,
+            context
         );
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

@@ -32,16 +32,22 @@ export interface IProjectRepository {
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>>;
-    create(
+    createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: IProjectCreate,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project>;
-    updateDetails(
+    updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         projectId: string,
         { name, description }: IProjectUpdate
     ): Promise<Project>;
-    updateSlug(projectId: string, slug: string): Promise<Project>;
+    updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        slug: string
+    ): Promise<Project>;
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,

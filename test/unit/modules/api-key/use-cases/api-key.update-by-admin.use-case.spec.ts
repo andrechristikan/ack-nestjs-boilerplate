@@ -2,25 +2,38 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
 } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-by-admin.use-case';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -38,12 +51,13 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminApiKeyCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const context: IRequestContext = buildRequestContext('user-actor');
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: ApiKeyUpdateByAdminUseCase;
@@ -52,7 +66,10 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -60,6 +77,7 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -68,38 +86,52 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('renames the api key and wraps the result', async () => {
-            const updated: ApiKey = { ...apiKey, name: 'New Name' };
-            apiKeyService.updateByAdmin.mockResolvedValue(updated);
+        const updated: ApiKey = { ...apiKey, name: 'Renamed' };
 
-            const result = await useCase.execute(apiKey.id, {
-                name: 'New Name',
-            });
+        it('renames the key on the outbox transaction and wraps the result', async () => {
+            apiKeyService.updateByAdminInTx.mockResolvedValue(updated);
+
+            const result = await useCase.execute(
+                apiKey.id,
+                { name: 'Renamed' },
+                context
+            );
 
             expect(result).toEqual({ data: updated });
-            expect(apiKeyService.updateByAdmin).toHaveBeenCalledWith(
+            expect(apiKeyService.updateByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 apiKey.id,
-                'New Name'
+                'Renamed'
             );
         });
 
-        it('prepares the update activity log from the renamed key and stages it after the write', async () => {
-            const updated: ApiKey = { ...apiKey, name: 'New Name' };
-            apiKeyService.updateByAdmin.mockResolvedValue(updated);
+        it('adds the update activity entry from the updated key and the passed context on the same tx', async () => {
+            apiKeyService.updateByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(apiKey.id, { name: 'New Name' });
+            await useCase.execute(apiKey.id, { name: 'Renamed' }, context);
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyUpdate,
-                metadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminApiKeyUpdate,
+                    metadata,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('rethrows a failure of the write and adds no entry', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.updateByAdminInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(apiKey.id, { name: 'Renamed' }, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

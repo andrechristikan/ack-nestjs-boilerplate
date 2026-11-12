@@ -8,14 +8,19 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
 import type { DeviceOwnership } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { DeviceService } from '@modules/device/services/device.service';
 import type { IDeviceLoginUpsert } from '@modules/device/interfaces/device.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -36,24 +41,13 @@ describe('UserLogoutUseCase', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const requestLog: IRequestLog = {
-        userAgent: {
-            ua: 'ua',
-            browser: null,
-            cpu: null,
-            device: null,
-            engine: null,
-            os: null,
-        },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userLoginCredential,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const context = buildRequestContext('user-bramble');
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
     const ownership: DeviceOwnership = {
         id: 'device-ownership-bramble',
@@ -101,8 +95,7 @@ describe('UserLogoutUseCase', () => {
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-05T00:00:00.000Z'
         );
-        sessionService.getRequestLog.mockReturnValue(requestLog);
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockReturnValue(entryEffect);
         deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
         deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
 
@@ -121,7 +114,7 @@ describe('UserLogoutUseCase', () => {
     });
 
     describe('execute', () => {
-        it('revokes the session and clears the device notification on one transaction, then stages the logout row', async () => {
+        it('revokes the session, clears the device notification, and adds the logout entry on one transaction', async () => {
             const callOrder: string[] = [];
             outboxService.withTransaction.mockImplementation(async fn => {
                 const result = await fn(tx);
@@ -129,15 +122,21 @@ describe('UserLogoutUseCase', () => {
 
                 return result as never;
             });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
+            outboxService.addInTx.mockImplementation(async () => {
+                callOrder.push('addInTx');
+
+                return 'outbox-id';
+            });
+            deviceService.clearNotificationInTx.mockImplementation(async () => {
+                callOrder.push('clearNotificationInTx');
             });
 
             await expect(
                 useCase.execute(
                     'user-bramble',
                     'session-bramble',
-                    'device-ownership-bramble'
+                    'device-ownership-bramble',
+                    context
                 )
             ).resolves.toEqual({});
 
@@ -158,13 +157,19 @@ describe('UserLogoutUseCase', () => {
             expect(sessionService.revokeInTx).toHaveBeenCalledBefore(
                 deviceService.clearNotificationInTx
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userLogout,
-            });
-            expect(callOrder).toEqual(['committed', 'stagePrepared']);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userLogout },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+            expect(callOrder).toEqual([
+                'clearNotificationInTx',
+                'addInTx',
+                'committed',
+            ]);
         });
 
-        it('rethrows the not-found of the guarded revoke without clearing the device or staging', async () => {
+        it('rethrows the not-found of the guarded revoke without clearing the device or adding the entry', async () => {
             const failure = new SessionNotFoundException();
             outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -172,13 +177,18 @@ describe('UserLogoutUseCase', () => {
             sessionService.revokeInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute('user-bramble', 'session-bramble', 'device')
+                useCase.execute(
+                    'user-bramble',
+                    'session-bramble',
+                    'device',
+                    context
+                )
             ).rejects.toBe(failure);
             expect(deviceService.clearNotificationInTx).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('answers SessionNotFoundException on a write conflict with one run and no staged row', async () => {
+        it('answers SessionNotFoundException on a write conflict with one run and no entry', async () => {
             const conflict = new Error('write conflict');
             outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
@@ -186,7 +196,12 @@ describe('UserLogoutUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-bramble', 'session-bramble', 'device')
+                useCase.execute(
+                    'user-bramble',
+                    'session-bramble',
+                    'device',
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
@@ -199,22 +214,27 @@ describe('UserLogoutUseCase', () => {
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('wraps any other failure raised while logging out in the unknown exception without staging', async () => {
+        it('wraps any other failure raised while logging out in the unknown exception without an entry', async () => {
             const failure = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(failure);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute('user-bramble', 'session-bramble', 'device')
+                useCase.execute(
+                    'user-bramble',
+                    'session-bramble',
+                    'device',
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: failure,
             });
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

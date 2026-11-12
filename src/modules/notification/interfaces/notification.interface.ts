@@ -84,6 +84,12 @@ export interface INotificationTermPolicyContext extends INotificationContextBase
     version: number;
 }
 
+export interface INotificationUserImportResultContext extends INotificationReferenceContext {
+    created: number;
+    failed: number;
+    reasons: string[];
+}
+
 export interface INotificationWorkspaceInviteFields {
     workspaceId: string;
     workspaceName: string;
@@ -131,6 +137,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.newDeviceLogin]: INotificationNewDeviceLoginContext;
     [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
     [EnumNotificationKind.userAcceptTermPolicy]: INotificationTermPolicyContext;
+    [EnumNotificationKind.userImportResult]: INotificationUserImportResultContext;
     [EnumNotificationKind.workspaceInvite]: INotificationWorkspaceInviteContext;
     [EnumNotificationKind.workspaceJoinRequest]: INotificationWorkspaceJoinRequestContext;
     [EnumNotificationKind.workspaceJoinAccepted]: INotificationWorkspaceJoinAcceptedContext;

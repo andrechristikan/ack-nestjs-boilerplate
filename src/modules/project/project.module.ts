@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ProjectAnalyticRepository } from '@modules/project/repositories/project.analytic.repository';
 import { ProjectMemberAnalyticRepository } from '@modules/project/repositories/project.member.analytic.repository';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
@@ -29,6 +30,6 @@ import { Module } from '@nestjs/common';
         ProjectAnalyticService,
         ProjectMemberAnalyticService,
     ],
-    imports: [],
+    imports: [ActivityLogModule],
 })
 export class ProjectModule {}

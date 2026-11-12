@@ -1,7 +1,11 @@
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -98,12 +102,14 @@ export class DeviceAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
-        deviceOwnershipId: string
+        deviceOwnershipId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.deviceRemoveByAdminUseCase.execute(
             userId,
             deviceOwnershipId,
-            user
+            user,
+            context
         );
     }
 }

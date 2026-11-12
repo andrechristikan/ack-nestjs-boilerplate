@@ -5,9 +5,8 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -31,7 +30,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserCreateByAdminUseCase implements IAppUseCase<
-    [UserCreateRequestDto, IUser],
+    [UserCreateRequestDto, IUser, IRequestContext],
     IResponseReturn<DatabaseIdResponseDto>
 > {
     private readonly createTimeoutInMs: number;
@@ -57,20 +56,11 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         )!;
     }
 
-    private stageActivities(
-        stages: IActivityLogStageInput<EnumActivityLogAction>[]
-    ): void {
-        const activityLogs = stages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-
-        this.activityLogService.stagePrepared(activityLogs);
-    }
-
     private async createAdminUsers(
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
-        timeoutInMs: number
+        timeoutInMs: number,
+        context: IRequestContext
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -98,7 +88,24 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             tx,
                             termPolicyAcceptances
                         );
-                        await this.outboxService.addManyInTx(tx, effects);
+                        const entries = inputs.flatMap((input, index) => {
+                            const stages =
+                                this.userRegistrationService.buildCreateByAdminStages(
+                                    input,
+                                    users[index]!
+                                );
+
+                            return stages.map(stage =>
+                                this.activityLogService.recordEffect(
+                                    stage,
+                                    context
+                                )
+                            );
+                        });
+                        await this.outboxService.addManyInTx(tx, [
+                            ...entries,
+                            ...effects,
+                        ]);
 
                         return users;
                     },
@@ -127,7 +134,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
     async execute(
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
-        actor: IUser
+        actor: IUser,
+        context: IRequestContext
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         // Sequential by design: gate before the work it guards
         const role = await this.roleService.getById(roleId);
@@ -171,15 +179,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         const users = await this.createAdminUsers(
             [input],
             effects,
-            this.createTimeoutInMs
+            this.createTimeoutInMs,
+            context
         );
         const created = users[0]!;
-
-        const stages = this.userRegistrationService.buildCreateByAdminStages(
-            input,
-            created
-        );
-        this.stageActivities(stages);
 
         return { data: { id: created.id } };
     }

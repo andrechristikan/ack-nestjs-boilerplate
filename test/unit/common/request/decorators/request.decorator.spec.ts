@@ -7,23 +7,39 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
     RequestCustomTimeoutMetaKey,
     RequestCustomTimeoutValueMetaKey,
+    RequestActorStoreKey,
     RequestEnvMetaKey,
+    RequestLanguageStoreKey,
+    RequestLogStoreKey,
     RequestThrottleOptionsMetaKey,
+    RequestWorkspaceStoreKey,
 } from '@common/request/constants/request.constant';
 import {
+    RequestContextCurrent,
     RequestEnvProtected,
     RequestGeoLocation,
     RequestIPAddress,
+    RequestLanguageCurrent,
     RequestThrottle,
     RequestTimeout,
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
 import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import type {
+    IRequestContext,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
+import type {
+    GeoLocation,
+    UserAgent,
+    Workspace,
+} from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissing } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    expectRequestContextMissing,
+    stubRequestStore,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
@@ -400,6 +416,90 @@ describe('request.decorator', () => {
             clsService.get.mockReturnValue(requestLog);
 
             expect(factory(undefined, executionContext)).toBe(geoLocation);
+        });
+    });
+
+    describe('RequestContextCurrent', () => {
+        const target = {} as Type<unknown>;
+        RequestContextCurrent()(target, 'context', 0);
+        const factory = getParamDecoratorFactory(target, 'context');
+        const requestLog: IRequestLog = {
+            userAgent: defaultUserAgent,
+            ipAddress: '127.0.0.1',
+            geoLocation: defaultGeoLocation,
+        };
+        const workspace: Workspace = {
+            id: 'workspace-1',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            deletedAt: null,
+            deletedBy: null,
+            name: 'Acme',
+            slug: 'acme-team',
+            description: null,
+            isPublic: false,
+        };
+
+        it('returns the actor, the workspace id, and the request log', () => {
+            stubRequestStore(clsService, {
+                [RequestActorStoreKey]: 'user-1',
+                [RequestWorkspaceStoreKey]: workspace,
+                [RequestLogStoreKey]: requestLog,
+            });
+
+            const expected: IRequestContext = {
+                actorUserId: 'user-1',
+                workspaceId: 'workspace-1',
+                requestLog,
+            };
+            expect(factory(undefined, executionContext)).toEqual(expected);
+        });
+
+        it('returns null for the actor and the workspace when the store holds none', () => {
+            stubRequestStore(clsService, { [RequestLogStoreKey]: requestLog });
+
+            const expected: IRequestContext = {
+                actorUserId: null,
+                workspaceId: null,
+                requestLog,
+            };
+            expect(factory(undefined, executionContext)).toEqual(expected);
+        });
+
+        it('throws RequestContextMissingException when the request-log store is empty', () => {
+            stubRequestStore(clsService, { [RequestActorStoreKey]: 'user-1' });
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissing(thrown);
+        });
+    });
+
+    describe('RequestLanguageCurrent', () => {
+        const target = {} as Type<unknown>;
+        RequestLanguageCurrent()(target, 'language', 0);
+        const factory = getParamDecoratorFactory(target, 'language');
+
+        it('returns the stored language', () => {
+            clsService.get.mockReturnValue('en');
+
+            expect(factory(undefined, executionContext)).toBe('en');
+            expect(clsService.get).toHaveBeenCalledWith(
+                RequestLanguageStoreKey
+            );
+        });
+
+        it('returns null when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
+
+            expect(factory(undefined, executionContext)).toBeNull();
         });
     });
 });

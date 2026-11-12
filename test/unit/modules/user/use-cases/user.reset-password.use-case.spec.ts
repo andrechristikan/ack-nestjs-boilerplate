@@ -23,7 +23,11 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
@@ -46,12 +50,10 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
-import { UserUtil } from '@modules/user/utils/user.util';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type {
     IUser,
     IUserForgotPassword,
-    IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
@@ -71,7 +73,7 @@ describe('UserResetPasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const context = buildRequestContext(null);
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
@@ -128,12 +130,16 @@ describe('UserResetPasswordUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userChangePassword,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const resetEntry: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: 'reset',
+    };
+    const verifyEntry: IOutboxEffect = {
+        ...resetEntry,
+        idempotencyKey: 'verify',
     };
     const snapshot: INotificationSnapshot = {
         username: 'lindenFrost',
@@ -194,25 +200,20 @@ describe('UserResetPasswordUseCase', () => {
         userId: 'user-linden',
         user,
     } as IUserForgotPassword;
-    const twoFactorAttempt: IUserTwoFactorAttempt = {
-        isAttemptCounted: true,
-        lockoutStages: [],
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockImplementation(input =>
+            input.action === EnumActivityLogAction.userVerifyTwoFactor
+                ? verifyEntry
+                : resetEntry
+        );
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
-        userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
-        userTwoFactorService.getProvidedMethod.mockReturnValue(
-            EnumAuthTwoFactorMethod.code
-        );
-        userTwoFactorService.verify.mockResolvedValue(twoFactorVerified);
-        userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+        userTwoFactorService.verifyIfRequired.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -234,7 +235,6 @@ describe('UserResetPasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
@@ -263,7 +263,7 @@ describe('UserResetPasswordUseCase', () => {
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
         });
 
-        it('checks the history, hashes, writes on one transaction, notifies after commit, and stages', async () => {
+        it('checks the history, hashes, and writes the reset, its entry, and the notification on one transaction', async () => {
             const calls: string[] = [];
             outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -297,10 +297,10 @@ describe('UserResetPasswordUseCase', () => {
 
                 return snapshot;
             });
-            outboxService.addInTx.mockImplementation(async () => {
-                calls.push('addEffect');
+            outboxService.addManyInTx.mockImplementation(async () => {
+                calls.push('addEffects');
 
-                return 'outbox-id';
+                return ['outbox-id'];
             });
             sessionService.revokeActiveByUserInTx.mockImplementation(
                 async () => {
@@ -310,7 +310,7 @@ describe('UserResetPasswordUseCase', () => {
                 }
             );
 
-            await expect(useCase.execute(dto)).resolves.toEqual({});
+            await expect(useCase.execute(dto, context)).resolves.toEqual({});
 
             expect(userPasswordService.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
@@ -322,15 +322,23 @@ describe('UserResetPasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                user,
+                { code: null, backupCode: null, method: null },
+                context
+            );
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userResetPassword,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userResetPassword,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+                context
+            );
             expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetPassword,
@@ -340,10 +348,10 @@ describe('UserResetPasswordUseCase', () => {
                     snapshot,
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                resetEntry,
+                notifyEffect,
+            ]);
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -384,11 +392,8 @@ describe('UserResetPasswordUseCase', () => {
                 'markResetUsed',
                 'markUnusedResetsUsed',
                 'revokeSessions',
-                'addEffect',
+                'addEffects',
                 'commit',
-            ]);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
             ]);
         });
 
@@ -410,7 +415,7 @@ describe('UserResetPasswordUseCase', () => {
                 return updatedRow;
             });
 
-            await useCase.execute(dto);
+            await useCase.execute(dto, context);
 
             expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
@@ -418,111 +423,72 @@ describe('UserResetPasswordUseCase', () => {
             );
         });
 
-        it('verifies two-factor of the reset user, records it on the transaction, and stages the verify row when two-factor is enabled', async () => {
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+        it('verifies two-factor of the reset user, records it on the transaction, and adds the verify entry when two-factor was verified', async () => {
+            userTwoFactorService.verifyIfRequired.mockResolvedValue(
+                twoFactorVerified
+            );
             userPasswordService.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );
 
-            await useCase.execute({
-                ...dto,
-                code: '123456',
-                method: EnumAuthTwoFactorMethod.code,
-            });
+            await useCase.execute(
+                {
+                    ...dto,
+                    code: '123456',
+                    method: EnumAuthTwoFactorMethod.code,
+                },
+                context
+            );
 
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledWith(
-                twoFactorUser
-            );
-            expect(
-                userTwoFactorService.getProvidedMethod
-            ).toHaveBeenCalledBefore(userTwoFactorService.countAttempt);
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                1,
-                []
-            );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledBefore(
-                userTwoFactorService.assertAttemptCounted
-            );
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(true);
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
                     method: EnumAuthTwoFactorMethod.code,
                     code: '123456',
                     backupCode: null,
-                }
+                },
+                context
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-                activityLog,
-            ]);
-        });
-
-        it('stages the lockout rows and answers the attempt limit when the two-factor budget is spent', async () => {
-            const limit = new AuthTwoFactorAttemptMaxException();
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userPasswordService.getOneActiveReset.mockResolvedValue(
-                resetTwoFactorRow
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+                context
             );
-            userTwoFactorService.countAttempt.mockResolvedValue({
-                isAttemptCounted: false,
-                lockoutStages: [
-                    {
-                        action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                        userId: 'user-linden',
-                        createdBy: 'user-linden',
-                    },
-                ],
-            });
-            userTwoFactorService.assertAttemptCounted.mockImplementation(() => {
-                throw limit;
-            });
-
-            await expect(
-                useCase.execute({
-                    ...dto,
-                    code: '123456',
-                    method: EnumAuthTwoFactorMethod.code,
-                })
-            ).rejects.toBe(limit);
-
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                resetEntry,
+                verifyEntry,
+                notifyEffect,
             ]);
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
         });
 
-        it('skips two-factor verification while setup is required', async () => {
+        it('records no two-factor verification while the service verified nothing', async () => {
             userPasswordService.getOneActiveReset.mockResolvedValue({
                 ...resetRow,
                 user: twoFactorSetupUser,
             });
 
-            await expect(useCase.execute(dto)).resolves.toEqual({});
+            await expect(useCase.execute(dto, context)).resolves.toEqual({});
 
-            expect(userUtil.requiresTwoFactorVerification).toHaveBeenCalledWith(
-                twoFactorSetupUser
-            );
-            expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
-            expect(activityLogService.prepare).not.toHaveBeenCalledWith(
-                expect.objectContaining({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                })
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                twoFactorSetupUser,
+                { code: null, backupCode: null, method: null },
+                context
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                }),
+                context
+            );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -531,17 +497,37 @@ describe('UserResetPasswordUseCase', () => {
             );
         });
 
-        it('throws the method-required exception without counting an attempt', async () => {
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.getProvidedMethod.mockImplementation(() => {
-                throw new AuthTwoFactorMethodRequiredException();
-            });
+        it('answers the attempt limit when the two-factor budget is spent and writes nothing', async () => {
+            const limit = new AuthTwoFactorAttemptMaxException();
             userPasswordService.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );
+            userTwoFactorService.verifyIfRequired.mockRejectedValue(limit);
 
             await expect(
-                useCase.execute({ ...dto, code: '123456' })
+                useCase.execute(
+                    {
+                        ...dto,
+                        code: '123456',
+                        method: EnumAuthTwoFactorMethod.code,
+                    },
+                    context
+                )
+            ).rejects.toBe(limit);
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws the method-required exception and writes nothing', async () => {
+            userPasswordService.getOneActiveReset.mockResolvedValue(
+                resetTwoFactorRow
+            );
+            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+                new AuthTwoFactorMethodRequiredException()
+            );
+
+            await expect(
+                useCase.execute({ ...dto, code: '123456' }, context)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
@@ -552,11 +538,6 @@ describe('UserResetPasswordUseCase', () => {
                 messagePath: 'auth.error.twoFactorMethodRequired',
             });
 
-            expect(userTwoFactorService.getProvidedMethod).toHaveBeenCalledWith(
-                null
-            );
-            expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -564,7 +545,7 @@ describe('UserResetPasswordUseCase', () => {
             const failure = new Error('flag');
             userPasswordService.getOneActiveReset.mockRejectedValue(failure);
 
-            await expect(useCase.execute(dto)).rejects.toBe(failure);
+            await expect(useCase.execute(dto, context)).rejects.toBe(failure);
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -573,16 +554,15 @@ describe('UserResetPasswordUseCase', () => {
             const failure = new Error('must new');
             passwordHistoryService.assertNew.mockRejectedValue(failure);
 
-            await expect(useCase.execute(dto)).rejects.toBe(failure);
+            await expect(useCase.execute(dto, context)).rejects.toBe(failure);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
         });
 
         it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
             const cause = new Error('read');
             notificationService.getSnapshot.mockRejectedValue(cause);
 
-            await expect(useCase.execute(dto)).rejects.toMatchObject({
+            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
                 rawError: cause,
             });
             expect(
@@ -595,8 +575,7 @@ describe('UserResetPasswordUseCase', () => {
             const failure = new UserTokenInvalidException();
             outboxService.withTransaction.mockRejectedValue(failure);
 
-            await expect(useCase.execute(dto)).rejects.toBe(failure);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(useCase.execute(dto, context)).rejects.toBe(failure);
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
@@ -606,13 +585,12 @@ describe('UserResetPasswordUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(dto)).rejects.toMatchObject({
+            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
                 messagePath: 'user.error.verificationTokenInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
@@ -620,7 +598,7 @@ describe('UserResetPasswordUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(dto)).rejects.toMatchObject({
+            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
                 rawError: cause,
             });
         });

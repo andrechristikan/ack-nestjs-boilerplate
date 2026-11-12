@@ -1,4 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IPaginationQueryCursorParams,
@@ -24,6 +25,7 @@ import type {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -32,7 +34,8 @@ export class FeatureFlagService {
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly featureFlagCache: FeatureFlagCache,
         private readonly cacheService: CacheService,
-        private readonly helperHashService: HelperHashService
+        private readonly helperHashService: HelperHashService,
+        private readonly outboxService: OutboxService
     ) {}
 
     private metadataValueType(value: IFeatureFlagMetadataValue): string {
@@ -101,6 +104,15 @@ export class FeatureFlagService {
         if (!isInRollout) {
             throw new FeatureFlagDisabledException();
         }
+    }
+
+    private async addInvalidateEffectInTx(
+        tx: IDatabaseTransactionClient,
+        key: string
+    ): Promise<void> {
+        const keys = this.featureFlagCache.buildFeatureFlagKeys(key);
+        const effect = this.cacheService.invalidateEffect(keys);
+        await this.outboxService.addInTx(tx, effect);
     }
 
     /** Read-through over the flag row; null when no row exists. */
@@ -198,14 +210,20 @@ export class FeatureFlagService {
         id: string,
         data: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag> {
-        const updated = await this.featureFlagRepository.updateStatus(id, data);
-        if (!updated) {
-            throw new FeatureFlagNotFoundException();
-        }
+        return this.outboxService.withTransaction(async tx => {
+            const updated = await this.featureFlagRepository.updateStatusInTx(
+                tx,
+                id,
+                data
+            );
+            if (!updated) {
+                throw new FeatureFlagNotFoundException();
+            }
 
-        await this.featureFlagCache.deleteFeatureFlag(updated.key);
+            await this.addInvalidateEffectInTx(tx, updated.key);
 
-        return updated;
+            return updated;
+        });
     }
 
     async updateMetadataByAdmin(
@@ -226,12 +244,15 @@ export class FeatureFlagService {
             throw new FeatureFlagInvalidMetadataException();
         }
 
-        const updated = await this.featureFlagRepository.updateMetadata(
-            id,
-            data
-        );
-        await this.featureFlagCache.deleteFeatureFlag(updated.key);
+        return this.outboxService.withTransaction(async tx => {
+            const updated = await this.featureFlagRepository.updateMetadataInTx(
+                tx,
+                id,
+                data
+            );
+            await this.addInvalidateEffectInTx(tx, updated.key);
 
-        return updated;
+            return updated;
+        });
     }
 }

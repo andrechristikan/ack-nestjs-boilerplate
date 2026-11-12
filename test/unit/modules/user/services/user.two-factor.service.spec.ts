@@ -25,7 +25,9 @@ import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exception
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import type {
@@ -34,6 +36,10 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -49,6 +55,9 @@ describe('UserTwoFactorService', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -57,6 +66,14 @@ describe('UserTwoFactorService', () => {
     let service: UserTwoFactorService;
 
     const tx = {} as IDatabaseTransactionClient;
+    const context = buildRequestContext('user-quartz');
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
+    };
 
     const baseTwoFactor: TwoFactor = {
         id: 'two-factor-quartz',
@@ -148,6 +165,11 @@ describe('UserTwoFactorService', () => {
                 { provide: SentryService, useValue: sentryService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
+                {
+                    provide: ActivityLogService,
+                    useValue: activityLogService,
+                },
+                { provide: UserUtil, useValue: userUtil },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -352,32 +374,19 @@ describe('UserTwoFactorService', () => {
             );
         });
 
-        const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] = [
-            {
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-quartz',
-                createdBy: 'user-quartz',
-            },
-            {
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-quartz',
-                createdBy: 'user-quartz',
-            },
-        ];
-
         it('counts the attempt on the outbox tx and adds no row within the budget', async () => {
             userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
                 true
             );
 
-            await expect(service.countAttempt(baseUser)).resolves.toEqual({
-                isAttemptCounted: true,
-                lockoutStages: [],
-            });
+            await expect(service.countAttempt(baseUser, context)).resolves.toBe(
+                true
+            );
             expect(
                 userTwoFactorRepository.incrementAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
         });
 
         it('throws the max-attempt exception with no row on a write conflict', async () => {
@@ -387,21 +396,25 @@ describe('UserTwoFactorService', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(service.countAttempt(baseUser)).rejects.toMatchObject({
+            await expect(
+                service.countAttempt(baseUser, context)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
                 statusCodeKey: 'twoFactorAttemptMax',
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException unchanged', async () => {
             const failure = new DatabaseUnavailableException();
             outboxService.withTransaction.mockRejectedValue(failure);
 
-            await expect(service.countAttempt(baseUser)).rejects.toBe(failure);
+            await expect(service.countAttempt(baseUser, context)).rejects.toBe(
+                failure
+            );
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
@@ -410,13 +423,15 @@ describe('UserTwoFactorService', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(service.countAttempt(baseUser)).rejects.toMatchObject({
+            await expect(
+                service.countAttempt(baseUser, context)
+            ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });
         });
 
-        it('adds the lockout row on the outbox tx and returns an uncounted attempt with the lockout stages when the guarded increment finds the budget spent', async () => {
+        it('adds the lockout row and both entries built from the passed context on the counting tx and returns false when the budget is spent', async () => {
             const lockoutEffect: IOutboxEffect = {
                 queue: EnumUserQueue.user,
                 name: EnumUserProcess.lockout,
@@ -424,43 +439,174 @@ describe('UserTwoFactorService', () => {
                 priority: EnumQueuePriority.high,
                 idempotencyKey: null,
             };
+            const revokeAllEntry: IOutboxEffect = {
+                ...entryEffect,
+                idempotencyKey: 'revoke-all',
+            };
+            const reachMaxEntry: IOutboxEffect = {
+                ...entryEffect,
+                idempotencyKey: 'reach-max',
+            };
             userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
                 false
             );
+            activityLogService.recordEffect.mockImplementation(input =>
+                input.action === EnumActivityLogAction.userRevokeAllSessions
+                    ? revokeAllEntry
+                    : reachMaxEntry
+            );
 
-            await expect(service.countAttempt(baseUser)).resolves.toEqual({
-                isAttemptCounted: false,
-                lockoutStages,
-            });
+            await expect(service.countAttempt(baseUser, context)).resolves.toBe(
+                false
+            );
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userTwoFactorRepository.incrementAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                lockoutEffect
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                },
+                context
             );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                lockoutEffect,
+                revokeAllEntry,
+                reachMaxEntry,
+            ]);
         });
     });
 
     describe('assertAttemptCounted', () => {
-        it('passes when the attempt was counted', () => {
-            expect(() => service.assertAttemptCounted(true)).not.toThrow();
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
         });
 
-        it('throws AuthTwoFactorAttemptMaxException when the budget is spent', () => {
-            expect(() => service.assertAttemptCounted(false)).toThrow(
-                expect.objectContaining({
-                    module: 'auth',
-                    statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
-                    statusCodeKey:
-                        EnumAuthStatusCodeError[
-                            EnumAuthStatusCodeError.twoFactorAttemptMax
-                        ],
-                    messagePath: 'auth.error.twoFactorAttemptMax',
-                })
+        it('passes when the attempt was counted', async () => {
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                true
             );
+
+            await expect(
+                service.assertAttemptCounted(baseUser, context)
+            ).resolves.toBeUndefined();
+        });
+
+        it('throws AuthTwoFactorAttemptMaxException when the budget is spent', async () => {
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                false
+            );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+
+            await expect(
+                service.assertAttemptCounted(baseUser, context)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorAttemptMax
+                    ],
+                messagePath: 'auth.error.twoFactorAttemptMax',
+            });
+        });
+    });
+
+    describe('verifyIfRequired', () => {
+        const input = {
+            code: '123456',
+            backupCode: null,
+            method: EnumAuthTwoFactorMethod.code,
+        };
+
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+        });
+
+        it('returns null without counting when the user needs no verification', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            await expect(
+                service.verifyIfRequired(baseUser, input, context)
+            ).resolves.toBeNull();
+            expect(
+                userTwoFactorRepository.incrementAttemptInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws the method-required exception before counting when no method is given', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+
+            await expect(
+                service.verifyIfRequired(
+                    baseUser,
+                    { ...input, method: null },
+                    context
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+            });
+            expect(
+                userTwoFactorRepository.incrementAttemptInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('counts the attempt with the context, then verifies the code', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                true
+            );
+            authTwoFactorUtil.decryptSecret.mockReturnValue('plain-secret');
+            authTwoFactorUtil.verifyCode.mockReturnValue(7);
+            userTwoFactorRepository.markTotpUsed.mockResolvedValue(true);
+
+            await expect(
+                service.verifyIfRequired(baseUser, input, context)
+            ).resolves.toEqual({
+                method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
+            });
+            expect(
+                userTwoFactorRepository.incrementAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
+            expect(userTwoFactorRepository.markTotpUsed).toHaveBeenCalledWith(
+                'user-quartz',
+                7
+            );
+        });
+
+        it('throws the max-attempt exception and verifies nothing when the budget is spent', async () => {
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
+                false
+            );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+
+            await expect(
+                service.verifyIfRequired(baseUser, input, context)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
+            });
+            expect(authTwoFactorUtil.verifyCode).not.toHaveBeenCalled();
         });
     });
 
@@ -814,40 +960,73 @@ describe('UserTwoFactorService', () => {
     });
 
     describe('saveSetup', () => {
-        it('stores the encrypted pending secret', async () => {
-            await service.saveSetup('user-quartz', 'encrypted-secret');
-
-            expect(userTwoFactorRepository.setupTwoFactor).toHaveBeenCalledWith(
-                'user-quartz',
-                'encrypted-secret'
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
             );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+        });
+
+        it('stores the encrypted pending secret and adds the setup entry from the passed context on the same tx', async () => {
+            await service.saveSetup('user-quartz', 'encrypted-secret', context);
+
+            expect(
+                userTwoFactorRepository.setupTwoFactorInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', 'encrypted-secret');
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userSetupTwoFactor,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
     });
 
     describe('saveSetupConsumingBackupCode', () => {
-        it('stores the pending secret and consumes the verified backup code', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+        });
+
+        it('stores the pending secret, consumes the verified backup code, and adds the setup entry on the same tx', async () => {
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
                 true
             );
 
             await service.saveSetupConsumingBackupCode(
                 baseUser,
                 'encrypted-secret',
-                verifiedResult
+                verifiedResult,
+                context
             );
 
             expect(
-                userTwoFactorRepository.setupTwoFactorConsumingBackupCode
+                userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx
             ).toHaveBeenCalledWith(
+                tx,
                 'user-quartz',
                 'encrypted-secret',
                 verifiedResult,
                 baseTwoFactor.backupCodes
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userSetupTwoFactor,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
 
-        it('throws AuthTwoFactorInvalidException when the backup code was already consumed', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+        it('throws AuthTwoFactorInvalidException and adds no entry when the backup code was already consumed', async () => {
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
                 false
             );
 
@@ -855,29 +1034,74 @@ describe('UserTwoFactorService', () => {
                 service.saveSetupConsumingBackupCode(
                     baseUser,
                     'encrypted-secret',
-                    verifiedResult
+                    verifiedResult,
+                    context
                 )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
                 messagePath: 'auth.error.twoFactorInvalid',
             });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.saveSetupConsumingBackupCode(
+                    baseUser,
+                    'encrypted-secret',
+                    verifiedResult,
+                    context
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                messagePath: 'auth.error.twoFactorInvalid',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('wraps an unknown error raised while saving the setup', async () => {
+            const error = new Error('boom');
+            outboxService.withTransaction.mockRejectedValue(error);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.saveSetupConsumingBackupCode(
+                    baseUser,
+                    'encrypted-secret',
+                    verifiedResult,
+                    context
+                )
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
         });
 
         it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
                 true
             );
 
             await service.saveSetupConsumingBackupCode(
                 { ...baseUser, twoFactor: null },
                 'encrypted-secret',
-                verifiedResult
+                verifiedResult,
+                context
             );
 
             expect(
-                userTwoFactorRepository.setupTwoFactorConsumingBackupCode
+                userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx
             ).toHaveBeenCalledWith(
+                tx,
                 'user-quartz',
                 'encrypted-secret',
                 verifiedResult,
@@ -937,30 +1161,54 @@ describe('UserTwoFactorService', () => {
     });
 
     describe('enableTwoFactor', () => {
-        it('confirms the pending authenticator and returns the plain backup codes', async () => {
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
             authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            userTwoFactorRepository.enableTwoFactor.mockResolvedValue(true);
-
-            await expect(
-                service.enableTwoFactor('user-quartz', 'pending-secret')
-            ).resolves.toEqual(['CODE1']);
-            expect(
-                userTwoFactorRepository.enableTwoFactor
-            ).toHaveBeenCalledWith('user-quartz', 'pending-secret', ['hash1']);
         });
 
-        it('throws AuthTwoFactorSetupRequiredException when the guarded write misses', async () => {
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
-            });
-            userTwoFactorRepository.enableTwoFactor.mockResolvedValue(false);
+        it('confirms the pending authenticator, adds the enable entry on the same tx, and returns the plain backup codes', async () => {
+            userTwoFactorRepository.enableTwoFactorInTx.mockResolvedValue(true);
 
             await expect(
-                service.enableTwoFactor('user-quartz', 'pending-secret')
+                service.enableTwoFactor(
+                    'user-quartz',
+                    'pending-secret',
+                    context
+                )
+            ).resolves.toEqual(['CODE1']);
+            expect(
+                userTwoFactorRepository.enableTwoFactorInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', 'pending-secret', [
+                'hash1',
+            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+        });
+
+        it('throws AuthTwoFactorSetupRequiredException and adds no entry when the guarded write misses', async () => {
+            userTwoFactorRepository.enableTwoFactorInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.enableTwoFactor(
+                    'user-quartz',
+                    'pending-secret',
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
@@ -971,21 +1219,22 @@ describe('UserTwoFactorService', () => {
                 messagePath: 'auth.error.twoFactorSetupRequired',
             });
             expect(databaseUtil.toException).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws AuthTwoFactorSetupRequiredException on a write conflict', async () => {
             const conflict = new Error('write conflict');
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
-            });
-            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             await expect(
-                service.enableTwoFactor('user-quartz', 'pending-secret')
+                service.enableTwoFactor(
+                    'user-quartz',
+                    'pending-secret',
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
@@ -1005,20 +1254,24 @@ describe('UserTwoFactorService', () => {
             });
 
             await expect(
-                service.enableTwoFactor('user-quartz', 'pending-secret')
+                service.enableTwoFactor(
+                    'user-quartz',
+                    'pending-secret',
+                    context
+                )
             ).rejects.toBe(failure);
         });
 
         it('wraps an unknown error raised while enabling', async () => {
             const error = new Error('boom');
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
-                codes: ['CODE1'],
-                hashes: ['hash1'],
-            });
-            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(error);
+            outboxService.withTransaction.mockRejectedValue(error);
             databaseUtil.toException.mockReturnValue(null);
 
-            const call = service.enableTwoFactor('user-quartz', 'pending');
+            const call = service.enableTwoFactor(
+                'user-quartz',
+                'pending',
+                context
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -1029,34 +1282,48 @@ describe('UserTwoFactorService', () => {
     });
 
     describe('regenerateTwoFactorBackupCodes', () => {
-        it('replaces the backup codes and returns the plain ones', async () => {
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+        });
+
+        it('replaces the backup codes, adds the regenerate entry on the same tx, and returns the plain ones', async () => {
             authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1', 'CODE2'],
                 hashes: ['hash1', 'hash2'],
             });
-            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockResolvedValue(
+            userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx.mockResolvedValue(
                 true
             );
 
             await expect(
-                service.regenerateTwoFactorBackupCodes('user-quartz')
+                service.regenerateTwoFactorBackupCodes('user-quartz', context)
             ).resolves.toEqual(['CODE1', 'CODE2']);
             expect(
-                userTwoFactorRepository.regenerateTwoFactorBackupCodes
-            ).toHaveBeenCalledWith('user-quartz', ['hash1', 'hash2']);
+                userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz', ['hash1', 'hash2']);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
 
-        it('throws AuthTwoFactorNotEnabledException when the guarded write misses', async () => {
+        it('throws AuthTwoFactorNotEnabledException and adds no entry when the guarded write misses', async () => {
             authTwoFactorUtil.generateBackupCodes.mockReturnValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockResolvedValue(
+            userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.regenerateTwoFactorBackupCodes('user-quartz')
+                service.regenerateTwoFactorBackupCodes('user-quartz', context)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -1066,6 +1333,7 @@ describe('UserTwoFactorService', () => {
                     ],
                 messagePath: 'auth.error.twoFactorNotEnabled',
             });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while regenerating', async () => {
@@ -1075,8 +1343,25 @@ describe('UserTwoFactorService', () => {
             });
 
             await expect(
-                service.regenerateTwoFactorBackupCodes('user-quartz')
+                service.regenerateTwoFactorBackupCodes('user-quartz', context)
             ).rejects.toBe(failure);
+        });
+
+        it('throws AuthTwoFactorNotEnabledException on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.regenerateTwoFactorBackupCodes('user-quartz', context)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
+                messagePath: 'auth.error.twoFactorNotEnabled',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown error raised while regenerating', async () => {
@@ -1085,12 +1370,11 @@ describe('UserTwoFactorService', () => {
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
-            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockRejectedValue(
-                error
-            );
+            outboxService.withTransaction.mockRejectedValue(error);
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.regenerateTwoFactorBackupCodes('user-quartz')
+                service.regenerateTwoFactorBackupCodes('user-quartz', context)
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -1272,47 +1556,6 @@ describe('UserTwoFactorService', () => {
             expect(
                 userTwoFactorRepository.verifyTwoFactorInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', verifiedResult, []);
-        });
-    });
-
-    describe('recordVerification', () => {
-        it('records the verified check', async () => {
-            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
-
-            await expect(
-                service.recordVerification(baseUser, verifiedResult)
-            ).resolves.toBeUndefined();
-            expect(
-                userTwoFactorRepository.verifyTwoFactor
-            ).toHaveBeenCalledWith(
-                'user-quartz',
-                verifiedResult,
-                baseTwoFactor.backupCodes
-            );
-        });
-
-        it('throws AuthTwoFactorInvalidException when the stored codes moved on', async () => {
-            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(false);
-
-            await expect(
-                service.recordVerification(baseUser, verifiedResult)
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-            });
-        });
-
-        it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
-            userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
-
-            await service.recordVerification(
-                { ...baseUser, twoFactor: null },
-                verifiedResult
-            );
-
-            expect(
-                userTwoFactorRepository.verifyTwoFactor
-            ).toHaveBeenCalledWith('user-quartz', verifiedResult, []);
         });
     });
 

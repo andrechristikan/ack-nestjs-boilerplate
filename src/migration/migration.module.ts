@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { Module } from '@nestjs/common';
 import { AwsModule } from '@common/aws/aws.module';
 import { CommonModule } from '@common/common.module';
@@ -29,6 +30,12 @@ import { UserModule } from '@modules/user/user.module';
         MigrationAwsS3ConfigSeed,
     ],
     exports: [],
-    imports: [CommonModule, AwsModule, UserModule, NotificationModule],
+    imports: [
+        ActivityLogModule,
+        CommonModule,
+        AwsModule,
+        UserModule,
+        NotificationModule,
+    ],
 })
 export class MigrationModule {}

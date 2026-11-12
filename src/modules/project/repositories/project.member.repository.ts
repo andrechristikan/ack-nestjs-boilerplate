@@ -65,27 +65,6 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         );
     }
 
-    async create(
-        projectId: string,
-        userId: string,
-        role: EnumProjectMemberRole,
-        createdBy: string
-    ): Promise<IProjectMember> {
-        return this.databaseService.client.projectMember.create({
-            data: {
-                projectId,
-                userId,
-                role,
-                createdBy,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
-        });
-    }
-
     async createInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,
@@ -108,39 +87,41 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         });
     }
 
-    async updateRole(
+    async updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
     ): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.projectMember.updateMany({
-                where: { id: targetMemberId, role: expectedRole },
-                data: {
-                    role: newRole,
-                },
-            });
+        const { count } = await tx.projectMember.updateMany({
+            where: { id: targetMemberId, role: expectedRole },
+            data: {
+                role: newRole,
+            },
+        });
 
         return count > 0;
     }
 
-    async removeMember(
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole
     ): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.projectMember.deleteMany({
-                where: { id: targetMemberId, role: expectedRole },
-            });
+        const { count } = await tx.projectMember.deleteMany({
+            where: { id: targetMemberId, role: expectedRole },
+        });
 
         return count > 0;
     }
 
-    async removeById(memberId: string): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.projectMember.deleteMany({
-                where: { id: memberId },
-            });
+    async removeByIdInTx(
+        tx: IDatabaseTransactionClient,
+        memberId: string
+    ): Promise<boolean> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { id: memberId },
+        });
 
         return count > 0;
     }

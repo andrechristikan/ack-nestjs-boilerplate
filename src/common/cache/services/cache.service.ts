@@ -3,10 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
 import type { ZodType } from 'zod';
 import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
 import type {
     ICacheLease,
     ICacheReadThroughOptions,
 } from '@common/cache/interfaces/cache.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -170,6 +176,17 @@ export class CacheService {
             const warnKey = keys.join(',');
             this.handleError(warnKey, error, 'Cache invalidation failed');
         }
+    }
+
+    /** The outbox effect that deletes the keys through the cache queue. */
+    invalidateEffect(keys: string[]): IOutboxEffect {
+        return {
+            queue: EnumCacheQueue.cache,
+            name: EnumCacheProcess.invalidate,
+            data: { keys },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
     }
 
     isConnectionError(error: unknown): boolean {

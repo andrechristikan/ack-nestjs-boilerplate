@@ -6,13 +6,22 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
@@ -37,7 +46,9 @@ describe('DeviceService', () => {
         mock<DeviceOwnershipRepository>();
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -106,7 +117,8 @@ describe('DeviceService', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -523,6 +535,30 @@ describe('DeviceService', () => {
     });
 
     describe('refresh', () => {
+        const context: IRequestContext = {
+            actorUserId: 'user-1',
+            workspaceId: null,
+            requestLog: {
+                userAgent: {
+                    ua: null,
+                    browser: null,
+                    cpu: null,
+                    device: null,
+                    engine: null,
+                    os: null,
+                },
+                ipAddress: '127.0.0.1',
+                geoLocation: null,
+            },
+        };
+        const entry: IOutboxEffect = {
+            queue: EnumActivityLogQueue.activityLog,
+            name: EnumActivityLogProcess.createMany,
+            data: { rows: [] },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+
         const data: IDeviceRefresh = {
             name: null,
             platform: EnumDevicePlatform.android,
@@ -532,12 +568,12 @@ describe('DeviceService', () => {
         it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
             await expect(
-                service.refresh('user-1', 'device-ownership-1', data)
+                service.refresh('user-1', 'device-ownership-1', data, context)
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -554,10 +590,45 @@ describe('DeviceService', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('adds the userDeviceRefresh entry from the passed context on the same tx after the writes', async () => {
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
+            activityLogService.recordEffect.mockReturnValue(entry);
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                data,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userDeviceRefresh },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+        });
+
+        it('adds no entry when the guarded refresh matches no live ownership', async () => {
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await expect(
+                service.refresh('user-1', 'device-ownership-1', data, context)
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
         it('refreshes the ownership token and the device on success', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -566,7 +637,12 @@ describe('DeviceService', () => {
                 notificationToken: 'token-9',
             };
 
-            await service.refresh('user-1', 'device-ownership-1', refreshed);
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                refreshed,
+                context
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -587,14 +663,19 @@ describe('DeviceService', () => {
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await service.refresh('user-1', 'device-ownership-1', {
-                ...data,
-                notificationToken: 'token-9',
-            });
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                {
+                    ...data,
+                    notificationToken: 'token-9',
+                },
+                context
+            );
 
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -604,11 +685,16 @@ describe('DeviceService', () => {
         it('clears no other row when the refresh carries no token', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await service.refresh('user-1', 'device-ownership-1', data);
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                data,
+                context
+            );
 
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -618,14 +704,19 @@ describe('DeviceService', () => {
         it('resolves the notification provider from the platform and the token', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await service.refresh('user-1', 'device-ownership-1', {
-                ...data,
-                notificationToken: 'token-9',
-            });
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                {
+                    ...data,
+                    notificationToken: 'token-9',
+                },
+                context
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -640,11 +731,16 @@ describe('DeviceService', () => {
         it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
+            outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await service.refresh('user-1', 'device-ownership-1', data);
+            await service.refresh(
+                'user-1',
+                'device-ownership-1',
+                data,
+                context
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -673,23 +769,23 @@ describe('DeviceService', () => {
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
             helperDateService.create.mockReturnValue(now);
             const notFound = new DeviceNotFoundException();
-            databaseService.withTransaction.mockRejectedValue(notFound);
+            outboxService.withTransaction.mockRejectedValue(notFound);
 
             await expect(
-                service.refresh('user-1', 'device-ownership-1', data)
+                service.refresh('user-1', 'device-ownership-1', data, context)
             ).rejects.toBe(notFound);
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {
             helperDateService.create.mockReturnValue(now);
             const conflict = new Error('conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             await expect(
-                service.refresh('user-1', 'device-ownership-1', data)
+                service.refresh('user-1', 'device-ownership-1', data, context)
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -706,11 +802,11 @@ describe('DeviceService', () => {
         it('wraps a non-application error raised inside the transaction', async () => {
             helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.refresh('user-1', 'device-ownership-1', data)
+                service.refresh('user-1', 'device-ownership-1', data, context)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 module: 'app',

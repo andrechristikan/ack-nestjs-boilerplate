@@ -5,6 +5,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -17,7 +18,6 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
@@ -30,7 +30,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserDeleteSelfUseCase implements IAppUseCase<
-    [IUser, UserDeleteSelfRequestDto],
+    [IUser, UserDeleteSelfRequestDto, IRequestContext],
     IResponseReturn<void>
 > {
     private readonly deleteSelfTimeoutInMs: number;
@@ -38,7 +38,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
-        private readonly userPasswordService: UserPasswordService,
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly workspaceService: WorkspaceService,
@@ -58,25 +57,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         this.deleteSelfTimeoutInMs = this.configService.get<number>(
             'user.deleteSelf.timeoutInMs'
         )!;
-    }
-
-    /** Temporary: one UserPasswordService method recording the attempt through recordEffect (phase 3D). */
-    private async assertPasswordMatched(
-        user: IUser,
-        password: string | null
-    ): Promise<void> {
-        const attempt =
-            await this.userPasswordService.countPasswordAttempt(user);
-        if (attempt === null) {
-            return;
-        }
-
-        const lockoutLogs = attempt.lockoutStages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-        this.activityLogService.stagePrepared(lockoutLogs);
-
-        await this.userAuthService.assertPasswordAttempt(attempt, password);
     }
 
     private async cascadeDeletedWorkspacesInTx(
@@ -105,29 +85,23 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
 
     async execute(
         user: IUser,
-        { password }: UserDeleteSelfRequestDto
+        { password }: UserDeleteSelfRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         this.userService.assertSelfDeletable(user);
 
         const userId = user.id;
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId,
-                createdBy: userId,
-            }),
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userDeleteSelf,
-            }),
-        ];
 
         // Sequential by design: gate before the work it guards
-        await this.assertPasswordMatched(user, password ?? null);
+        await this.userAuthService.assertCurrentPassword(
+            user,
+            password ?? null,
+            context
+        );
 
         const now = this.helperDateService.create();
-        let workspaceIds: string[];
         try {
-            workspaceIds = await this.outboxService.withTransaction(
+            await this.outboxService.withTransaction(
                 async tx => {
                     await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
                         tx,
@@ -183,7 +157,35 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         deleted.photo
                     );
 
-                    return ownedIds;
+                    const revokeAllEntry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.userRevokeAllSessions,
+                            userId,
+                            createdBy: userId,
+                        },
+                        context
+                    );
+                    const deleteSelfEntry =
+                        this.activityLogService.recordEffect(
+                            { action: EnumActivityLogAction.userDeleteSelf },
+                            context
+                        );
+                    const workspaceEntries = ownedIds.map(workspaceId =>
+                        this.activityLogService.recordEffect(
+                            {
+                                action: EnumActivityLogAction.workspaceDeleted,
+                                userId,
+                                createdBy: userId,
+                                workspaceId,
+                            },
+                            context
+                        )
+                    );
+                    await this.outboxService.addManyInTx(tx, [
+                        revokeAllEntry,
+                        deleteSelfEntry,
+                        ...workspaceEntries,
+                    ]);
                 },
                 { timeout: this.deleteSelfTimeoutInMs }
             );
@@ -199,19 +201,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        const workspaceActivityLogs = workspaceIds.map(workspaceId =>
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId,
-                createdBy: userId,
-                workspaceId,
-            })
-        );
-        this.activityLogService.stagePrepared([
-            ...activityLogs,
-            ...workspaceActivityLogs,
-        ]);
 
         return {};
     }

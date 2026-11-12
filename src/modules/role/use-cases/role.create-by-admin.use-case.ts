@@ -1,13 +1,13 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleService } from '@modules/role/services/role.service';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -15,55 +15,54 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class RoleCreateByAdminUseCase implements IAppUseCase<
-    [RoleCreateRequestDto, IUser],
+    [RoleCreateRequestDto, IUser, IRequestContext],
     IResponseReturn<RoleDto>
 > {
     constructor(
         private readonly roleService: RoleService,
         private readonly roleUtil: RoleUtil,
         private readonly activityLogService: ActivityLogService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        role: IRole
-    ): IActivityLogStaged {
-        const timestamp = this.helperDateService.create();
-        const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
-
-        return this.activityLogService.prepare({
-            action,
-            metadata,
-        });
-    }
-
     async execute(
         body: RoleCreateRequestDto,
-        user: IUser
+        user: IUser,
+        context: IRequestContext
     ): Promise<IResponseReturn<RoleDto>> {
         const roleId = this.databaseUtil.createId();
-        const activityLogs = [
-            this.prepareActivityLog(EnumActivityLogAction.adminRoleCreate, {
-                id: roleId,
-                name: body.name,
-                type: body.type,
-                isImmutable: false,
-            }),
-        ];
+        const created = await this.outboxService.withTransaction(async tx => {
+            const role = await this.roleService.createByAdminInTx(
+                tx,
+                roleId,
+                {
+                    name: body.name,
+                    description: body.description ?? null,
+                    type: body.type,
+                },
+                { roleId: user.roleId, roleType: user.role.type }
+            );
 
-        const created = await this.roleService.createByAdmin(
-            roleId,
-            {
-                name: body.name,
-                description: body.description ?? null,
-                type: body.type,
-            },
-            { roleId: user.roleId, roleType: user.role.type }
-        );
+            const timestamp = this.helperDateService.create();
+            const metadata = this.roleUtil.mapActivityLogMetadata(
+                {
+                    id: roleId,
+                    name: body.name,
+                    type: body.type,
+                    isImmutable: false,
+                },
+                timestamp
+            );
+            const effect = this.activityLogService.recordEffect(
+                { action: EnumActivityLogAction.adminRoleCreate, metadata },
+                context
+            );
+            await this.outboxService.addInTx(tx, effect);
 
-        this.activityLogService.stagePrepared(activityLogs);
+            return role;
+        });
 
         return { data: created };
     }

@@ -52,6 +52,7 @@ export class MigrationTemplateEmailNotificationSeed
             resetTwoFactorByAdminEmail,
             newDeviceLoginEmail,
             publishTermPolicyEmail,
+            userImportResultEmail,
             resetPasswordEmail,
             workspaceInviteEmail,
             workspaceJoinRequestEmail,
@@ -93,6 +94,9 @@ export class MigrationTemplateEmailNotificationSeed
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.publishTermPolicy
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.userImportResult
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.resetPassword
@@ -242,6 +246,17 @@ export class MigrationTemplateEmailNotificationSeed
             promises.push(publishTermPolicyEmailImport);
         }
 
+        if (!userImportResultEmail) {
+            this.logger.log(
+                'User Import Result Email template missing, importing...'
+            );
+            const userImportResultEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.userImportResult
+                );
+            promises.push(userImportResultEmailImport);
+        }
+
         if (!resetPasswordEmail) {
             this.logger.log(
                 'Reset Password Email template missing, importing...'
@@ -353,6 +368,9 @@ export class MigrationTemplateEmailNotificationSeed
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.publishTermPolicy
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.userImportResult
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.resetPassword

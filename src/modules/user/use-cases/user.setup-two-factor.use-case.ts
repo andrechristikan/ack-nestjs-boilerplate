@@ -1,9 +1,7 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import type {
     IUser,
@@ -16,61 +14,25 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserSetupTwoFactorUseCase implements IAppUseCase<
-    [IUser, UserTwoFactorSetupRequestDto],
+    [IUser, UserTwoFactorSetupRequestDto, IRequestContext],
     IResponseReturn<IUserTwoFactorSetup>
 > {
     constructor(
         private readonly userTwoFactorService: UserTwoFactorService,
-        private readonly userPasswordService: UserPasswordService,
-        private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService
+        private readonly userAuthService: UserAuthService
     ) {}
-
-    /** Temporary: one UserPasswordService method recording the attempt through recordEffect (phase 3D). */
-    private async assertPasswordMatched(
-        user: IUser,
-        password: string | null
-    ): Promise<void> {
-        const attempt =
-            await this.userPasswordService.countPasswordAttempt(user);
-        if (attempt === null) {
-            return;
-        }
-
-        const lockoutLogs = attempt.lockoutStages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-        this.activityLogService.stagePrepared(lockoutLogs);
-
-        await this.userAuthService.assertPasswordAttempt(attempt, password);
-    }
-
-    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
-    private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
-        const attempt = await this.userTwoFactorService.countAttempt(user);
-        const lockoutLogs = attempt.lockoutStages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-        this.activityLogService.stagePrepared(lockoutLogs);
-
-        this.userTwoFactorService.assertAttemptCounted(
-            attempt.isAttemptCounted
-        );
-    }
 
     async execute(
         user: IUser,
-        { backupCode, password }: UserTwoFactorSetupRequestDto
+        { backupCode, password }: UserTwoFactorSetupRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userSetupTwoFactor,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
         // Sequential by design: gate before the work it guards
-        await this.assertPasswordMatched(user, password ?? null);
+        await this.userAuthService.assertCurrentPassword(
+            user,
+            password ?? null,
+            context
+        );
         const backupCodeForSetup =
             this.userTwoFactorService.getBackupCodeForSetup(
                 user,
@@ -78,7 +40,7 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
             );
         let backupCodeVerified: IUserTwoFactorVerifyResult | null = null;
         if (backupCodeForSetup !== null) {
-            await this.assertTwoFactorAttemptCounted(user);
+            await this.userTwoFactorService.assertAttemptCounted(user, context);
             backupCodeVerified = await this.userTwoFactorService.verify(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: null,
@@ -92,13 +54,16 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
             await this.userTwoFactorService.saveSetupConsumingBackupCode(
                 user,
                 encryptedSecret,
-                backupCodeVerified
+                backupCodeVerified,
+                context
             );
         } else {
-            await this.userTwoFactorService.saveSetup(user.id, encryptedSecret);
+            await this.userTwoFactorService.saveSetup(
+                user.id,
+                encryptedSecret,
+                context
+            );
         }
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return { data: { secret, otpauthUrl } };
     }

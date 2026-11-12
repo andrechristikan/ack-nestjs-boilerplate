@@ -2,27 +2,16 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectCreateUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
 
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
-
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.projectCreated,
-        metadata: {},
-        userId: '507f1f77bcf86cd799439015',
-        createdBy: '507f1f77bcf86cd799439015',
-        workspaceId: '507f1f77bcf86cd799439012',
-    };
+    const context = buildRequestContext('507f1f77bcf86cd799439015');
 
     let useCase: ProjectCreateUseCase;
 
@@ -42,13 +31,11 @@ describe('ProjectCreateUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectCreateUseCase,
                 { provide: ProjectService, useValue: projectService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -56,7 +43,7 @@ describe('ProjectCreateUseCase', () => {
     });
 
     describe('execute', () => {
-        it('creates the project and wraps it in the response envelope', async () => {
+        it('creates the project with the actor and the context and wraps it in the response envelope', async () => {
             const body: ProjectCreateRequestDto = {
                 name: 'Website Revamp',
                 description: 'Marketing site redesign',
@@ -66,45 +53,23 @@ describe('ProjectCreateUseCase', () => {
             const result = await useCase.execute(
                 '507f1f77bcf86cd799439012',
                 '507f1f77bcf86cd799439015',
-                body
+                body,
+                context
             );
 
             expect(result).toEqual({ data: project });
             expect(projectService.createProject).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439015',
                 {
                     name: 'Website Revamp',
                     description: 'Marketing site redesign',
-                }
+                },
+                context
             );
         });
 
-        it('prepares the created activity log before the write and stages it after', async () => {
-            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
-            projectService.createProject.mockImplementation(async () => {
-                expect(activityLogService.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.projectCreated,
-                    userId: '507f1f77bcf86cd799439015',
-                    createdBy: '507f1f77bcf86cd799439015',
-                    workspaceId: '507f1f77bcf86cd799439012',
-                });
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-
-                return project;
-            });
-
-            await useCase.execute(
-                '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
-                body
-            );
-
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
-        });
-
-        it('stages nothing when the domain throws', async () => {
+        it('rejects with the domain failure', async () => {
             const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
             projectService.createProject.mockRejectedValue(new Error('boom'));
 
@@ -112,10 +77,10 @@ describe('ProjectCreateUseCase', () => {
                 useCase.execute(
                     '507f1f77bcf86cd799439012',
                     '507f1f77bcf86cd799439015',
-                    body
+                    body,
+                    context
                 )
             ).rejects.toThrow('boom');
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('passes null for an omitted description', async () => {
@@ -125,12 +90,15 @@ describe('ProjectCreateUseCase', () => {
             await useCase.execute(
                 '507f1f77bcf86cd799439012',
                 '507f1f77bcf86cd799439015',
-                body
+                body,
+                context
             );
 
             expect(projectService.createProject).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
-                { name: 'Website Revamp', description: null }
+                '507f1f77bcf86cd799439015',
+                { name: 'Website Revamp', description: null },
+                context
             );
         });
     });

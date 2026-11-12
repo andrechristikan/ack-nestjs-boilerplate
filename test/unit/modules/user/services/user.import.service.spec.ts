@@ -14,7 +14,7 @@ import {
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import type { IRole } from '@modules/role/interfaces/role.interface';
@@ -153,10 +153,6 @@ describe('UserImportService', () => {
             },
         ];
 
-        const clearChecks: IUserImportUsernameChecks = {
-            existing: [],
-            badWords: [false, false],
-        };
         const verifiedOne: IUserCreateVerification = {
             reference: 'ref-one',
             token: 'hashed-token-one',
@@ -205,8 +201,7 @@ describe('UserImportService', () => {
                 rows,
                 'admin-thistle',
                 role,
-                'country-thistle',
-                clearChecks
+                'country-thistle'
             );
 
             expect(result.inputs).toHaveLength(2);
@@ -233,8 +228,7 @@ describe('UserImportService', () => {
                 rows,
                 'admin-thistle',
                 role,
-                'country-thistle',
-                clearChecks
+                'country-thistle'
             );
 
             expect(userVerificationUtil.createVerified).toHaveBeenCalledTimes(
@@ -265,8 +259,7 @@ describe('UserImportService', () => {
                 rows,
                 'admin-thistle',
                 role,
-                'country-thistle',
-                clearChecks
+                'country-thistle'
             );
 
             expect(authPasswordUtil.createPassword).toHaveBeenCalledTimes(2);
@@ -281,115 +274,146 @@ describe('UserImportService', () => {
                 { temporary: true }
             );
         });
+    });
 
-        it('throws UserImportEmailExistException when two rows repeat the same email', async () => {
+    describe('assertImportByAdminRows', () => {
+        const rows = [
+            {
+                username: 'thistleRowe',
+                email: 'thistle@example.com',
+                name: null,
+            },
+            {
+                username: 'marigoldFinch',
+                email: 'marigold@example.com',
+                name: null,
+            },
+        ];
+        const clearChecks: IUserImportUsernameChecks = {
+            existing: [],
+            badWords: [false, false],
+        };
+
+        it('passes when no row repeats, no username exists, and no username is profane', () => {
+            expect(() =>
+                service.assertImportByAdminRows(rows, clearChecks)
+            ).not.toThrow();
+        });
+
+        it('throws UserImportEmailExistException when two rows repeat the same email', () => {
             const duplicateRows = [
-                {
-                    username: 'thistleRowe',
-                    email: 'thistle@example.com',
-                    name: null,
-                },
-                {
-                    username: 'marigoldFinch',
-                    email: 'thistle@example.com',
-                    name: null,
-                },
+                rows[0]!,
+                { ...rows[1]!, email: 'thistle@example.com' },
             ];
 
-            const call = service.prepareImportByAdmin(
-                duplicateRows,
-                'admin-thistle',
-                role,
-                'country-thistle',
-                clearChecks
+            expect(() =>
+                service.assertImportByAdminRows(duplicateRows, clearChecks)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.importEmailExist,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.importEmailExist
+                        ],
+                    messagePath: 'user.error.importEmailExist',
+                    messageProperties: { emails: 'thistle@example.com' },
+                })
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.importEmailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importEmailExist
-                    ],
-                messagePath: 'user.error.importEmailExist',
-                messageProperties: { emails: 'thistle@example.com' },
-            });
-            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
         });
 
-        it('throws UserImportUsernameExistException when a username already exists', async () => {
-            await expect(
-                service.prepareImportByAdmin(
-                    rows,
-                    'admin-thistle',
-                    role,
-                    'country-thistle',
-                    { ...clearChecks, existing: ['thistleRowe'] }
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.importUsernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importUsernameExist
-                    ],
-                messagePath: 'user.error.importUsernameExist',
-                messageProperties: { usernames: 'thistleRowe' },
-            });
+        it('throws UserImportUsernameExistException when a username already exists', () => {
+            expect(() =>
+                service.assertImportByAdminRows(rows, {
+                    ...clearChecks,
+                    existing: ['thistleRowe'],
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.importUsernameExist,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.importUsernameExist
+                        ],
+                    messagePath: 'user.error.importUsernameExist',
+                    messageProperties: { usernames: 'thistleRowe' },
+                })
+            );
         });
 
-        it('throws UserImportUsernameExistException when two rows repeat the same username', async () => {
+        it('throws UserImportUsernameExistException when two rows repeat the same username', () => {
             const duplicateRows = [
-                {
-                    username: 'thistleRowe',
-                    email: 'thistle@example.com',
-                    name: null,
-                },
-                {
-                    username: 'thistleRowe',
-                    email: 'other@example.com',
-                    name: null,
-                },
+                rows[0]!,
+                { ...rows[1]!, username: 'thistleRowe' },
             ];
 
-            const call = service.prepareImportByAdmin(
-                duplicateRows,
-                'admin-thistle',
-                role,
-                'country-thistle',
-                clearChecks
+            expect(() =>
+                service.assertImportByAdminRows(duplicateRows, clearChecks)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.importUsernameExist,
+                    messagePath: 'user.error.importUsernameExist',
+                    messageProperties: { usernames: 'thistleRowe' },
+                })
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.importUsernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importUsernameExist
-                    ],
-                messagePath: 'user.error.importUsernameExist',
-                messageProperties: { usernames: 'thistleRowe' },
-            });
         });
 
-        it('throws UserUsernameContainBadWordException when a username is profane', async () => {
-            const call = service.prepareImportByAdmin(
-                rows,
-                'admin-thistle',
-                role,
-                'country-thistle',
-                { ...clearChecks, badWords: [true, false] }
+        it('throws UserUsernameContainBadWordException when a username is profane', () => {
+            expect(() =>
+                service.assertImportByAdminRows(rows, {
+                    ...clearChecks,
+                    badWords: [true, false],
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.usernameContainBadWord,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.usernameContainBadWord
+                        ],
+                    messagePath: 'user.error.usernameContainBadWord',
+                })
             );
+        });
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameContainBadWord
-                    ],
-                messagePath: 'user.error.usernameContainBadWord',
-            });
+        it('throws the duplicate email error before the existing username error', () => {
+            const duplicateRows = [
+                rows[0]!,
+                { ...rows[1]!, email: 'thistle@example.com' },
+            ];
+
+            expect(() =>
+                service.assertImportByAdminRows(duplicateRows, {
+                    ...clearChecks,
+                    existing: ['thistleRowe'],
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumUserStatusCodeError.importEmailExist,
+                })
+            );
+        });
+
+        it('throws the existing username error before the duplicate username and bad-word errors', () => {
+            const duplicateRows = [
+                rows[0]!,
+                { ...rows[1]!, username: 'thistleRowe' },
+            ];
+
+            expect(() =>
+                service.assertImportByAdminRows(duplicateRows, {
+                    existing: ['marigoldFinch'],
+                    badWords: [true, true],
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    statusCode: EnumUserStatusCodeError.importUsernameExist,
+                    messageProperties: { usernames: 'marigoldFinch' },
+                })
+            );
         });
     });
 
@@ -546,21 +570,20 @@ describe('UserImportService', () => {
                 ...input,
                 userId: second.id,
             };
-            const contractStages: IActivityLogStageInput<EnumActivityLogAction>[] =
-                [
-                    {
-                        action: UserCreateContract.admin.createdAction,
-                        userId: baseUser.id,
-                        createdBy: 'admin-thistle',
-                        metadata: {},
-                    },
-                    {
-                        action: UserCreateContract.admin.createdAction,
-                        userId: second.id,
-                        createdBy: 'admin-thistle',
-                        metadata: {},
-                    },
-                ];
+            const contractStages: IActivityLogInput<EnumActivityLogAction>[] = [
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: baseUser.id,
+                    createdBy: 'admin-thistle',
+                    metadata: {},
+                },
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: second.id,
+                    createdBy: 'admin-thistle',
+                    metadata: {},
+                },
+            ];
             userCreateUtil.buildStages.mockReturnValue(contractStages);
 
             const result = service.buildImportByAdminStages(

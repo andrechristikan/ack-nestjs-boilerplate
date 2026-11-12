@@ -1,7 +1,10 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
+    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationType,
     Prisma,
@@ -72,7 +75,8 @@ export class NotificationService {
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogService: ActivityLogService
     ) {
         this.stepPattern = this.configService.get<string>(
             'notification.idempotencyKey.stepPattern'
@@ -531,18 +535,35 @@ export class NotificationService {
 
     async updateUserSetting(
         userId: string,
-        data: INotificationUserSettingUpdate
+        data: INotificationUserSettingUpdate,
+        context: IRequestContext
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        const updated =
-            await this.notificationUserSettingRepository.updateUserSetting(
-                userId,
-                data
+        await this.outboxService.withTransaction(async tx => {
+            const updated =
+                await this.notificationUserSettingRepository.updateUserSettingInTx(
+                    tx,
+                    userId,
+                    data
+                );
+            if (!updated) {
+                throw new NotificationSettingInvalidException();
+            }
+
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.userUpdateNotificationSetting,
+                    metadata: {
+                        channel: data.channel,
+                        type: data.type,
+                        isActive: data.isActive,
+                    },
+                },
+                context
             );
-        if (!updated) {
-            throw new NotificationSettingInvalidException();
-        }
+            await this.outboxService.addInTx(tx, entry);
+        });
     }
 
     async createDefaultsManyInTx(

@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
@@ -88,6 +89,7 @@ import { Module } from '@nestjs/common';
         UserMobileNumberAnalyticService,
     ],
     imports: [
+        ActivityLogModule,
         AwsModule,
         DeviceModule,
         NotificationModule,

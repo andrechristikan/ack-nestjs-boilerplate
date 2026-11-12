@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
     IPaginationIn,
@@ -96,11 +97,22 @@ export class RoleRepository implements IRoleRepository {
         return count > 0;
     }
 
-    async create(
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRole | null> {
+        return tx.role.findUnique({
+            where: { id },
+            select: { id: true, type: true, name: true, isImmutable: true },
+        });
+    }
+
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         roleId: string,
         data: IRoleCreate
     ): Promise<IRoleWithPolicies> {
-        return this.databaseService.client.role.create({
+        return tx.role.create({
             data: {
                 ...data,
                 id: roleId,
@@ -109,12 +121,13 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async update(
+    async updateInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         expectedType: EnumRoleType,
         { description, type }: IRoleUpdate
     ): Promise<IRoleWithPolicies | null> {
-        const { count } = await this.databaseService.client.role.updateMany({
+        const { count } = await tx.role.updateMany({
             where: { id, type: expectedType },
             data: { description, type },
         });
@@ -122,11 +135,17 @@ export class RoleRepository implements IRoleRepository {
             return null;
         }
 
-        return this.findOneWithPoliciesById(id);
+        return tx.role.findUnique({
+            where: { id },
+            include: { policies: true },
+        });
     }
 
-    async deleteUnused(id: string): Promise<boolean> {
-        const { count } = await this.databaseService.client.role.deleteMany({
+    async deleteUnusedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<boolean> {
+        const { count } = await tx.role.deleteMany({
             where: { id, isImmutable: false, users: { none: {} } },
         });
 

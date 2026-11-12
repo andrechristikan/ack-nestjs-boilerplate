@@ -5,7 +5,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -19,7 +18,8 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -30,6 +30,7 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceClaimInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
@@ -39,7 +40,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const context = buildRequestContext('user-1');
+    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
+    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -78,20 +82,15 @@ describe('WorkspaceClaimInviteUseCase', () => {
     };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceInviteCreated,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceClaimInviteUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect
+            .mockReturnValueOnce(firstEntry)
+            .mockReturnValueOnce(secondEntry);
         helperDateService.create.mockReturnValue(now);
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -109,7 +108,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     useValue: projectMemberService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -130,7 +129,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             );
         });
 
-        it('validates, accepts the invite before the member insert on one transaction, then stages the accepted rows', async () => {
+        it('validates, accepts the invite before the member insert on one transaction, then adds the accepted entries on the same tx', async () => {
             const callOrder: string[] = [];
             workspaceInviteService.validateInviteForEmail.mockImplementation(
                 async () => {
@@ -152,14 +151,17 @@ describe('WorkspaceClaimInviteUseCase', () => {
             userService.setLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('setLastWorkspace');
             });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
+            outboxService.addManyInTx.mockImplementation(async () => {
+                callOrder.push('addEntries');
+
+                return [];
             });
 
             const result = await useCase.execute(
                 'user-2',
                 'invitee@example.com',
-                body
+                body,
+                context
             );
 
             expect(result).toEqual({});
@@ -168,7 +170,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 'acceptInvite',
                 'createMember',
                 'setLastWorkspace',
-                'stage',
+                'addEntries',
             ]);
             expect(
                 workspaceInviteService.validateInviteForEmail
@@ -176,7 +178,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             expect(
                 workspaceInviteService.assertInviteeNotMember
             ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceInviteService.acceptPendingInTx
             ).toHaveBeenCalledWith(tx, 'invite-1', 'user-2', now);
@@ -193,40 +195,31 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 'workspace-1'
             );
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceInviteAccepted,
-                userId: 'user-2',
-                createdBy: 'user-2',
-                workspaceId: 'workspace-1',
-                metadata: { targetUserId: 'user-1' },
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                userId: 'user-1',
-                createdBy: 'user-2',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-2' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-                stagedActivityLog,
-            ]);
-        });
-
-        it('prepares both accepted rows before the transaction opens and stages them after it commits', async () => {
-            databaseService.withTransaction.mockImplementation(async fn => {
-                expect(activityLogService.prepare).toHaveBeenCalledTimes(2);
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-
-                return fn(tx) as never;
-            });
-
-            await useCase.execute('user-2', 'invitee@example.com', body);
-
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-                stagedActivityLog,
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceInviteAccepted,
+                    userId: 'user-2',
+                    createdBy: 'user-2',
+                    workspaceId: 'workspace-1',
+                    metadata: { targetUserId: 'user-1' },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                    userId: 'user-1',
+                    createdBy: 'user-2',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-2' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                firstEntry,
+                secondEntry,
             ]);
         });
 
@@ -249,7 +242,12 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 return mock();
             });
 
-            await useCase.execute('user-2', 'invitee@example.com', body);
+            await useCase.execute(
+                'user-2',
+                'invitee@example.com',
+                body,
+                context
+            );
 
             expect(callOrder).toEqual([
                 'setLastWorkspace',
@@ -264,17 +262,22 @@ describe('WorkspaceClaimInviteUseCase', () => {
             );
         });
 
-        it('stages a single row when the caller invited itself', async () => {
+        it('adds a single entry when the caller invited itself', async () => {
             workspaceInviteService.validateInviteForEmail.mockResolvedValue({
                 ...invite,
                 invitedByUserId: 'user-2',
             });
 
-            await useCase.execute('user-2', 'invitee@example.com', body);
+            await useCase.execute(
+                'user-2',
+                'invitee@example.com',
+                body,
+                context
+            );
 
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                firstEntry,
             ]);
         });
 
@@ -284,10 +287,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceInviteInvalidException before the transaction when the token does not resolve', async () => {
@@ -296,19 +299,19 @@ describe('WorkspaceClaimInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on the member insert to WorkspaceInviteAlreadyProcessedException and stages nothing', async () => {
+        it('maps a unique collision on the member insert to WorkspaceInviteAlreadyProcessedException and adds no entry', async () => {
             const collision = new Error('unique');
             workspaceMemberService.createInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -319,7 +322,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 collision,
                 'userId'
             );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('answers WorkspaceInviteAlreadyProcessedException on a write conflict after the accept', async () => {
@@ -331,7 +334,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -340,35 +343,35 @@ describe('WorkspaceClaimInviteUseCase', () => {
             });
             expect(workspaceInviteService.acceptPendingInTx).toHaveBeenCalled();
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('wraps another transaction failure in AppUnknownException and stages nothing', async () => {
+        it('wraps another transaction failure in AppUnknownException and adds no entry', async () => {
             const failure = new Error('db-down');
             workspaceMemberService.createInTx.mockRejectedValue(failure);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: failure,
             });
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('propagates WorkspaceInviteAlreadyProcessedException from the guarded accept, writes nothing after it, and stages nothing', async () => {
+        it('propagates WorkspaceInviteAlreadyProcessedException from the guarded accept, writes nothing after it, and adds no entry', async () => {
             workspaceInviteService.acceptPendingInTx.mockRejectedValue(
                 new WorkspaceInviteAlreadyProcessedException()
             );
 
             await expect(
-                useCase.execute('user-2', 'invitee@example.com', body)
+                useCase.execute('user-2', 'invitee@example.com', body, context)
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
             expect(workspaceMemberService.createInTx).not.toHaveBeenCalled();
             expect(userService.setLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 });

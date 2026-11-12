@@ -1,9 +1,6 @@
 import { Prisma } from '@generated/prisma-client/client';
 
 /** @public */
-export const ActivityLogStageStoreKey = 'ActivityLogStageStoreKey';
-
-/** @public */
 export const ActivityLogAnalyticListSelect = {
     id: true,
     userId: true,

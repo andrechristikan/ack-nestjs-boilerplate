@@ -10,14 +10,20 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
+    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
@@ -26,13 +32,22 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    expectRequestContextMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const tx = {} as IDatabaseTransactionClient;
+    const context = buildRequestContext('user-1');
+    const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
     const configGet = vi.fn<(key: string) => unknown>();
@@ -77,6 +92,8 @@ describe('ProjectService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
+        activityLogService.recordEffect.mockReturnValue(entry);
+        outboxService.withTransaction.mockImplementation(fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -84,6 +101,8 @@ describe('ProjectService', () => {
                 { provide: ProjectRepository, useValue: projectRepository },
                 { provide: ProjectUtil, useValue: projectUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
             ],
@@ -247,49 +266,160 @@ describe('ProjectService', () => {
     });
 
     describe('createProject', () => {
-        it('draws slug candidates and creates the project with them', async () => {
-            const project = baseProject;
-            const slugCandidates = ['p-abc123', 'p-def456'];
-            helperStringService.generateSlugCandidates.mockReturnValue(
-                slugCandidates
-            );
-            projectRepository.create.mockResolvedValue(project);
-            const create: IProjectCreate = {
-                name: 'Website Revamp',
-                description: null,
-            };
+        const create: IProjectCreate = {
+            name: 'Website Revamp',
+            description: null,
+        };
+
+        beforeEach(() => {
+            helperStringService.generateSlugCandidates.mockReturnValue([
+                'p-abc123',
+                'p-def456',
+            ]);
+        });
+
+        it('creates the project on the first slug candidate and adds the creator entry on the same tx', async () => {
+            projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
                 '507f1f77bcf86cd799439012',
-                create
+                'user-1',
+                create,
+                context
             );
 
-            expect(result).toBe(project);
-            expect(projectRepository.create).toHaveBeenCalledWith(
+            expect(result).toBe(baseProject);
+            expect(projectRepository.createInTx).toHaveBeenCalledWith(
+                tx,
                 '507f1f77bcf86cd799439012',
                 create,
-                slugCandidates
+                'p-abc123'
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.projectCreated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: '507f1f77bcf86cd799439012',
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+        });
+
+        it('retries with the next slug candidate after a slug collision', async () => {
+            const collision = new Error('slug collision');
+            outboxService.withTransaction
+                .mockRejectedValueOnce(collision)
+                .mockImplementationOnce(fn => fn(tx));
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+            projectRepository.createInTx.mockResolvedValue(baseProject);
+
+            const result = await service.createProject(
+                '507f1f77bcf86cd799439012',
+                'user-1',
+                create,
+                context
+            );
+
+            expect(result).toBe(baseProject);
+            expect(projectRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                '507f1f77bcf86cd799439012',
+                create,
+                'p-def456'
+            );
+        });
+
+        it('wraps a non-collision failure in AppUnknownException without retrying', async () => {
+            const otherError = new Error('unexpected');
+            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                service.createProject(
+                    '507f1f77bcf86cd799439012',
+                    'user-1',
+                    create,
+                    context
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('rethrows an AppBaseException without retrying', async () => {
+            const typed = new DatabaseUniqueValueGenerationFailedException();
+            outboxService.withTransaction.mockRejectedValue(typed);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                service.createProject(
+                    '507f1f77bcf86cd799439012',
+                    'user-1',
+                    create,
+                    context
+                )
+            ).rejects.toBeInstanceOf(AppBaseException);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
+            outboxService.withTransaction.mockRejectedValue(
+                new Error('slug collision')
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                service.createProject(
+                    '507f1f77bcf86cd799439012',
+                    'user-1',
+                    create,
+                    context
+                )
+            ).rejects.toMatchObject({
+                constructor: DatabaseUniqueValueGenerationFailedException,
+                module: 'database',
+            });
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
         });
     });
 
     describe('updateProject', () => {
-        it('updates the details and returns the row', async () => {
+        it('updates the details and adds the entry on the same tx', async () => {
             const project = baseProject;
             const updated = { ...baseProject, name: 'New Name' };
-            projectRepository.updateDetails.mockResolvedValue(updated);
+            projectRepository.updateDetailsInTx.mockResolvedValue(updated);
             const update: IProjectUpdate = {
                 name: 'New Name',
                 description: null,
             };
 
-            const result = await service.updateProject(project, update);
+            const result = await service.updateProject(
+                project,
+                'user-1',
+                update,
+                context
+            );
 
             expect(result).toBe(updated);
-            expect(projectRepository.updateDetails).toHaveBeenCalledWith(
+            expect(projectRepository.updateDetailsInTx).toHaveBeenCalledWith(
+                tx,
                 project.id,
                 update
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: project.workspaceId,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
     });
 
@@ -298,7 +428,12 @@ describe('ProjectService', () => {
             const project = baseProject;
 
             await expect(
-                service.updateProjectSlug(project, 'invalid slug!')
+                service.updateProjectSlug(
+                    project,
+                    'user-1',
+                    'invalid slug!',
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
@@ -308,17 +443,17 @@ describe('ProjectService', () => {
                     ],
                 messagePath: 'project.error.slugInvalid',
             });
-            expect(projectRepository.updateSlug).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws ProjectSlugAlreadyExistsException when the write collides on the slug index', async () => {
             const project = baseProject;
             const collision = new Error('slug collision');
-            projectRepository.updateSlug.mockRejectedValue(collision);
+            projectRepository.updateSlugInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                service.updateProjectSlug(project, 'p-taken')
+                service.updateProjectSlug(project, 'user-1', 'p-taken', context)
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
@@ -337,32 +472,50 @@ describe('ProjectService', () => {
         it('wraps a non-collision write error in AppUnknownException', async () => {
             const project = baseProject;
             const otherError = new Error('unexpected');
-            projectRepository.updateSlug.mockRejectedValue(otherError);
+            projectRepository.updateSlugInTx.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.updateProjectSlug(project, 'p-new-slug')
+                service.updateProjectSlug(
+                    project,
+                    'user-1',
+                    'p-new-slug',
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
             });
         });
 
-        it('updates the slug when it is allowed', async () => {
+        it('updates the slug when it is allowed and adds the entry on the same tx', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
-            projectRepository.updateSlug.mockResolvedValue(updated);
+            projectRepository.updateSlugInTx.mockResolvedValue(updated);
 
             const result = await service.updateProjectSlug(
                 project,
-                'p-new-slug'
+                'user-1',
+                'p-new-slug',
+                context
             );
 
             expect(result).toBe(updated);
-            expect(projectRepository.updateSlug).toHaveBeenCalledWith(
+            expect(projectRepository.updateSlugInTx).toHaveBeenCalledWith(
+                tx,
                 project.id,
                 'p-new-slug'
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: project.workspaceId,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
     });
 

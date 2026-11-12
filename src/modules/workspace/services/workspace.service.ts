@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -10,9 +9,12 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
@@ -46,7 +48,8 @@ export class WorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
@@ -160,9 +163,11 @@ export class WorkspaceService {
         }
     }
 
+    /** Creates the workspace with its owner row and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
     async createWorkspace(
         userId: string,
-        create: IWorkspaceCreate
+        create: IWorkspaceCreate,
+        context: IRequestContext
     ): Promise<Workspace> {
         const slugCandidates = this.drawSlugCandidates();
 
@@ -170,7 +175,7 @@ export class WorkspaceService {
             const workspaceId = this.databaseUtil.createId();
 
             try {
-                return await this.databaseService.withTransaction(async tx => {
+                return await this.outboxService.withTransaction(async tx => {
                     const ownedCount =
                         await this.workspaceRepository.countByOwnerInTx(
                             tx,
@@ -180,13 +185,25 @@ export class WorkspaceService {
                         throw new WorkspaceCapReachedException();
                     }
 
-                    return this.createInTx(
+                    const workspace = await this.createInTx(
                         tx,
                         userId,
                         create,
                         slug,
                         workspaceId
                     );
+                    const entry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.workspaceCreated,
+                            userId,
+                            createdBy: userId,
+                            workspaceId: workspace.id,
+                        },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, entry);
+
+                    return workspace;
                 });
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
@@ -206,23 +223,68 @@ export class WorkspaceService {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
+    /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspace(
         workspaceId: string,
-        update: IWorkspaceUpdate
+        actorId: string,
+        update: IWorkspaceUpdate,
+        context: IRequestContext
     ): Promise<Workspace> {
-        return this.workspaceRepository.updateDetails(workspaceId, update);
+        return this.outboxService.withTransaction(async tx => {
+            const workspace = await this.workspaceRepository.updateDetailsInTx(
+                tx,
+                workspaceId,
+                update
+            );
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.workspaceUpdated,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId,
+                },
+                context
+            );
+            await this.outboxService.addInTx(tx, entry);
+
+            return workspace;
+        });
     }
 
+    /** Writes the visibility and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceIsPublic(
         workspaceId: string,
-        isPublic: boolean
+        actorId: string,
+        isPublic: boolean,
+        context: IRequestContext
     ): Promise<Workspace> {
-        return this.workspaceRepository.updateIsPublic(workspaceId, isPublic);
+        return this.outboxService.withTransaction(async tx => {
+            const workspace = await this.workspaceRepository.updateIsPublicInTx(
+                tx,
+                workspaceId,
+                isPublic
+            );
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId,
+                },
+                context
+            );
+            await this.outboxService.addInTx(tx, entry);
+
+            return workspace;
+        });
     }
 
+    /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceSlug(
         workspaceId: string,
-        slug: string
+        actorId: string,
+        slug: string,
+        context: IRequestContext
     ): Promise<Workspace> {
         const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
@@ -230,7 +292,25 @@ export class WorkspaceService {
         }
 
         try {
-            return await this.workspaceRepository.updateSlug(workspaceId, slug);
+            return await this.outboxService.withTransaction(async tx => {
+                const workspace = await this.workspaceRepository.updateSlugInTx(
+                    tx,
+                    workspaceId,
+                    slug
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceUpdated,
+                        userId: actorId,
+                        createdBy: actorId,
+                        workspaceId,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+
+                return workspace;
+            });
         } catch (err: unknown) {
             const isSlugCollision = this.databaseUtil.isUniqueCollision(
                 err,

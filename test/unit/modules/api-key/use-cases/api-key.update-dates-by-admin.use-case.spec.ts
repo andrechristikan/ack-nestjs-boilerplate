@@ -2,26 +2,42 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
 } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
-import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKeyUpdateDatesByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-dates-by-admin.use-case';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateDatesByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey: ApiKey = {
@@ -39,12 +55,13 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminApiKeyCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const context: IRequestContext = buildRequestContext('user-actor');
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: ApiKeyUpdateDatesByAdminUseCase;
@@ -53,7 +70,10 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -61,6 +81,8 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -69,42 +91,81 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the date window and wraps the result', async () => {
-            const startAt = new Date('2026-02-01T00:00:00.000Z');
-            const endAt = new Date('2026-03-01T00:00:00.000Z');
-            const body: ApiKeyUpdateDateRequestDto = { startAt, endAt };
-            const updated: ApiKey = { ...apiKey, startAt, endAt };
-            apiKeyService.updateDatesByAdmin.mockResolvedValue(updated);
+        const startAt = new Date('2026-02-01T00:00:00.000Z');
+        const endAt = new Date('2026-03-01T00:00:00.000Z');
+        const updated: ApiKey = { ...apiKey, startAt, endAt };
 
-            const result = await useCase.execute(apiKey.id, body);
+        it('updates the date window on the outbox transaction and wraps the result', async () => {
+            apiKeyService.updateDatesByAdminInTx.mockResolvedValue(updated);
+
+            const result = await useCase.execute(
+                apiKey.id,
+                { startAt, endAt },
+                context
+            );
 
             expect(result).toEqual({ data: updated });
-            expect(apiKeyService.updateDatesByAdmin).toHaveBeenCalledWith(
+            expect(apiKeyService.updateDatesByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 apiKey.id,
                 startAt,
                 endAt
             );
         });
 
-        it('prepares the date activity log from the updated key and stages it after the write', async () => {
-            const startAt = new Date('2026-02-01T00:00:00.000Z');
-            const endAt = new Date('2026-03-01T00:00:00.000Z');
-            const updated: ApiKey = { ...apiKey, startAt, endAt };
-            apiKeyService.updateDatesByAdmin.mockResolvedValue(updated);
+        it('adds the date activity entry from the updated key and the passed context on the same tx', async () => {
+            apiKeyService.updateDatesByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(apiKey.id, { startAt, endAt });
+            await useCase.execute(apiKey.id, { startAt, endAt }, context);
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminApiKeyUpdateDate,
-                metadata,
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminApiKeyUpdateDate,
+                    metadata,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('rethrows a typed exception of the write and adds no entry', async () => {
+            const failure = new ApiKeyInactiveException();
+            apiKeyService.updateDatesByAdminInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(apiKey.id, { startAt, endAt }, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to ApiKeyInactiveException', async () => {
+            apiKeyService.updateDatesByAdminInTx.mockRejectedValue(
+                new Error('conflict')
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(apiKey.id, { startAt, endAt }, context)
+            ).rejects.toBeInstanceOf(ApiKeyInactiveException);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            apiKeyService.updateDatesByAdminInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(apiKey.id, { startAt, endAt }, context)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 });

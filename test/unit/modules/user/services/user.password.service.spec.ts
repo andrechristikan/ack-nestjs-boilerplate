@@ -20,7 +20,8 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
@@ -75,6 +76,8 @@ describe('UserPasswordService', () => {
         mock<AuthPasswordUtil>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
     const configGet =
         vi.fn<(key: string) => boolean | number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
@@ -84,6 +87,7 @@ describe('UserPasswordService', () => {
     let service: UserPasswordService;
 
     const tx = {} as IDatabaseTransactionClient;
+    const context = buildRequestContext(null);
     const lockoutEffect: IOutboxEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.lockout,
@@ -224,6 +228,10 @@ describe('UserPasswordService', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                {
+                    provide: ActivityLogService,
+                    useValue: activityLogService,
+                },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -274,7 +282,7 @@ describe('UserPasswordService', () => {
             const passwordless: IUser = { ...baseUser, password: null };
 
             await expect(
-                service.countPasswordAttempt(passwordless)
+                service.countPasswordAttempt(passwordless, context)
             ).resolves.toBeNull();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -284,17 +292,18 @@ describe('UserPasswordService', () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
 
             await expect(
-                service.countPasswordAttempt(baseUser)
+                service.countPasswordAttempt(baseUser, context)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
-                lockoutStages: [],
             });
             expect(
                 userRepository.incrementPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 5);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
         });
 
         it('returns a counted attempt without opening a transaction when attempt tracking is off', async () => {
@@ -335,18 +344,21 @@ describe('UserPasswordService', () => {
                         provide: FeatureFlagService,
                         useValue: featureFlagService,
                     },
+                    {
+                        provide: ActivityLogService,
+                        useValue: activityLogService,
+                    },
                     { provide: ConfigService, useValue: configService },
                 ],
             }).compile();
             const untracked = module.get(UserPasswordService);
 
             await expect(
-                untracked.countPasswordAttempt(baseUser)
+                untracked.countPasswordAttempt(baseUser, context)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: true,
-                lockoutStages: [],
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
@@ -362,7 +374,7 @@ describe('UserPasswordService', () => {
             );
 
             await expect(
-                service.countPasswordAttempt(baseUser)
+                service.countPasswordAttempt(baseUser, context)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
@@ -377,9 +389,9 @@ describe('UserPasswordService', () => {
             const failure = new DatabaseUnavailableException();
             outboxService.withTransaction.mockRejectedValue(failure);
 
-            await expect(service.countPasswordAttempt(baseUser)).rejects.toBe(
-                failure
-            );
+            await expect(
+                service.countPasswordAttempt(baseUser, context)
+            ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
@@ -389,39 +401,38 @@ describe('UserPasswordService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.countPasswordAttempt(baseUser)
+                service.countPasswordAttempt(baseUser, context)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });
         });
 
-        it('adds the lockout row on the outbox tx and returns an uncounted attempt with the lockout stages when the budget is spent', async () => {
-            const lockoutStages: IActivityLogStageInput<EnumActivityLogAction>[] =
-                [
-                    {
-                        action: EnumActivityLogAction.userRevokeAllSessions,
-                        userId: 'user-hollow',
-                        createdBy: 'user-hollow',
-                    },
-                    {
-                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                        userId: 'user-hollow',
-                        createdBy: 'user-hollow',
-                    },
-                ];
+        it('adds the lockout row and both entries built from the passed context on the counting tx when the budget is spent', async () => {
+            const revokeAllEntry: IOutboxEffect = {
+                ...lockoutEffect,
+                idempotencyKey: 'revoke-all',
+            };
+            const reachMaxEntry: IOutboxEffect = {
+                ...lockoutEffect,
+                idempotencyKey: 'reach-max',
+            };
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
                 false
             );
             userTwoFactorService.lockoutEffect.mockReturnValue(lockoutEffect);
+            activityLogService.recordEffect.mockImplementation(input =>
+                input.action === EnumActivityLogAction.userRevokeAllSessions
+                    ? revokeAllEntry
+                    : reachMaxEntry
+            );
 
             await expect(
-                service.countPasswordAttempt(baseUser)
+                service.countPasswordAttempt(baseUser, context)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
                 isAttemptCounted: false,
-                lockoutStages,
             });
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
@@ -430,11 +441,30 @@ describe('UserPasswordService', () => {
             expect(userTwoFactorService.lockoutEffect).toHaveBeenCalledWith(
                 'user-hollow'
             );
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                lockoutEffect
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessions,
+                    userId: 'user-hollow',
+                    createdBy: 'user-hollow',
+                },
+                context
             );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-hollow',
+                    createdBy: 'user-hollow',
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                lockoutEffect,
+                revokeAllEntry,
+                reachMaxEntry,
+            ]);
         });
     });
 
@@ -574,6 +604,10 @@ describe('UserPasswordService', () => {
             idempotencyKey: 'forgotPassword-FGT-hollow',
         };
 
+        const forgotEntry = {
+            queue: 'activityLog',
+        } as unknown as IOutboxEffect;
+
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -582,13 +616,15 @@ describe('UserPasswordService', () => {
                 '2026-03-05T00:00:00.000Z'
             );
             notificationService.notify.mockReturnValue(forgotEffect);
+            activityLogService.recordEffect.mockReturnValue(forgotEntry);
         });
 
-        it('replaces the unused requests and adds the forgotPassword effect on one transaction', async () => {
+        it('replaces the unused requests and adds the forgotPassword effect and entry on one transaction', async () => {
             await service.createForgotPassword(
                 'user-hollow',
                 'hollow@example.com',
-                forgot
+                forgot,
+                context
             );
 
             expect(
@@ -610,13 +646,21 @@ describe('UserPasswordService', () => {
                     expiredInMinutes: 15,
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                forgotEffect
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userForgotPassword,
+                    userId: 'user-hollow',
+                    createdBy: 'user-hollow',
+                },
+                context
             );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                forgotEntry,
+                forgotEffect,
+            ]);
             expect(
                 userPasswordRepository.createReplacingUnusedInTx
-            ).toHaveBeenCalledBefore(outboxService.addInTx);
+            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
         it('adds no effect when the replace rejects', async () => {
@@ -629,10 +673,11 @@ describe('UserPasswordService', () => {
                 service.createForgotPassword(
                     'user-hollow',
                     'hollow@example.com',
-                    forgot
+                    forgot,
+                    context
                 )
             ).rejects.toBe(cause);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 

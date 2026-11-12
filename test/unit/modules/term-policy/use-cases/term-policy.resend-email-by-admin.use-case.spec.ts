@@ -10,7 +10,11 @@ import {
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumNotificationProcess,
     EnumNotificationQueue,
@@ -63,12 +67,28 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         termPolicyVersion: 1,
         timestamp,
     };
-    const preparedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminTermPolicyCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
+    };
+    const context: IRequestContext = {
+        actorUserId: 'user-1',
         workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
     };
 
     const resendEffect: IOutboxEffect = {
@@ -98,7 +118,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             date.toISOString()
         );
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(preparedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(entryEffect);
         notificationService.resendPublishTermPolicyEffect.mockReturnValue(
             resendEffect
         );
@@ -119,22 +139,18 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('adds the resend row for a published policy, then stages the activity log once', async () => {
-            const calls: string[] = [];
+        it('adds the resend row and the activity entry in one addMany for a published policy', async () => {
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
             );
-            outboxService.add.mockImplementation(async () => {
-                calls.push('add');
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
-            });
 
-            const result = await useCase.execute('term-policy-1', 'user-1');
+            const result = await useCase.execute(
+                'term-policy-1',
+                'user-1',
+                context
+            );
 
             expect(result).toEqual({});
-            expect(calls).toEqual(['add', 'stage']);
             expect(
                 notificationService.resendPublishTermPolicyEffect
             ).toHaveBeenCalledWith(
@@ -146,41 +162,34 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 },
                 'user-1'
             );
-            expect(outboxService.add).toHaveBeenCalledWith(resendEffect);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminTermPolicyResendEmail,
-                metadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                preparedActivityLog,
+            expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                publishedTermPolicy,
+                timestamp
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminTermPolicyResendEmail,
+                    metadata,
+                },
+                context
+            );
+            expect(outboxService.addMany).toHaveBeenCalledTimes(1);
+            expect(outboxService.addMany).toHaveBeenCalledWith([
+                resendEffect,
+                entryEffect,
             ]);
         });
 
-        it('lets a failed insert propagate unchanged and stages nothing', async () => {
+        it('lets a failed insert propagate unchanged', async () => {
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
             );
             const cause = new Error('database down');
-            outboxService.add.mockRejectedValue(cause);
+            outboxService.addMany.mockRejectedValue(cause);
 
             await expect(
-                useCase.execute('term-policy-1', 'user-1')
+                useCase.execute('term-policy-1', 'user-1', context)
             ).rejects.toBe(cause);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised by the insert unchanged without staging', async () => {
-            termPolicyService.getPublishedByAdmin.mockResolvedValue(
-                publishedTermPolicy
-            );
-            const error = new TermPolicyNotFoundException();
-            outboxService.add.mockRejectedValue(error);
-
-            await expect(
-                useCase.execute('term-policy-1', 'user-1')
-            ).rejects.toBe(error);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('adds nothing when the term policy is not published', async () => {
@@ -188,10 +197,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             termPolicyService.getPublishedByAdmin.mockRejectedValue(error);
 
             await expect(
-                useCase.execute('term-policy-1', 'user-1')
+                useCase.execute('term-policy-1', 'user-1', context)
             ).rejects.toBe(error);
-            expect(outboxService.add).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addMany).not.toHaveBeenCalled();
         });
     });
 });

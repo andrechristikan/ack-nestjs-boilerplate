@@ -276,14 +276,14 @@ export class OutboxService implements OnApplicationBootstrap {
         return ids;
     }
 
-    /** Inserts the row for an effect with no business write, then dispatches it. */
-    async add(effect: IOutboxEffect): Promise<void> {
-        await this.addMany([effect]);
+    /** Inserts the row for an effect with no business write, then dispatches it; returns the row id. */
+    async add(effect: IOutboxEffect): Promise<string> {
+        return this.withTransaction(async tx => this.addInTx(tx, effect));
     }
 
-    /** Inserts the rows for effects with no business write, then dispatches them. */
-    async addMany(effects: IOutboxEffect[]): Promise<void> {
-        await this.withTransaction(async tx => this.addManyInTx(tx, effects));
+    /** Inserts the rows for effects with no business write, then dispatches them; returns the row ids. */
+    async addMany(effects: IOutboxEffect[]): Promise<string[]> {
+        return this.withTransaction(async tx => this.addManyInTx(tx, effects));
     }
 
     /** Enqueues the rows among the ids still pending and stamps them; never throws, a failure leaves its rows pending. */

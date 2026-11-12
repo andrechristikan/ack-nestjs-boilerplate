@@ -7,10 +7,12 @@ import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import {
+    RequestContextCurrent,
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -136,9 +138,10 @@ export class UserSharedController {
     @Post('/refresh')
     async refresh(
         @UserCurrent() user: IUser,
-        @AuthJwtToken() refreshToken: string
+        @AuthJwtToken() refreshToken: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userRefreshUseCase.execute(user, refreshToken);
+        return this.userRefreshUseCase.execute(user, refreshToken, context);
     }
 
     @Doc({ summary: 'get profile' })
@@ -168,9 +171,10 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body({ schema: UserUpdateProfileRequestSchema })
-        body: UserUpdateProfileRequestDto
+        body: UserUpdateProfileRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdateProfileUseCase.execute(userId, body);
+        return this.userUpdateProfileUseCase.execute(userId, body, context);
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
@@ -208,9 +212,14 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
-        body: UserUpdateProfilePhotoRequestDto
+        body: UserUpdateProfilePhotoRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdatePhotoProfileUseCase.execute(userId, body);
+        return this.userUpdatePhotoProfileUseCase.execute(
+            userId,
+            body,
+            context
+        );
     }
 
     @Doc({ summary: 'upload photo profile' })
@@ -235,9 +244,14 @@ export class UserSharedController {
                 EnumFileExtensionImage.jpg,
             ])
         )
-        file: IFile
+        file: IFile,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userUploadPhotoProfileUseCase.execute(userId, file);
+        return this.userUploadPhotoProfileUseCase.execute(
+            userId,
+            file,
+            context
+        );
     }
 
     @Doc({ summary: 'change password' })
@@ -252,9 +266,10 @@ export class UserSharedController {
     async changePassword(
         @UserCurrent() user: IUser,
         @Body({ schema: UserChangePasswordRequestSchema })
-        body: UserChangePasswordRequestDto
+        body: UserChangePasswordRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userChangePasswordUseCase.execute(user, body);
+        return this.userChangePasswordUseCase.execute(user, body, context);
     }
 
     @Doc({ summary: 'user add mobile number' })
@@ -270,9 +285,10 @@ export class UserSharedController {
     async addMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: UserAddMobileNumberRequestSchema })
-        body: UserAddMobileNumberRequestDto
+        body: UserAddMobileNumberRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userAddMobileNumberUseCase.execute(userId, body);
+        return this.userAddMobileNumberUseCase.execute(userId, body, context);
     }
 
     @Doc({ summary: 'user update mobile number' })
@@ -290,12 +306,14 @@ export class UserSharedController {
         @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
-        body: UserUpdateMobileNumberRequestDto
+        body: UserUpdateMobileNumberRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userUpdateMobileNumberUseCase.execute(
             userId,
             mobileNumberId,
-            body
+            body,
+            context
         );
     }
 
@@ -312,11 +330,13 @@ export class UserSharedController {
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @Param('mobileNumberId', { schema: RequestMongoIdSchema })
-        mobileNumberId: string
+        mobileNumberId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userDeleteMobileNumberUseCase.execute(
             userId,
-            mobileNumberId
+            mobileNumberId,
+            context
         );
     }
 
@@ -332,9 +352,10 @@ export class UserSharedController {
     async claimUsername(
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: UserClaimUsernameRequestSchema })
-        body: UserClaimUsernameRequestDto
+        body: UserClaimUsernameRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userClaimUsernameUseCase.execute(userId, body);
+        return this.userClaimUsernameUseCase.execute(userId, body, context);
     }
 
     @Doc({ summary: 'get current two-factor authentication status' })
@@ -370,9 +391,10 @@ export class UserSharedController {
     async setupTwoFactor(
         @UserCurrent() user: IUser,
         @Body({ schema: UserTwoFactorSetupRequestSchema })
-        body: UserTwoFactorSetupRequestDto
+        body: UserTwoFactorSetupRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userSetupTwoFactorUseCase.execute(user, body);
+        return this.userSetupTwoFactorUseCase.execute(user, body, context);
     }
 
     @Doc({
@@ -391,9 +413,10 @@ export class UserSharedController {
     async enableTwoFactor(
         @UserCurrent() user: IUser,
         @Body({ schema: UserTwoFactorEnableRequestSchema })
-        body: UserTwoFactorEnableRequestDto
+        body: UserTwoFactorEnableRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userEnableTwoFactorUseCase.execute(user, body);
+        return this.userEnableTwoFactorUseCase.execute(user, body, context);
     }
 
     @Doc({ summary: 'disable two-factor authentication' })
@@ -407,9 +430,10 @@ export class UserSharedController {
     async disableTwoFactor(
         @UserCurrent() user: IUser,
         @Body({ schema: UserTwoFactorDisableRequestSchema })
-        body: UserTwoFactorDisableRequestDto
+        body: UserTwoFactorDisableRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userDisableTwoFactorUseCase.execute(user, body);
+        return this.userDisableTwoFactorUseCase.execute(user, body, context);
     }
 
     @Doc({ summary: 'regenerate two-factor backup codes' })
@@ -426,11 +450,13 @@ export class UserSharedController {
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
         @Body({ schema: UserTwoFactorRegenerateBackupCodeRequestSchema })
-        body: UserTwoFactorRegenerateBackupCodeRequestDto
+        body: UserTwoFactorRegenerateBackupCodeRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userRegenerateTwoFactorBackupCodesUseCase.execute(
             user,
-            body
+            body,
+            context
         );
     }
 
@@ -447,12 +473,14 @@ export class UserSharedController {
     @Post('/logout')
     async logout(
         @AuthJwtPayload()
-        { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
+        { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.userLogoutUseCase.execute(
             userId,
             sessionId,
-            deviceOwnershipId
+            deviceOwnershipId,
+            context
         );
     }
 

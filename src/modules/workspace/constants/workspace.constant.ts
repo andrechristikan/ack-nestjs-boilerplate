@@ -6,9 +6,6 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/workspace.interface';
 
 /** @public */
-export const WorkspaceStoreKey = 'WorkspaceStoreKey';
-
-/** @public */
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
 
 /** @public */

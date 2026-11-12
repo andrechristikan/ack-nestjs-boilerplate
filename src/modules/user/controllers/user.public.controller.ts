@@ -1,6 +1,10 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -83,9 +87,10 @@ export class UserPublicController {
     @Post('/login/credential')
     async loginWithCredential(
         @Body({ schema: UserLoginRequestSchema })
-        body: UserLoginRequestDto
+        body: UserLoginRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
-        return this.userLoginCredentialUseCase.execute(body);
+        return this.userLoginCredentialUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'login with social google' })
@@ -102,12 +107,14 @@ export class UserPublicController {
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
         @Body({ schema: UserCreateSocialRequestSchema })
-        body: UserCreateSocialRequestDto
+        body: UserCreateSocialRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         return this.userLoginWithSocialUseCase.execute(
             email,
             EnumUserLoginWith.socialGoogle,
-            body
+            body,
+            context
         );
     }
 
@@ -125,12 +132,14 @@ export class UserPublicController {
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
         @Body({ schema: UserCreateSocialRequestSchema })
-        body: UserCreateSocialRequestDto
+        body: UserCreateSocialRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         return this.userLoginWithSocialUseCase.execute(
             email,
             EnumUserLoginWith.socialApple,
-            body
+            body,
+            context
         );
     }
 
@@ -142,9 +151,10 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body({ schema: UserSignUpRequestSchema })
-        body: UserSignUpRequestDto
+        body: UserSignUpRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userSignUpUseCase.execute(body);
+        return this.userSignUpUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'user email verification' })
@@ -154,9 +164,10 @@ export class UserPublicController {
     @Patch('/email/verify')
     async verifyEmail(
         @Body({ schema: UserVerifyEmailRequestSchema })
-        body: UserVerifyEmailRequestDto
+        body: UserVerifyEmailRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userVerifyEmailUseCase.execute(body);
+        return this.userVerifyEmailUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'user resend email verification' })
@@ -167,9 +178,10 @@ export class UserPublicController {
     @Post('/email/send')
     async sendEmailVerification(
         @Body({ schema: UserSendEmailVerificationRequestSchema })
-        body: UserSendEmailVerificationRequestDto
+        body: UserSendEmailVerificationRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userSendVerificationEmailUseCase.execute(body);
+        return this.userSendVerificationEmailUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'user forgot password' })
@@ -181,9 +193,10 @@ export class UserPublicController {
     @Post('/password/forgot')
     async forgotPassword(
         @Body({ schema: UserForgotPasswordRequestSchema })
-        body: UserForgotPasswordRequestDto
+        body: UserForgotPasswordRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userForgotPasswordUseCase.execute(body);
+        return this.userForgotPasswordUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'user reset password' })
@@ -194,9 +207,10 @@ export class UserPublicController {
     @Patch('/password/reset')
     async reset(
         @Body({ schema: UserForgotPasswordResetRequestSchema })
-        body: UserForgotPasswordResetRequestDto
+        body: UserForgotPasswordResetRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userResetPasswordUseCase.execute(body);
+        return this.userResetPasswordUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'user verify two factor during login' })
@@ -206,9 +220,10 @@ export class UserPublicController {
     @Patch('/login/2fa/verify')
     async loginVerifyTwoFactor(
         @Body({ schema: UserLoginVerifyTwoFactorRequestSchema })
-        body: UserLoginVerifyTwoFactorRequestDto
+        body: UserLoginVerifyTwoFactorRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userLoginVerifyTwoFactorUseCase.execute(body);
+        return this.userLoginVerifyTwoFactorUseCase.execute(body, context);
     }
 
     @Doc({
@@ -224,8 +239,9 @@ export class UserPublicController {
     @Post('/login/2fa/enable')
     async verifyLoginTwoFactor(
         @Body({ schema: UserLoginSetupTwoFactorRequestSchema })
-        body: UserLoginSetupTwoFactorRequestDto
+        body: UserLoginSetupTwoFactorRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userLoginSetupTwoFactorUseCase.execute(body);
+        return this.userLoginSetupTwoFactorUseCase.execute(body, context);
     }
 }

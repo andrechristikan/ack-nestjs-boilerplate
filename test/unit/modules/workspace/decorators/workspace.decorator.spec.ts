@@ -11,12 +11,12 @@ import type {
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
-    WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCurrent,
@@ -261,7 +261,7 @@ describe('workspace.decorator', () => {
 
             expectRequestContextMissingWithKey(
                 thrown,
-                `${WorkspaceStoreKey}.description`
+                `${RequestWorkspaceStoreKey}.description`
             );
         });
     });

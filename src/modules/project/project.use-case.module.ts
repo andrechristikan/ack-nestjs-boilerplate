@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { ProjectGetListCursorByMemberUseCase } from '@modules/project/use-cases/project.get-list-cursor-by-member.use-case';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
@@ -47,6 +48,6 @@ import { Module } from '@nestjs/common';
         ProjectRemoveMemberUseCase,
         ProjectLeaveUseCase,
     ],
-    imports: [ProjectModule, WorkspaceModule],
+    imports: [ActivityLogModule, ProjectModule, WorkspaceModule],
 })
 export class ProjectUseCaseModule {}

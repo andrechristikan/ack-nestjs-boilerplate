@@ -13,10 +13,12 @@ import type {
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -44,7 +46,11 @@ import { TermPolicyRepository } from '@modules/term-policy/repositories/term-pol
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyStatus, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyStatus,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -62,7 +68,8 @@ export class TermPolicyService {
         private readonly outboxService: OutboxService,
         private readonly notificationService: NotificationService,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly activityLogService: ActivityLogService
     ) {
         this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.copyContentPattern'
@@ -147,7 +154,8 @@ export class TermPolicyService {
 
     async createByAdmin(
         termPolicyId: string,
-        { contents, type, version }: ITermPolicyCreate
+        { contents, type, version }: ITermPolicyCreate,
+        context: IRequestContext
     ): Promise<TermPolicy> {
         // Sequential by design: gate before the work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
@@ -202,11 +210,30 @@ export class TermPolicyService {
                 }
             );
 
-            return await this.termPolicyRepository.create(
-                termPolicyId,
-                { contents, type, version },
-                mappedContents
-            );
+            return await this.outboxService.withTransaction(async tx => {
+                const created = await this.termPolicyRepository.createInTx(
+                    tx,
+                    termPolicyId,
+                    { contents, type, version },
+                    mappedContents
+                );
+
+                const timestamp = this.helperDateService.create();
+                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                    { id: termPolicyId, type, version },
+                    timestamp
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyCreate,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+
+                return created;
+            });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -230,7 +257,10 @@ export class TermPolicyService {
         });
     }
 
-    async deleteByAdmin(termPolicyId: string): Promise<TermPolicy> {
+    async deleteByAdmin(
+        termPolicyId: string,
+        context: IRequestContext
+    ): Promise<TermPolicy> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
@@ -257,6 +287,20 @@ export class TermPolicyService {
 
                 const effect = this.deleteContentEffect(contentPath);
                 await this.outboxService.addInTx(tx, effect);
+
+                const timestamp = this.helperDateService.create();
+                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                    termPolicy,
+                    timestamp
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyDelete,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
 
             return termPolicy;
@@ -276,7 +320,8 @@ export class TermPolicyService {
 
     async publishByAdmin(
         termPolicyId: string,
-        updatedBy: string
+        updatedBy: string,
+        context: IRequestContext
     ): Promise<TermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
@@ -378,6 +423,20 @@ export class TermPolicyService {
                             copyEffect,
                             publishEffect,
                         ]);
+
+                        const metadata =
+                            this.termPolicyUtil.mapActivityLogMetadata(
+                                row,
+                                row.updatedAt
+                            );
+                        const entry = this.activityLogService.recordEffect(
+                            {
+                                action: EnumActivityLogAction.adminTermPolicyPublish,
+                                metadata,
+                            },
+                            context
+                        );
+                        await this.outboxService.addInTx(tx, entry);
 
                         return row;
                     }

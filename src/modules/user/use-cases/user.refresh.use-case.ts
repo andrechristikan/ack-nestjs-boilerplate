@@ -1,12 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import type {
     IAuthJwtRefreshTokenPayload,
@@ -15,14 +16,13 @@ import type {
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { UserService } from '@modules/user/services/user.service';
-import type { IUserLoginRefresh } from '@modules/user/interfaces/user.login.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserRefreshUseCase implements IAppUseCase<
-    [IUser, string],
+    [IUser, string, IRequestContext],
     IResponseReturn<IAuthToken>
 > {
     constructor(
@@ -30,16 +30,17 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly authJwtService: AuthJwtService,
         private readonly activityLogService: ActivityLogService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
     private async rotateSession(
         user: IUser,
-        refreshToken: string
-    ): Promise<IUserLoginRefresh> {
-        const requestLog = this.sessionService.getRequestLog();
+        refreshToken: string,
+        context: IRequestContext
+    ): Promise<IAuthToken | null> {
+        const { requestLog } = context;
         const payload =
             this.authJwtService.payloadToken<IAuthJwtRefreshTokenPayload>(
                 refreshToken
@@ -53,7 +54,7 @@ export class UserRefreshUseCase implements IAppUseCase<
         let isRotated: boolean;
         try {
             // Sequential by design: write must not run if an earlier step throws
-            isRotated = await this.databaseService.withTransaction(async tx => {
+            isRotated = await this.outboxService.withTransaction(async tx => {
                 const isJtiUpdated = await this.sessionService.updateJtiInTx(
                     tx,
                     sessionId,
@@ -73,6 +74,11 @@ export class UserRefreshUseCase implements IAppUseCase<
                     requestLog.ipAddress,
                     now
                 );
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userRefreshToken },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
 
                 return true;
             });
@@ -83,19 +89,20 @@ export class UserRefreshUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
-                return { tokens: null, revoked: [] };
+                return null;
             }
 
             throw new AppUnknownException(err);
         }
 
         if (!isRotated) {
-            const revoked = await this.sessionService.revokeIfActive(
+            await this.sessionService.revokeIfActive(
                 userId,
-                sessionId
+                sessionId,
+                context
             );
 
-            return { tokens: null, revoked };
+            return null;
         }
 
         const cacheUpdate = await this.sessionService.updateLogin(
@@ -105,12 +112,13 @@ export class UserRefreshUseCase implements IAppUseCase<
             newJti
         );
         if (cacheUpdate === EnumSessionCacheUpdate.mismatch) {
-            const revoked = await this.sessionService.revokeIfActive(
+            await this.sessionService.revokeIfActive(
                 userId,
-                sessionId
+                sessionId,
+                context
             );
 
-            return { tokens: null, revoked };
+            return null;
         }
 
         if (cacheUpdate === EnumSessionCacheUpdate.absent) {
@@ -121,34 +129,16 @@ export class UserRefreshUseCase implements IAppUseCase<
             );
         }
 
-        return { tokens, revoked: [] };
+        return tokens;
     }
 
     async execute(
         user: IUser,
-        refreshToken: string
+        refreshToken: string,
+        context: IRequestContext
     ): Promise<IResponseReturn<IAuthToken>> {
-        const refreshLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userRefreshToken,
-            }),
-        ];
-        const reuseLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userRevokeSession,
-            }),
-        ];
-        const { tokens, revoked } = await this.rotateSession(
-            user,
-            refreshToken
-        );
-        if (revoked.length > 0) {
-            this.activityLogService.stagePrepared(reuseLogs);
-        }
-
+        const tokens = await this.rotateSession(user, refreshToken, context);
         const refreshed = this.sessionService.getRefreshedTokens(tokens);
-
-        this.activityLogService.stagePrepared(refreshLogs);
 
         return { data: refreshed };
     }

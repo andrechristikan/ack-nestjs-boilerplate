@@ -1,3 +1,4 @@
+import { CacheProcessor } from '@common/cache/processors/cache.processor';
 import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use-case.module';
 import { ActivityLogProcessor } from '@modules/activity-log/processors/activity-log.processor';
 import { OutboxUseCaseModule } from '@modules/outbox/outbox.use-case.module';
@@ -20,6 +21,7 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [
         ActivityLogProcessor,
+        CacheProcessor,
         NotificationProcessor,
         NotificationEmailProcessor,
         NotificationPushProcessor,

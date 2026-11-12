@@ -165,6 +165,17 @@ export class NotificationTemplateService {
                         'utf8'
                     ),
                 };
+            case EnumNotificationKind.userImportResult:
+                return {
+                    subject: 'User Import Result',
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.user-import-result.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
             case EnumNotificationKind.workspaceInvite:
                 return {
                     subject: 'Workspace Invitation',

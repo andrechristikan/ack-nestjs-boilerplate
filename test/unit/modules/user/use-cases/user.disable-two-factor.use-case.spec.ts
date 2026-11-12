@@ -17,7 +17,13 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
@@ -27,7 +33,6 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import type {
     IUser,
-    IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
@@ -108,17 +113,14 @@ describe('UserDisableTwoFactorUseCase', () => {
         },
         twoFactor,
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userDisableTwoFactor,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const entryEffect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
-    const twoFactorAttempt: IUserTwoFactorAttempt = {
-        isAttemptCounted: true,
-        lockoutStages: [],
-    };
+    const context = buildRequestContext('user-marten');
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
@@ -129,12 +131,11 @@ describe('UserDisableTwoFactorUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockReturnValue(entryEffect);
         helperDateService.create.mockReturnValue(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
         userTwoFactorService.verify.mockResolvedValue(verified);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -160,8 +161,13 @@ describe('UserDisableTwoFactorUseCase', () => {
             code: '123456',
         };
 
-        it('verifies, disables and revokes on one transaction, then stages the row after commit', async () => {
+        it('counts the attempt, verifies, then disables, revokes, and adds the disable entry on one transaction', async () => {
             const calls: string[] = [];
+            userTwoFactorService.assertAttemptCounted.mockImplementation(
+                async () => {
+                    calls.push('assertAttemptCounted');
+                }
+            );
             userTwoFactorService.verify.mockImplementation(async () => {
                 calls.push('verify');
 
@@ -184,21 +190,22 @@ describe('UserDisableTwoFactorUseCase', () => {
                     return revoked;
                 }
             );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addInTx');
+
+                return 'outbox-id';
             });
 
-            await expect(useCase.execute(user, dto)).resolves.toEqual({});
+            await expect(useCase.execute(user, dto, context)).resolves.toEqual(
+                {}
+            );
 
             expect(userTwoFactorService.assertEnabled).toHaveBeenCalledWith(
                 user
             );
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledWith(
-                user
-            );
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledBefore(
-                userTwoFactorService.verify
-            );
+            expect(
+                userTwoFactorService.assertAttemptCounted
+            ).toHaveBeenCalledWith(user, context);
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
@@ -214,33 +221,31 @@ describe('UserDisableTwoFactorUseCase', () => {
                 'user-marten',
                 now
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userDisableTwoFactor },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(calls).toEqual([
-                'stage',
+                'assertAttemptCounted',
                 'verify',
                 'begin',
                 'disableInTx',
                 'revokeSessions',
+                'addInTx',
                 'commit',
-                'stage',
             ]);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userDisableTwoFactor,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                1,
-                []
-            );
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                2,
-                [activityLog]
-            );
         });
 
         it('passes a null code when the dto carries a backup code', async () => {
-            await useCase.execute(user, {
-                method: EnumAuthTwoFactorMethod.backupCodes,
-                backupCode: 'BACKUP1',
-            });
+            await useCase.execute(
+                user,
+                {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    backupCode: 'BACKUP1',
+                },
+                context
+            );
 
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
@@ -254,10 +259,14 @@ describe('UserDisableTwoFactorUseCase', () => {
             userTwoFactorService.verify.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(user, {
-                    method: EnumAuthTwoFactorMethod.code,
-                    code: '000000',
-                })
+                useCase.execute(
+                    user,
+                    {
+                        method: EnumAuthTwoFactorMethod.code,
+                        code: '000000',
+                    },
+                    context
+                )
             ).rejects.toBe(failure);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -269,7 +278,9 @@ describe('UserDisableTwoFactorUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(user, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(user, dto, context)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
                 statusCodeKey:
@@ -279,74 +290,40 @@ describe('UserDisableTwoFactorUseCase', () => {
                 messagePath: 'auth.error.twoFactorNotEnabled',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
         });
 
-        it('rethrows an app exception of the transaction unchanged, staging nothing', async () => {
+        it('rethrows an app exception of the transaction unchanged, adding no entry', async () => {
             const failure = new AuthTwoFactorNotEnabledException();
             userTwoFactorService.disableInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto)).rejects.toBe(failure);
+            await expect(useCase.execute(user, dto, context)).rejects.toBe(
+                failure
+            );
             expect(databaseUtil.toException).not.toHaveBeenCalled();
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('wraps any other transaction failure in the unknown exception, staging nothing', async () => {
+        it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(user, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(user, dto, context)
+            ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
             });
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
-        });
-    });
-
-    describe('assertTwoFactorAttemptCounted', () => {
-        const limit = new AuthTwoFactorAttemptMaxException();
-
-        const lockoutLogs = [activityLog, activityLog];
-
-        const lockoutStages = [
-            {
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-marten',
-                createdBy: 'user-marten',
-            },
-            {
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-marten',
-                createdBy: 'user-marten',
-            },
-        ];
-
-        const spent: IUserTwoFactorAttempt = {
-            isAttemptCounted: false,
-            lockoutStages,
-        };
-
-        beforeEach(() => {
-            userTwoFactorService.countAttempt.mockResolvedValue(spent);
-            userTwoFactorService.assertAttemptCounted.mockImplementation(() => {
-                throw limit;
-            });
         });
 
-        it('stages the lockout rows and answers the attempt limit before disable verifies the code', async () => {
+        it('answers the attempt limit before disable verifies the code', async () => {
+            userTwoFactorService.assertAttemptCounted.mockRejectedValue(
+                new AuthTwoFactorAttemptMaxException()
+            );
+
             await expect(
-                useCase.execute(user, {
-                    method: EnumAuthTwoFactorMethod.code,
-                    code: '123456',
-                })
+                useCase.execute(user, dto, context)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -356,9 +333,6 @@ describe('UserDisableTwoFactorUseCase', () => {
                     ],
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith(lockoutLogs);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(userTwoFactorService.disableInTx).not.toHaveBeenCalled();

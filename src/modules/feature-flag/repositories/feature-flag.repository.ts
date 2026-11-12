@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
     IPaginationQueryCursorParams,
@@ -53,33 +54,38 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         });
     }
 
-    async updateStatus(
+    async updateStatusInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag | null> {
-        const { count } =
-            await this.databaseService.client.featureFlag.updateMany({
-                where: {
-                    id,
-                },
-                data: {
-                    isEnable,
-                    rolloutPercent,
-                    targetUserIds,
-                },
-            });
+        const { count } = await tx.featureFlag.updateMany({
+            where: {
+                id,
+            },
+            data: {
+                isEnable,
+                rolloutPercent,
+                targetUserIds,
+            },
+        });
         if (count === 0) {
             return null;
         }
 
-        return this.findOneById(id);
+        return tx.featureFlag.findFirst({
+            where: {
+                id,
+            },
+        });
     }
 
-    async updateMetadata(
+    async updateMetadataInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
     ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
+        return tx.featureFlag.update({
             where: {
                 id,
             },

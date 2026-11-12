@@ -1,10 +1,15 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleService } from '@modules/role/services/role.service';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -12,43 +17,58 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class RoleDeleteByAdminUseCase implements IAppUseCase<
-    [string, IUser],
+    [string, IUser, IRequestContext],
     IResponseReturn<void>
 > {
     constructor(
         private readonly roleService: RoleService,
         private readonly roleUtil: RoleUtil,
         private readonly activityLogService: ActivityLogService,
+        private readonly outboxService: OutboxService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        role: IRole
-    ): IActivityLogStaged {
-        const timestamp = this.helperDateService.create();
-        const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
+    async execute(
+        id: string,
+        user: IUser,
+        context: IRequestContext
+    ): Promise<IResponseReturn<void>> {
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                const deleted = await this.roleService.deleteByAdminInTx(
+                    tx,
+                    id,
+                    { roleId: user.roleId, roleType: user.role.type }
+                );
 
-        return this.activityLogService.prepare({
-            action,
-            metadata,
-        });
-    }
+                const timestamp = this.helperDateService.create();
+                const metadata = this.roleUtil.mapActivityLogMetadata(
+                    deleted,
+                    timestamp
+                );
+                const effect = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminRoleDelete,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, effect);
+            });
 
-    async execute(id: string, user: IUser): Promise<IResponseReturn<void>> {
-        const deleted = await this.roleService.deleteByAdmin(id, {
-            roleId: user.roleId,
-            roleType: user.role.type,
-        });
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminRoleDelete,
-                deleted
-            ),
-        ];
+            return {};
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
 
-        this.activityLogService.stagePrepared(activityLogs);
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new RoleUsedException();
+            }
 
-        return {};
+            throw new AppUnknownException(err);
+        }
     }
 }

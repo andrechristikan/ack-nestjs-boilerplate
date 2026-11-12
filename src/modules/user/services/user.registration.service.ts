@@ -8,7 +8,7 @@ import {
     EnumUserSignUpWith,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -232,7 +232,7 @@ export class UserRegistrationService {
     buildCreateByAdminStages(
         input: IUserCreateWithWorkspaceInput,
         user: IUser
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
+    ): IActivityLogInput<EnumActivityLogAction>[] {
         const stages = this.userCreateUtil.buildStages(
             UserCreateContract.admin,
             [input],

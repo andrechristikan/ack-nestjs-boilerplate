@@ -1,4 +1,9 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -9,18 +14,19 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
-    [UserLoginVerifyTwoFactorRequestDto],
+    [UserLoginVerifyTwoFactorRequestDto, IRequestContext],
     IResponseReturn<IAuthToken>
 > {
     constructor(
@@ -29,8 +35,9 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly activityLogService: ActivityLogService,
-        private readonly userUtil: UserUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly outboxService: OutboxService,
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private async startSession(
@@ -38,14 +45,16 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date
+        loginAt: Date,
+        context: IRequestContext
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
             user,
             device,
             loginFrom,
             loginWith,
-            loginAt
+            loginAt,
+            context
         );
         await this.sessionService.setLoginOrRevoke(
             user.id,
@@ -53,38 +62,18 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
             session.jti
         );
 
-        if (session.revokeStages.length > 0) {
-            const revokeLogs = session.revokeStages.map(stage =>
-                this.activityLogService.prepare(stage)
-            );
-
-            this.activityLogService.stagePrepared(revokeLogs);
-        }
-
         return session.tokens;
     }
 
-    /** Temporary: one UserTwoFactorService method recording the attempt through recordEffect (phase 3D). */
-    private async assertTwoFactorAttemptCounted(user: IUser): Promise<void> {
-        const attempt = await this.userTwoFactorService.countAttempt(user);
-        const lockoutLogs = attempt.lockoutStages.map(stage =>
-            this.activityLogService.prepare(stage)
-        );
-        this.activityLogService.stagePrepared(lockoutLogs);
-
-        this.userTwoFactorService.assertAttemptCounted(
-            attempt.isAttemptCounted
-        );
-    }
-
-    async execute({
-        challengeToken,
-        code,
-        backupCode,
-        method,
-    }: UserLoginVerifyTwoFactorRequestDto): Promise<
-        IResponseReturn<IAuthToken>
-    > {
+    async execute(
+        {
+            challengeToken,
+            code,
+            backupCode,
+            method,
+        }: UserLoginVerifyTwoFactorRequestDto,
+        context: IRequestContext
+    ): Promise<IResponseReturn<IAuthToken>> {
         const challenge =
             await this.authTwoFactorService.getChallenge(challengeToken);
 
@@ -92,44 +81,52 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
             challenge.userId
         );
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.assertTwoFactorAttemptCounted(user);
+        await this.userTwoFactorService.assertAttemptCounted(user, context);
         const verified = await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
             method,
         });
         await this.authTwoFactorService.consumeChallenge(challengeToken);
-        const verifyLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
-        await this.userTwoFactorService.recordVerification(user, verified);
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                await this.userTwoFactorService.recordVerificationInTx(
+                    tx,
+                    user,
+                    verified
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: user.id,
+                        createdBy: user.id,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
 
-        this.activityLogService.stagePrepared(verifyLogs);
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new AuthTwoFactorInvalidException();
+            }
 
-        const loginAction = this.userUtil.resolveLoginActivityLogAction(
-            challenge.loginWith
-        );
-        const loginLogs = [
-            this.activityLogService.prepare({
-                action: loginAction,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
+            throw new AppUnknownException(err);
+        }
+
         const loginAt = this.helperDateService.create();
         const tokens = await this.startSession(
             user,
             challenge.device,
             challenge.loginFrom,
             challenge.loginWith,
-            loginAt
+            loginAt,
+            context
         );
-
-        this.activityLogService.stagePrepared(loginLogs);
 
         return { data: tokens };
     }

@@ -3,9 +3,9 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -28,7 +28,6 @@ import { UserRegistrationService } from '@modules/user/services/user.registratio
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type { IUserCreated } from '@modules/user/interfaces/user.create.interface';
 import type {
     IUser,
     IUserLoginOutcome,
@@ -46,7 +45,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginWithSocialUseCase implements IAppUseCase<
-    [string, EnumUserLoginWith, UserCreateSocialRequestDto],
+    [string, EnumUserLoginWith, UserCreateSocialRequestDto, IRequestContext],
     IResponseReturn<IUserLoginOutcome>
 > {
     private readonly userRoleName: string;
@@ -85,8 +84,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     private async signUpWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        loginSocial: IUserLoginSocial
-    ): Promise<IUserCreated | null> {
+        loginSocial: IUserLoginSocial,
+        context: IRequestContext
+    ): Promise<void> {
         const normalizedEmail = email.trim().toLowerCase();
         // Sequential by design: gate before the work it guards
         const isAllowed =
@@ -95,7 +95,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 loginWith
             );
         if (!isAllowed) {
-            return null;
+            return;
         }
 
         const invite = await this.workspaceInviteService.getSignUpInvite(
@@ -128,7 +128,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                const users = await this.outboxService.withTransaction(
+                await this.outboxService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -182,14 +182,23 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             EnumNotificationKind.welcomeSocial,
                             { userId: input.userId, proceedBy: input.userId }
                         );
-                        await this.outboxService.addInTx(tx, welcome);
-
-                        return created;
+                        const stages = this.userCreateUtil.buildStages(
+                            UserCreateContract.social,
+                            inputs,
+                            created
+                        );
+                        const entries = stages.map(stage =>
+                            this.activityLogService.recordEffect(stage, context)
+                        );
+                        await this.outboxService.addManyInTx(tx, [
+                            welcome,
+                            ...entries,
+                        ]);
                     },
                     { timeout: this.createTimeoutInMs }
                 );
 
-                return { inputs, users };
+                return;
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
                     error,
@@ -216,28 +225,22 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date
+        loginAt: Date,
+        context: IRequestContext
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
             user,
             device,
             loginFrom,
             loginWith,
-            loginAt
+            loginAt,
+            context
         );
         await this.sessionService.setLoginOrRevoke(
             user.id,
             session.sessionId,
             session.jti
         );
-
-        if (session.revokeStages.length > 0) {
-            const revokeLogs = session.revokeStages.map(stage =>
-                this.activityLogService.prepare(stage)
-            );
-
-            this.activityLogService.stagePrepared(revokeLogs);
-        }
 
         return session.tokens;
     }
@@ -247,7 +250,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date
+        loginAt: Date,
+        context: IRequestContext
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
@@ -263,7 +267,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 device,
                 loginFrom,
                 loginWith,
-                loginAt
+                loginAt,
+                context
             );
 
             return {
@@ -278,7 +283,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             user,
             device,
             loginFrom,
-            loginWith
+            loginWith,
+            context
         );
 
         return {
@@ -287,46 +293,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             lastWorkspaceChangedAt,
             twoFactor,
         };
-    }
-
-    private async completeLogin(
-        user: IUser,
-        device: IDeviceIdentity,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith
-    ): Promise<IUserLoginOutcome> {
-        const loginAt = this.helperDateService.create();
-        const loginAction =
-            this.userUtil.resolveLoginActivityLogAction(loginWith);
-        const loginLogs = [
-            this.activityLogService.prepare({
-                action: loginAction,
-                userId: user.id,
-                createdBy: user.id,
-            }),
-        ];
-        const outcome = await this.resolveLoginOutcome(
-            user,
-            device,
-            loginFrom,
-            loginWith,
-            loginAt
-        );
-        if (!outcome.isTwoFactorEnable) {
-            this.activityLogService.stagePrepared(loginLogs);
-        } else if (outcome.twoFactor.isRequiredSetup) {
-            const setupLogs = [
-                this.activityLogService.prepare({
-                    action: EnumActivityLogAction.userSetupTwoFactor,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-
-            this.activityLogService.stagePrepared(setupLogs);
-        }
-
-        return outcome;
     }
 
     async execute(
@@ -341,7 +307,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             countryId,
             cookies,
             marketing,
-        }: UserCreateSocialRequestDto
+        }: UserCreateSocialRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginSocial: IUserLoginSocial = {
@@ -354,45 +321,26 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        const created = await this.signUpWithSocial(
-            email,
-            loginWith,
-            loginSocial
-        );
-        if (created !== null) {
-            const stages = this.userCreateUtil.buildStages(
-                UserCreateContract.social,
-                created.inputs,
-                created.users
-            );
-            const createdLogs = stages.map(stage =>
-                this.activityLogService.prepare(stage)
-            );
-
-            this.activityLogService.stagePrepared(createdLogs);
-        }
+        await this.signUpWithSocial(email, loginWith, loginSocial, context);
 
         let user = await this.userAuthService.getOneForSocialLogin(email);
         const isUnverified = this.userUtil.isUnverified(user);
         if (isUnverified) {
-            const verifiedLogs = [
-                this.activityLogService.prepare({
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: user.id,
-                    createdBy: user.id,
-                }),
-            ];
-            user = await this.userAuthService.verifyEmailBySocial(user);
-
-            this.activityLogService.stagePrepared(verifiedLogs);
+            user = await this.userAuthService.verifyEmailBySocial(
+                user,
+                context
+            );
         }
 
         // Sequential by design: write must not run if an earlier step throws
-        const outcome = await this.completeLogin(
+        const loginAt = this.helperDateService.create();
+        const outcome = await this.resolveLoginOutcome(
             user,
             deviceIdentity,
             from,
-            loginWith
+            loginWith,
+            loginAt,
+            context
         );
 
         return { data: outcome };

@@ -60,3 +60,6 @@ export const RequestWorkspaceIdHeaderName = 'x-workspace-id';
 
 /** @public */
 export const RequestWorkspaceIdStoreKey = 'RequestWorkspaceIdStoreKey';
+
+/** @public */
+export const RequestWorkspaceStoreKey = 'RequestWorkspaceStoreKey';

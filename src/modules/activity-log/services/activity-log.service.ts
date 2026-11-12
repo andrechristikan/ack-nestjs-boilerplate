@@ -3,16 +3,18 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
+import type {
+    IRequestContext,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
-import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
 } from '@modules/activity-log/enums/activity-log.enum';
@@ -20,32 +22,23 @@ import { ActivityLogContractInvalidException } from '@modules/activity-log/excep
 import type {
     IActivityLog,
     IActivityLogActionContract,
-    IActivityLogFlushOptions,
+    IActivityLogInput,
     IActivityLogMetadata,
     IActivityLogMetadataParseResult,
-    IActivityLogStageInput,
-    IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { Injectable, Logger } from '@nestjs/common';
-import type { Workspace } from '@generated/prisma-client/client';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ActivityLogService {
-    private readonly logger = new Logger(ActivityLogService.name);
-
     constructor(
         private readonly activityLogRepository: ActivityLogRepository,
         private readonly activityLogUtil: ActivityLogUtil,
-        private readonly requestStoreService: RequestStoreService,
-        private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService,
-        private readonly sentryService: SentryService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     private getContract(
@@ -137,16 +130,15 @@ export class ActivityLogService {
 
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
-        stagedWorkspaceId: string | null
+        stagedWorkspaceId: string | null,
+        payloadWorkspaceId: string | null
     ): string | null {
         if (resolution === EnumActivityLogWorkspace.payload) {
-            const workspace =
-                this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
-            if (!workspace?.id) {
+            if (payloadWorkspaceId === null || payloadWorkspaceId === '') {
                 throw new ActivityLogContractInvalidException();
             }
 
-            return workspace.id;
+            return payloadWorkspaceId;
         }
 
         const workspaceId =
@@ -165,34 +157,36 @@ export class ActivityLogService {
         return workspaceId;
     }
 
-    private buildFlushCreate(
-        activityLog: IActivityLogStaged,
+    private buildCreate(
+        input: IActivityLogInput<EnumActivityLogAction>,
         payloadUserId: string | null,
+        payloadWorkspaceId: string | null,
         requestLog: IRequestLog,
         createdAt: Date
     ): IActivityLogCreate {
-        const contract = this.getContract(activityLog.action);
+        const contract = this.getContract(input.action);
         const metadata = this.validateMetadata(
-            activityLog.action,
-            activityLog.metadata
+            input.action,
+            input.metadata ?? {}
         );
         const userId = this.resolveUserId(
             contract.user,
-            activityLog.userId,
+            input.userId ?? null,
             payloadUserId
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            activityLog.workspaceId
+            input.workspaceId ?? null,
+            payloadWorkspaceId
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
-            activityLog.createdBy,
+            input.createdBy ?? null,
             userId
         );
 
         const description = this.activityLogUtil.getDescription(
-            activityLog.action,
+            input.action,
             metadata
         );
 
@@ -203,7 +197,7 @@ export class ActivityLogService {
             userId,
             createdBy,
             workspaceId,
-            action: activityLog.action,
+            action: input.action,
             description,
             requestLog,
             metadata,
@@ -211,99 +205,45 @@ export class ActivityLogService {
         };
     }
 
-    prepare(
-        input: IActivityLogStageInput<EnumActivityLogAction>
-    ): IActivityLogStaged {
+    recordEffect(
+        input: IActivityLogInput<EnumActivityLogAction>,
+        context: IRequestContext
+    ): IOutboxEffect {
         const contract = this.getContract(input.action);
-        const metadata = this.validateMetadata(
-            input.action,
-            input.metadata ?? {}
-        );
-
-        const userId = input.userId ?? null;
-        const createdBy = input.createdBy ?? null;
-        const workspaceId = input.workspaceId ?? null;
         const isUserIdValid = this.isTargetOnlyFieldValid(
             contract.user,
-            userId
+            input.userId ?? null
         );
         const isCreatedByValid = this.isTargetOnlyFieldValid(
             contract.user,
-            createdBy
+            input.createdBy ?? null
         );
         const isWorkspaceIdValid = this.isWorkspaceFieldValid(
             contract.workspace,
-            workspaceId
+            input.workspaceId ?? null
         );
         if (!isUserIdValid || !isCreatedByValid || !isWorkspaceIdValid) {
             throw new ActivityLogContractInvalidException();
         }
 
-        return {
-            action: input.action,
-            metadata,
-            userId,
-            createdBy,
-            workspaceId,
-        };
-    }
-
-    stagePrepared(activityLogs: IActivityLogStaged[]): void {
-        if (activityLogs.length === 0) {
-            return;
-        }
-
-        const stagedActivityLogs = this.requestStoreService.get<
-            IActivityLogStaged[]
-        >(ActivityLogStageStoreKey);
-        const staged = stagedActivityLogs ?? [];
-        staged.push(...activityLogs);
-
-        this.requestStoreService.set(ActivityLogStageStoreKey, staged);
-    }
-
-    async flushStaged({
-        payloadUserId,
-    }: IActivityLogFlushOptions): Promise<void> {
-        const staged = this.requestStoreService.get<IActivityLogStaged[]>(
-            ActivityLogStageStoreKey
-        );
-        if (!staged?.length) {
-            return;
-        }
-
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
-
         const createdAt = this.helperDateService.create();
-        const rows: IActivityLogCreate[] = [];
-        for (const activityLog of staged) {
-            try {
-                if (!requestLog) {
-                    throw new ActivityLogContractInvalidException();
-                }
+        const row = this.buildCreate(
+            input,
+            context.actorUserId,
+            context.workspaceId,
+            context.requestLog,
+            createdAt
+        );
 
-                const row = this.buildFlushCreate(
-                    activityLog,
-                    payloadUserId,
-                    requestLog,
-                    createdAt
-                );
-                rows.push(row);
-            } catch (error: unknown) {
-                const exception = new ActivityLogContractInvalidException(
-                    error
-                );
-                this.sentryService.captureException(exception);
-                this.logger.error(exception, 'Staged activity log row invalid');
-            }
-        }
+        const createdAtIso = this.helperDateService.formatToIso(createdAt);
 
-        this.requestStoreService.set(ActivityLogStageStoreKey, []);
-
-        if (rows.length > 0) {
-            await this.activityLogQueue.createMany(rows);
-        }
+        return {
+            queue: EnumActivityLogQueue.activityLog,
+            name: EnumActivityLogProcess.createMany,
+            data: { rows: [{ ...row, createdAt: createdAtIso }] },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
     }
 
     async createMany(rows: IActivityLogCreate[]): Promise<void> {

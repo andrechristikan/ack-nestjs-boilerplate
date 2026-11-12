@@ -42,6 +42,7 @@ export enum EnumNotificationKind {
     newDeviceLogin = 'newDeviceLogin',
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
+    userImportResult = 'userImportResult',
     workspaceInvite = 'workspaceInvite',
     workspaceJoinRequest = 'workspaceJoinRequest',
     workspaceJoinAccepted = 'workspaceJoinAccepted',

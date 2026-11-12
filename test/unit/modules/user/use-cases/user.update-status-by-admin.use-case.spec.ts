@@ -15,7 +15,8 @@ import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -116,13 +117,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        const activityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.userUpdateStatus,
-            metadata: {},
-            userId: null,
-            createdBy: null,
-            workspaceId: null,
-        };
+        const context = buildRequestContext('admin-cinder');
 
         const revoked: ISessionRef[] = [{ id: 'session-one' }];
 
@@ -138,7 +133,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         };
 
         beforeEach(() => {
-            activityLogService.prepare.mockReturnValue(activityLog);
+            activityLogService.recordEffect.mockImplementation(
+                input => ({ queue: input.action }) as unknown as IOutboxEffect
+            );
             userService.getOneWithRole.mockResolvedValue({
                 ...baseUser,
                 passwordAttempt: 3,
@@ -163,7 +160,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             });
         });
 
-        it('gates the rank, writes the status and the revoke on one transaction and stages the revoke-all rows before the status rows after commit', async () => {
+        it('gates the rank, writes the status and the revoke on one transaction and adds the revoke-all entries before the status entries on it', async () => {
             const calls: string[] = [];
             outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -192,7 +189,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             };
 
             await expect(
-                useCase.execute('user-cinder', dto, admin)
+                useCase.execute('user-cinder', dto, admin, context)
             ).resolves.toEqual({});
 
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
@@ -220,35 +217,44 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 'revokeSessions',
                 'commit',
             ]);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminSessionRevokeAll,
-                metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                userId: 'user-cinder',
-                createdBy: 'admin-cinder',
-                metadata: { actorUserId: 'admin-cinder', sessionCount: 1 },
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminUserUpdateStatus,
-                metadata: { targetUserId: 'user-cinder' },
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userBlocked,
-                userId: 'user-cinder',
-                createdBy: 'admin-cinder',
-                metadata: { actorUserId: 'admin-cinder' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(2);
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                1,
-                [activityLog, activityLog]
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminSessionRevokeAll,
+                    metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
+                },
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                2,
-                [activityLog, activityLog]
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    userId: 'user-cinder',
+                    createdBy: 'admin-cinder',
+                    metadata: { actorUserId: 'admin-cinder', sessionCount: 1 },
+                },
+                context
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminUserUpdateStatus,
+                    metadata: { targetUserId: 'user-cinder' },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userBlocked,
+                    userId: 'user-cinder',
+                    createdBy: 'admin-cinder',
+                    metadata: { actorUserId: 'admin-cinder' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                { queue: EnumActivityLogAction.adminSessionRevokeAll },
+                { queue: EnumActivityLogAction.userRevokeAllSessionsByAdmin },
+                { queue: EnumActivityLogAction.adminUserUpdateStatus },
+                { queue: EnumActivityLogAction.userBlocked },
+            ]);
         });
 
         it('records the plain status action for a status other than blocked', async () => {
@@ -258,26 +264,32 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             await useCase.execute(
                 'user-cinder',
                 { status: EnumUserStatus.inactive },
-                admin
+                admin,
+                context
             );
 
-            expect(activityLogService.prepare).toHaveBeenCalledWith(
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: EnumActivityLogAction.userUpdateStatus,
-                })
+                }),
+                context
             );
         });
 
-        it('stages no revoke-all row when no session was open', async () => {
+        it('adds no revoke-all entry when no session was open', async () => {
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
             sessionService.revokeActiveByUserInTx.mockResolvedValue([]);
 
             await useCase.execute(
                 'user-cinder',
                 { status: EnumUserStatus.inactive },
-                admin
+                admin,
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                { queue: EnumActivityLogAction.adminUserUpdateStatus },
+                { queue: EnumActivityLogAction.userUpdateStatus },
+            ]);
         });
 
         it('updateStatusByAdmin to active revokes no session', async () => {
@@ -287,7 +299,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             await useCase.execute(
                 'user-cinder',
                 { status: EnumUserStatus.active },
-                admin
+                admin,
+                context
             );
 
             expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
@@ -296,10 +309,10 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
         });
 
-        it('updateStatusByAdmin to blocked revokes sessions and stages userBlocked', async () => {
+        it('updateStatusByAdmin to blocked revokes sessions and records userBlocked', async () => {
             userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userBlocked
             );
@@ -309,7 +322,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             await useCase.execute(
                 'user-cinder',
                 { status: EnumUserStatus.blocked },
-                admin
+                admin,
+                context
             );
 
             expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
@@ -321,14 +335,15 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledTimes(
                 1
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith(
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 expect.objectContaining({
                     action: EnumActivityLogAction.userBlocked,
-                })
+                }),
+                context
             );
         });
 
-        it('stages nothing and wraps the failure when the transaction fails', async () => {
+        it('adds nothing and wraps the failure when the transaction fails', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
@@ -337,10 +352,11 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 useCase.execute(
                     'user-cinder',
                     { status: EnumUserStatus.blocked },
-                    admin
+                    admin,
+                    context
                 )
             ).rejects.toMatchObject({ rawError: cause });
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows the status exception of the guarded write unchanged', async () => {
@@ -351,7 +367,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 useCase.execute(
                     'user-cinder',
                     { status: EnumUserStatus.blocked },
-                    admin
+                    admin,
+                    context
                 )
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
@@ -368,7 +385,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 useCase.execute(
                     'user-cinder',
                     { status: EnumUserStatus.blocked },
-                    admin
+                    admin,
+                    context
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -376,7 +394,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 messagePath: 'user.error.statusInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('stops at the rank gate before the blocked gate', async () => {
@@ -388,7 +406,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 useCase.execute(
                     'user-cinder',
                     { status: EnumUserStatus.blocked },
-                    admin
+                    admin,
+                    context
                 )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();

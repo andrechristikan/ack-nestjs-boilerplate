@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
@@ -40,6 +41,7 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspaceUserService,
     ],
     imports: [
+        ActivityLogModule,
         UserModule,
         DeviceModule,
         PasswordHistoryModule,

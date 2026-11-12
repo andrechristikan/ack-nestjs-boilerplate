@@ -13,11 +13,21 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type {
-    IActivityLogMetadata,
-    IActivityLogStaged,
-} from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
@@ -32,6 +42,10 @@ describe('PolicyUpdateByAdminUseCase', () => {
     const policyUtil: MockProxy<PolicyUtil> = mock<PolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const policy: Policy = {
         id: 'policy-1',
@@ -90,13 +104,6 @@ describe('PolicyUpdateByAdminUseCase', () => {
         twoFactor: null,
     };
 
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminPolicyCreate,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     const policyMetadata: IActivityLogMetadata = {
         roleId: 'role-1',
         subject: EnumPolicySubject.user,
@@ -108,11 +115,38 @@ describe('PolicyUpdateByAdminUseCase', () => {
         role: { ...baseUser.role, id: 'role-actor' },
     };
 
+    const context: IRequestContext = {
+        actorUserId: 'user-1',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
+    };
+
     let useCase: PolicyUpdateByAdminUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
         policyUtil.mapActivityLogMetadata.mockReturnValue(policyMetadata);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -122,6 +156,8 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: PolicyUtil, useValue: policyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -137,51 +173,98 @@ describe('PolicyUpdateByAdminUseCase', () => {
             const failure = new RoleRankForbiddenException();
             roleService.assertWritableByActor.mockRejectedValue(failure);
 
-            const promise = useCase.execute('role-1', 'policy-1', body, actor);
+            const promise = useCase.execute(
+                'role-1',
+                'policy-1',
+                body,
+                actor,
+                context
+            );
 
             await expect(promise).rejects.toBe(failure);
             expect(roleService.assertWritableByActor).toHaveBeenCalledWith(
                 'role-1',
                 { roleId: actor.roleId, roleType: actor.role.type }
             );
-            expect(policyService.updateByAdmin).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('updates the policy after the role gates and wraps it in the response envelope', async () => {
+        it('updates the policy on the outbox transaction after the role gate and wraps the response', async () => {
             roleService.assertWritableByActor.mockResolvedValue();
-            policyService.updateByAdmin.mockResolvedValue(policy);
+            policyService.updateByAdminInTx.mockResolvedValue(policy);
 
             const result = await useCase.execute(
                 'role-1',
                 'policy-1',
                 body,
-                actor
+                actor,
+                context
             );
 
             expect(result).toEqual({ data: policy });
-            expect(policyService.updateByAdmin).toHaveBeenCalledWith(
+            expect(policyService.updateByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 'policy-1',
                 body
             );
         });
 
-        it('prepares the update activity log with the metadata of the updated policy and stages it after the write', async () => {
+        it('adds the update activity entry from the policy and the passed context on the same tx', async () => {
             roleService.assertWritableByActor.mockResolvedValue();
-            policyService.updateByAdmin.mockResolvedValue(policy);
+            policyService.updateByAdminInTx.mockResolvedValue(policy);
 
-            await useCase.execute('role-1', 'policy-1', body, actor);
+            await useCase.execute('role-1', 'policy-1', body, actor, context);
 
             expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 policy
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminPolicyUpdate,
-                metadata: policyMetadata,
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.adminPolicyUpdate,
+                    metadata: policyMetadata,
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('rethrows a typed exception of the write and adds no entry', async () => {
+            const failure = new PolicyNotFoundException();
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.updateByAdminInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute('role-1', 'policy-1', body, actor, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to PolicyNotFoundException', async () => {
+            const conflict = new Error('conflict');
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.updateByAdminInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute('role-1', 'policy-1', body, actor, context)
+            ).rejects.toBeInstanceOf(PolicyNotFoundException);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.updateByAdminInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute('role-1', 'policy-1', body, actor, context)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
             });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
     });
 });

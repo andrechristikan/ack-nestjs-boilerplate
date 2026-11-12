@@ -20,7 +20,11 @@ import type {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
@@ -46,12 +50,10 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import { UserUtil } from '@modules/user/utils/user.util';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type {
     IUser,
     IUserCredentialAttempt,
-    IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
@@ -72,7 +74,7 @@ describe('UserChangePasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const context = buildRequestContext('user-linden');
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserChangePasswordUseCase;
@@ -128,12 +130,16 @@ describe('UserChangePasswordUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userChangePassword,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
+    const changeEntry: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: 'change',
+    };
+    const verifyEntry: IOutboxEffect = {
+        ...changeEntry,
+        idempotencyKey: 'verify',
     };
     const notifyEffect: IOutboxEffect = {
         queue: EnumNotificationQueue.notification,
@@ -180,24 +186,19 @@ describe('UserChangePasswordUseCase', () => {
         id: 'user-linden',
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
     } as User;
-    const twoFactorAttempt: IUserTwoFactorAttempt = {
-        isAttemptCounted: true,
-        lockoutStages: [],
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockImplementation(input =>
+            input.action === EnumActivityLogAction.userVerifyTwoFactor
+                ? verifyEntry
+                : changeEntry
+        );
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.notify.mockReturnValue(notifyEffect);
-        userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
-        userTwoFactorService.getProvidedMethod.mockReturnValue(
-            EnumAuthTwoFactorMethod.code
-        );
-        userTwoFactorService.verify.mockResolvedValue(twoFactorVerified);
-        userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+        userTwoFactorService.verifyIfRequired.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -220,7 +221,6 @@ describe('UserChangePasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -237,7 +237,6 @@ describe('UserChangePasswordUseCase', () => {
             user,
             hashedPassword: 'hashed-password',
             isAttemptCounted: true,
-            lockoutStages: [],
         };
 
         beforeEach(() => {
@@ -252,31 +251,7 @@ describe('UserChangePasswordUseCase', () => {
             );
         });
 
-        it('prepares the change-password row before the attempt counter moves', async () => {
-            userPasswordService.countPasswordAttempt.mockImplementation(
-                async () => {
-                    expect(activityLogService.prepare).toHaveBeenCalledWith({
-                        action: EnumActivityLogAction.userChangePassword,
-                    });
-                    expect(
-                        activityLogService.stagePrepared
-                    ).not.toHaveBeenCalled();
-
-                    return passwordAttempt;
-                }
-            );
-            outboxService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-
-            await useCase.execute(user, dto);
-
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('verifies the old password and history, hashes, writes on one transaction, notifies after commit, and stages the row', async () => {
+        it('verifies the old password and history, hashes, and writes the change, its entry, and the notification on one transaction', async () => {
             const calls: string[] = [];
             outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -307,17 +282,19 @@ describe('UserChangePasswordUseCase', () => {
                     return revoked;
                 }
             );
-            outboxService.addInTx.mockImplementation(async () => {
-                calls.push('addEffect');
+            outboxService.addManyInTx.mockImplementation(async () => {
+                calls.push('addEffects');
 
-                return 'outbox-id';
+                return ['outbox-id'];
             });
 
-            await expect(useCase.execute(user, dto)).resolves.toEqual({});
+            await expect(useCase.execute(user, dto, context)).resolves.toEqual(
+                {}
+            );
 
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(user);
+            ).toHaveBeenCalledWith(user, context);
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
                 passwordAttempt,
                 'old-password'
@@ -332,21 +309,27 @@ describe('UserChangePasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                user,
+                { code: null, backupCode: null, method: null },
+                context
+            );
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userChangePassword,
-            });
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userChangePassword },
+                context
+            );
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.changePassword,
                 { userId: 'user-linden', proceedBy: 'user-linden' }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                changeEntry,
+                notifyEffect,
+            ]);
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -380,11 +363,8 @@ describe('UserChangePasswordUseCase', () => {
                 'createHistory',
                 'markUnusedResetsUsed',
                 'revokeSessions',
-                'addEffect',
+                'addEffects',
                 'commit',
-            ]);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
             ]);
         });
 
@@ -392,13 +372,17 @@ describe('UserChangePasswordUseCase', () => {
             const passwordless: IUser = { ...user, password: null };
             userPasswordService.countPasswordAttempt.mockResolvedValue(null);
 
-            await useCase.execute(passwordless, {
-                newPassword: 'new-password',
-            });
+            await useCase.execute(
+                passwordless,
+                {
+                    newPassword: 'new-password',
+                },
+                context
+            );
 
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(passwordless);
+            ).toHaveBeenCalledWith(passwordless, context);
             expect(
                 userAuthService.assertPasswordAttempt
             ).not.toHaveBeenCalled();
@@ -412,7 +396,7 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(
-                useCase.execute(user, { newPassword: 'new-password' })
+                useCase.execute(user, { newPassword: 'new-password' }, context)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
@@ -438,79 +422,78 @@ describe('UserChangePasswordUseCase', () => {
             const failure = new UserPasswordExpiredException();
             userAuthService.assertPasswordAttempt.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto)).rejects.toBe(failure);
+            await expect(useCase.execute(user, dto, context)).rejects.toBe(
+                failure
+            );
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('verifies two-factor, records the verification on the transaction, and stages the verify row when two-factor is enabled', async () => {
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            await useCase.execute(twoFactorUser, {
-                ...dto,
-                code: '123456',
-                method: EnumAuthTwoFactorMethod.code,
-            });
+        it('verifies two-factor before hashing, records the verification on the transaction, and adds the verify entry when two-factor was verified', async () => {
+            userTwoFactorService.verifyIfRequired.mockResolvedValue(
+                twoFactorVerified
+            );
 
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledWith(
-                twoFactorUser
+            await useCase.execute(
+                twoFactorUser,
+                {
+                    ...dto,
+                    code: '123456',
+                    method: EnumAuthTwoFactorMethod.code,
+                },
+                context
             );
-            expect(userTwoFactorService.countAttempt).toHaveBeenCalledBefore(
-                userTwoFactorService.verify
-            );
-            expect(
-                userTwoFactorService.getProvidedMethod
-            ).toHaveBeenCalledBefore(userTwoFactorService.countAttempt);
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                2,
-                []
-            );
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(true);
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(
+
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
                     method: EnumAuthTwoFactorMethod.code,
                     code: '123456',
                     backupCode: null,
-                }
+                },
+                context
             );
+            expect(
+                userTwoFactorService.verifyIfRequired
+            ).toHaveBeenCalledBefore(authPasswordUtil.createPassword);
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
-            expect(userTwoFactorService.verify).toHaveBeenCalledBefore(
-                authPasswordUtil.createPassword
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    userId: 'user-linden',
+                    createdBy: 'user-linden',
+                },
+                context
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userVerifyTwoFactor,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-                activityLog,
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                changeEntry,
+                verifyEntry,
+                notifyEffect,
             ]);
         });
 
-        it('skips two-factor verification while setup is required', async () => {
+        it('records no two-factor verification while the service verified nothing', async () => {
             await expect(
-                useCase.execute(twoFactorSetupUser, dto)
+                useCase.execute(twoFactorSetupUser, dto, context)
             ).resolves.toEqual({});
 
-            expect(userUtil.requiresTwoFactorVerification).toHaveBeenCalledWith(
-                twoFactorSetupUser
-            );
-            expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
-            expect(activityLogService.prepare).not.toHaveBeenCalledWith(
-                expect.objectContaining({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                })
+            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                twoFactorSetupUser,
+                { code: null, backupCode: null, method: null },
+                context
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                }),
+                context
+            );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -520,30 +503,37 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('writes nothing when the two-factor check rejects', async () => {
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
             const failure = new Error('invalid');
-            userTwoFactorService.verify.mockRejectedValue(failure);
+            userTwoFactorService.verifyIfRequired.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(twoFactorUser, {
-                    ...dto,
-                    code: '000000',
-                    method: EnumAuthTwoFactorMethod.code,
-                })
+                useCase.execute(
+                    twoFactorUser,
+                    {
+                        ...dto,
+                        code: '000000',
+                        method: EnumAuthTwoFactorMethod.code,
+                    },
+                    context
+                )
             ).rejects.toBe(failure);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws the method-required exception without counting an attempt', async () => {
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.getProvidedMethod.mockImplementation(() => {
-                throw new AuthTwoFactorMethodRequiredException();
-            });
+        it('throws the method-required exception and writes nothing', async () => {
+            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+                new AuthTwoFactorMethodRequiredException()
+            );
+
             await expect(
-                useCase.execute(twoFactorUser, {
-                    ...dto,
-                    code: '123456',
-                })
+                useCase.execute(
+                    twoFactorUser,
+                    {
+                        ...dto,
+                        code: '123456',
+                    },
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
@@ -554,52 +544,24 @@ describe('UserChangePasswordUseCase', () => {
                 messagePath: 'auth.error.twoFactorMethodRequired',
             });
 
-            expect(userTwoFactorService.getProvidedMethod).toHaveBeenCalledWith(
-                null
-            );
-            expect(userTwoFactorService.countAttempt).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('stages both lockout rows after the spent count and throws AuthTwoFactorAttemptMaxException when the two-factor budget is spent', async () => {
-            const calls: string[] = [];
-            const spent: IUserTwoFactorAttempt = {
-                isAttemptCounted: false,
-                lockoutStages: [
-                    {
-                        action: EnumActivityLogAction.userRevokeAllSessions,
-                        userId: 'user-linden',
-                        createdBy: 'user-linden',
-                    },
-                    {
-                        action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                        userId: 'user-linden',
-                        createdBy: 'user-linden',
-                    },
-                ],
-            };
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.countAttempt.mockImplementation(async () => {
-                calls.push('countAttempt');
-
-                return spent;
-            });
-            userTwoFactorService.assertAttemptCounted.mockImplementation(() => {
-                calls.push('assert');
-
-                throw new AuthTwoFactorAttemptMaxException();
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
-            });
+        it('throws AuthTwoFactorAttemptMaxException and writes nothing when the two-factor budget is spent', async () => {
+            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+                new AuthTwoFactorAttemptMaxException()
+            );
 
             await expect(
-                useCase.execute(twoFactorUser, {
-                    ...dto,
-                    code: '123456',
-                    method: EnumAuthTwoFactorMethod.code,
-                })
+                useCase.execute(
+                    twoFactorUser,
+                    {
+                        ...dto,
+                        code: '123456',
+                        method: EnumAuthTwoFactorMethod.code,
+                    },
+                    context
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -610,26 +572,7 @@ describe('UserChangePasswordUseCase', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
 
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenNthCalledWith(
-                2,
-                [activityLog, activityLog]
-            );
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(false);
-            expect(calls).toEqual(['stage', 'countAttempt', 'stage', 'assert']);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
         });
 
@@ -637,7 +580,9 @@ describe('UserChangePasswordUseCase', () => {
             const failure = new UserPasswordNotMatchException();
             userAuthService.assertPasswordAttempt.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto)).rejects.toBe(failure);
+            await expect(useCase.execute(user, dto, context)).rejects.toBe(
+                failure
+            );
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -647,7 +592,9 @@ describe('UserChangePasswordUseCase', () => {
                 new UserPasswordNotMatchException()
             );
 
-            await expect(useCase.execute(user, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(user, dto, context)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 statusCodeKey:
@@ -660,51 +607,21 @@ describe('UserChangePasswordUseCase', () => {
                 userPasswordService.resetPasswordAttempt
             ).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledBefore(
-                userAuthService.assertPasswordAttempt
-            );
         });
 
-        it('stages both lockout rows after the spent attempt is counted and throws UserPasswordAttemptMaxException at the max attempt', async () => {
-            const calls: string[] = [];
+        it('throws UserPasswordAttemptMaxException at the max attempt and writes nothing', async () => {
             const spent: IUserCredentialAttempt = {
                 ...passwordAttempt,
                 isAttemptCounted: false,
-                lockoutStages: [
-                    {
-                        action: EnumActivityLogAction.userRevokeAllSessions,
-                        userId: 'user-linden',
-                        createdBy: 'user-linden',
-                    },
-                    {
-                        action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                        userId: 'user-linden',
-                        createdBy: 'user-linden',
-                    },
-                ],
             };
-            userPasswordService.countPasswordAttempt.mockImplementation(
-                async () => {
-                    calls.push('countAttempt');
-
-                    return spent;
-                }
+            userPasswordService.countPasswordAttempt.mockResolvedValue(spent);
+            userAuthService.assertPasswordAttempt.mockRejectedValue(
+                new UserPasswordAttemptMaxException()
             );
-            userAuthService.assertPasswordAttempt.mockImplementation(
-                async () => {
-                    calls.push('assert');
 
-                    throw new UserPasswordAttemptMaxException();
-                }
-            );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
-            });
-
-            await expect(useCase.execute(user, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(user, dto, context)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
                 statusCodeKey:
@@ -714,21 +631,6 @@ describe('UserChangePasswordUseCase', () => {
                 messagePath: 'user.error.passwordAttemptMax',
             });
 
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-                activityLog,
-            ]);
-            expect(calls).toEqual(['countAttempt', 'stage', 'assert']);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
                 spent,
@@ -738,15 +640,14 @@ describe('UserChangePasswordUseCase', () => {
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
         });
 
-        it('notifies and stages nothing when the transaction fails', async () => {
+        it('adds no effect when the transaction fails', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
 
-            await expect(useCase.execute(user, dto)).rejects.toBe(cause);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(
-                activityLogService.stagePrepared
-            ).toHaveBeenCalledExactlyOnceWith([]);
+            await expect(useCase.execute(user, dto, context)).rejects.toBe(
+                cause
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 });

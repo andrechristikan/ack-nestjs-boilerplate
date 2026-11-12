@@ -2,19 +2,17 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDeleteMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+
+    const context = buildRequestContext('user-swift');
 
     let useCase: UserDeleteMobileNumberUseCase;
 
@@ -49,13 +47,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
             updatedBy: null,
         },
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userAddMobileNumber,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -63,7 +54,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
         userMobileNumberService.getOneMobileNumber.mockResolvedValue(
             mobileNumber
         );
-        activityLogService.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -72,30 +62,23 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     provide: UserMobileNumberService,
                     useValue: userMobileNumberService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserDeleteMobileNumberUseCase);
     });
 
     describe('execute', () => {
-        it('deletes the mobile number, stages the activity row, and wraps it in a response envelope', async () => {
+        it('deletes the mobile number, passes the context, and wraps it in a response envelope', async () => {
             userMobileNumberService.deleteMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
             await expect(
-                useCase.execute('user-swift', mobileNumber.id)
+                useCase.execute('user-swift', mobileNumber.id, context)
             ).resolves.toEqual({ data: mobileNumber });
             expect(
                 userMobileNumberService.deleteMobileNumber
-            ).toHaveBeenCalledWith('user-swift', mobileNumber.id);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userDeleteMobileNumber,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
+            ).toHaveBeenCalledWith('user-swift', mobileNumber.id, context);
         });
     });
 });

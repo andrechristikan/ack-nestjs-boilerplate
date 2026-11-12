@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
@@ -19,6 +20,6 @@ import { Module } from '@nestjs/common';
         DeviceAnalyticService,
     ],
     exports: [DeviceService, DeviceUtil, DeviceAnalyticService],
-    imports: [],
+    imports: [ActivityLogModule],
 })
 export class DeviceModule {}

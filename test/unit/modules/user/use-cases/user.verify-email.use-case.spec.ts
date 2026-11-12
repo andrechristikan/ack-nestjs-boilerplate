@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -12,8 +11,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
@@ -21,18 +19,10 @@ import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-emai
 describe('UserVerifyEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext(null);
 
     let useCase: UserVerifyEmailUseCase;
 
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userVerifiedEmail,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     const verification: Verification = {
         id: 'verification-wren',
         userId: 'user-wren',
@@ -81,7 +71,6 @@ describe('UserVerifyEmailUseCase', () => {
     };
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
         userVerificationService.getOneActiveByEmailToken.mockResolvedValue({
             verification,
             user,
@@ -94,53 +83,35 @@ describe('UserVerifyEmailUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserVerifyEmailUseCase);
     });
 
     describe('execute', () => {
-        it('verifies the token, which adds the verifiedEmail effect, then stages the activity row', async () => {
-            const callOrder: string[] = [];
+        it('verifies the token with the context and answers empty', async () => {
             const dto: UserVerifyEmailRequestDto = { token: 'raw-token' };
-            userVerificationService.verifyEmail.mockImplementation(async () => {
-                callOrder.push('verifyEmail');
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
 
-            const result = await useCase.execute(dto);
+            const result = await useCase.execute(dto, context);
 
             expect(result).toEqual({});
             expect(
                 userVerificationService.getOneActiveByEmailToken
             ).toHaveBeenCalledWith('raw-token');
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userVerifiedEmail,
-                userId: 'user-wren',
-                createdBy: 'user-wren',
-            });
             expect(userVerificationService.verifyEmail).toHaveBeenCalledWith(
-                verification
+                verification,
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(callOrder).toEqual(['verifyEmail', 'stagePrepared']);
         });
 
-        it('stages nothing when the verify write rejects', async () => {
+        it('rejects when the verify write rejects', async () => {
             userVerificationService.verifyEmail.mockRejectedValue(
                 new Error('boom')
             );
 
             await expect(
-                useCase.execute({ token: 'raw-token' })
+                useCase.execute({ token: 'raw-token' }, context)
             ).rejects.toThrow('boom');
-
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

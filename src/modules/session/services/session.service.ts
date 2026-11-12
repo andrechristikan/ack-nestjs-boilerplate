@@ -9,14 +9,15 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
+import type {
+    IRequestContext,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
@@ -38,6 +39,7 @@ import type {
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -50,10 +52,11 @@ export class SessionService {
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly deviceService: DeviceService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly outboxService: OutboxService
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
+        private readonly sessionUtil: SessionUtil
     ) {}
 
     private purgeLoginsEffect(
@@ -83,6 +86,55 @@ export class SessionService {
             userId,
             sessions: refs,
         }));
+    }
+
+    private async removeDeviceOwnershipInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string,
+        now: Date
+    ): Promise<IDeviceRemoveResult> {
+        const revokedSessions = await this.revokeByDeviceOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now
+        );
+        const deviceOwnership = await this.deviceService.removeOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now
+        );
+
+        return { deviceOwnership, revokedSessions };
+    }
+
+    private mapActivityLogActorMetadata(
+        session: ISession,
+        timestamp: Date
+    ): IActivityLogMetadata {
+        return {
+            targetUserId: session.userId,
+            targetUsername: session.user.username,
+            sessionId: session.id,
+            timestamp,
+        };
+    }
+
+    private mapActivityLogTargetMetadata(
+        session: ISession,
+        actorUserId: string,
+        timestamp: Date
+    ): IActivityLogMetadata {
+        return {
+            actorUserId,
+            sessionId: session.id,
+            timestamp,
+        };
     }
 
     async getListOffsetByAdmin(
@@ -142,7 +194,7 @@ export class SessionService {
         try {
             await this.setLogin(userId, sessionId, jti);
         } catch (error: unknown) {
-            await this.revokeIfActive(userId, sessionId);
+            await this.revokeIfActive(userId, sessionId, null);
 
             if (error instanceof AppBaseException) {
                 throw error;
@@ -194,16 +246,6 @@ export class SessionService {
         return tokens;
     }
 
-    getRequestLog(): IRequestLog {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
-        if (requestLog === null) {
-            throw new RequestContextMissingException(RequestLogStoreKey);
-        }
-
-        return requestLog;
-    }
-
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
@@ -218,20 +260,28 @@ export class SessionService {
         );
     }
 
-    /** Revokes the session as its own user with its cache purge row in one transaction; returns the revoked ref, or an empty list when it was already revoked or a write conflict lost. */
+    /** Revokes the session as its own user with its cache purge row, and the userRevokeSession entry when a context is given, in one transaction; does nothing when it was already revoked or a write conflict lost. */
     async revokeIfActive(
         userId: string,
-        sessionId: string
-    ): Promise<ISessionRef[]> {
+        sessionId: string,
+        context: IRequestContext | null
+    ): Promise<void> {
         const revokedAt = this.helperDateService.create();
 
         try {
-            await this.outboxService.withTransaction(async tx =>
-                this.revokeInTx(tx, userId, sessionId, userId, revokedAt)
-            );
+            await this.outboxService.withTransaction(async tx => {
+                await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
+                if (context !== null) {
+                    const entry = this.activityLogService.recordEffect(
+                        { action: EnumActivityLogAction.userRevokeSession },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, entry);
+                }
+            });
         } catch (err: unknown) {
             if (err instanceof SessionNotFoundException) {
-                return [];
+                return;
             }
 
             if (err instanceof AppBaseException) {
@@ -240,13 +290,11 @@ export class SessionService {
 
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
-                return [];
+                return;
             }
 
             throw new AppUnknownException(err);
         }
-
-        return [{ id: sessionId }];
     }
 
     /** Revokes the session on the caller's transaction and adds its cache purge row; no match throws SessionNotFoundException. */
@@ -366,14 +414,24 @@ export class SessionService {
         return grouped;
     }
 
-    /** Revokes the session as its own user with its cache purge row in one transaction; a write conflict throws SessionNotFoundException. */
-    async revoke(userId: string, sessionId: string): Promise<void> {
+    /** Revokes the session as its own user with its cache purge row and activity entry in one transaction; a write conflict throws SessionNotFoundException. */
+    async revoke(
+        userId: string,
+        sessionId: string,
+        context: IRequestContext
+    ): Promise<void> {
         const revokedAt = this.helperDateService.create();
 
         try {
-            await this.outboxService.withTransaction(async tx =>
-                this.revokeInTx(tx, userId, sessionId, userId, revokedAt)
-            );
+            await this.outboxService.withTransaction(async tx => {
+                await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userRevokeSession },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -388,12 +446,13 @@ export class SessionService {
         }
     }
 
-    /** Revokes the session as an admin with its cache purge row in one transaction; a write conflict throws SessionNotFoundException. */
+    /** Revokes the session as an admin with its cache purge row and activity entries in one transaction; a write conflict throws SessionNotFoundException. */
     async revokeByAdmin(
         userId: string,
         sessionId: string,
         revokedBy: string,
-        revokedAt: Date
+        revokedAt: Date,
+        context: IRequestContext
     ): Promise<ISession> {
         try {
             return await this.outboxService.withTransaction(async tx => {
@@ -412,6 +471,37 @@ export class SessionService {
                     { id: sessionId },
                 ]);
                 await this.outboxService.addInTx(tx, effect);
+
+                const actorMetadata = this.mapActivityLogActorMetadata(
+                    session,
+                    revokedAt
+                );
+                const actorEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminSessionRevoke,
+                        metadata: actorMetadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, actorEntry);
+
+                if (userId !== revokedBy) {
+                    const targetMetadata = this.mapActivityLogTargetMetadata(
+                        session,
+                        revokedBy,
+                        revokedAt
+                    );
+                    const targetEntry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                            userId,
+                            createdBy: revokedBy,
+                            metadata: targetMetadata,
+                        },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, targetEntry);
+                }
 
                 return session;
             });
@@ -435,11 +525,12 @@ export class SessionService {
         }
     }
 
-    /** Revokes every active session of the user with one cache purge row in one transaction; none revoked or a write conflict throws SessionNotFoundException. */
+    /** Revokes every active session of the user with one cache purge row and the activity entries in one transaction; none revoked or a write conflict throws SessionNotFoundException. */
     async revokeAllByAdmin(
         userId: string,
         revokedBy: string,
-        revokedAt: Date
+        revokedAt: Date,
+        context: IRequestContext
     ): Promise<ISessionRef[]> {
         try {
             return await this.outboxService.withTransaction(async tx => {
@@ -452,6 +543,37 @@ export class SessionService {
                 if (sessions.length === 0) {
                     throw new SessionNotFoundException();
                 }
+
+                const actorMetadata =
+                    this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
+                        userId,
+                        sessions.length
+                    );
+                const actorEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminSessionRevokeAll,
+                        metadata: actorMetadata,
+                    },
+                    context
+                );
+                const targetMetadata =
+                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                        revokedBy,
+                        sessions.length
+                    );
+                const targetEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                        userId,
+                        createdBy: revokedBy,
+                        metadata: targetMetadata,
+                    },
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, [
+                    actorEntry,
+                    targetEntry,
+                ]);
 
                 return sessions;
             });
@@ -469,33 +591,39 @@ export class SessionService {
         }
     }
 
-    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership in one transaction; a write conflict throws DeviceNotFoundException. */
+    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as its own user, adding the activity entry, in one transaction; a write conflict throws DeviceNotFoundException. */
     async removeDeviceOwnership(
         userId: string,
         deviceOwnershipId: string,
-        removedBy: string
-    ): Promise<IDeviceRemoveResult> {
+        context: IRequestContext
+    ): Promise<void> {
         const now = this.helperDateService.create();
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
-                const revokedSessions = await this.revokeByDeviceOwnershipInTx(
-                    tx,
-                    userId,
-                    deviceOwnershipId,
-                    removedBy,
-                    now
-                );
-                const deviceOwnership =
-                    await this.deviceService.removeOwnershipInTx(
+            await this.outboxService.withTransaction(async tx => {
+                const { deviceOwnership, revokedSessions } =
+                    await this.removeDeviceOwnershipInTx(
                         tx,
                         userId,
                         deviceOwnershipId,
-                        removedBy,
+                        userId,
                         now
                     );
 
-                return { deviceOwnership, revokedSessions };
+                const metadata = this.deviceService.mapActivityLogMetadata(
+                    deviceOwnership,
+                    revokedSessions.length
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.userRemoveDevice,
+                        userId,
+                        createdBy: userId,
+                        metadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -511,27 +639,70 @@ export class SessionService {
         }
     }
 
-    mapActivityLogActorMetadata(
-        session: ISession,
-        timestamp: Date
-    ): IActivityLogMetadata {
-        return {
-            targetUserId: session.userId,
-            targetUsername: session.user.username,
-            sessionId: session.id,
-            timestamp,
-        };
-    }
+    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as an admin, adding the activity entries, in one transaction; a write conflict throws DeviceNotFoundException. */
+    async removeDeviceOwnershipByAdmin(
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string,
+        context: IRequestContext
+    ): Promise<void> {
+        const now = this.helperDateService.create();
 
-    mapActivityLogTargetMetadata(
-        session: ISession,
-        actorUserId: string,
-        timestamp: Date
-    ): IActivityLogMetadata {
-        return {
-            actorUserId,
-            sessionId: session.id,
-            timestamp,
-        };
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                const { deviceOwnership, revokedSessions } =
+                    await this.removeDeviceOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        removedBy,
+                        now
+                    );
+
+                const actorMetadata =
+                    this.deviceService.mapActivityLogActorMetadata(
+                        deviceOwnership,
+                        revokedSessions.length
+                    );
+                const actorEntry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.adminDeviceRemove,
+                        metadata: actorMetadata,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, actorEntry);
+
+                if (userId !== removedBy) {
+                    const targetMetadata =
+                        this.deviceService.mapActivityLogTargetMetadata(
+                            deviceOwnership,
+                            removedBy,
+                            revokedSessions.length
+                        );
+                    const targetEntry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.userRemoveDeviceByAdmin,
+                            userId,
+                            createdBy: removedBy,
+                            metadata: targetMetadata,
+                        },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, targetEntry);
+                }
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new DeviceNotFoundException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 }

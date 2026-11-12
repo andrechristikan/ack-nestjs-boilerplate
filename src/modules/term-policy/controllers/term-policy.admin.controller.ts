@@ -4,7 +4,11 @@ import { Doc } from '@common/doc/decorators/doc.decorator';
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -120,9 +124,10 @@ export class TermPolicyAdminController {
     @Post('/create')
     async create(
         @Body({ schema: TermPolicyCreateRequestSchema })
-        body: TermPolicyCreateRequestDto
+        body: TermPolicyCreateRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyCreateByAdminUseCase.execute(body);
+        return this.termPolicyCreateByAdminUseCase.execute(body, context);
     }
 
     @Doc({ summary: 'delete a term or policy by ID' })
@@ -142,9 +147,13 @@ export class TermPolicyAdminController {
     @Delete('/delete/:termPolicyId')
     async delete(
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
-        termPolicyId: string
+        termPolicyId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyDeleteByAdminUseCase.execute(termPolicyId);
+        return this.termPolicyDeleteByAdminUseCase.execute(
+            termPolicyId,
+            context
+        );
     }
 
     @Doc({ summary: 'generate presign url for term or policy content upload' })
@@ -193,11 +202,13 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
-        body: TermPolicyContentRequestDto
+        body: TermPolicyContentRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyUpdateContentByAdminUseCase.execute(
             termPolicyId,
-            body
+            body,
+            context
         );
     }
 
@@ -218,11 +229,13 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
-        body: TermPolicyContentRequestDto
+        body: TermPolicyContentRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyAddContentByAdminUseCase.execute(
             termPolicyId,
-            body
+            body,
+            context
         );
     }
 
@@ -243,11 +256,13 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
-        body: TermPolicyRemoveContentRequestDto
+        body: TermPolicyRemoveContentRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyRemoveContentByAdminUseCase.execute(
             termPolicyId,
-            body
+            body,
+            context
         );
     }
 
@@ -294,11 +309,13 @@ export class TermPolicyAdminController {
     async publish(
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        @AuthJwtPayload('userId') updatedBy: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyPublishByAdminUseCase.execute(
             termPolicyId,
-            updatedBy
+            updatedBy,
+            context
         );
     }
 
@@ -319,11 +336,13 @@ export class TermPolicyAdminController {
     async resendEmail(
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        @AuthJwtPayload('userId') updatedBy: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyResendEmailByAdminUseCase.execute(
             termPolicyId,
-            updatedBy
+            updatedBy,
+            context
         );
     }
 }

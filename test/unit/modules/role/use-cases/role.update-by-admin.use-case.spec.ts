@@ -13,7 +13,19 @@ import {
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -30,6 +42,10 @@ describe('RoleUpdateByAdminUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role: Role = {
@@ -88,12 +104,28 @@ describe('RoleUpdateByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminRoleCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
+    const context: IRequestContext = {
+        actorUserId: actorUser.id,
         workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: RoleUpdateByAdminUseCase;
@@ -102,13 +134,18 @@ describe('RoleUpdateByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleUpdateByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleUtil, useValue: roleUtil },
             ],
@@ -118,63 +155,102 @@ describe('RoleUpdateByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the role and wraps the result', async () => {
-            const body: RoleUpdateRequestDto = {
-                description: 'Team lead role',
-                type: EnumRoleType.user,
-            };
-            roleService.updateByAdmin.mockResolvedValue(roleWithPolicies);
+        const body: RoleUpdateRequestDto = {
+            description: 'Team lead role',
+            type: EnumRoleType.user,
+        };
+
+        it('updates the role on the outbox transaction and wraps the result', async () => {
+            roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await useCase.execute(
                 roleWithPolicies.id,
                 body,
-                actorUser
+                actorUser,
+                context
             );
 
             expect(result).toEqual({ data: roleWithPolicies });
-            expect(roleService.updateByAdmin).toHaveBeenCalledWith(
+            expect(roleService.updateByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 roleWithPolicies.id,
                 { description: 'Team lead role', type: EnumRoleType.user },
                 actor
             );
         });
 
-        it('prepares the update activity log from the updated role and stages it after the write', async () => {
-            const body: RoleUpdateRequestDto = {
-                description: 'Team lead role',
-                type: EnumRoleType.user,
-            };
-            roleService.updateByAdmin.mockResolvedValue(roleWithPolicies);
+        it('adds the update activity entry from the updated role and the passed context on the same tx', async () => {
+            roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            await useCase.execute(roleWithPolicies.id, body, actorUser);
+            await useCase.execute(
+                roleWithPolicies.id,
+                body,
+                actorUser,
+                context
+            );
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 roleWithPolicies,
                 now
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.adminRoleUpdate,
-                metadata,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.adminRoleUpdate, metadata },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
         it('passes a null description through to clear it', async () => {
-            const body: RoleUpdateRequestDto = {
-                description: null,
-                type: EnumRoleType.user,
-            };
-            roleService.updateByAdmin.mockResolvedValue(roleWithPolicies);
+            roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            await useCase.execute(roleWithPolicies.id, body, actorUser);
+            await useCase.execute(
+                roleWithPolicies.id,
+                { description: null, type: EnumRoleType.user },
+                actorUser,
+                context
+            );
 
-            expect(roleService.updateByAdmin).toHaveBeenCalledWith(
+            expect(roleService.updateByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 roleWithPolicies.id,
                 { description: null, type: EnumRoleType.user },
                 actor
             );
+        });
+
+        it('rethrows a typed exception of the write', async () => {
+            const failure = new RoleNotFoundException();
+            roleService.updateByAdminInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to RoleNotFoundException', async () => {
+            const conflict = new Error('conflict');
+            roleService.updateByAdminInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+            ).rejects.toBeInstanceOf(RoleNotFoundException);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            roleService.updateByAdminInTx.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
         });
     });
 });

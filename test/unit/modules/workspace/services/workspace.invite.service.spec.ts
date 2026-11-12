@@ -16,6 +16,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumProjectMemberRole,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
@@ -27,6 +28,7 @@ import type {
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
@@ -65,6 +67,7 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceInviteService', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
@@ -78,6 +81,8 @@ describe('WorkspaceInviteService', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -215,6 +220,9 @@ describe('WorkspaceInviteService', () => {
     };
 
     const expiredAtIso = '2026-02-01T00:00:00.000Z';
+    const context = buildRequestContext('user-1');
+    const actorEntry = { queue: 'actor-entry' } as unknown as IOutboxEffect;
+    const inviteeEntry = { queue: 'invitee-entry' } as unknown as IOutboxEffect;
 
     let service: WorkspaceInviteService;
 
@@ -222,6 +230,9 @@ describe('WorkspaceInviteService', () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        activityLogService.recordEffect
+            .mockReturnValueOnce(actorEntry)
+            .mockReturnValueOnce(inviteeEntry);
         helperStringService.fillPattern.mockImplementation(
             pattern => filledPatterns[pattern] ?? ''
         );
@@ -246,6 +257,7 @@ describe('WorkspaceInviteService', () => {
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: UserService, useValue: userService },
                 { provide: NotificationService, useValue: notificationService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -784,7 +796,8 @@ describe('WorkspaceInviteService', () => {
                     projectRole: EnumProjectMemberRole.member,
                     expiryDuration: 14,
                 },
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(result).toEqual({ invite: baseInvite, tokenData });
@@ -827,7 +840,8 @@ describe('WorkspaceInviteService', () => {
                 'workspace-1',
                 'user-1',
                 baseCreate,
-                registeredNotice
+                registeredNotice,
+                context
             );
 
             expect(helperDateService.formatToIso).toHaveBeenCalledWith(
@@ -869,7 +883,8 @@ describe('WorkspaceInviteService', () => {
                 'workspace-1',
                 'user-1',
                 baseCreate,
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(
@@ -890,6 +905,107 @@ describe('WorkspaceInviteService', () => {
             expect(notificationService.notify).not.toHaveBeenCalled();
         });
 
+        it('adds the creator entry and the invitee entry beside the notify effect on the invite tx for an invitee with an account', async () => {
+            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
+                baseInvite
+            );
+            notificationService.notify.mockReturnValue(notifyEffect);
+
+            await service.createInvite(
+                'workspace-1',
+                'user-1',
+                baseCreate,
+                registeredNotice,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceInviteCreated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: {
+                        workspaceInviteId: 'invite-1',
+                        targetUserId: 'user-2',
+                    },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+                inviteeEntry,
+            ]);
+        });
+
+        it('adds only the creator entry on the invite tx for an invitee with no account', async () => {
+            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
+                baseInvite
+            );
+            notificationService.notifyUnregisteredInvite.mockReturnValue(
+                unregisteredEffect
+            );
+
+            await service.createInvite(
+                'workspace-1',
+                'user-1',
+                baseCreate,
+                unregisteredNotice,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.workspaceInviteCreated,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { workspaceInviteId: 'invite-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+            ]);
+        });
+
+        it('adds only the creator entry when the invitee is the creator', async () => {
+            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
+                baseInvite
+            );
+            notificationService.notify.mockReturnValue(notifyEffect);
+
+            await service.createInvite(
+                'workspace-1',
+                'user-2',
+                baseCreate,
+                registeredNotice,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+            ]);
+        });
+
         it('throws WorkspaceInviteDuplicateException when the nonce collides', async () => {
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 nonceCollision
@@ -903,7 +1019,8 @@ describe('WorkspaceInviteService', () => {
                     'workspace-1',
                     'user-1',
                     baseCreate,
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteDuplicateException,
@@ -941,7 +1058,8 @@ describe('WorkspaceInviteService', () => {
                 'workspace-1',
                 'user-1',
                 baseCreate,
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(result).toEqual({
@@ -981,7 +1099,8 @@ describe('WorkspaceInviteService', () => {
                 'workspace-1',
                 'user-1',
                 baseCreate,
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(result.tokenData).toEqual(retriedTokenData);
@@ -1003,7 +1122,8 @@ describe('WorkspaceInviteService', () => {
                     'workspace-1',
                     'user-1',
                     baseCreate,
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
@@ -1025,7 +1145,8 @@ describe('WorkspaceInviteService', () => {
                     'workspace-1',
                     'user-1',
                     baseCreate,
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toBe(failure);
         });
@@ -1045,7 +1166,8 @@ describe('WorkspaceInviteService', () => {
                     'workspace-1',
                     'user-1',
                     baseCreate,
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteDuplicateException,
@@ -1070,7 +1192,8 @@ describe('WorkspaceInviteService', () => {
                     'workspace-1',
                     'user-1',
                     baseCreate,
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -1234,7 +1357,8 @@ describe('WorkspaceInviteService', () => {
                 'invite-1',
                 14,
                 'user-1',
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(result).toEqual({ invite: baseInvite, tokenData });
@@ -1265,7 +1389,8 @@ describe('WorkspaceInviteService', () => {
                 'invite-1',
                 null,
                 'user-1',
-                registeredNotice
+                registeredNotice,
+                context
             );
 
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -1283,6 +1408,73 @@ describe('WorkspaceInviteService', () => {
             );
         });
 
+        it('adds the sender entry and the invitee entry on the rotation tx for an invitee with an account', async () => {
+            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
+                baseInvite
+            );
+            notificationService.notify.mockReturnValue(notifyEffect);
+
+            await service.resendInvite(
+                'invite-1',
+                null,
+                'user-1',
+                registeredNotice,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceInviteResent,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: {
+                        workspaceInviteId: 'invite-1',
+                        targetUserId: 'user-2',
+                    },
+                },
+                context
+            );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceInviteResentByAdmin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+                inviteeEntry,
+            ]);
+        });
+
+        it('adds only the sender entry for an invitee with no account', async () => {
+            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
+                baseInvite
+            );
+            notificationService.notifyUnregisteredInvite.mockReturnValue(
+                unregisteredEffect
+            );
+
+            await service.resendInvite(
+                'invite-1',
+                null,
+                'user-1',
+                unregisteredNotice,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+            ]);
+        });
+
         it('throws WorkspaceInviteAlreadyProcessedException when the guarded rotation misses', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 null
@@ -1293,7 +1485,8 @@ describe('WorkspaceInviteService', () => {
                     'invite-1',
                     null,
                     'user-1',
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
@@ -1324,7 +1517,8 @@ describe('WorkspaceInviteService', () => {
                 'invite-1',
                 null,
                 'user-1',
-                unregisteredNotice
+                unregisteredNotice,
+                context
             );
 
             expect(result).toEqual({
@@ -1357,7 +1551,8 @@ describe('WorkspaceInviteService', () => {
                     'invite-1',
                     null,
                     'user-1',
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
@@ -1382,7 +1577,8 @@ describe('WorkspaceInviteService', () => {
                     'invite-1',
                     null,
                     'user-1',
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
@@ -1403,7 +1599,8 @@ describe('WorkspaceInviteService', () => {
                     'invite-1',
                     null,
                     'user-1',
-                    unregisteredNotice
+                    unregisteredNotice,
+                    context
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -1413,30 +1610,131 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('revokeInvite', () => {
-        it('revokes the invite', async () => {
-            workspaceInviteRepository.revoke.mockResolvedValue(true);
+        it('revokes the invite and adds the revoker entry and the invitee entry on one tx', async () => {
+            workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revokeInvite('invite-1');
+            await service.revokeInvite(
+                'invite-1',
+                'workspace-1',
+                'user-1',
+                'user-2',
+                context
+            );
 
-            expect(workspaceInviteRepository.revoke).toHaveBeenCalledWith(
+            expect(workspaceInviteRepository.revokeInTx).toHaveBeenCalledWith(
+                tx,
                 'invite-1'
             );
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
-                'invite-1'
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                {
+                    action: EnumActivityLogAction.workspaceInviteRevoked,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: {
+                        workspaceInviteId: 'invite-1',
+                        targetUserId: 'user-2',
+                    },
+                },
+                context
             );
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                {
+                    action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'user-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+                inviteeEntry,
+            ]);
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException when the guarded revoke matches no pending invite', async () => {
-            workspaceInviteRepository.revoke.mockResolvedValue(false);
+        it('adds only the revoker entry for an invitee with no account', async () => {
+            workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
+
+            await service.revokeInvite(
+                'invite-1',
+                'workspace-1',
+                'user-1',
+                null,
+                context
+            );
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.workspaceInviteRevoked,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                    workspaceId: 'workspace-1',
+                    metadata: { workspaceInviteId: 'invite-1' },
+                },
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                actorEntry,
+            ]);
+        });
+
+        it('throws WorkspaceInviteAlreadyProcessedException and adds no entry when the guarded revoke matches no pending invite', async () => {
+            workspaceInviteRepository.revokeInTx.mockResolvedValue(false);
 
             await expect(
-                service.revokeInvite('invite-1')
+                service.revokeInvite(
+                    'invite-1',
+                    'workspace-1',
+                    'user-1',
+                    null,
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to WorkspaceInviteAlreadyProcessedException', async () => {
+            const conflict = new Error('conflict');
+            workspaceInviteRepository.revokeInTx.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                service.revokeInvite(
+                    'invite-1',
+                    'workspace-1',
+                    'user-1',
+                    null,
+                    context
+                )
+            ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
+        });
+
+        it('wraps an unknown failure in AppUnknownException', async () => {
+            const failure = new Error('boom');
+            workspaceInviteRepository.revokeInTx.mockRejectedValue(failure);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                service.revokeInvite(
+                    'invite-1',
+                    'workspace-1',
+                    'user-1',
+                    null,
+                    context
+                )
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 

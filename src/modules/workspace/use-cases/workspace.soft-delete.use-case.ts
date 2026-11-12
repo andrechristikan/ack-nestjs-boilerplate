@@ -1,12 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -18,7 +19,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
-    [string, string],
+    [string, string, IRequestContext],
     IResponseReturn<void>
 > {
     private readonly deleteTimeoutInMs: number;
@@ -29,7 +30,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly projectService: ProjectService,
         private readonly activityLogService: ActivityLogService,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
@@ -41,20 +42,12 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
 
     async execute(
         workspaceId: string,
-        actorId: string
+        actorId: string,
+        context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId,
-            }),
-        ];
-
         const deletedAt = this.helperDateService.create();
         try {
-            await this.databaseService.withTransaction(
+            await this.outboxService.withTransaction(
                 async tx => {
                     await this.workspaceService.softDeleteInTx(
                         tx,
@@ -76,6 +69,16 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
                         tx,
                         workspaceId
                     );
+                    const entry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.workspaceDeleted,
+                            userId: actorId,
+                            createdBy: actorId,
+                            workspaceId,
+                        },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, entry);
                 },
                 { timeout: this.deleteTimeoutInMs }
             );
@@ -91,8 +94,6 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return {};
     }

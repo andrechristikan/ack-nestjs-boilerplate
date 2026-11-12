@@ -1,5 +1,4 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -18,11 +17,10 @@ export class WorkspaceQueue extends QueueBase implements OnModuleInit {
     constructor(
         @InjectQueue(EnumWorkspaceQueue.workspace)
         protected readonly queue: Queue,
-        protected readonly sentryService: SentryService,
         protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super(queue, sentryService, cacheService);
+        super(queue, cacheService);
         this.defTz = this.configService.get<string>('app.timezone')!;
         this.expirySweepCron = this.configService.get<string>(
             'workspace.invite.expirySweepCron'

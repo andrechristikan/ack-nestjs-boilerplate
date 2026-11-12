@@ -78,7 +78,8 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         rows: ITermPolicyAcceptanceRow[]
     ): Promise<void>;
-    create(
+    createInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
@@ -87,17 +88,20 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string
     ): Promise<boolean>;
-    updateContent(
+    updateContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         content: ITermPolicyContent,
         expectedUpdatedAt: Date
     ): Promise<boolean>;
-    addContent(
+    addContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         newContent: ITermPolicyContent
     ): Promise<boolean>;
-    removeContent(
+    removeContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto,

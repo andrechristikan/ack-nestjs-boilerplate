@@ -16,7 +16,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Country, TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -89,13 +89,10 @@ describe('UserCreateByAdminUseCase', () => {
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userLoginCredential,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
+    const context = buildRequestContext('admin-bramble');
+    const activityEntry = {
+        queue: 'activity-entry',
+    } as unknown as IOutboxEffect;
     const welcomeEffect: IOutboxEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
@@ -248,7 +245,10 @@ describe('UserCreateByAdminUseCase', () => {
         helperDateService.formatToIso.mockReturnValue(
             '2026-03-05T07:00:00.000+07:00'
         );
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockReturnValue(activityEntry);
+        userRegistrationService.buildCreateByAdminStages.mockReturnValue([
+            stageInput,
+        ]);
         notificationService.notify.mockReturnValue(welcomeEffect);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
@@ -318,10 +318,12 @@ describe('UserCreateByAdminUseCase', () => {
             ]);
         });
 
-        it('commits once without the policy assertion, stages the rows, and adds the welcome effect with the generated password on the same tx', async () => {
-            await expect(useCase.execute(dto, actor)).resolves.toEqual({
-                data: { id: 'user-bramble' },
-            });
+        it('commits once without the policy assertion, and adds the entries and the welcome effect with the generated password on the same tx', async () => {
+            await expect(useCase.execute(dto, actor, context)).resolves.toEqual(
+                {
+                    data: { id: 'user-bramble' },
+                }
+            );
 
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
@@ -357,14 +359,16 @@ describe('UserCreateByAdminUseCase', () => {
                     passwordExpiredAt: '2026-03-05T07:00:00.000+07:00',
                 }
             );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                welcomeEffect,
-            ]);
             expect(
                 userRegistrationService.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                stageInput,
+                context
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                activityEntry,
+                welcomeEffect,
             ]);
         });
 
@@ -374,16 +378,20 @@ describe('UserCreateByAdminUseCase', () => {
                 passwordString: 'random-password',
             });
 
-            await useCase.execute(dto, actor);
+            await useCase.execute(dto, actor, context);
 
             expect(notificationService.notify).not.toHaveBeenCalled();
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, []);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                activityEntry,
+            ]);
         });
 
         it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {
             roleService.getById.mockRejectedValue(new RoleNotFoundException());
 
-            await expect(useCase.execute(dto, actor)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(dto, actor, context)
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
                 messagePath: 'role.error.notFound',
@@ -399,7 +407,9 @@ describe('UserCreateByAdminUseCase', () => {
                 throw new RoleRankForbiddenException();
             });
 
-            await expect(useCase.execute(dto, actor)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(dto, actor, context)
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
             });
@@ -418,7 +428,9 @@ describe('UserCreateByAdminUseCase', () => {
                 new CountryNotFoundException()
             );
 
-            await expect(useCase.execute(dto, actor)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(dto, actor, context)
+            ).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
             });
@@ -431,7 +443,9 @@ describe('UserCreateByAdminUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(dto, actor)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(dto, actor, context)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
                 statusCodeKey:
@@ -468,7 +482,8 @@ describe('UserCreateByAdminUseCase', () => {
             const users = await useCase['createAdminUsers'](
                 [input],
                 [welcomeEffect],
-                7000
+                7000,
+                context
             );
 
             expect(users).toEqual([committedUser]);
@@ -496,6 +511,7 @@ describe('UserCreateByAdminUseCase', () => {
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                activityEntry,
                 welcomeEffect,
             ]);
             expect(
@@ -504,7 +520,12 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('passes timeoutInMs to withTransaction', async () => {
-            await useCase['createAdminUsers']([input], [welcomeEffect], 7000);
+            await useCase['createAdminUsers'](
+                [input],
+                [welcomeEffect],
+                7000,
+                context
+            );
 
             expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
@@ -522,7 +543,8 @@ describe('UserCreateByAdminUseCase', () => {
             const users = await useCase['createAdminUsers'](
                 [input],
                 [welcomeEffect],
-                5000
+                5000,
+                context
             );
 
             expect(users).toEqual([committedUser]);
@@ -545,7 +567,12 @@ describe('UserCreateByAdminUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
+                useCase['createAdminUsers'](
+                    [input],
+                    [welcomeEffect],
+                    5000,
+                    context
+                )
             ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
                 otherError
@@ -559,7 +586,12 @@ describe('UserCreateByAdminUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
+                useCase['createAdminUsers'](
+                    [input],
+                    [welcomeEffect],
+                    5000,
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -573,7 +605,12 @@ describe('UserCreateByAdminUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
+                useCase['createAdminUsers'](
+                    [input],
+                    [welcomeEffect],
+                    5000,
+                    context
+                )
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );

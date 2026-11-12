@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
 import { RoleGetListCursorBySystemUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-system.use-case';
 import { RoleGetOneUseCase } from '@modules/role/use-cases/role.get-one.use-case';
@@ -24,6 +25,6 @@ import { Module } from '@nestjs/common';
         RoleUpdateByAdminUseCase,
         RoleDeleteByAdminUseCase,
     ],
-    imports: [],
+    imports: [ActivityLogModule],
 })
 export class RoleUseCaseModule {}

@@ -7,6 +7,11 @@ import { z } from 'zod';
 import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 import { CacheService } from '@common/cache/services/cache.service';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
@@ -439,6 +444,20 @@ describe('CacheService', () => {
                     'Entry:entry-1,Entry:Lease:entry-1'
                 )
             ).toBe(now.getTime());
+        });
+    });
+
+    describe('invalidateEffect', () => {
+        it('returns the high-priority cache invalidate effect carrying the keys and no business key', () => {
+            const effect = service.invalidateEffect(['Entry:1', 'Lease:1']);
+
+            expect(effect).toEqual({
+                queue: EnumCacheQueue.cache,
+                name: EnumCacheProcess.invalidate,
+                data: { keys: ['Entry:1', 'Lease:1'] },
+                priority: EnumQueuePriority.high,
+                idempotencyKey: null,
+            });
         });
     });
 

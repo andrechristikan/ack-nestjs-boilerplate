@@ -6,6 +6,8 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -21,7 +23,11 @@ import type {
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { Injectable } from '@nestjs/common';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyType,
+    Prisma,
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyAcceptanceService {
@@ -30,7 +36,8 @@ export class TermPolicyAcceptanceService {
         private readonly outboxService: OutboxService,
         private readonly notificationService: NotificationService,
         private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     async getPendingForUser(
@@ -119,7 +126,11 @@ export class TermPolicyAcceptanceService {
         await this.termPolicyRepository.acceptManyInTx(tx, rows);
     }
 
-    async userAccept(userId: string, type: EnumTermPolicyType): Promise<void> {
+    async userAccept(
+        userId: string,
+        type: EnumTermPolicyType,
+        context: IRequestContext
+    ): Promise<void> {
         try {
             await this.outboxService.withTransaction(async tx => {
                 const [latest] =
@@ -151,6 +162,12 @@ export class TermPolicyAcceptanceService {
                     }
                 );
                 await this.outboxService.addInTx(tx, effect);
+
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userAcceptTermPolicy },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

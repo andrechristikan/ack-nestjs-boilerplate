@@ -236,7 +236,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         await tx.termPolicyUserAcceptance.createMany({ data: rows });
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
@@ -244,7 +245,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        return this.databaseService.client.termPolicy.create({
+        return tx.termPolicy.create({
             data: {
                 id: termPolicyId,
                 type,
@@ -269,7 +270,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         return count > 0;
     }
 
-    async updateContent(
+    async updateContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         content: ITermPolicyContent,
@@ -285,22 +287,22 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        const { count } =
-            await this.databaseService.client.termPolicy.updateMany({
-                where: {
-                    id: termPolicyId,
-                    status: EnumTermPolicyStatus.draft,
-                    updatedAt: expectedUpdatedAt,
-                },
-                data: {
-                    contents: plainContents,
-                },
-            });
+        const { count } = await tx.termPolicy.updateMany({
+            where: {
+                id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
+                updatedAt: expectedUpdatedAt,
+            },
+            data: {
+                contents: plainContents,
+            },
+        });
 
         return count > 0;
     }
 
-    async addContent(
+    async addContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         newContent: ITermPolicyContent
     ): Promise<boolean> {
@@ -309,23 +311,23 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             Prisma.TermPolicyContentCreateInput
         >(newContent);
 
-        const { count } =
-            await this.databaseService.client.termPolicy.updateMany({
-                where: {
-                    id: termPolicyId,
-                    status: EnumTermPolicyStatus.draft,
+        const { count } = await tx.termPolicy.updateMany({
+            where: {
+                id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
+            },
+            data: {
+                contents: {
+                    push: plainContent,
                 },
-                data: {
-                    contents: {
-                        push: plainContent,
-                    },
-                },
-            });
+            },
+        });
 
         return count > 0;
     }
 
-    async removeContent(
+    async removeContentInTx(
+        tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto,
@@ -339,17 +341,16 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        const { count } =
-            await this.databaseService.client.termPolicy.updateMany({
-                where: {
-                    id: termPolicyId,
-                    status: EnumTermPolicyStatus.draft,
-                    updatedAt: expectedUpdatedAt,
-                },
-                data: {
-                    contents: plainContents,
-                },
-            });
+        const { count } = await tx.termPolicy.updateMany({
+            where: {
+                id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
+                updatedAt: expectedUpdatedAt,
+            },
+            data: {
+                contents: plainContents,
+            },
+        });
 
         return count > 0;
     }

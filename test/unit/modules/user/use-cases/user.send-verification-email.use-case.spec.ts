@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -11,8 +10,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
@@ -20,18 +18,10 @@ import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.s
 describe('UserSendVerificationEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext(null);
 
     let useCase: UserSendVerificationEmailUseCase;
 
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userVerifiedEmail,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     const user: User = {
         id: 'user-wren',
         name: 'Wren',
@@ -66,7 +56,6 @@ describe('UserSendVerificationEmailUseCase', () => {
     };
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
         userVerificationService.getOneForResendByEmail.mockResolvedValue(user);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -76,7 +65,6 @@ describe('UserSendVerificationEmailUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserSendVerificationEmailUseCase);
@@ -87,50 +75,18 @@ describe('UserSendVerificationEmailUseCase', () => {
             email: 'wren@example.com',
         };
 
-        it('sends the verification email through the service, stages the activity row, and answers empty', async () => {
-            const result = await useCase.execute(dto);
+        it('sends the verification email through the service with the context and answers empty', async () => {
+            const result = await useCase.execute(dto, context);
 
             expect(result).toEqual({});
             expect(
                 userVerificationService.getOneForResendByEmail
             ).toHaveBeenCalledWith('wren@example.com');
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userSendVerificationEmail,
-                userId: 'user-wren',
-                createdBy: 'user-wren',
-            });
             expect(userVerificationService.sendEmail).toHaveBeenCalledWith(
                 'user-wren',
-                'wren@example.com'
+                'wren@example.com',
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-        });
-
-        it('reads the gate, commits the email effect, then stages in order', async () => {
-            const callOrder: string[] = [];
-            userVerificationService.getOneForResendByEmail.mockImplementation(
-                async () => {
-                    callOrder.push('getOneForResendByEmail');
-
-                    return user;
-                }
-            );
-            userVerificationService.sendEmail.mockImplementation(async () => {
-                callOrder.push('sendEmail');
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await useCase.execute(dto);
-
-            expect(callOrder).toEqual([
-                'getOneForResendByEmail',
-                'sendEmail',
-                'stagePrepared',
-            ]);
         });
 
         it('answers empty and sends nothing when the account is missing, inactive, or already verified', async () => {
@@ -138,20 +94,19 @@ describe('UserSendVerificationEmailUseCase', () => {
                 null
             );
 
-            await expect(useCase.execute(dto)).resolves.toEqual({});
+            await expect(useCase.execute(dto, context)).resolves.toEqual({});
 
             expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the send rejects', async () => {
+        it('rejects when the send rejects', async () => {
             userVerificationService.sendEmail.mockRejectedValue(
                 new Error('commit-failed')
             );
 
-            await expect(useCase.execute(dto)).rejects.toThrow('commit-failed');
-
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(useCase.execute(dto, context)).rejects.toThrow(
+                'commit-failed'
+            );
         });
     });
 });

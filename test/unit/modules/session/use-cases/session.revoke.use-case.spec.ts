@@ -2,23 +2,28 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 
 describe('SessionRevokeUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
-    const selfActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userRevokeSession,
-        metadata: {},
-        userId: null,
-        createdBy: null,
+    const context: IRequestContext = {
+        actorUserId: 'admin-1',
         workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
     };
     let useCase: SessionRevokeUseCase;
 
@@ -28,41 +33,36 @@ describe('SessionRevokeUseCase', () => {
             providers: [
                 SessionRevokeUseCase,
                 { provide: SessionService, useValue: sessionService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(SessionRevokeUseCase);
     });
 
     describe('execute', () => {
-        it('prepares the activity log, revokes, and stages the row', async () => {
-            activityLogService.prepare.mockReturnValue(selfActivityLog);
+        it('revokes the session passing the request context and returns an empty envelope', async () => {
             sessionService.revoke.mockResolvedValue();
 
-            const result = await useCase.execute('user-1', 'session-1');
+            const result = await useCase.execute(
+                'user-1',
+                'session-1',
+                context
+            );
 
             expect(result).toEqual({});
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userRevokeSession,
-            });
             expect(sessionService.revoke).toHaveBeenCalledWith(
                 'user-1',
-                'session-1'
+                'session-1',
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                selfActivityLog,
-            ]);
         });
 
-        it('stages nothing when the domain throws', async () => {
-            activityLogService.prepare.mockReturnValue(selfActivityLog);
+        it('rethrows the domain exception', async () => {
             const failure = new SessionNotFoundException();
             sessionService.revoke.mockRejectedValue(failure);
 
-            const rejection = useCase.execute('user-1', 'session-1');
+            const rejection = useCase.execute('user-1', 'session-1', context);
 
             await expect(rejection).rejects.toBe(failure);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

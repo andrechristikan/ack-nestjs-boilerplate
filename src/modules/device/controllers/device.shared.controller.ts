@@ -1,7 +1,11 @@
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -86,12 +90,14 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @Body({ schema: DeviceRefreshRequestSchema })
-        body: DeviceRefreshRequestDto
+        body: DeviceRefreshRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
         return this.deviceRefreshUseCase.execute(
             userId,
             deviceOwnershipId,
-            body
+            body,
+            context
         );
     }
 
@@ -106,8 +112,13 @@ export class DeviceSharedController {
     async remove(
         @AuthJwtPayload('userId') userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
-        deviceOwnershipId: string
+        deviceOwnershipId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.deviceRemoveUseCase.execute(userId, deviceOwnershipId);
+        return this.deviceRemoveUseCase.execute(
+            userId,
+            deviceOwnershipId,
+            context
+        );
     }
 }

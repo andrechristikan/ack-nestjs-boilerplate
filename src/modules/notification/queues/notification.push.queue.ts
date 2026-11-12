@@ -1,5 +1,4 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -18,11 +17,10 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationPush)
         protected readonly queue: Queue,
-        protected readonly sentryService: SentryService,
         protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super(queue, sentryService, cacheService);
+        super(queue, cacheService);
         this.defTz = this.configService.get<string>('app.timezone')!;
         this.cleanupStaleTokensCron = this.configService.get<string>(
             'notification.push.cleanupStaleTokensCron'

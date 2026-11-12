@@ -14,7 +14,15 @@ import {
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -32,6 +40,9 @@ describe('RoleCreateByAdminUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role: Role = {
@@ -90,12 +101,28 @@ describe('RoleCreateByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.adminRoleCreate,
-        metadata,
-        userId: null,
-        createdBy: null,
+    const context: IRequestContext = {
+        actorUserId: actorUser.id,
         workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
+    const effect: IOutboxEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
     };
 
     let useCase: RoleCreateByAdminUseCase;
@@ -104,13 +131,17 @@ describe('RoleCreateByAdminUseCase', () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        activityLogService.recordEffect.mockReturnValue(effect);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleCreateByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleUtil, useValue: roleUtil },
@@ -121,18 +152,20 @@ describe('RoleCreateByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('creates the role and wraps the result', async () => {
-            const body: RoleCreateRequestDto = {
-                name: 'manager',
-                type: EnumRoleType.admin,
-            };
-            databaseUtil.createId.mockReturnValue(role.id);
-            roleService.createByAdmin.mockResolvedValue(roleWithPolicies);
+        const body: RoleCreateRequestDto = {
+            name: 'manager',
+            type: EnumRoleType.admin,
+        };
 
-            const result = await useCase.execute(body, actorUser);
+        it('creates the role on the outbox transaction and wraps the result', async () => {
+            databaseUtil.createId.mockReturnValue(role.id);
+            roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
+
+            const result = await useCase.execute(body, actorUser, context);
 
             expect(result).toEqual({ data: roleWithPolicies });
-            expect(roleService.createByAdmin).toHaveBeenCalledWith(
+            expect(roleService.createByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 role.id,
                 {
                     name: 'manager',
@@ -143,23 +176,11 @@ describe('RoleCreateByAdminUseCase', () => {
             );
         });
 
-        it('prepares the create activity log with the drawn id before the write and stages it after', async () => {
-            const body: RoleCreateRequestDto = {
-                name: 'manager',
-                type: EnumRoleType.admin,
-            };
+        it('adds the create activity entry from the drawn id and the passed context on the same tx', async () => {
             databaseUtil.createId.mockReturnValue(role.id);
-            roleService.createByAdmin.mockImplementation(async () => {
-                expect(activityLogService.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.adminRoleCreate,
-                    metadata,
-                });
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-                return roleWithPolicies;
-            });
-
-            await useCase.execute(body, actorUser);
+            await useCase.execute(body, actorUser, context);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
@@ -170,23 +191,22 @@ describe('RoleCreateByAdminUseCase', () => {
                 },
                 now
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.adminRoleCreate, metadata },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
-        it('stages nothing when the domain throws', async () => {
-            const body: RoleCreateRequestDto = {
-                name: 'manager',
-                type: EnumRoleType.admin,
-            };
+        it('adds no entry when the write throws', async () => {
+            const failure = new Error('create failed');
             databaseUtil.createId.mockReturnValue(role.id);
-            roleService.createByAdmin.mockRejectedValue(new Error('boom'));
+            roleService.createByAdminInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(body, actorUser)).rejects.toThrow(
-                'boom'
-            );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(
+                useCase.execute(body, actorUser, context)
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

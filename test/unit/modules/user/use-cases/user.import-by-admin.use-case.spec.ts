@@ -1,290 +1,62 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
-    EnumActivityLogAction,
-    EnumPasswordHistoryType,
-    EnumRoleType,
-    EnumTermPolicyType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-    EnumVerificationType,
-} from '@generated/prisma-client/client';
-import type { Country, TwoFactor } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { CountryService } from '@modules/country/services/country.service';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import {
-    EnumNotificationKind,
-    EnumNotificationProcess,
-    EnumNotificationQueue,
-} from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { RoleService } from '@modules/role/services/role.service';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import type { IRole } from '@modules/role/interfaces/role.interface';
-import { UserService } from '@modules/user/services/user.service';
-import { UserImportService } from '@modules/user/services/user.import.service';
-import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
+import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type {
-    IUser,
-    IUserCreateWithWorkspaceInput,
     IUserImport,
     IUserImportUsernameChecks,
-    IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
-import { UserCreateUtil } from '@modules/user/utils/user.create.util';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import { UserRegistrationService } from '@modules/user/services/user.registration.service';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserImportService } from '@modules/user/services/user.import.service';
+import { UserService } from '@modules/user/services/user.service';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const workspaceService: MockProxy<WorkspaceService> =
-        mock<WorkspaceService>();
-    const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const tx = {} as IDatabaseTransactionClient;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
-    const userRegistrationService: MockProxy<UserRegistrationService> =
-        mock<UserRegistrationService>();
-    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
-        mock<TermPolicyAcceptanceService>();
     let useCase: UserImportByAdminUseCase;
 
-    const now = new Date('2026-03-01T00:00:00.000Z');
-    const configValues: Record<string, unknown> = {
-        'user.default.role': 'user',
-        'user.default.country': 'ID',
-        'user.create.timeoutInMs': 5000,
-        'user.create.bulkTimeoutInMs': 30000,
-    };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userLoginCredential,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
-    const welcomeEffect: IOutboxEffect = {
-        queue: EnumNotificationQueue.notification,
-        name: EnumNotificationProcess.notify,
+    const context = buildRequestContext('admin-bramble');
+    const importEffect: IOutboxEffect = {
+        queue: EnumUserQueue.user,
+        name: EnumUserProcess.importByAdmin,
         data: {
-            kind: EnumNotificationKind.welcomeByAdmin,
-            context: { userId: 'user-bramble', proceedBy: 'admin-bramble' },
-            recipient: null,
-            notificationId: null,
+            rows: [
+                {
+                    username: 'bramble2fox',
+                    email: 'bramble@example.com',
+                    name: null,
+                },
+            ],
+            context,
         },
         priority: EnumQueuePriority.medium,
-        idempotencyKey: 'welcomeByAdmin-user-bramble',
-    };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-bramble',
-        userId: 'user-bramble',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-    const baseUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-        twoFactor: null,
-    };
-    const committedUser: IUser = { ...baseUser, twoFactor };
-    const country: Country = {
-        id: 'country-bramble',
-        name: 'Indonesia',
-        alpha2Code: 'ID',
-        alpha3Code: 'IDN',
-        phoneCode: ['62'],
-        continent: 'Asia',
-        timezone: 'Asia/Jakarta',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
-        workspaceId: 'workspace-bramble',
-        slugCandidates: ['w-bramble', 'w-bramble-b'],
-        name: "bramble2fox's Workspace",
-    };
-    const password: IAuthPassword = {
-        passwordHash: 'hashed',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-    };
-    const input: IUserCreateWithWorkspaceInput = {
-        userId: 'user-bramble',
-        email: 'bramble@example.com',
-        name: null,
-        username: 'bramble2fox',
-        countryId: 'country-bramble',
-        roleId: 'role-bramble',
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        isVerified: false,
-        verifiedAt: null,
-        acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
-        password,
-        passwordHistoryType: EnumPasswordHistoryType.signUp,
-        verification: {
-            reference: 'VRF-bramble',
-            token: 'hashed-token',
-            type: EnumVerificationType.email,
-            to: 'bramble@example.com',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-            verifiedAt: null,
-            isUsed: false,
-        },
-        workspaceContext: personalContext,
-        createdBy: 'user-bramble',
-    };
-    const stageInput = {
-        action: EnumActivityLogAction.userSignedUp,
-        userId: 'user-bramble',
-        createdBy: 'user-bramble',
-        metadata: {},
-    };
-    const role: IRole = {
-        id: 'role-bramble',
-        name: 'user',
-        type: EnumRoleType.user,
-        isImmutable: false,
+        idempotencyKey: null,
     };
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T07:00:00.000+07:00'
-        );
-        activityLogService.prepare.mockReturnValue(activityLog);
-        notificationService.notify.mockReturnValue(welcomeEffect);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
-        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-            { userId: 'user-bramble', types: [], createdBy: 'user-bramble' },
-        ]);
-        workspaceUtil.countSlugAttempts.mockReturnValue(1);
-        workspaceUtil.buildOwnedUsers.mockReturnValue([]);
-        roleService.getByName.mockResolvedValue(role);
-        countryService.getOne.mockResolvedValue(country);
+        outboxService.add.mockResolvedValue('outbox-bramble');
+        userService.importByAdminEffect.mockReturnValue(importEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserImportByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: UserImportService, useValue: userImportService },
-                { provide: WorkspaceService, useValue: workspaceService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
-                {
-                    provide: UserRegistrationService,
-                    useValue: userRegistrationService,
-                },
-                {
-                    provide: TermPolicyAcceptanceService,
-                    useValue: termPolicyAcceptanceService,
-                },
-                { provide: RoleService, useValue: roleService },
-                { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: ConfigService,
-                    useValue: buildConfigService(configValues),
-                },
             ],
         }).compile();
         useCase = module.get(UserImportByAdminUseCase);
@@ -310,27 +82,26 @@ describe('UserImportByAdminUseCase', () => {
         };
 
         beforeEach(() => {
-            countryService.getIdByAlpha2Code.mockResolvedValue(
-                'country-bramble'
-            );
             userImportService.getExistingEmails.mockResolvedValue([]);
             userImportService.getUsernameChecks.mockResolvedValue(
                 usernameChecks
             );
-            userImportService.prepareImportByAdmin.mockResolvedValue({
-                inputs: [input],
-                passwordHasheds: [password],
-                passwordStrings: ['random-password'],
-            });
-            userImportService.buildImportByAdminStages.mockReturnValue([
-                stageInput,
-            ]);
         });
 
-        it('checks the emails, prepares, commits in bulk with the bulk timeout, stages the rows, and adds one welcome effect per user on the same tx', async () => {
-            await expect(
-                useCase.execute(rows, 'admin-bramble')
-            ).resolves.toEqual({});
+        it('adds one importByAdmin effect holding the rows and the context and answers its outbox id', async () => {
+            await expect(useCase.execute(rows, context)).resolves.toEqual({
+                data: { outboxId: 'outbox-bramble' },
+            });
+
+            expect(userService.importByAdminEffect).toHaveBeenCalledWith(
+                imported,
+                context
+            );
+            expect(outboxService.add).toHaveBeenCalledWith(importEffect);
+        });
+
+        it('runs the email, username, and row checks in order before adding the effect', async () => {
+            await useCase.execute(rows, context);
 
             expect(userImportService.getExistingEmails).toHaveBeenCalledWith([
                 'bramble@example.com',
@@ -341,60 +112,18 @@ describe('UserImportByAdminUseCase', () => {
             expect(
                 userImportService.assertEmailsAvailable
             ).toHaveBeenCalledWith([]);
-            expect(roleService.getByName).toHaveBeenCalledWith('user');
-            expect(countryService.getIdByAlpha2Code).toHaveBeenCalledWith('ID');
-            expect(userImportService.prepareImportByAdmin).toHaveBeenCalledWith(
-                imported,
-                'admin-bramble',
-                role,
-                'country-bramble',
-                usernameChecks
-            );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
-                expect.any(Function),
-                { timeout: 30000 }
-            );
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [input]
-            );
             expect(
-                userImportService.buildImportByAdminStages
-            ).toHaveBeenCalledWith([input], [committedUser]);
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
-            expect(notificationService.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.welcomeByAdmin,
-                {
-                    userId: 'user-bramble',
-                    proceedBy: 'admin-bramble',
-                    password: 'random-password',
-                    passwordCreatedAt: '2026-03-05T07:00:00.000+07:00',
-                    passwordExpiredAt: '2026-03-05T07:00:00.000+07:00',
-                }
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                welcomeEffect,
-            ]);
+                userImportService.assertImportByAdminRows
+            ).toHaveBeenCalledWith(imported, usernameChecks);
+            expect(
+                userImportService.assertEmailsAvailable
+            ).toHaveBeenCalledBefore(userImportService.assertImportByAdminRows);
+            expect(
+                userImportService.assertImportByAdminRows
+            ).toHaveBeenCalledBefore(outboxService.add);
         });
 
-        it('reads the role and the country before preparing the import', async () => {
-            await useCase.execute(rows, 'admin-bramble');
-
-            expect(roleService.getByName).toHaveBeenCalledWith('user');
-            expect(countryService.getIdByAlpha2Code).toHaveBeenCalledWith('ID');
-            expect(userImportService.prepareImportByAdmin).toHaveBeenCalledWith(
-                imported,
-                'admin-bramble',
-                role,
-                'country-bramble',
-                usernameChecks
-            );
-        });
-
-        it('throws the email error before reading the default role', async () => {
+        it('throws the email error and adds no effect when an email exists', async () => {
             userImportService.getExistingEmails.mockResolvedValue([
                 'bramble@example.com',
             ]);
@@ -402,32 +131,7 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserImportEmailExistException('bramble@example.com');
             });
 
-            await expect(
-                useCase.execute(rows, 'admin-bramble')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.importEmailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importEmailExist
-                    ],
-                messagePath: 'user.error.importEmailExist',
-            });
-            expect(roleService.getByName).not.toHaveBeenCalled();
-            expect(countryService.getIdByAlpha2Code).not.toHaveBeenCalled();
-        });
-
-        it('throws the import email exception before the role and country gates', async () => {
-            userImportService.getExistingEmails.mockResolvedValue([
-                'bramble@example.com',
-            ]);
-            userImportService.assertEmailsAvailable.mockImplementation(() => {
-                throw new UserImportEmailExistException('bramble@example.com');
-            });
-
-            await expect(
-                useCase.execute(rows, 'admin-bramble')
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importEmailExist,
                 statusCodeKey:
@@ -437,178 +141,35 @@ describe('UserImportByAdminUseCase', () => {
                 messagePath: 'user.error.importEmailExist',
             });
             expect(
-                userImportService.prepareImportByAdmin
+                userImportService.assertImportByAdminRows
             ).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
         });
 
-        it('throws RoleNotFoundException before preparing when the default role is missing', async () => {
-            roleService.getByName.mockRejectedValue(
-                new RoleNotFoundException()
-            );
-
-            await expect(
-                useCase.execute(rows, 'admin-bramble')
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
+        it('throws the username error and adds no effect when a row check fails', async () => {
+            userImportService.assertImportByAdminRows.mockImplementation(() => {
+                throw new UserImportUsernameExistException('bramble2fox');
             });
-            expect(
-                userImportService.prepareImportByAdmin
-            ).not.toHaveBeenCalled();
-        });
 
-        it('throws CountryNotFoundException before preparing when the default country is missing', async () => {
-            countryService.getIdByAlpha2Code.mockRejectedValue(
-                new CountryNotFoundException()
-            );
-
-            await expect(
-                useCase.execute(rows, 'admin-bramble')
-            ).rejects.toMatchObject({
-                module: 'country',
-                statusCode: EnumCountryStatusCodeError.notFound,
+            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.importUsernameExist,
+                messagePath: 'user.error.importUsernameExist',
             });
-            expect(
-                userImportService.prepareImportByAdmin
-            ).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('createAdminUsers', () => {
-        const acceptanceEntry = {
-            userId: 'user-bramble',
-            types: [],
-            createdBy: 'user-bramble',
-        };
-        const owned = {
-            userId: 'user-bramble',
-            workspaceId: 'workspace-bramble',
-            name: 'Bramble',
-            slug: 'w-bramble',
-        };
-
-        beforeEach(() => {
-            userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-                acceptanceEntry,
-            ]);
-            workspaceUtil.countSlugAttempts.mockReturnValue(2);
-            workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
+            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(userService.importByAdminEffect).not.toHaveBeenCalled();
         });
 
-        it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
-            const users = await useCase['createAdminUsers'](
-                [input],
-                [welcomeEffect],
-                7000
-            );
-
-            expect(users).toEqual([committedUser]);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [input]
-            );
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                0
-            );
-            expect(
-                workspaceService.createOwnedForUsersInTx
-            ).toHaveBeenCalledWith(tx, [owned]);
-            expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
-            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
-                workspaceService.createOwnedForUsersInTx
-            );
-            expect(
-                workspaceService.createOwnedForUsersInTx
-            ).toHaveBeenCalledBefore(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                welcomeEffect,
-            ]);
-            expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
-        });
-
-        it('passes timeoutInMs to withTransaction', async () => {
-            await useCase['createAdminUsers']([input], [welcomeEffect], 7000);
-
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
-                expect.any(Function),
-                { timeout: 7000 }
-            );
-        });
-
-        it('retries with the next attempt after a slug collision', async () => {
-            const collision = new Error('slug collision');
-            outboxService.withTransaction
-                .mockRejectedValueOnce(collision)
-                .mockImplementationOnce(async fn => fn(tx));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            const users = await useCase['createAdminUsers'](
-                [input],
-                [welcomeEffect],
-                5000
-            );
-
-            expect(users).toEqual([committedUser]);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                1
-            );
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
-        });
-
-        it('throws the mapped AppBaseException of mapCreateCollision', async () => {
-            const otherError = new Error('duplicate email');
-            outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            const mapped = new WorkspaceNotFoundException();
-            userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
-
-            await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
-            ).rejects.toBe(mapped);
-            expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
-                otherError
-            );
-        });
-
-        it('wraps an unmapped error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
-
-            await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
+        it('throws the bad-word error and adds no effect when a username holds a bad word', async () => {
+            userImportService.assertImportByAdminRows.mockImplementation(() => {
+                throw new UserUsernameContainBadWordException();
             });
-        });
 
-        it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
-            outboxService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            await expect(
-                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
-            ).rejects.toBeInstanceOf(
-                DatabaseUniqueValueGenerationFailedException
-            );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
+            });
+            expect(outboxService.add).not.toHaveBeenCalled();
         });
     });
 });

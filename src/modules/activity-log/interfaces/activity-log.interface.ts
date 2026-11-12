@@ -17,14 +17,6 @@ export type IActivityLogMetadata = Record<
     string | number | boolean | Date
 >;
 
-export interface IActivityLogStaged {
-    action: EnumActivityLogAction;
-    metadata: IActivityLogMetadata;
-    userId: string | null;
-    createdBy: string | null;
-    workspaceId: string | null;
-}
-
 export interface IActivityLogActionContract {
     user: EnumActivityLogUser;
     workspace: EnumActivityLogWorkspace;
@@ -34,11 +26,7 @@ export interface IActivityLogActionContract {
 export type IActivityLogMetadataParseResult =
     z.ZodSafeParseResult<IActivityLogMetadata>;
 
-export interface IActivityLogFlushOptions {
-    payloadUserId: string | null;
-}
-
-export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
+export type IActivityLogInput<A extends EnumActivityLogAction> = {
     action: A;
     metadata?: IActivityLogMetadata;
     userId?: string;

@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
@@ -56,6 +57,6 @@ import { Module } from '@nestjs/common';
         TermPolicyProcessDeleteContentUseCase,
         TermPolicyProcessCopyContentUseCase,
     ],
-    imports: [TermPolicyModule, NotificationModule],
+    imports: [ActivityLogModule, TermPolicyModule, NotificationModule],
 })
 export class TermPolicyUseCaseModule {}

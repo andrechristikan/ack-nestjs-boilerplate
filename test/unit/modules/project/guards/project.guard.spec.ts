@@ -10,7 +10,7 @@ import { ProjectStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('ProjectGuard', () => {
@@ -73,7 +73,7 @@ describe('ProjectGuard', () => {
                 true
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                WorkspaceStoreKey
+                RequestWorkspaceStoreKey
             );
             expect(projectService.validateProjectGuard).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439013',

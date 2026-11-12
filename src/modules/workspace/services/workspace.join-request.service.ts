@@ -11,8 +11,10 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
@@ -22,6 +24,7 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
@@ -29,6 +32,7 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
@@ -61,6 +65,7 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly notificationService: NotificationService,
+        private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
@@ -84,6 +89,41 @@ export class WorkspaceJoinRequestService {
             this.joinRequestReviewLinkPattern,
             { homeUrl: this.homeUrl, joinRequestId }
         );
+    }
+
+    private reviewActivityEffects(
+        action: EnumActivityLogAction,
+        byAdminAction: EnumActivityLogAction,
+        reviewerId: string,
+        joinRequest: WorkspaceJoinRequest,
+        context: IRequestContext
+    ): IOutboxEffect[] {
+        const reviewerEntry = this.activityLogService.recordEffect(
+            {
+                action,
+                userId: reviewerId,
+                createdBy: reviewerId,
+                workspaceId: joinRequest.workspaceId,
+                metadata: { targetUserId: joinRequest.userId },
+            },
+            context
+        );
+        if (joinRequest.userId === reviewerId) {
+            return [reviewerEntry];
+        }
+
+        const requesterEntry = this.activityLogService.recordEffect(
+            {
+                action: byAdminAction,
+                userId: joinRequest.userId,
+                createdBy: reviewerId,
+                workspaceId: joinRequest.workspaceId,
+                metadata: { actorUserId: reviewerId },
+            },
+            context
+        );
+
+        return [reviewerEntry, requesterEntry];
     }
 
     async assertJoinRequestAllowed(): Promise<void> {
@@ -117,7 +157,7 @@ export class WorkspaceJoinRequestService {
         return workspace;
     }
 
-    /** Creates the pending request and adds one notification row per reviewer in one transaction, dispatched after the commit. */
+    /** Creates the pending request and adds one notification row per reviewer and the requester's activity entry in one transaction, dispatched after the commit. */
     async createJoinRequest(
         userId: string,
         create: IWorkspaceJoinRequestCreate,
@@ -125,7 +165,8 @@ export class WorkspaceJoinRequestService {
             workspaceName,
             requesterName,
             reviewerIds,
-        }: IWorkspaceJoinRequestNotice
+        }: IWorkspaceJoinRequestNotice,
+        context: IRequestContext
     ): Promise<WorkspaceJoinRequest> {
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceJoinRequestNoncePattern,
@@ -169,6 +210,16 @@ export class WorkspaceJoinRequestService {
                     )
                 );
                 await this.outboxService.addManyInTx(tx, effects);
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.workspaceJoinRequested,
+                        userId,
+                        createdBy: userId,
+                        workspaceId: create.workspaceId,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
 
                 return joinRequest;
             });
@@ -222,11 +273,12 @@ export class WorkspaceJoinRequestService {
         return joinRequest;
     }
 
-    /** Accepts the request, adds the member and the requester's notification row in one transaction, dispatched after the commit. */
+    /** Accepts the request, adds the member, the requester's notification row, and the activity entries in one transaction, dispatched after the commit. */
     async acceptJoinRequest(
         joinRequest: WorkspaceJoinRequest,
         reviewerId: string,
-        workspaceName: string
+        workspaceName: string,
+        context: IRequestContext
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
 
@@ -262,6 +314,14 @@ export class WorkspaceJoinRequestService {
                     }
                 );
                 await this.outboxService.addInTx(tx, effect);
+                const entries = this.reviewActivityEffects(
+                    EnumActivityLogAction.workspaceJoinAccepted,
+                    EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
+                    reviewerId,
+                    joinRequest,
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, entries);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -285,12 +345,13 @@ export class WorkspaceJoinRequestService {
         }
     }
 
-    /** Rejects the request and adds the requester's notification row in one transaction, dispatched after the commit. */
+    /** Rejects the request and adds the requester's notification row and the activity entries in one transaction, dispatched after the commit. */
     async rejectJoinRequest(
         joinRequest: WorkspaceJoinRequest,
         reviewerId: string,
         workspaceName: string,
-        rejectReasonCode: EnumWorkspaceJoinRejectReason
+        rejectReasonCode: EnumWorkspaceJoinRejectReason,
+        context: IRequestContext
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
         const rejectReasonLabel = this.messageService.setMessage(
@@ -324,6 +385,14 @@ export class WorkspaceJoinRequestService {
                     }
                 );
                 await this.outboxService.addInTx(tx, effect);
+                const entries = this.reviewActivityEffects(
+                    EnumActivityLogAction.workspaceJoinRejected,
+                    EnumActivityLogAction.workspaceJoinRejectedByAdmin,
+                    reviewerId,
+                    joinRequest,
+                    context
+                );
+                await this.outboxService.addManyInTx(tx, entries);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

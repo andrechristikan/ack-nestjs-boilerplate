@@ -2,7 +2,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
@@ -164,8 +164,8 @@ export class UserCreateUtil {
         contract: IUserCreateContract,
         inputs: IUserCreateWithWorkspaceInput[],
         users: IUser[]
-    ): IActivityLogStageInput<EnumActivityLogAction>[] {
-        const stages: IActivityLogStageInput<EnumActivityLogAction>[] = [];
+    ): IActivityLogInput<EnumActivityLogAction>[] {
+        const stages: IActivityLogInput<EnumActivityLogAction>[] = [];
 
         for (const [index, input] of inputs.entries()) {
             const activities = this.buildActivities(

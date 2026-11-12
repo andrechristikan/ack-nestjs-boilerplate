@@ -45,7 +45,13 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import {
+    EnumUserProcess,
+    EnumUserQueue,
+    EnumUserSignUpWorkspaceContextType,
+} from '@modules/user/enums/user.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 describe('UserService', () => {
@@ -492,17 +498,6 @@ describe('UserService', () => {
             userRepository.findNameById.mockResolvedValue(ref);
 
             await expect(service.getNameById('user-cobalt')).resolves.toBe(ref);
-        });
-    });
-
-    describe('setLastWorkspace', () => {
-        it('delegates to the repository', async () => {
-            await service.setLastWorkspace('user-cobalt', 'workspace-cobalt');
-
-            expect(userRepository.setLastWorkspace).toHaveBeenCalledWith(
-                'user-cobalt',
-                'workspace-cobalt'
-            );
         });
     });
 
@@ -1383,6 +1378,29 @@ describe('UserService', () => {
             expect(
                 service['gatesPasswordExpiryOn'](EnumUserLoginWith.socialApple)
             ).toBe(false);
+        });
+    });
+
+    describe('importByAdminEffect', () => {
+        it('returns a medium-priority importByAdmin effect on the user queue holding the rows and the context, with no business key', () => {
+            const rows = [
+                {
+                    username: 'bramble2fox',
+                    email: 'bramble@example.com',
+                    name: null,
+                },
+            ];
+            const context = buildRequestContext('admin-bramble');
+
+            const effect = service.importByAdminEffect(rows, context);
+
+            expect(effect).toEqual({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.importByAdmin,
+                data: { rows, context },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: null,
+            });
         });
     });
 });

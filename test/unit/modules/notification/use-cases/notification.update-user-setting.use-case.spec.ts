@@ -2,12 +2,10 @@ import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-cases/notification.update-user-setting.use-case';
@@ -15,8 +13,22 @@ import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-
 describe('NotificationUpdateUserSettingUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context: IRequestContext = {
+        actorUserId: 'user-id',
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
     let useCase: NotificationUpdateUserSettingUseCase;
 
     beforeEach(async () => {
@@ -25,7 +37,6 @@ describe('NotificationUpdateUserSettingUseCase', () => {
             providers: [
                 NotificationUpdateUserSettingUseCase,
                 { provide: NotificationService, useValue: notificationService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(NotificationUpdateUserSettingUseCase);
@@ -37,47 +48,27 @@ describe('NotificationUpdateUserSettingUseCase', () => {
             type: EnumNotificationType.userActivity,
             isActive: true,
         };
-        const stagedActivityLog: IActivityLogStaged = {
-            action: EnumActivityLogAction.userUpdateNotificationSetting,
-            metadata: {},
-            userId: null,
-            createdBy: null,
-            workspaceId: null,
-        };
 
-        it('prepares the activity row, updates the setting, stages the row, and returns an empty response', async () => {
-            activityLogService.prepare.mockReturnValue(stagedActivityLog);
+        it('updates the setting passing the request context and returns an empty response', async () => {
             notificationService.updateUserSetting.mockResolvedValue(undefined);
 
-            const result = await useCase.execute('user-id', data);
+            const result = await useCase.execute('user-id', data, context);
 
             expect(result).toEqual({});
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userUpdateNotificationSetting,
-                metadata: {
-                    channel: data.channel,
-                    type: data.type,
-                    isActive: data.isActive,
-                },
-            });
             expect(notificationService.updateUserSetting).toHaveBeenCalledWith(
                 'user-id',
-                data
+                data,
+                context
             );
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
-        it('stages nothing when the domain update rejects', async () => {
+        it('rethrows the domain rejection', async () => {
             const failure = new Error('write failed');
-            activityLogService.prepare.mockReturnValue(stagedActivityLog);
             notificationService.updateUserSetting.mockRejectedValue(failure);
 
-            await expect(useCase.execute('user-id', data)).rejects.toBe(
-                failure
-            );
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(
+                useCase.execute('user-id', data, context)
+            ).rejects.toBe(failure);
         });
     });
 });

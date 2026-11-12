@@ -1,7 +1,11 @@
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -63,8 +67,9 @@ export class SessionSharedController {
     async revoke(
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
-        @AuthJwtPayload('userId') userId: string
+        @AuthJwtPayload('userId') userId: string,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeUseCase.execute(userId, sessionId);
+        return this.sessionRevokeUseCase.execute(userId, sessionId, context);
     }
 }

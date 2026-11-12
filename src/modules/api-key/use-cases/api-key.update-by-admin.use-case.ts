@@ -1,61 +1,58 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import type {
-    IApiKey,
-    IApiKeyActivityLogSubject,
-} from '@modules/api-key/interfaces/api-key.interface';
+import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
-    [string, ApiKeyUpdateRequestDto],
+    [string, ApiKeyUpdateRequestDto, IRequestContext],
     IResponseReturn<IApiKey>
 > {
     constructor(
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly activityLogService: ActivityLogService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private prepareActivityLog(
-        action: EnumActivityLogAction,
-        apiKey: IApiKeyActivityLogSubject
-    ): IActivityLogStaged {
-        const timestamp = this.helperDateService.create();
-        const metadata = this.apiKeyUtil.mapActivityLogMetadata(
-            apiKey,
-            timestamp
-        );
-
-        return this.activityLogService.prepare({
-            action,
-            metadata,
-        });
-    }
-
     async execute(
         id: string,
-        { name }: ApiKeyUpdateRequestDto
+        { name }: ApiKeyUpdateRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<IApiKey>> {
-        const updated = await this.apiKeyService.updateByAdmin(id, name);
-        const activityLogs = [
-            this.prepareActivityLog(
-                EnumActivityLogAction.adminApiKeyUpdate,
-                updated
-            ),
-        ];
-        this.activityLogService.stagePrepared(activityLogs);
+        const updated = await this.outboxService.withTransaction(async tx => {
+            const apiKey = await this.apiKeyService.updateByAdminInTx(
+                tx,
+                id,
+                name
+            );
 
-        return {
-            data: updated,
-        };
+            const timestamp = this.helperDateService.create();
+            const metadata = this.apiKeyUtil.mapActivityLogMetadata(
+                apiKey,
+                timestamp
+            );
+            const effect = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.adminApiKeyUpdate,
+                    metadata,
+                },
+                context
+            );
+            await this.outboxService.addInTx(tx, effect);
+
+            return apiKey;
+        });
+
+        return { data: updated };
     }
 }

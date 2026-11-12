@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -11,8 +10,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type {
@@ -24,8 +22,7 @@ import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-p
 describe('UserForgotPasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext(null);
 
     let useCase: UserForgotPasswordUseCase;
 
@@ -74,13 +71,6 @@ describe('UserForgotPasswordUseCase', () => {
         },
         twoFactor: null,
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userChangePassword,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     const forgot: IUserForgotPasswordCreate = {
         reference: 'FGT-linden',
         expiredAt: new Date('2026-03-05T00:00:00.000Z'),
@@ -93,13 +83,11 @@ describe('UserForgotPasswordUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserForgotPasswordUseCase,
                 { provide: UserPasswordService, useValue: userPasswordService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserForgotPasswordUseCase);
@@ -117,48 +105,27 @@ describe('UserForgotPasswordUseCase', () => {
             });
         });
 
-        it('gates the flag, creates the request with its notification, then stages the row', async () => {
-            const calls: string[] = [];
-            userPasswordService.createForgotPassword.mockImplementation(
-                async () => {
-                    calls.push('create');
-                }
-            );
-            activityLogService.stagePrepared.mockImplementation(() => {
-                calls.push('stage');
-            });
+        it('creates the request with its notification and entry through the domain', async () => {
+            await expect(useCase.execute(dto, context)).resolves.toEqual({});
 
-            await expect(useCase.execute(dto)).resolves.toEqual({});
-
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userForgotPassword,
-                userId: 'user-linden',
-                createdBy: 'user-linden',
-            });
             expect(
                 userPasswordService.createForgotPassword
-            ).toHaveBeenCalledWith('user-linden', 'linden@example.com', forgot);
-            expect(calls).toEqual(['create', 'stage']);
+            ).toHaveBeenCalledWith(
+                'user-linden',
+                'linden@example.com',
+                forgot,
+                context
+            );
         });
 
         it('answers empty and creates nothing when no active user holds the email', async () => {
             userPasswordService.prepareForgotPassword.mockResolvedValue(null);
 
-            await expect(useCase.execute(dto)).resolves.toEqual({});
+            await expect(useCase.execute(dto, context)).resolves.toEqual({});
 
             expect(
                 userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('stages nothing when the create rejects', async () => {
-            userPasswordService.createForgotPassword.mockRejectedValue(
-                new Error('write')
-            );
-
-            await expect(useCase.execute(dto)).rejects.toThrow('write');
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('creates nothing when the prepare rejects', async () => {
@@ -166,7 +133,7 @@ describe('UserForgotPasswordUseCase', () => {
                 new Error('flag')
             );
 
-            await expect(useCase.execute(dto)).rejects.toThrow('flag');
+            await expect(useCase.execute(dto, context)).rejects.toThrow('flag');
             expect(
                 userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();

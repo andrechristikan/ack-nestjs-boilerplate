@@ -1,7 +1,6 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
@@ -11,19 +10,19 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
-    [string, WorkspaceJoinRequestCreateRequestDto],
+    [string, WorkspaceJoinRequestCreateRequestDto, IRequestContext],
     IResponseReturn<WorkspaceJoinRequest>
 > {
     constructor(
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly userService: UserService,
-        private readonly activityLogService: ActivityLogService
+        private readonly userService: UserService
     ) {}
 
     async execute(
         userId: string,
-        { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
+        { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
@@ -32,15 +31,6 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
                 userId,
                 workspaceId
             );
-
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action: EnumActivityLogAction.workspaceJoinRequested,
-                userId,
-                createdBy: userId,
-                workspaceId: workspace.id,
-            }),
-        ];
 
         const [requester, reviewerIds] = await Promise.all([
             this.userService.getNameById(userId),
@@ -52,10 +42,9 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
             await this.workspaceJoinRequestService.createJoinRequest(
                 userId,
                 { workspaceId, message: message ?? null },
-                { workspaceName: workspace.name, requesterName, reviewerIds }
+                { workspaceName: workspace.name, requesterName, reviewerIds },
+                context
             );
-
-        this.activityLogService.stagePrepared(activityLogs);
 
         return { data: joinRequest };
     }

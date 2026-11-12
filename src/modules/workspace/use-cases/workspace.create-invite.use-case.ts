@@ -1,13 +1,10 @@
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type {
     Project,
-    User,
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
@@ -18,49 +15,14 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceCreateInviteUseCase implements IAppUseCase<
-    [Workspace, string, WorkspaceInviteCreateRequestDto],
+    [Workspace, string, WorkspaceInviteCreateRequestDto, IRequestContext],
     IResponseReturn<WorkspaceInvite>
 > {
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly projectService: ProjectService,
-        private readonly userService: UserService,
-        private readonly activityLogService: ActivityLogService
+        private readonly userService: UserService
     ) {}
-
-    /** Temporary: recordEffect inside the transaction (phase 3D). */
-    private prepareInviteActivityLogs(
-        action: EnumActivityLogAction,
-        byAdminAction: EnumActivityLogAction,
-        workspaceId: string,
-        actorId: string,
-        workspaceInviteId: string,
-        existingUser: User | null
-    ): IActivityLogStaged[] {
-        const activityLogs = [
-            this.activityLogService.prepare({
-                action,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId,
-                metadata: existingUser
-                    ? { workspaceInviteId, targetUserId: existingUser.id }
-                    : { workspaceInviteId },
-            }),
-        ];
-        if (existingUser && existingUser.id !== actorId) {
-            const byAdminActivityLog = this.activityLogService.prepare({
-                action: byAdminAction,
-                userId: existingUser.id,
-                createdBy: actorId,
-                workspaceId,
-                metadata: { actorUserId: actorId },
-            });
-            activityLogs.push(byAdminActivityLog);
-        }
-
-        return activityLogs;
-    }
 
     async execute(
         workspace: Workspace,
@@ -71,7 +33,8 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             projectId,
             projectRole,
             expiryDuration,
-        }: WorkspaceInviteCreateRequestDto
+        }: WorkspaceInviteCreateRequestDto,
+        context: IRequestContext
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         const create: IWorkspaceInviteCreate = {
             email,
@@ -115,18 +78,9 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
                 workspaceName: workspace.name,
                 inviterName,
                 inviteeUserId: existingUser?.id ?? null,
-            }
+            },
+            context
         );
-
-        const activityLogs = this.prepareInviteActivityLogs(
-            EnumActivityLogAction.workspaceInviteCreated,
-            EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-            workspace.id,
-            actorId,
-            invite.id,
-            existingUser
-        );
-        this.activityLogService.stagePrepared(activityLogs);
 
         return { data: invite };
     }

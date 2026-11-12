@@ -4,6 +4,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumPolicyAction,
@@ -29,6 +30,8 @@ describe('PolicyService', () => {
     const policyRepository: MockProxy<PolicyRepository> =
         mock<PolicyRepository>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     let service: PolicyService;
 
@@ -193,7 +196,7 @@ describe('PolicyService', () => {
         });
     });
 
-    describe('createByAdmin', () => {
+    describe('createByAdminInTx', () => {
         const body: PolicyRequestDto = {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.manage],
@@ -201,10 +204,10 @@ describe('PolicyService', () => {
 
         it('throws PolicyExistException when the create collides on the subject index, with no read before the write', async () => {
             const collision = new Error('subject collision');
-            policyRepository.create.mockRejectedValue(collision);
+            policyRepository.createInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            const promise = service.createByAdmin('role-1', body);
+            const promise = service.createByAdminInTx(tx, 'role-1', body);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -222,11 +225,11 @@ describe('PolicyService', () => {
 
         it('wraps a non-collision create error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
-            policyRepository.create.mockRejectedValue(otherError);
+            policyRepository.createInTx.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.createByAdmin('role-1', body)
+                service.createByAdminInTx(tx, 'role-1', body)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -234,27 +237,33 @@ describe('PolicyService', () => {
         });
 
         it('creates the policy for the role', async () => {
-            policyRepository.create.mockResolvedValue(policy);
+            policyRepository.createInTx.mockResolvedValue(policy);
 
-            const result = await service.createByAdmin('role-1', body);
+            const result = await service.createByAdminInTx(tx, 'role-1', body);
 
             expect(result).toBe(policy);
-            expect(policyRepository.create).toHaveBeenCalledWith(
+            expect(policyRepository.createInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 body
             );
         });
     });
 
-    describe('updateByAdmin', () => {
+    describe('updateByAdminInTx', () => {
         const body: PolicyUpdateRequestDto = {
             action: [EnumPolicyAction.read],
         };
 
         it('throws PolicyNotFoundException when the statement misses', async () => {
-            policyRepository.update.mockResolvedValue(null);
+            policyRepository.updateInTx.mockResolvedValue(null);
 
-            const promise = service.updateByAdmin('role-1', 'policy-1', body);
+            const promise = service.updateByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1',
+                body
+            );
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -266,7 +275,8 @@ describe('PolicyService', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'policy.error.notFound',
             });
-            expect(policyRepository.update).toHaveBeenCalledWith(
+            expect(policyRepository.updateInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 'policy-1',
                 body
@@ -274,31 +284,33 @@ describe('PolicyService', () => {
         });
 
         it('updates the policy with no gate read', async () => {
-            policyRepository.update.mockResolvedValue(policy);
+            policyRepository.updateInTx.mockResolvedValue(policy);
 
-            const result = await service.updateByAdmin(
+            const result = await service.updateByAdminInTx(
+                tx,
                 'role-1',
                 'policy-1',
                 body
             );
 
             expect(result).toBe(policy);
-            expect(policyRepository.update).toHaveBeenCalledWith(
+            expect(policyRepository.updateInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 'policy-1',
                 body
             );
             expect(
-                policyRepository.findOneByRoleIdAndId
+                policyRepository.findOneByRoleIdAndIdInTx
             ).not.toHaveBeenCalled();
         });
     });
 
-    describe('deleteByAdmin', () => {
+    describe('deleteByAdminInTx', () => {
         it('throws PolicyNotFoundException when the row is absent', async () => {
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(null);
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(null);
 
-            const promise = service.deleteByAdmin('role-1', 'policy-1');
+            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -310,18 +322,17 @@ describe('PolicyService', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'policy.error.notFound',
             });
-            expect(policyRepository.findOneByRoleIdAndId).toHaveBeenCalledWith(
-                'role-1',
-                'policy-1'
-            );
-            expect(policyRepository.delete).not.toHaveBeenCalled();
+            expect(
+                policyRepository.findOneByRoleIdAndIdInTx
+            ).toHaveBeenCalledWith(tx, 'role-1', 'policy-1');
+            expect(policyRepository.deleteInTx).not.toHaveBeenCalled();
         });
 
         it('throws PolicyNotFoundException when the statement misses', async () => {
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.delete.mockResolvedValue(false);
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
+            policyRepository.deleteInTx.mockResolvedValue(false);
 
-            const promise = service.deleteByAdmin('role-1', 'policy-1');
+            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
@@ -333,20 +344,26 @@ describe('PolicyService', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'policy.error.notFound',
             });
-            expect(policyRepository.delete).toHaveBeenCalledWith(
+            expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 'policy-1'
             );
         });
 
         it('deletes the policy and returns the row it read', async () => {
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.delete.mockResolvedValue(true);
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
+            policyRepository.deleteInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdmin('role-1', 'policy-1');
+            const result = await service.deleteByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1'
+            );
 
             expect(result).toBe(policy);
-            expect(policyRepository.delete).toHaveBeenCalledWith(
+            expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
+                tx,
                 'role-1',
                 'policy-1'
             );

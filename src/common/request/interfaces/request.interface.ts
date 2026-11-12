@@ -18,6 +18,12 @@ export interface IRequestLog {
     geoLocation: GeoLocation | null;
 }
 
+export interface IRequestContext {
+    actorUserId: string | null;
+    workspaceId: string | null;
+    requestLog: IRequestLog;
+}
+
 export interface IRequestThrottlePolicy {
     ttlInMs: number;
     limit: number;

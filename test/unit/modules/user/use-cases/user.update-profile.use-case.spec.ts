@@ -6,13 +6,16 @@ import {
     EnumUserGender,
     EnumActivityLogAction,
 } from '@generated/prisma-client/client';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserUpdateProfileUseCase } from '@modules/user/use-cases/user.update-profile.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdateProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
@@ -20,20 +23,19 @@ describe('UserUpdateProfileUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx = mock<IDatabaseTransactionClient>();
+    const context = buildRequestContext('user-sable');
+    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
 
     let useCase: UserUpdateProfileUseCase;
 
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userUpdateProfile,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(activityLog);
+        activityLogService.recordEffect.mockReturnValue(entry);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -41,23 +43,25 @@ describe('UserUpdateProfileUseCase', () => {
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
         useCase = module.get(UserUpdateProfileUseCase);
     });
 
     describe('execute', () => {
-        it('delegates the update to the domain', async () => {
-            const dto: UserUpdateProfileRequestDto = {
-                name: 'Sable Grove Jr.',
-                countryId: 'country-sable',
-                gender: EnumUserGender.male,
-            };
+        const dto: UserUpdateProfileRequestDto = {
+            name: 'Sable Grove Jr.',
+            countryId: 'country-sable',
+            gender: EnumUserGender.male,
+        };
 
-            await useCase.execute('user-sable', dto);
+        it('writes the profile and adds the entry on one transaction', async () => {
+            await useCase.execute('user-sable', dto, context);
 
             expect(countryService.getOne).toHaveBeenCalledWith(dto.countryId);
-            expect(userProfileService.updateProfile).toHaveBeenCalledWith(
+            expect(userProfileService.updateProfileInTx).toHaveBeenCalledWith(
+                tx,
                 'user-sable',
                 {
                     countryId: dto.countryId,
@@ -65,42 +69,47 @@ describe('UserUpdateProfileUseCase', () => {
                     name: dto.name,
                 }
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userUpdateProfile,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userUpdateProfile },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
-        it('writes and stages nothing when the country is missing', async () => {
-            const dto: UserUpdateProfileRequestDto = {
-                name: 'Sable Grove Jr.',
-                countryId: 'country-missing',
-                gender: EnumUserGender.male,
-            };
+        it('opens no transaction when the country is missing', async () => {
             countryService.getOne.mockRejectedValue(
                 new CountryNotFoundException()
             );
 
             await expect(
-                useCase.execute('user-sable', dto)
+                useCase.execute('user-sable', dto, context)
             ).rejects.toBeInstanceOf(CountryNotFoundException);
 
-            expect(userProfileService.updateProfile).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('adds no entry when the write throws', async () => {
+            const cause = new Error('database exploded');
+            userProfileService.updateProfileInTx.mockRejectedValue(cause);
+
+            await expect(
+                useCase.execute('user-sable', dto, context)
+            ).rejects.toBe(cause);
+
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('passes a null name through to clear it', async () => {
-            const dto: UserUpdateProfileRequestDto = {
-                name: null,
-                countryId: 'country-sable',
-                gender: EnumUserGender.male,
-            };
+            await useCase.execute(
+                'user-sable',
+                { ...dto, name: null },
+                context
+            );
 
-            await useCase.execute('user-sable', dto);
-
-            expect(userProfileService.updateProfile).toHaveBeenCalledWith(
+            expect(userProfileService.updateProfileInTx).toHaveBeenCalledWith(
+                tx,
                 'user-sable',
                 {
                     countryId: dto.countryId,

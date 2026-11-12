@@ -1,6 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -10,6 +17,7 @@ import type {
     Prisma,
 } from '@generated/prisma-client/client';
 import {
+    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
@@ -57,6 +65,8 @@ describe('NotificationService', () => {
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -154,6 +164,7 @@ describe('NotificationService', () => {
                     useValue: helperStringService,
                 },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: MessageService, useValue: messageService },
@@ -242,6 +253,54 @@ describe('NotificationService', () => {
                     reference: 'WI-ref',
                 })
             );
+        });
+
+        it('returns the userImportResult effect on the notification queue keyed by the import row id with the counts and reasons unsealed', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'userImportResult-outbox-id'
+            );
+
+            const result = service.notify(
+                EnumNotificationKind.userImportResult,
+                {
+                    userId: 'admin-id',
+                    proceedBy: 'admin-id',
+                    reference: 'outbox-id',
+                    created: 0,
+                    failed: 2,
+                    reasons: ['Username already exists.'],
+                }
+            );
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notification,
+                name: EnumNotificationProcess.notify,
+                data: {
+                    kind: EnumNotificationKind.userImportResult,
+                    context: {
+                        userId: 'admin-id',
+                        proceedBy: 'admin-id',
+                        reference: 'outbox-id',
+                        created: 0,
+                        failed: 2,
+                        reasons: ['Username already exists.'],
+                    },
+                    recipient: null,
+                    notificationId: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'userImportResult-outbox-id',
+            });
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{reference}',
+                {
+                    process: EnumNotificationKind.userImportResult,
+                    userId: 'admin-id',
+                    proceedBy: 'admin-id',
+                    reference: 'outbox-id',
+                }
+            );
+            expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
         });
 
         it('leaves a non-string context field out of the idempotency key values', () => {
@@ -898,6 +957,38 @@ describe('NotificationService', () => {
     });
 
     describe('updateUserSetting', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const context: IRequestContext = {
+            actorUserId: 'user-id',
+            workspaceId: null,
+            requestLog: {
+                userAgent: {
+                    ua: null,
+                    browser: null,
+                    cpu: null,
+                    device: null,
+                    engine: null,
+                    os: null,
+                },
+                ipAddress: '127.0.0.1',
+                geoLocation: null,
+            },
+        };
+        const entryEffect: IOutboxEffect = {
+            queue: EnumActivityLogQueue.activityLog,
+            name: EnumActivityLogProcess.createMany,
+            data: { rows: [] },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+
+        beforeEach(() => {
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+        });
+
         const data = {
             channel: EnumNotificationChannel.email,
             type: EnumNotificationType.userActivity,
@@ -906,10 +997,14 @@ describe('NotificationService', () => {
 
         it('throws NotificationInvalidTypeException before writing when the type is not configurable', async () => {
             await expect(
-                service.updateUserSetting('user-id', {
-                    ...data,
-                    type: EnumNotificationType.securityAlert,
-                })
+                service.updateUserSetting(
+                    'user-id',
+                    {
+                        ...data,
+                        type: EnumNotificationType.securityAlert,
+                    },
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: NotificationInvalidTypeException,
                 module: 'notification',
@@ -921,17 +1016,21 @@ describe('NotificationService', () => {
                 messagePath: 'notification.error.invalidType',
             });
             expect(
-                notificationUserSettingRepository.updateUserSetting
+                notificationUserSettingRepository.updateUserSettingInTx
             ).not.toHaveBeenCalled();
         });
 
         it('throws NotificationInvalidChannelException before writing when the channel is not allowed for the type', async () => {
             await expect(
-                service.updateUserSetting('user-id', {
-                    ...data,
-                    type: EnumNotificationType.marketing,
-                    channel: EnumNotificationChannel.inApp,
-                })
+                service.updateUserSetting(
+                    'user-id',
+                    {
+                        ...data,
+                        type: EnumNotificationType.marketing,
+                        channel: EnumNotificationChannel.inApp,
+                    },
+                    context
+                )
             ).rejects.toMatchObject({
                 constructor: NotificationInvalidChannelException,
                 module: 'notification',
@@ -943,29 +1042,61 @@ describe('NotificationService', () => {
                 messagePath: 'notification.error.invalidChannel',
             });
             expect(
-                notificationUserSettingRepository.updateUserSetting
+                notificationUserSettingRepository.updateUserSettingInTx
             ).not.toHaveBeenCalled();
         });
 
         it('writes the setting', async () => {
-            notificationUserSettingRepository.updateUserSetting.mockResolvedValue(
+            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
                 true
             );
 
-            await service.updateUserSetting('user-id', data);
+            await service.updateUserSetting('user-id', data, context);
 
             expect(
-                notificationUserSettingRepository.updateUserSetting
-            ).toHaveBeenCalledWith('user-id', data);
+                notificationUserSettingRepository.updateUserSettingInTx
+            ).toHaveBeenCalledWith(tx, 'user-id', data);
         });
 
-        it('throws NotificationSettingInvalidException when the setting row does not exist', async () => {
-            notificationUserSettingRepository.updateUserSetting.mockResolvedValue(
+        it('adds the userUpdateNotificationSetting entry from the passed context on the same tx after the write', async () => {
+            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
+                true
+            );
+
+            await service.updateUserSetting('user-id', data, context);
+
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                {
+                    action: EnumActivityLogAction.userUpdateNotificationSetting,
+                    metadata: {
+                        channel: data.channel,
+                        type: data.type,
+                        isActive: data.isActive,
+                    },
+                },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+        });
+
+        it('adds no entry when the setting row does not exist', async () => {
+            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.updateUserSetting('user-id', data)
+                service.updateUserSetting('user-id', data, context)
+            ).rejects.toBeInstanceOf(NotificationSettingInvalidException);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws NotificationSettingInvalidException when the setting row does not exist', async () => {
+            notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.updateUserSetting('user-id', data, context)
             ).rejects.toMatchObject({
                 constructor: NotificationSettingInvalidException,
                 module: 'notification',

@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import type { ClsServiceManager } from 'nestjs-cls';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { CorsOptions } from 'cors';
@@ -10,6 +11,7 @@ import { RequestValidationException } from '@common/request/exceptions/request.v
 import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
 import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request.url-version.middleware';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -24,6 +26,36 @@ export interface IFreshCorsMiddleware {
     middleware: RequestCorsMiddleware;
     handler: Mock;
     captured: { options: CorsOptions };
+}
+
+export function stubRequestStore(
+    clsService: MockProxy<ReturnType<typeof ClsServiceManager.getClsService>>,
+    values: Record<string, unknown>
+): void {
+    clsService.get.mockImplementation(
+        (key?: string | symbol): unknown => values[String(key)] ?? null
+    );
+}
+
+export function buildRequestContext(
+    actorUserId: string | null
+): IRequestContext {
+    return {
+        actorUserId,
+        workspaceId: null,
+        requestLog: {
+            userAgent: {
+                ua: null,
+                browser: null,
+                cpu: null,
+                device: null,
+                engine: null,
+                os: null,
+            },
+            ipAddress: '127.0.0.1',
+            geoLocation: null,
+        },
+    };
 }
 
 export function expectRequestContextMissing(thrown: unknown): void {

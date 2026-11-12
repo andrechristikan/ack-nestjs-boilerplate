@@ -3,13 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 
 describe('FeatureFlagCache', () => {
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const configGet = vi.fn<(key: string) => string | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -32,7 +30,6 @@ describe('FeatureFlagCache', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagCache,
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -64,11 +61,9 @@ describe('FeatureFlagCache', () => {
         });
     });
 
-    describe('deleteFeatureFlag', () => {
-        it('invalidates the entry and lease keys', async () => {
-            await cache.deleteFeatureFlag('loginWithGoogle');
-
-            expect(cacheService.invalidate).toHaveBeenCalledWith([
+    describe('buildFeatureFlagKeys', () => {
+        it('returns the entry and lease keys', () => {
+            expect(cache.buildFeatureFlagKeys('loginWithGoogle')).toEqual([
                 'FeatureFlag:loginWithGoogle',
                 'FeatureFlag:Lease:loginWithGoogle',
             ]);

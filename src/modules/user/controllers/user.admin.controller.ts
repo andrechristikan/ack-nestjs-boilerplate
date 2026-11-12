@@ -46,10 +46,7 @@ import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import type {
     IResponseFileReturn,
@@ -64,9 +61,11 @@ import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.creat
 import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
+    RequestContextCurrent,
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -78,6 +77,8 @@ import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserImportResponseSchema } from '@modules/user/dtos/response/user.import.response.dto';
+import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -151,9 +152,10 @@ export class UserAdminController {
     async create(
         @Body({ schema: UserCreateRequestSchema })
         body: UserCreateRequestDto,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userCreateByAdminUseCase.execute(body, user);
+        return this.userCreateByAdminUseCase.execute(body, user, context);
     }
 
     @Doc({ summary: 'update status of user' })
@@ -174,9 +176,15 @@ export class UserAdminController {
         userId: string,
         @UserCurrent() user: IUser,
         @Body({ schema: UserUpdateStatusRequestSchema })
-        body: UserUpdateStatusRequestDto
+        body: UserUpdateStatusRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdateStatusByAdminUseCase.execute(userId, body, user);
+        return this.userUpdateStatusByAdminUseCase.execute(
+            userId,
+            body,
+            user,
+            context
+        );
     }
 
     @Doc({ summary: 'update password of user' })
@@ -195,9 +203,14 @@ export class UserAdminController {
     async updatePassword(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdatePasswordByAdminUseCase.execute(userId, user);
+        return this.userUpdatePasswordByAdminUseCase.execute(
+            userId,
+            user,
+            context
+        );
     }
 
     @Doc({ summary: 'reset user' })
@@ -216,13 +229,18 @@ export class UserAdminController {
     async resetTwoFactorByAdmin(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.userResetTwoFactorByAdminUseCase.execute(userId, user);
+        return this.userResetTwoFactorByAdminUseCase.execute(
+            userId,
+            user,
+            context
+        );
     }
 
     @Doc({ summary: 'import users via csv file' })
-    @Response('user.import')
+    @Response('user.import', { schema: UserImportResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -238,8 +256,6 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
-        @AuthJwtPayload('userId')
-        createdBy: string,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
@@ -248,9 +264,10 @@ export class UserAdminController {
                 maxDataImportConfigKey: 'user.maxDataImport',
             })
         )
-        data: UserImportRequestDto[]
-    ): Promise<IResponseReturn<void>> {
-        return this.userImportByAdminUseCase.execute(data, createdBy);
+        data: UserImportRequestDto[],
+        @RequestContextCurrent() context: IRequestContext
+    ): Promise<IResponseReturn<UserImportResponseDto>> {
+        return this.userImportByAdminUseCase.execute(data, context);
     }
 
     @Doc({ summary: 'export users via csv file' })

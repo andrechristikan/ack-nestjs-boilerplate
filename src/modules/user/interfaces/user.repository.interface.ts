@@ -83,7 +83,8 @@ export interface IUserRepository {
         currentStatus: EnumUserStatus,
         { status, passwordAttempt }: IUserUpdateStatus
     ): Promise<User | null>;
-    updateProfile(
+    updateProfileInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<User>;
@@ -98,11 +99,11 @@ export interface IUserRepository {
         { email, username }: IUserDeletedIdentity,
         deletedAt: Date
     ): Promise<User>;
-    claimUsername(
+    claimUsernameInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User>;
-    setLastWorkspace(userId: string, workspaceId: string): Promise<void>;
     setLastWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -129,7 +130,11 @@ export interface IUserRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<boolean>;
-    markVerifiedBySocial(userId: string, verifiedAt: Date): Promise<User>;
+    markVerifiedBySocialInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        verifiedAt: Date
+    ): Promise<User>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

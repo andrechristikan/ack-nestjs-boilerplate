@@ -1,5 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
@@ -7,9 +9,12 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
@@ -33,6 +38,8 @@ export class ProjectService {
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -106,34 +113,115 @@ export class ProjectService {
         );
     }
 
+    /** Creates the project and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
     async createProject(
         workspaceId: string,
-        create: IProjectCreate
+        actorId: string,
+        create: IProjectCreate,
+        context: IRequestContext
     ): Promise<Project> {
         const slugCandidates = this.drawSlugCandidates();
 
-        return this.projectRepository.create(
-            workspaceId,
-            create,
-            slugCandidates
-        );
+        for (const slug of slugCandidates) {
+            try {
+                return await this.outboxService.withTransaction(async tx => {
+                    const project = await this.projectRepository.createInTx(
+                        tx,
+                        workspaceId,
+                        create,
+                        slug
+                    );
+                    const entry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.projectCreated,
+                            userId: actorId,
+                            createdBy: actorId,
+                            workspaceId,
+                        },
+                        context
+                    );
+                    await this.outboxService.addInTx(tx, entry);
+
+                    return project;
+                });
+            } catch (error: unknown) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
+                    if (error instanceof AppBaseException) {
+                        throw error;
+                    }
+
+                    throw new AppUnknownException(error);
+                }
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
+    /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateProject(
         project: Project,
-        update: IProjectUpdate
+        actorId: string,
+        update: IProjectUpdate,
+        context: IRequestContext
     ): Promise<Project> {
-        return this.projectRepository.updateDetails(project.id, update);
+        return this.outboxService.withTransaction(async tx => {
+            const updated = await this.projectRepository.updateDetailsInTx(
+                tx,
+                project.id,
+                update
+            );
+            const entry = this.activityLogService.recordEffect(
+                {
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                },
+                context
+            );
+            await this.outboxService.addInTx(tx, entry);
+
+            return updated;
+        });
     }
 
-    async updateProjectSlug(project: Project, slug: string): Promise<Project> {
+    /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
+    async updateProjectSlug(
+        project: Project,
+        actorId: string,
+        slug: string,
+        context: IRequestContext
+    ): Promise<Project> {
         const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
             throw new ProjectSlugInvalidException();
         }
 
         try {
-            return await this.projectRepository.updateSlug(project.id, slug);
+            return await this.outboxService.withTransaction(async tx => {
+                const updated = await this.projectRepository.updateSlugInTx(
+                    tx,
+                    project.id,
+                    slug
+                );
+                const entry = this.activityLogService.recordEffect(
+                    {
+                        action: EnumActivityLogAction.projectUpdated,
+                        userId: actorId,
+                        createdBy: actorId,
+                        workspaceId: project.workspaceId,
+                    },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+
+                return updated;
+            });
         } catch (err: unknown) {
             const isSlugCollision = this.databaseUtil.isUniqueCollision(
                 err,

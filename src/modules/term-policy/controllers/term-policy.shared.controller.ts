@@ -27,7 +27,11 @@ import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-c
 import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -102,8 +106,9 @@ export class TermPolicySharedController {
     async accept(
         @UserCurrent() user: IUser,
         @Body({ schema: TermPolicyAcceptRequestSchema })
-        body: TermPolicyAcceptRequestDto
+        body: TermPolicyAcceptRequestDto,
+        @RequestContextCurrent() context: IRequestContext
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyUserAcceptUseCase.execute(user, body);
+        return this.termPolicyUserAcceptUseCase.execute(user, body, context);
     }
 }

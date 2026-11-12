@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -13,19 +12,17 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { User, WorkspaceInvite } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceRevokeInviteUseCase } from '@modules/workspace/use-cases/workspace.revoke-invite.use-case';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRevokeInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext('user-1');
     const invite: WorkspaceInvite = {
         id: 'invite-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -78,18 +75,10 @@ describe('WorkspaceRevokeInviteUseCase', () => {
         deletedAt: null,
         deletedBy: null,
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceInviteCreated,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceRevokeInviteUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -99,7 +88,6 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -112,7 +100,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
         });
 
-        it('reads the pending invite and the invitee, prepares the row, revokes, and stages in order', async () => {
+        it('reads the pending invite and the invitee, then revokes with a null invitee and the context', async () => {
             const callOrder: string[] = [];
             workspaceInviteService.getPendingById.mockImplementation(
                 async () => {
@@ -126,83 +114,47 @@ describe('WorkspaceRevokeInviteUseCase', () => {
 
                 return null;
             });
-            activityLogService.prepare.mockImplementation(() => {
-                callOrder.push('prepare');
-
-                return stagedActivityLog;
-            });
             workspaceInviteService.revokeInvite.mockImplementation(async () => {
                 callOrder.push('revoke');
-            });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
             });
 
             const result = await useCase.execute(
                 'workspace-1',
                 'user-1',
-                'invite-1'
+                'invite-1',
+                context
             );
 
             expect(result).toEqual({});
-            expect(callOrder).toEqual([
-                'pending',
-                'lookup',
-                'prepare',
-                'revoke',
-                'stage',
-            ]);
+            expect(callOrder).toEqual(['pending', 'lookup', 'revoke']);
             expect(workspaceInviteService.getPendingById).toHaveBeenCalledWith(
                 'invite-1',
                 'workspace-1'
             );
-            expect(workspaceInviteService.revokeInvite).toHaveBeenCalledWith(
-                'invite-1'
+            expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
+                'invitee@example.com'
             );
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { workspaceInviteId: 'invite-1' },
-            });
+            expect(workspaceInviteService.revokeInvite).toHaveBeenCalledWith(
+                'invite-1',
+                'workspace-1',
+                'user-1',
+                null,
+                context
+            );
         });
 
-        it('stages two rows when the existing user differs from the actor', async () => {
+        it('passes the invitee user id when the invitee has an account', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute('workspace-1', 'user-1', 'invite-1');
+            await useCase.execute('workspace-1', 'user-1', 'invite-1', context);
 
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceInviteRevoked,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-2',
-                },
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-                stagedActivityLog,
-            ]);
-        });
-
-        it('stages a single row when the existing user is the actor', async () => {
-            userService.getOneActiveByEmail.mockResolvedValue(existingUser);
-
-            await useCase.execute('workspace-1', 'user-2', 'invite-1');
-
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
+            expect(workspaceInviteService.revokeInvite).toHaveBeenCalledWith(
+                'invite-1',
+                'workspace-1',
+                'user-1',
+                'user-2',
+                context
+            );
         });
 
         it('looks up no invitee when the invite is not pending', async () => {
@@ -211,20 +163,19 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute('workspace-1', 'user-1', 'invite-1')
+                useCase.execute('workspace-1', 'user-1', 'invite-1', context)
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
             expect(userService.getOneActiveByEmail).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the guarded revoke rejects', async () => {
+        it('rejects with the guarded revoke failure', async () => {
             workspaceInviteService.revokeInvite.mockRejectedValue(
                 new WorkspaceInviteAlreadyProcessedException()
             );
 
             await expect(
-                useCase.execute('workspace-1', 'user-1', 'invite-1')
+                useCase.execute('workspace-1', 'user-1', 'invite-1', context)
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

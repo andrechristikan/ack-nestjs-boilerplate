@@ -6,7 +6,11 @@ import type { Country } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -19,7 +23,11 @@ describe('UserMobileNumberService', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
         mock<UserMobileNumberRepository>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const context = buildRequestContext('user-marlin');
+    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let service: UserMobileNumberService;
@@ -56,9 +64,10 @@ describe('UserMobileNumberService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
+        activityLogService.recordEffect.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,7 +77,8 @@ describe('UserMobileNumberService', () => {
                     useValue: userMobileNumberRepository,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
@@ -121,7 +131,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+1',
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             expect(result).toBe(mobileNumber);
@@ -138,6 +149,11 @@ describe('UserMobileNumberService', () => {
                 tx,
                 'user-marlin'
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userAddMobileNumber },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
@@ -150,7 +166,8 @@ describe('UserMobileNumberService', () => {
                         phoneCode: '+9',
                     },
                     country.phoneCode,
-                    false
+                    false,
+                    context
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -173,7 +190,8 @@ describe('UserMobileNumberService', () => {
                         phoneCode: '+1',
                     },
                     country.phoneCode,
-                    true
+                    true,
+                    context
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -188,7 +206,7 @@ describe('UserMobileNumberService', () => {
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
             const error = new UserMobileNumberExistException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.addMobileNumber(
                 'user-marlin',
@@ -198,7 +216,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+1',
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -215,7 +234,7 @@ describe('UserMobileNumberService', () => {
 
         it('wraps an unknown error raised inside the transaction', async () => {
             const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.addMobileNumber(
                 'user-marlin',
@@ -225,7 +244,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+1',
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -240,7 +260,7 @@ describe('UserMobileNumberService', () => {
 
         it('maps a unique collision to UserMobileNumberExistException', async () => {
             const collision = new Error('unique');
-            databaseService.withTransaction.mockRejectedValueOnce(collision);
+            outboxService.withTransaction.mockRejectedValueOnce(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const call = service.addMobileNumber(
@@ -251,7 +271,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+1',
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -313,7 +334,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: mobileNumber.phoneCode,
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             expect(result).toBe(verified);
@@ -327,6 +349,11 @@ describe('UserMobileNumberService', () => {
                 },
                 true
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userUpdateMobileNumber },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('resets verification when the number changes', async () => {
@@ -346,7 +373,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: mobileNumber.phoneCode,
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
@@ -371,7 +399,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+1',
                 },
                 country.phoneCode,
-                true
+                true,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -395,7 +424,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: '+9',
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -411,7 +441,7 @@ describe('UserMobileNumberService', () => {
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
             const error = new UserMobileNumberExistException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.updateMobileNumber(
                 'user-marlin',
@@ -422,7 +452,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: mobileNumber.phoneCode,
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -439,7 +470,7 @@ describe('UserMobileNumberService', () => {
 
         it('wraps an unknown error raised inside the transaction', async () => {
             const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.updateMobileNumber(
                 'user-marlin',
@@ -450,7 +481,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: mobileNumber.phoneCode,
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -465,7 +497,7 @@ describe('UserMobileNumberService', () => {
 
         it('maps a unique collision to UserMobileNumberExistException', async () => {
             const collision = new Error('unique');
-            databaseService.withTransaction.mockRejectedValueOnce(collision);
+            outboxService.withTransaction.mockRejectedValueOnce(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const call = service.updateMobileNumber(
@@ -477,7 +509,8 @@ describe('UserMobileNumberService', () => {
                     phoneCode: mobileNumber.phoneCode,
                 },
                 country.phoneCode,
-                false
+                false,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -503,7 +536,8 @@ describe('UserMobileNumberService', () => {
 
             const result = await service.deleteMobileNumber(
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                context
             );
 
             expect(result).toBe(mobileNumber);
@@ -515,6 +549,11 @@ describe('UserMobileNumberService', () => {
                 tx,
                 'user-marlin'
             );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                { action: EnumActivityLogAction.userDeleteMobileNumber },
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {
@@ -522,7 +561,11 @@ describe('UserMobileNumberService', () => {
                 null
             );
 
-            const call = service.deleteMobileNumber('user-marlin', 'missing');
+            const call = service.deleteMobileNumber(
+                'user-marlin',
+                'missing',
+                context
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -543,7 +586,8 @@ describe('UserMobileNumberService', () => {
 
             const call = service.deleteMobileNumber(
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -563,14 +607,15 @@ describe('UserMobileNumberService', () => {
                 mobileNumber
             );
             const conflict = new Error('write-conflict');
-            databaseService.withTransaction.mockRejectedValueOnce(conflict);
+            outboxService.withTransaction.mockRejectedValueOnce(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
             );
 
             const call = service.deleteMobileNumber(
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -590,11 +635,12 @@ describe('UserMobileNumberService', () => {
                 mobileNumber
             );
             const error = new UserMobileNumberExistException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.deleteMobileNumber(
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                context
             );
 
             await expect(call).rejects.toMatchObject({
@@ -614,11 +660,12 @@ describe('UserMobileNumberService', () => {
                 mobileNumber
             );
             const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
+            outboxService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.deleteMobileNumber(
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                context
             );
 
             await expect(call).rejects.toMatchObject({

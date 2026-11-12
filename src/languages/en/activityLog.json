@@ -111,8 +111,7 @@
     "queue": {
         "createMany": "Created activity logs.",
         "error": {
-            "unknownProcess": "No {process} job handler exists.",
-            "enqueueCreateMany": "Enqueue activity log rows failed."
+            "unknownProcess": "No {process} job handler exists."
         }
     },
     "error": {

@@ -2,14 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
 
@@ -17,8 +15,8 @@ describe('UserAddMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+
+    const context = buildRequestContext('user-swift');
 
     let useCase: UserAddMobileNumberUseCase;
 
@@ -53,13 +51,6 @@ describe('UserAddMobileNumberUseCase', () => {
             updatedBy: null,
         },
     };
-    const activityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.userAddMobileNumber,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -68,7 +59,6 @@ describe('UserAddMobileNumberUseCase', () => {
         userMobileNumberService.getOneMobileNumber.mockResolvedValue(
             mobileNumber
         );
-        activityLogService.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -78,19 +68,20 @@ describe('UserAddMobileNumberUseCase', () => {
                     useValue: userMobileNumberService,
                 },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
         useCase = module.get(UserAddMobileNumberUseCase);
     });
 
     describe('execute', () => {
-        it('adds the mobile number, stages the activity row, and wraps it in a response envelope', async () => {
+        it('adds the mobile number, passes the context, and wraps it in a response envelope', async () => {
             userMobileNumberService.addMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
-            await expect(useCase.execute('user-swift', dto)).resolves.toEqual({
+            await expect(
+                useCase.execute('user-swift', dto, context)
+            ).resolves.toEqual({
                 data: mobileNumber,
             });
             expect(countryService.getOne).toHaveBeenCalledWith(dto.countryId);
@@ -104,7 +95,8 @@ describe('UserAddMobileNumberUseCase', () => {
                     phoneCode: dto.phoneCode,
                 },
                 mobileNumber.country.phoneCode,
-                false
+                false,
+                context
             );
             expect(
                 userMobileNumberService.existsMobileNumber
@@ -117,12 +109,6 @@ describe('UserAddMobileNumberUseCase', () => {
                 },
                 null
             );
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userAddMobileNumber,
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                activityLog,
-            ]);
         });
 
         it('reads the country and the duplicate number together', async () => {
@@ -140,56 +126,35 @@ describe('UserAddMobileNumberUseCase', () => {
                 mobileNumber
             );
 
-            await useCase.execute('user-swift', dto);
+            await useCase.execute('user-swift', dto, context);
 
             expect(
                 userMobileNumberService.addMobileNumber
             ).toHaveBeenCalledTimes(1);
         });
 
-        it('prepares the activity row before it reads the country and the duplicate number', async () => {
-            countryService.getOne.mockImplementation(async () => {
-                expect(activityLogService.prepare).toHaveBeenCalledWith({
-                    action: EnumActivityLogAction.userAddMobileNumber,
-                });
-                expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-
-                return mobileNumber.country;
-            });
-            userMobileNumberService.addMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-
-            await useCase.execute('user-swift', dto);
-
-            expect(countryService.getOne).toHaveBeenCalledTimes(1);
-        });
-
-        it('writes and stages nothing when the country is missing', async () => {
+        it('writes nothing when the country is missing', async () => {
             countryService.getOne.mockRejectedValue(
                 new CountryNotFoundException()
             );
 
             await expect(
-                useCase.execute('user-swift', dto)
+                useCase.execute('user-swift', dto, context)
             ).rejects.toBeInstanceOf(CountryNotFoundException);
 
             expect(
                 userMobileNumberService.addMobileNumber
             ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the domain write rejects', async () => {
+        it('writes nothing when the domain write rejects', async () => {
             userMobileNumberService.addMobileNumber.mockRejectedValue(
                 new Error('boom')
             );
 
-            await expect(useCase.execute('user-swift', dto)).rejects.toThrow(
-                'boom'
-            );
-
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
+            await expect(
+                useCase.execute('user-swift', dto, context)
+            ).rejects.toThrow('boom');
         });
     });
 });

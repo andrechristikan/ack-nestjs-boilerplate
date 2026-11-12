@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumProjectMemberRole,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -19,8 +18,6 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
@@ -34,6 +31,7 @@ import type {
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
 
 describe('WorkspaceCreateInviteUseCase', () => {
@@ -41,8 +39,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
         mock<WorkspaceInviteService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const context = buildRequestContext('user-1');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -135,18 +132,10 @@ describe('WorkspaceCreateInviteUseCase', () => {
         inviterName: 'Jane Doe',
         inviteeUserId: null,
     };
-    const stagedActivityLog: IActivityLogStaged = {
-        action: EnumActivityLogAction.workspaceInviteCreated,
-        metadata: {},
-        userId: null,
-        createdBy: null,
-        workspaceId: null,
-    };
     let useCase: WorkspaceCreateInviteUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -157,7 +146,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
-                { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
@@ -178,7 +166,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             });
         });
 
-        it('checks, reads the inviter, writes with the notice for an invitee with no account, then stages in order', async () => {
+        it('checks, reads the inviter, then writes with the notice and the context for an invitee with no account', async () => {
             const callOrder: string[] = [];
             userService.getOneActiveByEmail.mockImplementation(async () => {
                 callOrder.push('lookup');
@@ -205,11 +193,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
 
                 return { invite, tokenData };
             });
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stage');
-            });
 
-            const result = await useCase.execute(workspace, 'user-1', body);
+            const result = await useCase.execute(
+                workspace,
+                'user-1',
+                body,
+                context
+            );
 
             expect(result).toEqual({ data: invite });
             expect(callOrder[0]).toBe('paired');
@@ -219,7 +209,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(callOrder.indexOf('inviterName')).toBeGreaterThan(
                 callOrder.indexOf('assertCreatable')
             );
-            expect(callOrder.slice(-2)).toEqual(['create', 'stage']);
+            expect(callOrder.at(-1)).toBe('create');
             expect(
                 projectService.getActiveByIdAndWorkspace
             ).not.toHaveBeenCalled();
@@ -249,82 +239,39 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     projectRole: null,
                     expiryDuration: null,
                 },
-                notice
+                notice,
+                context
             );
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { workspaceInviteId: 'invite-1' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-            ]);
         });
 
-        it('passes the invitee user id and stages two rows when the existing user differs from the actor', async () => {
+        it('passes the invitee user id in the notice when the invitee has an account', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute(workspace, 'user-1', body);
+            await useCase.execute(workspace, 'user-1', body, context);
 
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
                 'workspace-1',
                 'user-1',
                 expect.objectContaining({ email: 'invitee@example.com' }),
-                { ...notice, inviteeUserId: 'user-2' }
+                { ...notice, inviteeUserId: 'user-2' },
+                context
             );
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-2',
-                },
-            });
-            expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
-                action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-                userId: 'user-2',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { actorUserId: 'user-1' },
-            });
-            expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
-                stagedActivityLog,
-                stagedActivityLog,
-            ]);
-        });
-
-        it('stages a single row when the existing user is the actor', async () => {
-            userService.getOneActiveByEmail.mockResolvedValue(existingUser);
-
-            await useCase.execute(workspace, 'user-2', body);
-
-            expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogService.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceInviteCreated,
-                userId: 'user-2',
-                createdBy: 'user-2',
-                workspaceId: 'workspace-1',
-                metadata: {
-                    workspaceInviteId: 'invite-1',
-                    targetUserId: 'user-2',
-                },
-            });
         });
 
         it('looks up the active project and forwards the project fields and expiry when given', async () => {
             projectService.getActiveByIdAndWorkspace.mockResolvedValue(project);
 
-            await useCase.execute(workspace, 'user-1', {
-                ...body,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
-                expiryDuration: 14,
-            } as WorkspaceInviteCreateRequestDto);
+            await useCase.execute(
+                workspace,
+                'user-1',
+                {
+                    ...body,
+                    projectId: 'project-1',
+                    projectRole: EnumProjectMemberRole.member,
+                    expiryDuration: 14,
+                } as WorkspaceInviteCreateRequestDto,
+                context
+            );
 
             expect(
                 projectService.getActiveByIdAndWorkspace
@@ -341,7 +288,8 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 'workspace-1',
                 'user-1',
                 expect.objectContaining({ expiryDuration: 14 }),
-                notice
+                notice,
+                context
             );
         });
 
@@ -356,11 +304,16 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 return null;
             });
 
-            await useCase.execute(workspace, 'user-1', {
-                ...body,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
-            } as WorkspaceInviteCreateRequestDto);
+            await useCase.execute(
+                workspace,
+                'user-1',
+                {
+                    ...body,
+                    projectId: 'project-1',
+                    projectRole: EnumProjectMemberRole.member,
+                } as WorkspaceInviteCreateRequestDto,
+                context
+            );
 
             expect(workspaceInviteService.assertCreatable).toHaveBeenCalledWith(
                 expect.objectContaining({ projectId: 'project-1' }),
@@ -374,7 +327,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute(workspace, 'user-1', body)
+                useCase.execute(workspace, 'user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceInviteRoleRequiredException);
             expect(
                 projectService.getActiveByIdAndWorkspace
@@ -388,16 +341,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
             });
 
             await expect(
-                useCase.execute(workspace, 'user-1', body)
+                useCase.execute(workspace, 'user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceInviteProjectMismatchException);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('checks the existing user is not a member before the write', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute(workspace, 'user-1', body);
+            await useCase.execute(workspace, 'user-1', body, context);
 
             expect(
                 workspaceInviteService.assertInviteeNotMember
@@ -414,32 +366,29 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute(workspace, 'user-1', body)
+                useCase.execute(workspace, 'user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('creates nothing and stages nothing when the inviter name read rejects', async () => {
+        it('creates nothing when the inviter name read rejects', async () => {
             const failure = new Error('read-failed');
             workspaceInviteService.getInviterName.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(workspace, 'user-1', body)
+                useCase.execute(workspace, 'user-1', body, context)
             ).rejects.toBe(failure);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('stages nothing when the write rejects', async () => {
+        it('rejects with the write failure', async () => {
             workspaceInviteService.createInvite.mockRejectedValue(
                 new WorkspaceInviteDuplicateException()
             );
 
             await expect(
-                useCase.execute(workspace, 'user-1', body)
+                useCase.execute(workspace, 'user-1', body, context)
             ).rejects.toBeInstanceOf(WorkspaceInviteDuplicateException);
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });
 });

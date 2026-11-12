@@ -1,3 +1,4 @@
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
 import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.create-by-admin.use-case';
 import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-status-by-admin.use-case';
@@ -27,6 +28,6 @@ import { Module } from '@nestjs/common';
         ApiKeyResetByAdminUseCase,
         ApiKeyDeleteByAdminUseCase,
     ],
-    imports: [],
+    imports: [ActivityLogModule],
 })
 export class ApiKeyUseCaseModule {}

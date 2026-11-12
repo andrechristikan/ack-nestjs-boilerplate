@@ -36,6 +36,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 @Injectable()
@@ -52,6 +55,7 @@ export class UserProfileService {
         private readonly fileService: FileService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
+        private readonly activityLogService: ActivityLogService,
         private readonly configService: ConfigService
     ) {
         this.photoFilenameRandomLength = this.configService.get<number>(
@@ -105,7 +109,8 @@ export class UserProfileService {
     private async replacePhotoProfile(
         userId: string,
         previousPhoto: UserPhoto | null,
-        photo: IAwsS3
+        photo: IAwsS3,
+        context: IRequestContext
     ): Promise<void> {
         await this.outboxService.withTransaction(async tx => {
             await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
@@ -115,6 +120,11 @@ export class UserProfileService {
                 previousPhoto,
                 photo.key
             );
+            const entry = this.activityLogService.recordEffect(
+                { action: EnumActivityLogAction.userUpdatePhotoProfile },
+                context
+            );
+            await this.outboxService.addInTx(tx, entry);
         });
     }
 
@@ -166,24 +176,15 @@ export class UserProfileService {
         return user;
     }
 
-    async updateProfile(
+    async updateProfileInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<void> {
-        try {
-            await this.userRepository.updateProfile(userId, {
-                countryId,
-                ...data,
-            });
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            throw new AppUnknownException(err);
-        }
+        await this.userRepository.updateProfileInTx(tx, userId, {
+            countryId,
+            ...data,
+        });
     }
 
     async generatePhotoProfilePresign(
@@ -223,7 +224,8 @@ export class UserProfileService {
 
     async updatePhotoProfile(
         userId: string,
-        { key }: IUserUpdatePhotoProfile
+        { key }: IUserUpdatePhotoProfile,
+        context: IRequestContext
     ): Promise<void> {
         const isOwned = this.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
@@ -249,7 +251,7 @@ export class UserProfileService {
                 throw new UserNotFoundException();
             }
 
-            await this.replacePhotoProfile(userId, user.photo, aws);
+            await this.replacePhotoProfile(userId, user.photo, aws, context);
 
             return;
         } catch (err: unknown) {
@@ -263,7 +265,11 @@ export class UserProfileService {
         }
     }
 
-    async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
+    async uploadPhotoProfile(
+        userId: string,
+        file: IFile,
+        context: IRequestContext
+    ): Promise<void> {
         const isSizeAllowed = this.isPhotoSizeAllowed(file.size);
         if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
@@ -310,7 +316,7 @@ export class UserProfileService {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            await this.replacePhotoProfile(userId, user.photo, aws);
+            await this.replacePhotoProfile(userId, user.photo, aws, context);
 
             return;
         } catch (err: unknown) {
@@ -324,7 +330,8 @@ export class UserProfileService {
 
     async claimUsername(
         userId: string,
-        username: Lowercase<string>
+        username: Lowercase<string>,
+        context: IRequestContext
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
         const [checkUsername, checkBadWord, exist] = await Promise.all([
@@ -341,7 +348,16 @@ export class UserProfileService {
         }
 
         try {
-            await this.userRepository.claimUsername(userId, { username });
+            await this.outboxService.withTransaction(async tx => {
+                await this.userRepository.claimUsernameInTx(tx, userId, {
+                    username,
+                });
+                const entry = this.activityLogService.recordEffect(
+                    { action: EnumActivityLogAction.userClaimUsername },
+                    context
+                );
+                await this.outboxService.addInTx(tx, entry);
+            });
 
             return;
         } catch (err: unknown) {
