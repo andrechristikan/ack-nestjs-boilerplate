@@ -1,6 +1,6 @@
 # 0044. `@Global()` for guard-injected modules and the outbox
 
-- Status: accepted
+- Status: superseded by 0048
 - Date: 2026-11-11
 
 ## Context

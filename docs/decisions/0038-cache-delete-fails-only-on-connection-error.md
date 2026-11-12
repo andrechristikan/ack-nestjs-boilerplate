@@ -1,6 +1,6 @@
 # 0038. A cache delete fails a request only on a connection error
 
-- Status: accepted
+- Status: superseded by 0022
 - Date: 2026-11-08
 
 ## Context

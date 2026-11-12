@@ -30,13 +30,13 @@ The module's rank is the `imports:` its module file declares: it sits above ever
 | use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, implements `IAppUseCase`, one public `async execute` | `src/modules/device/use-cases/` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts` |
 
-A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, the services and utils of imported and `@Global()` modules, and the kit; a gate, an activity-log row, or an enqueue owned by another module goes in the use case around the service call, and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
+A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, the services and utils of imported and `@Global()` modules, and the kit; a gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/outbox.md`, `.claude/rules/activity-log.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
 
 ## 5. The module files
 
 Copy the shape, not the names:
 
-- `<module>.module.ts`: services, repositories, utils, caches, queue classes in `providers`; services, utils, caches, and queue classes in `exports`, never a repository; imports each non-`@Global()` `<Module>Module` whose services or utils its services inject (`src/modules/device/device.module.ts`).
+- `<module>.module.ts`: services, repositories, utils, caches, queue classes in `providers`; services, utils, and caches in `exports`, never a repository or a queue class; imports each non-`@Global()` `<Module>Module` whose services or utils its services inject (`src/modules/device/device.module.ts`).
 - `<module>.use-case.module.ts`: use cases in `providers` and `exports`, never a processor; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included (`src/modules/project/project.use-case.module.ts`).
 
 `controllers: []` in both. Only a file with something to provide exists.

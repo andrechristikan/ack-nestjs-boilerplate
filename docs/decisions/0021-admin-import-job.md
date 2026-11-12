@@ -9,7 +9,7 @@ Admin import creates users in one bulk transaction. Admin export returns a file.
 
 ## Decision
 
-`POST /admin/user/import` validates the file, writes one `user.importByAdmin` outbox effect, and answers 200 `{ metadata: { outboxId } }`. The job creates the users and sends `userImportResult`, an email to the acting admin with counts and collision reasons.
+`POST /admin/user/import` validates the file, writes one `user.importByAdmin` outbox effect, and answers 200 with `data: { outboxId }`. The job creates the users and sends `userImportResult`, an email to the acting admin with counts and collision reasons.
 
 ## Considered options
 

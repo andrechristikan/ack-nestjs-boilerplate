@@ -8,7 +8,6 @@ A use case stays inside its feature: `<Module>UseCaseModule` exports it to `src/
 | --- | --- | --- |
 | its exported service | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
 | its exported util | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
-| its exported queue class | no | yes, through its `<Module>Module` |
 | its cache or repository | no | no; ask the owning service |
 | its use case, controller, or processor | no | no; those are leaves the router consumes |
 | its enums, interfaces, constants, schemas | yes, compile-time only | yes, compile-time only |
@@ -45,7 +44,7 @@ A missing workspace throws `WorkspaceNotFoundException` wherever the check runs:
 
 ## Registration lives outside the feature module
 
-A controller file lives in its feature module; `src/router/http/router.http.<scope>.module.ts` declares it. A processor file lives in its feature module; `src/router/processor/router.processor.module.ts` provides it.
+A controller file lives in its feature module; `src/router/http/router.http.<scope>.module.ts` declares it. A processor file lives in its feature module, the kit `CacheProcessor` in `src/common/cache/processors/`; `src/router/processor/router.processor.module.ts` provides it.
 
 ## Workspace scoping follows the surface
 

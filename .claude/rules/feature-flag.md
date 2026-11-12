@@ -35,5 +35,5 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 ## Restrictions
 
 - Flags are seeded (`src/migration/data/migration.feature-flag.data.ts`, `seeding.md`), not created or deleted through the admin API.
-- A cache read or set error other than a connection error falls through to the database; a connection error answers 503, the post-commit delete's included (`cache.md`).
+- A cache read or set error other than a connection error falls through to the database; a connection error answers 503; an update invalidates through the `cache.invalidate` job (`cache.md`).
 - A gated key no row holds throws `FeatureFlagNotConfiguredException` (`notConfigured`, HTTP 500, `FeatureFlagService.validateFeatureFlag`): a missing seed row is our bug, reported to Sentry. It is not an optional integration's not-configured 404 (`exceptions.md`). `FeatureFlagNotFoundException` (`notFound`, HTTP 404) answers only an admin route naming a flag id no row holds (`FeatureFlagService.updateStatusByAdmin`). A disabled flag, a false sub-key, an anonymous caller with no id, and a lost bucket throw `FeatureFlagDisabledException` (`disabled`, HTTP 404), so a gated feature answers as absent. No fail-open either way.
