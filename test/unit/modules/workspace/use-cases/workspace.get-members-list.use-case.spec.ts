@@ -25,6 +25,12 @@ import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/requ
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetMembersListUseCase } from '@modules/workspace/use-cases/workspace.get-members-list.use-case';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetMembersListUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -43,6 +49,11 @@ describe('WorkspaceGetMembersListUseCase', () => {
         };
     const offsetPagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput> =
         { skip: 0, limit: 20, orderBy: [] };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1')
+    );
     let useCase: WorkspaceGetMembersListUseCase;
 
     beforeEach(async () => {
@@ -94,7 +105,7 @@ describe('WorkspaceGetMembersListUseCase', () => {
             };
             workspaceMemberService.getMembersList.mockResolvedValue(page);
 
-            await useCase.execute('workspace-1', query);
+            await useCase.execute(context, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceMemberUserListCursorScope,
@@ -126,7 +137,7 @@ describe('WorkspaceGetMembersListUseCase', () => {
             };
             workspaceMemberService.getMembersList.mockResolvedValue(page);
 
-            await useCase.execute('workspace-1', {});
+            await useCase.execute(context, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

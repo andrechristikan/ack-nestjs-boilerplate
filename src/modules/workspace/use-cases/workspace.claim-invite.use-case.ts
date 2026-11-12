@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -19,7 +19,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceClaimInviteUseCase implements IAppUseCase<
-    [string, string, WorkspaceInviteClaimRequestDto, IRequestContext],
+    [IRequestContextUser, WorkspaceInviteClaimRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -34,14 +34,13 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        userEmail: string,
-        { inviteToken }: WorkspaceInviteClaimRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { inviteToken }: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
+        const userId = context.user.id;
         const invite = await this.workspaceInviteService.validateInviteForEmail(
             inviteToken,
-            userEmail
+            context.user.email
         );
 
         const acceptedAt = this.helperDateService.create();
@@ -75,26 +74,26 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     );
                 }
                 const inviteeEntry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.workspaceInviteAccepted,
                         userId,
                         createdBy: userId,
                         workspaceId: invite.workspaceId,
                         metadata: { targetUserId: invite.invitedByUserId },
-                    },
-                    context
+                    }
                 );
                 const entries = [inviteeEntry];
                 if (invite.invitedByUserId !== userId) {
                     const inviterEntry = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                             userId: invite.invitedByUserId,
                             createdBy: userId,
                             workspaceId: invite.workspaceId,
                             metadata: { actorUserId: userId },
-                        },
-                        context
+                        }
                     );
                     entries.push(inviterEntry);
                 }

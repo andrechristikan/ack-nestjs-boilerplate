@@ -10,7 +10,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type {
@@ -18,11 +17,12 @@ import type {
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-password.use-case';
+import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserForgotPasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const context = buildRequestContext(null);
+    const context = buildRequestContextPublic();
 
     let useCase: UserForgotPasswordUseCase;
 
@@ -106,22 +106,22 @@ describe('UserForgotPasswordUseCase', () => {
         });
 
         it('creates the request with its notification and entry through the domain', async () => {
-            await expect(useCase.execute(dto, context)).resolves.toEqual({});
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(
                 userPasswordService.createForgotPassword
             ).toHaveBeenCalledWith(
+                context.snapshot,
                 'user-linden',
                 'linden@example.com',
-                forgot,
-                context
+                forgot
             );
         });
 
         it('answers empty and creates nothing when no active user holds the email', async () => {
             userPasswordService.prepareForgotPassword.mockResolvedValue(null);
 
-            await expect(useCase.execute(dto, context)).resolves.toEqual({});
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(
                 userPasswordService.createForgotPassword
@@ -133,7 +133,7 @@ describe('UserForgotPasswordUseCase', () => {
                 new Error('flag')
             );
 
-            await expect(useCase.execute(dto, context)).rejects.toThrow('flag');
+            await expect(useCase.execute(context, dto)).rejects.toThrow('flag');
             expect(
                 userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();

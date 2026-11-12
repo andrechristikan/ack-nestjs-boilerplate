@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -17,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ApiKeyResetByAdminUseCase implements IAppUseCase<
-    [string, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<ApiKeyCreateResponseDto>
 > {
     constructor(
@@ -30,8 +30,8 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        id: string,
-        context: IRequestContext
+        context: IRequestContextUser,
+        id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         try {
             const { apiKey, secret } = await this.outboxService.withTransaction(
@@ -47,11 +47,11 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
                         timestamp
                     );
                     const effect = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.adminApiKeyReset,
                             metadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, effect);
 

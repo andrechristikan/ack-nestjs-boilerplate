@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -7,17 +7,16 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserClaimUsernameUseCase implements IAppUseCase<
-    [string, UserClaimUsernameRequestDto, IRequestContext],
+    [IRequestContextUser, UserClaimUsernameRequestDto],
     IResponseReturn<void>
 > {
     constructor(private readonly userProfileService: UserProfileService) {}
 
     async execute(
-        userId: string,
-        { username }: UserClaimUsernameRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { username }: UserClaimUsernameRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileService.claimUsername(userId, username, context);
+        await this.userProfileService.claimUsername(context.snapshot, username);
 
         return {};
     }

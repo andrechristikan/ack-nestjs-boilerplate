@@ -14,6 +14,10 @@ import {
     TermPolicyAcceptanceDefaultAvailableOrderBy,
     TermPolicyAcceptanceSharedListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('TermPolicyGetListUserAcceptedUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
@@ -35,6 +39,9 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
         data: [] as ITermPolicyUserAcceptance[],
     };
 
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'user@example.com')
+    );
     let useCase: TermPolicyGetListUserAcceptedUseCase;
 
     beforeEach(async () => {
@@ -67,7 +74,7 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute('user-1', query);
+            const result = await useCase.execute(context, query);
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

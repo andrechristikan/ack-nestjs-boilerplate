@@ -1,10 +1,9 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import type {
-    IUser,
     IUserTwoFactorSetup,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
@@ -14,7 +13,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserSetupTwoFactorUseCase implements IAppUseCase<
-    [IUser, UserTwoFactorSetupRequestDto, IRequestContext],
+    [IRequestContextUser, UserTwoFactorSetupRequestDto],
     IResponseReturn<IUserTwoFactorSetup>
 > {
     constructor(
@@ -23,15 +22,15 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        user: IUser,
-        { backupCode, password }: UserTwoFactorSetupRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { backupCode, password }: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
+        const { user } = context;
         // Sequential by design: gate before the work it guards
         await this.userAuthService.assertCurrentPassword(
+            context.snapshot,
             user,
-            password ?? null,
-            context
+            password ?? null
         );
         const backupCodeForSetup =
             this.userTwoFactorService.getBackupCodeForSetup(
@@ -40,7 +39,10 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
             );
         let backupCodeVerified: IUserTwoFactorVerifyResult | null = null;
         if (backupCodeForSetup !== null) {
-            await this.userTwoFactorService.assertAttemptCounted(user, context);
+            await this.userTwoFactorService.assertAttemptCounted(
+                context.snapshot,
+                user
+            );
             backupCodeVerified = await this.userTwoFactorService.verify(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: null,
@@ -52,16 +54,16 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
             await this.userTwoFactorService.setup(user);
         if (backupCodeVerified) {
             await this.userTwoFactorService.saveSetupConsumingBackupCode(
+                context.snapshot,
                 user,
                 encryptedSecret,
-                backupCodeVerified,
-                context
+                backupCodeVerified
             );
         } else {
             await this.userTwoFactorService.saveSetup(
+                context.snapshot,
                 user.id,
-                encryptedSecret,
-                context
+                encryptedSecret
             );
         }
 

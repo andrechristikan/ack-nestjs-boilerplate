@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import type { IAnalyticRoleCountList } from '@modules/analytic/interfaces/analytic.interface';
@@ -6,7 +7,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class AnalyticMemberRolesUseCase implements IAppUseCase<
-    [string],
+    [IRequestContextWorkspace],
     IResponseReturn<IAnalyticRoleCountList>
 > {
     constructor(
@@ -14,10 +15,11 @@ export class AnalyticMemberRolesUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string
+        context: IRequestContextWorkspace
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        const roles =
-            await this.analyticWorkspaceUserService.memberRoles(workspaceId);
+        const roles = await this.analyticWorkspaceUserService.memberRoles(
+            context.workspace.id
+        );
 
         return { data: { roles } };
     }

@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { MessageService } from '@common/message/services/message.service';
@@ -16,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class NotificationGetListCursorUseCase implements IAppUseCase<
-    [string, NotificationListRequestDto, string | null],
+    [IRequestContextUser, NotificationListRequestDto, string | null],
     IResponsePaginationReturn<Notification>
 > {
     constructor(
@@ -27,7 +28,7 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         query: NotificationListRequestDto,
         language: string | null
     ): Promise<IResponsePaginationReturn<Notification>> {
@@ -42,7 +43,10 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.notificationService.getListCursor(userId, params);
+            await this.notificationService.getListCursor(
+                context.user.id,
+                params
+            );
 
         const translated = data.map(notification => {
             const metadataProperties =

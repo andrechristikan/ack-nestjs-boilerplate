@@ -17,7 +17,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -37,6 +36,7 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdatePasswordByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -107,13 +107,13 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         id: 'admin-linden',
         role: { ...user.role, type: EnumRoleType.admin },
     };
+    const context = buildRequestContextUser(admin);
     const password: IAuthPassword = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const context = buildRequestContext('admin-linden');
     const adminEntry = { queue: 'admin-entry' } as unknown as IOutboxEffect;
     const targetEntry = { queue: 'target-entry' } as unknown as IOutboxEffect;
     const snapshot: INotificationSnapshot = {
@@ -144,7 +144,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.recordEffect.mockImplementation(input =>
+        activityLogService.recordEffect.mockImplementation((_context, input) =>
             input.action === EnumActivityLogAction.adminUserUpdatePassword
                 ? adminEntry
                 : targetEntry
@@ -242,7 +242,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-linden', admin, context)
+                useCase.execute(context, 'user-linden')
             ).resolves.toEqual({});
 
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
@@ -304,21 +304,21 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminUserUpdatePassword,
                     metadata: { targetUserId: 'user-linden' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                     userId: 'user-linden',
                     createdBy: 'admin-linden',
                     metadata: { actorUserId: 'admin-linden' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 adminEntry,
@@ -345,7 +345,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 return updatedRow;
             });
 
-            await useCase.execute('user-linden', admin, context);
+            await useCase.execute(context, 'user-linden');
 
             expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
@@ -359,7 +359,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-linden', admin, context)
+                useCase.execute(context, 'user-linden')
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -371,7 +371,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-linden', admin, context)
+                useCase.execute(context, 'user-linden')
             ).rejects.toThrow('read');
             expect(
                 sessionService.revokeActiveByUserInTx
@@ -383,9 +383,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
 
-            await expect(
-                useCase.execute('user-linden', admin, context)
-            ).rejects.toBe(cause);
+            await expect(useCase.execute(context, 'user-linden')).rejects.toBe(
+                cause
+            );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });

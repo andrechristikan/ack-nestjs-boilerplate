@@ -3,7 +3,10 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextPublic,
+    IRequestContextSnapshot,
+} from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumUserLoginFrom,
@@ -45,7 +48,12 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginWithSocialUseCase implements IAppUseCase<
-    [string, EnumUserLoginWith, UserCreateSocialRequestDto, IRequestContext],
+    [
+        IRequestContextPublic,
+        string,
+        EnumUserLoginWith,
+        UserCreateSocialRequestDto,
+    ],
     IResponseReturn<IUserLoginOutcome>
 > {
     private readonly userRoleName: string;
@@ -82,10 +90,10 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async signUpWithSocial(
+        snapshot: IRequestContextSnapshot,
         email: string,
         loginWith: EnumUserLoginWith,
-        loginSocial: IUserLoginSocial,
-        context: IRequestContext
+        loginSocial: IUserLoginSocial
     ): Promise<void> {
         const normalizedEmail = email.trim().toLowerCase();
         // Sequential by design: gate before the work it guards
@@ -188,7 +196,10 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             created
                         );
                         const entries = stages.map(stage =>
-                            this.activityLogService.recordEffect(stage, context)
+                            this.activityLogService.recordEffect(
+                                snapshot,
+                                stage
+                            )
                         );
                         await this.outboxService.addManyInTx(tx, [
                             welcome,
@@ -221,20 +232,20 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async startSession(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
+            snapshot,
             user,
             device,
             loginFrom,
             loginWith,
-            loginAt,
-            context
+            loginAt
         );
         await this.sessionService.setLoginOrRevoke(
             user.id,
@@ -246,12 +257,12 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async resolveLoginOutcome(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
@@ -263,12 +274,12 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
             const tokens = await this.startSession(
+                snapshot,
                 user,
                 device,
                 loginFrom,
                 loginWith,
-                loginAt,
-                context
+                loginAt
             );
 
             return {
@@ -280,11 +291,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         }
 
         const twoFactor = await this.userAuthService.createTwoFactorChallenge(
+            snapshot,
             user,
             device,
             loginFrom,
-            loginWith,
-            context
+            loginWith
         );
 
         return {
@@ -296,6 +307,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     async execute(
+        context: IRequestContextPublic,
         email: string,
         loginWith: EnumUserLoginWith,
         {
@@ -307,8 +319,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             countryId,
             cookies,
             marketing,
-        }: UserCreateSocialRequestDto,
-        context: IRequestContext
+        }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginSocial: IUserLoginSocial = {
@@ -321,26 +332,31 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        await this.signUpWithSocial(email, loginWith, loginSocial, context);
+        await this.signUpWithSocial(
+            context.snapshot,
+            email,
+            loginWith,
+            loginSocial
+        );
 
         let user = await this.userAuthService.getOneForSocialLogin(email);
         const isUnverified = this.userUtil.isUnverified(user);
         if (isUnverified) {
             user = await this.userAuthService.verifyEmailBySocial(
-                user,
-                context
+                context.snapshot,
+                user
             );
         }
 
         // Sequential by design: write must not run if an earlier step throws
         const loginAt = this.helperDateService.create();
         const outcome = await this.resolveLoginOutcome(
+            context.snapshot,
             user,
             deviceIdentity,
             from,
             loginWith,
-            loginAt,
-            context
+            loginAt
         );
 
         return { data: outcome };

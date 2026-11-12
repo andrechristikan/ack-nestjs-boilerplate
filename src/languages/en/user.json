@@ -47,7 +47,6 @@
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "outboxIdMissing": "The import job carries no outbox row id.",
-            "actorMissing": "The import job carries no acting admin.",
             "photoAccessInvalid": "User photo {key} names no S3 bucket access {access}."
         }
     },

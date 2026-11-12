@@ -1,3 +1,4 @@
+import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -16,7 +17,7 @@ import {
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
+
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -116,7 +117,9 @@ describe('TermPolicyGuard', () => {
                 TermPolicyRequiredGuardMetaKey,
                 executionContext.getHandler()
             );
-            expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestUserStoreKey
+            );
             expect(
                 termPolicyAcceptanceService.validateTermPolicyGuard
             ).toHaveBeenCalledWith(user.id, requiredTermPolicies);

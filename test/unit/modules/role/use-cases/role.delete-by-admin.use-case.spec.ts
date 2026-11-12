@@ -15,7 +15,7 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -103,22 +103,7 @@ describe('RoleDeleteByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const context: IRequestContext = {
-        actorUserId: actorUser.id,
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: { architecture: null },
-                device: { type: null, vendor: null, model: null },
-                engine: { name: null, version: null },
-                os: { name: null, version: null },
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(actorUser);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -157,7 +142,7 @@ describe('RoleDeleteByAdminUseCase', () => {
         it('deletes the role on the outbox transaction and returns an empty envelope', async () => {
             roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            const result = await useCase.execute(role.id, actorUser, context);
+            const result = await useCase.execute(context, role.id);
 
             expect(result).toEqual({});
             expect(roleService.deleteByAdminInTx).toHaveBeenCalledWith(
@@ -170,15 +155,15 @@ describe('RoleDeleteByAdminUseCase', () => {
         it('adds the delete activity entry from the deleted role and the passed context on the same tx', async () => {
             roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            await useCase.execute(role.id, actorUser, context);
+            await useCase.execute(context, role.id);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 role,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.adminRoleDelete, metadata },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.adminRoleDelete, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -187,9 +172,9 @@ describe('RoleDeleteByAdminUseCase', () => {
             const failure = new RoleUsedException();
             roleService.deleteByAdminInTx.mockRejectedValue(failure);
 
-            await expect(
-                useCase.execute(role.id, actorUser, context)
-            ).rejects.toBe(failure);
+            await expect(useCase.execute(context, role.id)).rejects.toBe(
+                failure
+            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -201,7 +186,7 @@ describe('RoleDeleteByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(role.id, actorUser, context)
+                useCase.execute(context, role.id)
             ).rejects.toBeInstanceOf(RoleUsedException);
         });
 
@@ -211,7 +196,7 @@ describe('RoleDeleteByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(role.id, actorUser, context)
+                useCase.execute(context, role.id)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

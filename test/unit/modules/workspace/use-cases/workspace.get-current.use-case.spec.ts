@@ -2,6 +2,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceGetCurrentUseCase } from '@modules/workspace/use-cases/workspace.get-current.use-case';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetCurrentUseCase', () => {
     const workspace: Workspace = {
@@ -17,6 +22,11 @@ describe('WorkspaceGetCurrentUseCase', () => {
         description: null,
         isPublic: false,
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        workspace,
+        buildWorkspaceMember('user-1')
+    );
     let useCase: WorkspaceGetCurrentUseCase;
 
     beforeEach(async () => {
@@ -31,7 +41,7 @@ describe('WorkspaceGetCurrentUseCase', () => {
 
     describe('execute', () => {
         it('wraps the current workspace in the response envelope', async () => {
-            const result = await useCase.execute(workspace);
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({ data: workspace });
         });

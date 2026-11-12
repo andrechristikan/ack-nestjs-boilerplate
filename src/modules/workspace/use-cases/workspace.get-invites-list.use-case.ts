@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -18,7 +19,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
-    [string, WorkspaceInviteListRequestDto],
+    [IRequestContextWorkspace, WorkspaceInviteListRequestDto],
     IResponsePaginationReturn<IWorkspaceInviteList>
 > {
     constructor(
@@ -29,7 +30,7 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
+        context: IRequestContextWorkspace,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         const { params, storePatch } =
@@ -56,7 +57,7 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceInviteService.getInvitesList(
-                workspaceId,
+                context.workspace.id,
                 params,
                 status?.where
             );

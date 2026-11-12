@@ -2,7 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumTermPolicyStatus,
@@ -30,22 +33,9 @@ describe('TermPolicyCreateByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context: IRequestContext = {
-        actorUserId: 'admin-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(
+        buildUser('admin-1', 'actor@example.com')
+    );
     const body: TermPolicyCreateRequestDto = {
         type: EnumTermPolicyType.privacy,
         version: 1,
@@ -73,13 +63,13 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockResolvedValue(termPolicy);
 
-            const result = await useCase.execute(body, context);
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: termPolicy });
             expect(termPolicyService.createByAdmin).toHaveBeenCalledWith(
+                context.snapshot,
                 'term-policy-1',
-                body,
-                context
+                body
             );
         });
 
@@ -88,7 +78,7 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockRejectedValue(error);
 
-            await expect(useCase.execute(body, context)).rejects.toBe(error);
+            await expect(useCase.execute(context, body)).rejects.toBe(error);
         });
     });
 });

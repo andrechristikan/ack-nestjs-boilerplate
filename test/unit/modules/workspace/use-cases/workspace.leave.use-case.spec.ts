@@ -21,7 +21,11 @@ import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/works
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceLeaveUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -34,7 +38,6 @@ describe('WorkspaceLeaveUseCase', () => {
         mock<WorkspaceJoinRequestService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const context = buildRequestContext('user-1');
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -50,6 +53,12 @@ describe('WorkspaceLeaveUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        member
+    );
+
     let useCase: WorkspaceLeaveUseCase;
 
     beforeEach(async () => {
@@ -115,11 +124,7 @@ describe('WorkspaceLeaveUseCase', () => {
                 return 'outbox-1';
             });
 
-            const result = await useCase.execute(
-                'workspace-1',
-                member,
-                context
-            );
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({});
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -138,13 +143,13 @@ describe('WorkspaceLeaveUseCase', () => {
                 'workspace-1'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceMemberLeft,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
             expect(callOrder).toEqual([
@@ -161,9 +166,9 @@ describe('WorkspaceLeaveUseCase', () => {
                 new WorkspaceLastOwnerException()
             );
 
-            await expect(
-                useCase.execute('workspace-1', member, context)
-            ).rejects.toBeInstanceOf(WorkspaceLastOwnerException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                WorkspaceLastOwnerException
+            );
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
@@ -183,9 +188,9 @@ describe('WorkspaceLeaveUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(
-                useCase.execute('workspace-1', member, context)
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                WorkspaceMemberNotFoundException
+            );
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -196,9 +201,9 @@ describe('WorkspaceLeaveUseCase', () => {
             );
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(
-                useCase.execute('workspace-1', member, context)
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                AppUnknownException
+            );
         });
     });
 });

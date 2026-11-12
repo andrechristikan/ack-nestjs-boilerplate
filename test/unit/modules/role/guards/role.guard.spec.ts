@@ -1,3 +1,4 @@
+import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -17,7 +18,7 @@ import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleGuard } from '@modules/role/guards/role.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
+
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -112,7 +113,9 @@ describe('RoleGuard', () => {
                 RoleRequiredMetaKey,
                 executionContext.getHandler()
             );
-            expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestUserStoreKey
+            );
             expect(roleService.validateRoleGuard).toHaveBeenCalledWith(user, [
                 EnumRoleType.user,
             ]);

@@ -11,15 +11,15 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
+import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserVerifyEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const context = buildRequestContext(null);
+    const context = buildRequestContextPublic();
 
     let useCase: UserVerifyEmailUseCase;
 
@@ -89,18 +89,18 @@ describe('UserVerifyEmailUseCase', () => {
     });
 
     describe('execute', () => {
-        it('verifies the token with the context and answers empty', async () => {
+        it('verifies the token with the snapshot and answers empty', async () => {
             const dto: UserVerifyEmailRequestDto = { token: 'raw-token' };
 
-            const result = await useCase.execute(dto, context);
+            const result = await useCase.execute(context, dto);
 
             expect(result).toEqual({});
             expect(
                 userVerificationService.getOneActiveByEmailToken
             ).toHaveBeenCalledWith('raw-token');
             expect(userVerificationService.verifyEmail).toHaveBeenCalledWith(
-                verification,
-                context
+                context.snapshot,
+                verification
             );
         });
 
@@ -110,7 +110,7 @@ describe('UserVerifyEmailUseCase', () => {
             );
 
             await expect(
-                useCase.execute({ token: 'raw-token' }, context)
+                useCase.execute(context, { token: 'raw-token' })
             ).rejects.toThrow('boom');
         });
     });

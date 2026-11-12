@@ -1,8 +1,10 @@
-import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestProjectStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
-import { ProjectStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { Injectable } from '@nestjs/common';
@@ -31,7 +33,7 @@ export class ProjectGuard implements CanActivate {
             projectId ?? null
         );
 
-        this.requestStoreService.set(ProjectStoreKey, project);
+        this.requestStoreService.set(RequestProjectStoreKey, project);
 
         return true;
     }

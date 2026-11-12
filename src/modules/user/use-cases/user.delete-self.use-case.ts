@@ -5,7 +5,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -21,7 +21,6 @@ import { UserMobileNumberService } from '@modules/user/services/user.mobile-numb
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { Injectable } from '@nestjs/common';
@@ -30,7 +29,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserDeleteSelfUseCase implements IAppUseCase<
-    [IUser, UserDeleteSelfRequestDto, IRequestContext],
+    [IRequestContextUser, UserDeleteSelfRequestDto],
     IResponseReturn<void>
 > {
     private readonly deleteSelfTimeoutInMs: number;
@@ -84,19 +83,19 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     }
 
     async execute(
-        user: IUser,
-        { password }: UserDeleteSelfRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { password }: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
+        const { user } = context;
         this.userService.assertSelfDeletable(user);
 
         const userId = user.id;
 
         // Sequential by design: gate before the work it guards
         await this.userAuthService.assertCurrentPassword(
+            context.snapshot,
             user,
-            password ?? null,
-            context
+            password ?? null
         );
 
         const now = this.helperDateService.create();
@@ -158,28 +157,24 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                     );
 
                     const revokeAllEntry = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.userRevokeAllSessions,
                             userId,
                             createdBy: userId,
-                        },
-                        context
+                        }
                     );
                     const deleteSelfEntry =
-                        this.activityLogService.recordEffect(
-                            { action: EnumActivityLogAction.userDeleteSelf },
-                            context
-                        );
+                        this.activityLogService.recordEffect(context.snapshot, {
+                            action: EnumActivityLogAction.userDeleteSelf,
+                        });
                     const workspaceEntries = ownedIds.map(workspaceId =>
-                        this.activityLogService.recordEffect(
-                            {
-                                action: EnumActivityLogAction.workspaceDeleted,
-                                userId,
-                                createdBy: userId,
-                                workspaceId,
-                            },
-                            context
-                        )
+                        this.activityLogService.recordEffect(context.snapshot, {
+                            action: EnumActivityLogAction.workspaceDeleted,
+                            userId,
+                            createdBy: userId,
+                            workspaceId,
+                        })
                     );
                     await this.outboxService.addManyInTx(tx, [
                         revokeAllEntry,

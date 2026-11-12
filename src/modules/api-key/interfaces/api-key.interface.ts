@@ -33,8 +33,4 @@ export interface IApiKeyCreated extends IApiKey {
     secret: string;
 }
 
-export type IApiKeyField = Extract<keyof ApiKey, string>;
-
-export type IApiKeyFieldValue = NonNullable<ApiKey[IApiKeyField]>;
-
 export type IApiKeyActivityLogSubject = Pick<ApiKey, 'id' | 'name' | 'type'>;

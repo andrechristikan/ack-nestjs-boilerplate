@@ -33,7 +33,8 @@ import type {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import {
-    buildRequestContext,
+    buildRequestContextUser,
+    buildUser,
     expectRequestContextMissingWithKey,
 } from '@test/unit/helpers/test.unit.request.helper';
 
@@ -46,7 +47,9 @@ describe('ProjectService', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContext('user-1');
+    const { snapshot } = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
     const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
@@ -282,10 +285,9 @@ describe('ProjectService', () => {
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
+                snapshot,
                 '507f1f77bcf86cd799439012',
-                'user-1',
-                create,
-                context
+                create
             );
 
             expect(result).toBe(baseProject);
@@ -296,13 +298,13 @@ describe('ProjectService', () => {
                 'p-abc123'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectCreated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: '507f1f77bcf86cd799439012',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -316,10 +318,9 @@ describe('ProjectService', () => {
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
+                snapshot,
                 '507f1f77bcf86cd799439012',
-                'user-1',
-                create,
-                context
+                create
             );
 
             expect(result).toBe(baseProject);
@@ -338,10 +339,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
+                    snapshot,
                     '507f1f77bcf86cd799439012',
-                    'user-1',
-                    create,
-                    context
+                    create
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -357,10 +357,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
+                    snapshot,
                     '507f1f77bcf86cd799439012',
-                    'user-1',
-                    create,
-                    context
+                    create
                 )
             ).rejects.toBeInstanceOf(AppBaseException);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -374,10 +373,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
+                    snapshot,
                     '507f1f77bcf86cd799439012',
-                    'user-1',
-                    create,
-                    context
+                    create
                 )
             ).rejects.toMatchObject({
                 constructor: DatabaseUniqueValueGenerationFailedException,
@@ -398,10 +396,9 @@ describe('ProjectService', () => {
             };
 
             const result = await service.updateProject(
+                snapshot,
                 project,
-                'user-1',
-                update,
-                context
+                update
             );
 
             expect(result).toBe(updated);
@@ -411,13 +408,13 @@ describe('ProjectService', () => {
                 update
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: project.workspaceId,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -428,12 +425,7 @@ describe('ProjectService', () => {
             const project = baseProject;
 
             await expect(
-                service.updateProjectSlug(
-                    project,
-                    'user-1',
-                    'invalid slug!',
-                    context
-                )
+                service.updateProjectSlug(snapshot, project, 'invalid slug!')
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
@@ -453,7 +445,7 @@ describe('ProjectService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                service.updateProjectSlug(project, 'user-1', 'p-taken', context)
+                service.updateProjectSlug(snapshot, project, 'p-taken')
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
@@ -476,12 +468,7 @@ describe('ProjectService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.updateProjectSlug(
-                    project,
-                    'user-1',
-                    'p-new-slug',
-                    context
-                )
+                service.updateProjectSlug(snapshot, project, 'p-new-slug')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -494,10 +481,9 @@ describe('ProjectService', () => {
             projectRepository.updateSlugInTx.mockResolvedValue(updated);
 
             const result = await service.updateProjectSlug(
+                snapshot,
                 project,
-                'user-1',
-                'p-new-slug',
-                context
+                'p-new-slug'
             );
 
             expect(result).toBe(updated);
@@ -507,13 +493,13 @@ describe('ProjectService', () => {
                 'p-new-slug'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: project.workspaceId,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });

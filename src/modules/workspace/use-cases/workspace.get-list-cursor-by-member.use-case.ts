@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -16,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetListCursorByMemberUseCase implements IAppUseCase<
-    [string, WorkspaceUserListRequestDto],
+    [IRequestContextUser, WorkspaceUserListRequestDto],
     IResponsePaginationReturn<Workspace>
 > {
     constructor(
@@ -26,7 +27,7 @@ export class WorkspaceGetListCursorByMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         query: WorkspaceUserListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const { params, storePatch } =
@@ -38,7 +39,10 @@ export class WorkspaceGetListCursorByMemberUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.workspaceService.getListCursorByMember(userId, params);
+            await this.workspaceService.getListCursorByMember(
+                context.user.id,
+                params
+            );
 
         return {
             data,

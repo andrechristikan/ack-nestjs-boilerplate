@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -18,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
-    [string, ApiKeyUpdateStatusRequestDto, IRequestContext],
+    [IRequestContextUser, string, ApiKeyUpdateStatusRequestDto],
     IResponseReturn<IApiKey>
 > {
     constructor(
@@ -31,9 +31,9 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         id: string,
-        { isActive }: ApiKeyUpdateStatusRequestDto,
-        context: IRequestContext
+        { isActive }: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         try {
             const updated = await this.outboxService.withTransaction(
@@ -51,11 +51,11 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
                         timestamp
                     );
                     const effect = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.adminApiKeyUpdateStatus,
                             metadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, effect);
 

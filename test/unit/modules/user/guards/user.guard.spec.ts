@@ -14,10 +14,8 @@ import {
 } from '@generated/prisma-client/client';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import {
-    UserGuardIsVerifiedMetaKey,
-    UserStoreKey,
-} from '@modules/user/constants/user.constant';
+import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
+import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { UserService } from '@modules/user/services/user.service';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -125,7 +123,7 @@ describe('UserGuard', () => {
             true
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
-            UserStoreKey,
+            RequestUserStoreKey,
             user
         );
     });

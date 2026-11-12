@@ -2,7 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
@@ -29,22 +32,9 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context: IRequestContext = {
-        actorUserId: 'admin-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(
+        buildUser('admin-1', 'actor@example.com')
+    );
     const body: TermPolicyContentRequestDto = {
         language: EnumMessageLanguage.en,
         size: 1024,
@@ -76,15 +66,15 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
             );
 
             const result = await useCase.execute(
+                context,
                 'term-policy-1',
-                body,
-                context
+                body
             );
 
             expect(result).toEqual({});
             expect(
                 termPolicyContentService.updateContentByAdmin
-            ).toHaveBeenCalledWith('term-policy-1', body, context);
+            ).toHaveBeenCalledWith(context.snapshot, 'term-policy-1', body);
         });
 
         it('rethrows the domain exception', async () => {
@@ -94,7 +84,7 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('term-policy-1', body, context)
+                useCase.execute(context, 'term-policy-1', body)
             ).rejects.toBe(error);
         });
     });

@@ -1,3 +1,4 @@
+import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -24,7 +25,7 @@ import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-c
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
+
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
@@ -114,7 +115,7 @@ describe('PolicyGuard', () => {
             const policies: Policy[] = [];
             reflector.get.mockReturnValue(requiredPolicies);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === UserStoreKey) {
+                if (key === RequestUserStoreKey) {
                     return user;
                 }
                 if (key === PolicyStoreKey) {
@@ -142,7 +143,7 @@ describe('PolicyGuard', () => {
             const policies: Policy[] = [];
             reflector.get.mockReturnValue(undefined);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === UserStoreKey) {
+                if (key === RequestUserStoreKey) {
                     return user;
                 }
                 return policies;
@@ -180,7 +181,7 @@ describe('PolicyGuard', () => {
         it('throws PolicyGuardMissingException before the domain call when the policy store is empty', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === UserStoreKey) {
+                if (key === RequestUserStoreKey) {
                     return user;
                 }
                 return null;
@@ -204,7 +205,7 @@ describe('PolicyGuard', () => {
         it('propagates a false result from the domain', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === UserStoreKey) {
+                if (key === RequestUserStoreKey) {
                     return user;
                 }
                 return [];

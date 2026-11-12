@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import type { IAnalyticMetricCount } from '@modules/analytic/interfaces/analytic.interface';
@@ -8,7 +9,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class AnalyticActivityUseCase implements IAppUseCase<
-    [string, AnalyticDateRangeRequestDto],
+    [IRequestContextWorkspace, AnalyticDateRangeRequestDto],
     IResponseReturn<IAnalyticMetricCount>
 > {
     constructor(
@@ -17,12 +18,12 @@ export class AnalyticActivityUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
+        context: IRequestContextWorkspace,
         { startDate, endDate }: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateService.requireRange(startDate, endDate);
         const data = await this.analyticWorkspaceUserService.activity(
-            workspaceId,
+            context.workspace.id,
             range.startDate,
             range.endDate
         );

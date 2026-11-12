@@ -5,12 +5,17 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdatePhotoProfileUseCase } from '@modules/user/use-cases/user.update-photo-profile.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdatePhotoProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContext('user-sable');
+    const context = buildRequestContextUser(
+        buildUser('user-sable', 'user-sable@example.com')
+    );
 
     let useCase: UserUpdatePhotoProfileUseCase;
 
@@ -27,17 +32,16 @@ describe('UserUpdatePhotoProfileUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the key and the context to the domain', async () => {
+        it('delegates the key and the snapshot to the domain', async () => {
             const dto: UserUpdateProfilePhotoRequestDto = {
                 key: 'photo-profile/user-sable/random.png',
             };
 
-            await useCase.execute('user-sable', dto, context);
+            await useCase.execute(context, dto);
 
             expect(userProfileService.updatePhotoProfile).toHaveBeenCalledWith(
-                'user-sable',
-                { key: dto.key },
-                context
+                context.snapshot,
+                { key: dto.key }
             );
         });
     });

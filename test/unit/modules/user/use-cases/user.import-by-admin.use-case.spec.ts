@@ -18,7 +18,10 @@ import type {
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -27,7 +30,9 @@ describe('UserImportByAdminUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserImportByAdminUseCase;
 
-    const context = buildRequestContext('admin-bramble');
+    const context = buildRequestContextUser(
+        buildUser('admin-bramble', 'admin-bramble@example.com')
+    );
     const importEffect: IOutboxEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.importByAdmin,
@@ -39,7 +44,7 @@ describe('UserImportByAdminUseCase', () => {
                     name: null,
                 },
             ],
-            context,
+            context: context.snapshot,
         },
         priority: EnumQueuePriority.medium,
         idempotencyKey: null,
@@ -88,20 +93,20 @@ describe('UserImportByAdminUseCase', () => {
             );
         });
 
-        it('adds one importByAdmin effect holding the rows and the context and answers its outbox id', async () => {
-            await expect(useCase.execute(rows, context)).resolves.toEqual({
+        it('adds one importByAdmin effect holding the rows and the snapshot and answers its outbox id', async () => {
+            await expect(useCase.execute(context, rows)).resolves.toEqual({
                 data: { outboxId: 'outbox-bramble' },
             });
 
             expect(userService.importByAdminEffect).toHaveBeenCalledWith(
-                imported,
-                context
+                context.snapshot,
+                imported
             );
             expect(outboxService.add).toHaveBeenCalledWith(importEffect);
         });
 
         it('runs the email, username, and row checks in order before adding the effect', async () => {
-            await useCase.execute(rows, context);
+            await useCase.execute(context, rows);
 
             expect(userImportService.getExistingEmails).toHaveBeenCalledWith([
                 'bramble@example.com',
@@ -131,7 +136,7 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserImportEmailExistException('bramble@example.com');
             });
 
-            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importEmailExist,
                 statusCodeKey:
@@ -151,7 +156,7 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserImportUsernameExistException('bramble2fox');
             });
 
-            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
                 messagePath: 'user.error.importUsernameExist',
@@ -165,7 +170,7 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserUsernameContainBadWordException();
             });
 
-            await expect(useCase.execute(rows, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameContainBadWord,
             });

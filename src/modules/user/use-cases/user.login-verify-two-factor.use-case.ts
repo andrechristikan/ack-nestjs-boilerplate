@@ -3,7 +3,10 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextPublic,
+    IRequestContextSnapshot,
+} from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -26,7 +29,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
-    [UserLoginVerifyTwoFactorRequestDto, IRequestContext],
+    [IRequestContextPublic, UserLoginVerifyTwoFactorRequestDto],
     IResponseReturn<IAuthToken>
 > {
     constructor(
@@ -41,20 +44,20 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
     ) {}
 
     private async startSession(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
+            snapshot,
             user,
             device,
             loginFrom,
             loginWith,
-            loginAt,
-            context
+            loginAt
         );
         await this.sessionService.setLoginOrRevoke(
             user.id,
@@ -66,13 +69,13 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
     }
 
     async execute(
+        context: IRequestContextPublic,
         {
             challengeToken,
             code,
             backupCode,
             method,
-        }: UserLoginVerifyTwoFactorRequestDto,
-        context: IRequestContext
+        }: UserLoginVerifyTwoFactorRequestDto
     ): Promise<IResponseReturn<IAuthToken>> {
         const challenge =
             await this.authTwoFactorService.getChallenge(challengeToken);
@@ -81,7 +84,10 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
             challenge.userId
         );
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.userTwoFactorService.assertAttemptCounted(user, context);
+        await this.userTwoFactorService.assertAttemptCounted(
+            context.snapshot,
+            user
+        );
         const verified = await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
@@ -96,12 +102,12 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
                     verified
                 );
                 const entry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.userVerifyTwoFactor,
                         userId: user.id,
                         createdBy: user.id,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });
@@ -120,12 +126,12 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
 
         const loginAt = this.helperDateService.create();
         const tokens = await this.startSession(
+            context.snapshot,
             user,
             challenge.device,
             challenge.loginFrom,
             challenge.loginWith,
-            loginAt,
-            context
+            loginAt
         );
 
         return { data: tokens };

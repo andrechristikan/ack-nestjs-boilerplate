@@ -20,7 +20,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -110,22 +110,7 @@ describe('PolicyCreateByAdminUseCase', () => {
         role: { ...baseUser.role, id: 'role-actor' },
     };
 
-    const context: IRequestContext = {
-        actorUserId: 'user-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: { architecture: null },
-                device: { type: null, vendor: null, model: null },
-                engine: { name: null, version: null },
-                os: { name: null, version: null },
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(actor);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -168,7 +153,7 @@ describe('PolicyCreateByAdminUseCase', () => {
             const failure = new RoleRankForbiddenException();
             roleService.assertWritableByActor.mockRejectedValue(failure);
 
-            const promise = useCase.execute('role-1', body, actor, context);
+            const promise = useCase.execute(context, 'role-1', body);
 
             await expect(promise).rejects.toBe(failure);
             expect(roleService.assertWritableByActor).toHaveBeenCalledWith(
@@ -182,12 +167,7 @@ describe('PolicyCreateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.createByAdminInTx.mockResolvedValue(policy);
 
-            const result = await useCase.execute(
-                'role-1',
-                body,
-                actor,
-                context
-            );
+            const result = await useCase.execute(context, 'role-1', body);
 
             expect(result).toEqual({ data: policy });
             expect(policyService.createByAdminInTx).toHaveBeenCalledWith(
@@ -201,17 +181,17 @@ describe('PolicyCreateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.createByAdminInTx.mockResolvedValue(policy);
 
-            await useCase.execute('role-1', body, actor, context);
+            await useCase.execute(context, 'role-1', body);
 
             expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 policy
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminPolicyCreate,
                     metadata: policyMetadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -223,7 +203,7 @@ describe('PolicyCreateByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('role-1', body, actor, context)
+                useCase.execute(context, 'role-1', body)
             ).rejects.toThrow('boom');
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

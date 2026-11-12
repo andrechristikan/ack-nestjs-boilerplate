@@ -6,12 +6,15 @@ import type { Workspace } from '@generated/prisma-client/client';
 import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUpdateIsPublicUseCase } from '@modules/workspace/use-cases/workspace.update-is-public.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateIsPublicUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const context = buildRequestContext('user-1');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -25,6 +28,12 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
         description: null,
         isPublic: false,
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        workspace,
+        buildWorkspaceMember('user-1')
+    );
+
     let useCase: WorkspaceUpdateIsPublicUseCase;
 
     beforeEach(async () => {
@@ -47,17 +56,12 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
                 workspace
             );
 
-            const result = await useCase.execute(
-                'workspace-1',
-                'user-1',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: workspace });
             expect(
                 workspaceService.updateWorkspaceIsPublic
-            ).toHaveBeenCalledWith('workspace-1', 'user-1', true, context);
+            ).toHaveBeenCalledWith(context.snapshot, 'workspace-1', true);
         });
     });
 });

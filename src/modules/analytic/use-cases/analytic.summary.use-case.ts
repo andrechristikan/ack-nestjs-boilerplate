@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import type { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
@@ -8,7 +9,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class AnalyticSummaryUseCase implements IAppUseCase<
-    [string, AnalyticOptionalDateRangeRequestDto],
+    [IRequestContextWorkspace, AnalyticOptionalDateRangeRequestDto],
     IResponseReturn<IAnalyticWorkspaceSummary>
 > {
     constructor(
@@ -17,7 +18,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
+        context: IRequestContextWorkspace,
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
         const range = this.analyticDateService.optionalRange(
@@ -25,7 +26,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
             query.endDate ?? null
         );
         const data = await this.analyticWorkspaceUserService.summary(
-            workspaceId,
+            context.workspace.id,
             range.startDate,
             range.endDate
         );

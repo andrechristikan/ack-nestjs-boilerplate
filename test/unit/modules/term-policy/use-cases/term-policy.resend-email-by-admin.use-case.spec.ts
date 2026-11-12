@@ -14,7 +14,10 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumNotificationProcess,
     EnumNotificationQueue,
@@ -74,22 +77,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const context: IRequestContext = {
-        actorUserId: 'user-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'actor@example.com')
+    );
 
     const resendEffect: IOutboxEffect = {
         queue: EnumNotificationQueue.notification,
@@ -144,11 +134,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 publishedTermPolicy
             );
 
-            const result = await useCase.execute(
-                'term-policy-1',
-                'user-1',
-                context
-            );
+            const result = await useCase.execute(context, 'term-policy-1');
 
             expect(result).toEqual({});
             expect(
@@ -167,11 +153,11 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminTermPolicyResendEmail,
                     metadata,
-                },
-                context
+                }
             );
             expect(outboxService.addMany).toHaveBeenCalledTimes(1);
             expect(outboxService.addMany).toHaveBeenCalledWith([
@@ -188,7 +174,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             outboxService.addMany.mockRejectedValue(cause);
 
             await expect(
-                useCase.execute('term-policy-1', 'user-1', context)
+                useCase.execute(context, 'term-policy-1')
             ).rejects.toBe(cause);
         });
 
@@ -197,7 +183,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             termPolicyService.getPublishedByAdmin.mockRejectedValue(error);
 
             await expect(
-                useCase.execute('term-policy-1', 'user-1', context)
+                useCase.execute(context, 'term-policy-1')
             ).rejects.toBe(error);
             expect(outboxService.addMany).not.toHaveBeenCalled();
         });

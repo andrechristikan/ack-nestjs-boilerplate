@@ -17,7 +17,7 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -101,22 +101,7 @@ describe('RoleCreateByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const context: IRequestContext = {
-        actorUserId: actorUser.id,
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: { architecture: null },
-                device: { type: null, vendor: null, model: null },
-                engine: { name: null, version: null },
-                os: { name: null, version: null },
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(actorUser);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -161,7 +146,7 @@ describe('RoleCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue(role.id);
             roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            const result = await useCase.execute(body, actorUser, context);
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: roleWithPolicies });
             expect(roleService.createByAdminInTx).toHaveBeenCalledWith(
@@ -180,7 +165,7 @@ describe('RoleCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue(role.id);
             roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            await useCase.execute(body, actorUser, context);
+            await useCase.execute(context, body);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
@@ -192,8 +177,8 @@ describe('RoleCreateByAdminUseCase', () => {
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.adminRoleCreate, metadata },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.adminRoleCreate, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -203,9 +188,7 @@ describe('RoleCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(failure);
 
-            await expect(
-                useCase.execute(body, actorUser, context)
-            ).rejects.toBe(failure);
+            await expect(useCase.execute(context, body)).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
-    [string, PasswordHistorySharedListRequestDto],
+    [IRequestContextUser, PasswordHistorySharedListRequestDto],
     IResponsePaginationReturn<IPasswordHistoryList>
 > {
     constructor(
@@ -25,7 +26,7 @@ export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         query: PasswordHistorySharedListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         const { params, storePatch } =
@@ -39,7 +40,10 @@ export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.passwordHistoryService.getListCursor(userId, params);
+            await this.passwordHistoryService.getListCursor(
+                context.user.id,
+                params
+            );
 
         return {
             data,

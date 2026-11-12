@@ -16,7 +16,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -28,6 +27,7 @@ import { UserStatusInvalidException } from '@modules/user/exceptions/user.status
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.update-status-by-admin.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdateStatusByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -117,8 +117,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        const context = buildRequestContext('admin-cinder');
-
         const revoked: ISessionRef[] = [{ id: 'session-one' }];
 
         const row = {
@@ -131,10 +129,12 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             id: 'admin-cinder',
             role: { ...baseUser.role, type: EnumRoleType.admin },
         };
+        const context = buildRequestContextUser(admin);
 
         beforeEach(() => {
             activityLogService.recordEffect.mockImplementation(
-                input => ({ queue: input.action }) as unknown as IOutboxEffect
+                (_context, input) =>
+                    ({ queue: input.action }) as unknown as IOutboxEffect
             );
             userService.getOneWithRole.mockResolvedValue({
                 ...baseUser,
@@ -189,7 +189,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             };
 
             await expect(
-                useCase.execute('user-cinder', dto, admin, context)
+                useCase.execute(context, 'user-cinder', dto)
             ).resolves.toEqual({});
 
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
@@ -218,36 +218,36 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 'commit',
             ]);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminSessionRevokeAll,
                     metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                     userId: 'user-cinder',
                     createdBy: 'admin-cinder',
                     metadata: { actorUserId: 'admin-cinder', sessionCount: 1 },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminUserUpdateStatus,
                     metadata: { targetUserId: 'user-cinder' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userBlocked,
                     userId: 'user-cinder',
                     createdBy: 'admin-cinder',
                     metadata: { actorUserId: 'admin-cinder' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 { queue: EnumActivityLogAction.adminSessionRevokeAll },
@@ -261,18 +261,15 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
 
-            await useCase.execute(
-                'user-cinder',
-                { status: EnumUserStatus.inactive },
-                admin,
-                context
-            );
+            await useCase.execute(context, 'user-cinder', {
+                status: EnumUserStatus.inactive,
+            });
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 expect.objectContaining({
                     action: EnumActivityLogAction.userUpdateStatus,
-                }),
-                context
+                })
             );
         });
 
@@ -280,12 +277,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
             sessionService.revokeActiveByUserInTx.mockResolvedValue([]);
 
-            await useCase.execute(
-                'user-cinder',
-                { status: EnumUserStatus.inactive },
-                admin,
-                context
-            );
+            await useCase.execute(context, 'user-cinder', {
+                status: EnumUserStatus.inactive,
+            });
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 { queue: EnumActivityLogAction.adminUserUpdateStatus },
                 { queue: EnumActivityLogAction.userUpdateStatus },
@@ -296,12 +290,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.revokesSessionsOn.mockReturnValue(false);
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
 
-            await useCase.execute(
-                'user-cinder',
-                { status: EnumUserStatus.active },
-                admin,
-                context
-            );
+            await useCase.execute(context, 'user-cinder', {
+                status: EnumUserStatus.active,
+            });
 
             expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
                 EnumUserStatus.active
@@ -319,12 +310,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
 
-            await useCase.execute(
-                'user-cinder',
-                { status: EnumUserStatus.blocked },
-                admin,
-                context
-            );
+            await useCase.execute(context, 'user-cinder', {
+                status: EnumUserStatus.blocked,
+            });
 
             expect(userService.revokesSessionsOn).toHaveBeenCalledWith(
                 EnumUserStatus.blocked
@@ -336,10 +324,10 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 1
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 expect.objectContaining({
                     action: EnumActivityLogAction.userBlocked,
-                }),
-                context
+                })
             );
         });
 
@@ -349,12 +337,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(
-                    'user-cinder',
-                    { status: EnumUserStatus.blocked },
-                    admin,
-                    context
-                )
+                useCase.execute(context, 'user-cinder', {
+                    status: EnumUserStatus.blocked,
+                })
             ).rejects.toMatchObject({ rawError: cause });
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
@@ -364,12 +349,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(
-                    'user-cinder',
-                    { status: EnumUserStatus.blocked },
-                    admin,
-                    context
-                )
+                useCase.execute(context, 'user-cinder', {
+                    status: EnumUserStatus.blocked,
+                })
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
@@ -382,12 +364,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    'user-cinder',
-                    { status: EnumUserStatus.blocked },
-                    admin,
-                    context
-                )
+                useCase.execute(context, 'user-cinder', {
+                    status: EnumUserStatus.blocked,
+                })
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.statusInvalid,
@@ -403,12 +382,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute(
-                    'user-cinder',
-                    { status: EnumUserStatus.blocked },
-                    admin,
-                    context
-                )
+                useCase.execute(context, 'user-cinder', {
+                    status: EnumUserStatus.blocked,
+                })
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();

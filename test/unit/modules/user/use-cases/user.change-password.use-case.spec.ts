@@ -27,7 +27,6 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
@@ -60,6 +59,7 @@ import type {
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserChangePasswordUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -78,7 +78,6 @@ describe('UserChangePasswordUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const context = buildRequestContext('user-linden');
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserChangePasswordUseCase;
@@ -128,6 +127,7 @@ describe('UserChangePasswordUseCase', () => {
         },
         twoFactor: null,
     };
+    const context = buildRequestContextUser(user);
     const password: IAuthPassword = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
@@ -193,7 +193,7 @@ describe('UserChangePasswordUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.recordEffect.mockImplementation(input =>
+        activityLogService.recordEffect.mockImplementation((_context, input) =>
             input.action === EnumActivityLogAction.userVerifyTwoFactor
                 ? verifyEntry
                 : changeEntry
@@ -293,13 +293,11 @@ describe('UserChangePasswordUseCase', () => {
                 return ['outbox-id'];
             });
 
-            await expect(useCase.execute(user, dto, context)).resolves.toEqual(
-                {}
-            );
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(user, context);
+            ).toHaveBeenCalledWith(context.snapshot, user);
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
                 passwordAttempt,
                 'old-password'
@@ -315,17 +313,17 @@ describe('UserChangePasswordUseCase', () => {
                 authPasswordUtil.createPassword
             );
             expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                context.snapshot,
                 user,
-                { code: null, backupCode: null, method: null },
-                context
+                { code: null, backupCode: null, method: null }
             );
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.userChangePassword },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.userChangePassword }
             );
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.changePassword,
@@ -377,17 +375,15 @@ describe('UserChangePasswordUseCase', () => {
             const passwordless: IUser = { ...user, password: null };
             userPasswordService.countPasswordAttempt.mockResolvedValue(null);
 
-            await useCase.execute(
-                passwordless,
-                {
-                    newPassword: 'new-password',
-                },
-                context
-            );
+            const passwordlessContext = buildRequestContextUser(passwordless);
+
+            await useCase.execute(passwordlessContext, {
+                newPassword: 'new-password',
+            });
 
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(passwordless, context);
+            ).toHaveBeenCalledWith(passwordlessContext.snapshot, passwordless);
             expect(
                 userAuthService.assertPasswordAttempt
             ).not.toHaveBeenCalled();
@@ -401,7 +397,7 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(
-                useCase.execute(user, { newPassword: 'new-password' }, context)
+                useCase.execute(context, { newPassword: 'new-password' })
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
@@ -427,9 +423,7 @@ describe('UserChangePasswordUseCase', () => {
             const failure = new UserPasswordExpiredException();
             userAuthService.assertPasswordAttempt.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -440,24 +434,22 @@ describe('UserChangePasswordUseCase', () => {
                 twoFactorVerified
             );
 
-            await useCase.execute(
-                twoFactorUser,
-                {
-                    ...dto,
-                    code: '123456',
-                    method: EnumAuthTwoFactorMethod.code,
-                },
-                context
-            );
+            const twoFactorContext = buildRequestContextUser(twoFactorUser);
+
+            await useCase.execute(twoFactorContext, {
+                ...dto,
+                code: '123456',
+                method: EnumAuthTwoFactorMethod.code,
+            });
 
             expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                twoFactorContext.snapshot,
                 twoFactorUser,
                 {
                     method: EnumAuthTwoFactorMethod.code,
                     code: '123456',
                     backupCode: null,
-                },
-                context
+                }
             );
             expect(
                 userTwoFactorService.verifyIfRequired
@@ -466,12 +458,12 @@ describe('UserChangePasswordUseCase', () => {
                 userTwoFactorService.recordVerificationInTx
             ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                     userId: 'user-linden',
                     createdBy: 'user-linden',
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 changeEntry,
@@ -481,14 +473,16 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('records no two-factor verification while the service verified nothing', async () => {
-            await expect(
-                useCase.execute(twoFactorSetupUser, dto, context)
-            ).resolves.toEqual({});
+            const setupContext = buildRequestContextUser(twoFactorSetupUser);
+
+            await expect(useCase.execute(setupContext, dto)).resolves.toEqual(
+                {}
+            );
 
             expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+                setupContext.snapshot,
                 twoFactorSetupUser,
-                { code: null, backupCode: null, method: null },
-                context
+                { code: null, backupCode: null, method: null }
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
@@ -497,7 +491,7 @@ describe('UserChangePasswordUseCase', () => {
                 expect.objectContaining({
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                 }),
-                context
+                context.snapshot
             );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -512,15 +506,11 @@ describe('UserChangePasswordUseCase', () => {
             userTwoFactorService.verifyIfRequired.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(
-                    twoFactorUser,
-                    {
-                        ...dto,
-                        code: '000000',
-                        method: EnumAuthTwoFactorMethod.code,
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    ...dto,
+                    code: '000000',
+                    method: EnumAuthTwoFactorMethod.code,
+                })
             ).rejects.toBe(failure);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -531,14 +521,10 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    twoFactorUser,
-                    {
-                        ...dto,
-                        code: '123456',
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    ...dto,
+                    code: '123456',
+                })
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
@@ -558,15 +544,11 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    twoFactorUser,
-                    {
-                        ...dto,
-                        code: '123456',
-                        method: EnumAuthTwoFactorMethod.code,
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    ...dto,
+                    code: '123456',
+                    method: EnumAuthTwoFactorMethod.code,
+                })
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -585,9 +567,7 @@ describe('UserChangePasswordUseCase', () => {
             const failure = new UserPasswordNotMatchException();
             userAuthService.assertPasswordAttempt.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -597,9 +577,7 @@ describe('UserChangePasswordUseCase', () => {
                 new UserPasswordNotMatchException()
             );
 
-            await expect(
-                useCase.execute(user, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 statusCodeKey:
@@ -624,9 +602,7 @@ describe('UserChangePasswordUseCase', () => {
                 new UserPasswordAttemptMaxException()
             );
 
-            await expect(
-                useCase.execute(user, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
                 statusCodeKey:
@@ -650,7 +626,7 @@ describe('UserChangePasswordUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toThrow(
+            await expect(useCase.execute(context, dto)).rejects.toThrow(
                 AppUnknownException
             );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
@@ -667,15 +643,11 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    twoFactorUser,
-                    {
-                        ...dto,
-                        backupCode: 'backup',
-                        method: EnumAuthTwoFactorMethod.backupCodes,
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    ...dto,
+                    backupCode: 'backup',
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                })
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
@@ -690,7 +662,7 @@ describe('UserChangePasswordUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(user, dto, context)).rejects.toThrow(
+            await expect(useCase.execute(context, dto)).rejects.toThrow(
                 AppUnknownException
             );
         });
@@ -699,9 +671,7 @@ describe('UserChangePasswordUseCase', () => {
             const failure = new UserPasswordNotMatchException();
             outboxService.withTransaction.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
     });

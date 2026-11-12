@@ -16,3 +16,12 @@ export enum EnumRequestThrottleName {
     user = 'user',
     route = 'route',
 }
+
+/** @public */
+export enum EnumRequestContextScope {
+    public = 'public',
+    user = 'user',
+    workspace = 'workspace',
+    project = 'project',
+    projectMember = 'projectMember',
+}

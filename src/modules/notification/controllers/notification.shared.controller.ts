@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -6,7 +7,7 @@ import {
     RequestLanguageCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -18,10 +19,7 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import type { Notification } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { NotificationUserSettingRequestSchema } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
@@ -70,13 +68,14 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Query({ schema: NotificationListRequestSchema })
         query: NotificationListRequestDto,
-        @AuthJwtPayload('userId') userId: string,
         @RequestLanguageCurrent() language: string | null
     ): Promise<IResponsePaginationReturn<Notification>> {
         return this.notificationGetListCursorUseCase.execute(
-            userId,
+            context,
             query,
             language
         );
@@ -93,9 +92,10 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Get('/setting/list')
     async listUserSetting(
-        @AuthJwtPayload('userId') userId: string
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        return this.notificationGetListUserSettingUseCase.execute(userId);
+        return this.notificationGetListUserSettingUseCase.execute(context);
     }
 
     @Doc({ summary: 'mark a notification as read' })
@@ -107,12 +107,13 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Patch('/update/:notificationId/read')
     async markAsRead(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
         return this.notificationMarkAsReadUseCase.execute(
-            userId,
+            context,
             notificationId
         );
     }
@@ -126,9 +127,10 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Patch('/read-all')
     async markAllAsRead(
-        @AuthJwtPayload('userId') userId: string
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser
     ): Promise<IResponseReturn<void>> {
-        return this.notificationMarkAllAsReadUseCase.execute(userId);
+        return this.notificationMarkAllAsReadUseCase.execute(context);
     }
 
     @Doc({ summary: 'update notification setting' })
@@ -140,16 +142,11 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Put('/setting/update')
     async updateUserSetting(
-        @AuthJwtPayload('userId')
-        userId: string,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: NotificationUserSettingRequestSchema })
-        body: NotificationUserSettingRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationUpdateUserSettingUseCase.execute(
-            userId,
-            body,
-            context
-        );
+        return this.notificationUpdateUserSettingUseCase.execute(context, body);
     }
 }

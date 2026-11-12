@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -5,7 +6,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -16,10 +17,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
@@ -65,16 +63,12 @@ export class DeviceSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Query({ schema: DeviceSharedListRequestSchema })
-        query: DeviceSharedListRequestDto,
-        @AuthJwtPayload('userId') userId: string,
-        @AuthJwtPayload('sessionId') sessionId: string
+        query: DeviceSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        return this.deviceGetListCursorUseCase.execute(
-            userId,
-            sessionId,
-            query
-        );
+        return this.deviceGetListCursorUseCase.execute(context, query);
     }
 
     @Doc({ summary: 'refresh device information' })
@@ -87,18 +81,12 @@ export class DeviceSharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @AuthJwtPayload('userId') userId: string,
-        @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: DeviceRefreshRequestSchema })
-        body: DeviceRefreshRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.deviceRefreshUseCase.execute(
-            userId,
-            deviceOwnershipId,
-            body,
-            context
-        );
+        return this.deviceRefreshUseCase.execute(context, body);
     }
 
     @Doc({ summary: 'remove a user device' })
@@ -110,15 +98,11 @@ export class DeviceSharedController {
     @ApiKeyProtected()
     @Delete('/remove/:deviceOwnershipId')
     async remove(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
-        deviceOwnershipId: string,
-        @RequestContextCurrent() context: IRequestContext
+        deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceRemoveUseCase.execute(
-            userId,
-            deviceOwnershipId,
-            context
-        );
+        return this.deviceRemoveUseCase.execute(context, deviceOwnershipId);
     }
 }

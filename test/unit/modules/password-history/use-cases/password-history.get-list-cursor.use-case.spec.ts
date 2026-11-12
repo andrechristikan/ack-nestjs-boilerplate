@@ -14,6 +14,10 @@ import {
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type { PasswordHistorySharedListRequestDto } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { PasswordHistoryGetListCursorUseCase } from '@modules/password-history/use-cases/password-history.get-list-cursor.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('PasswordHistoryGetListCursorUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
@@ -60,6 +64,9 @@ describe('PasswordHistoryGetListCursorUseCase', () => {
 
     describe('execute', () => {
         const query: PasswordHistorySharedListRequestDto = { perPage: 20 };
+        const context = buildRequestContextUser(
+            buildUser('user-id', 'user-id@example.com')
+        );
 
         it('merges the pagination store patch and returns the domain page', async () => {
             paginationQueryUtil.cursor.mockReturnValue({
@@ -68,7 +75,7 @@ describe('PasswordHistoryGetListCursorUseCase', () => {
             });
             passwordHistoryService.getListCursor.mockResolvedValue(cursorPage);
 
-            const result = await useCase.execute('user-id', query);
+            const result = await useCase.execute(context, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: PasswordHistorySharedListCursorScope,

@@ -7,12 +7,15 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUpdateSlugUseCase } from '@modules/workspace/use-cases/workspace.update-slug.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateSlugUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const context = buildRequestContext('user-1');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -26,6 +29,12 @@ describe('WorkspaceUpdateSlugUseCase', () => {
         description: null,
         isPublic: false,
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        workspace,
+        buildWorkspaceMember('user-1')
+    );
+
     let useCase: WorkspaceUpdateSlugUseCase;
 
     beforeEach(async () => {
@@ -46,19 +55,13 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             const body: WorkspaceUpdateSlugRequestDto = { slug: 'new-slug' };
             workspaceService.updateWorkspaceSlug.mockResolvedValue(workspace);
 
-            const result = await useCase.execute(
-                'workspace-1',
-                'user-1',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.updateWorkspaceSlug).toHaveBeenCalledWith(
+                context.snapshot,
                 'workspace-1',
-                'user-1',
-                'new-slug',
-                context
+                'new-slug'
             );
         });
 
@@ -68,14 +71,9 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    'workspace-1',
-                    'user-1',
-                    {
-                        slug: 'new-slug',
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    slug: 'new-slug',
+                })
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
         });
     });

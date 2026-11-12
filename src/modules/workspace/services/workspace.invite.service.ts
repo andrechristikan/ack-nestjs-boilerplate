@@ -11,7 +11,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -186,41 +186,35 @@ export class WorkspaceInviteService {
     }
 
     private inviteActivityEffects(
+        snapshot: IRequestContextUserSnapshot,
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
         workspaceId: string,
-        actorId: string,
         workspaceInviteId: string,
-        inviteeUserId: string | null,
-        context: IRequestContext
+        inviteeUserId: string | null
     ): IOutboxEffect[] {
-        const actorEntry = this.activityLogService.recordEffect(
-            {
-                action,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId,
-                metadata:
-                    inviteeUserId === null
-                        ? { workspaceInviteId }
-                        : { workspaceInviteId, targetUserId: inviteeUserId },
-            },
-            context
-        );
+        const actorId = snapshot.actorUserId;
+        const actorEntry = this.activityLogService.recordEffect(snapshot, {
+            action,
+            userId: actorId,
+            createdBy: actorId,
+            workspaceId,
+            metadata:
+                inviteeUserId === null
+                    ? { workspaceInviteId }
+                    : { workspaceInviteId, targetUserId: inviteeUserId },
+        });
         if (inviteeUserId === null || inviteeUserId === actorId) {
             return [actorEntry];
         }
 
-        const inviteeEntry = this.activityLogService.recordEffect(
-            {
-                action: byAdminAction,
-                userId: inviteeUserId,
-                createdBy: actorId,
-                workspaceId,
-                metadata: { actorUserId: actorId },
-            },
-            context
-        );
+        const inviteeEntry = this.activityLogService.recordEffect(snapshot, {
+            action: byAdminAction,
+            userId: inviteeUserId,
+            createdBy: actorId,
+            workspaceId,
+            metadata: { actorUserId: actorId },
+        });
 
         return [actorEntry, inviteeEntry];
     }
@@ -400,12 +394,12 @@ export class WorkspaceInviteService {
 
     /** Creates the pending invite and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async createInvite(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
-        actorId: string,
         create: IWorkspaceInviteCreate,
-        notice: IWorkspaceInviteNotice,
-        context: IRequestContext
+        notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
+        const actorId = snapshot.actorUserId;
         const workspaceInviteId = this.databaseUtil.createId();
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceInviteNoncePattern,
@@ -444,13 +438,12 @@ export class WorkspaceInviteService {
                         );
                         await this.outboxService.addInTx(tx, effect);
                         const entries = this.inviteActivityEffects(
+                            snapshot,
                             EnumActivityLogAction.workspaceInviteCreated,
                             EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                             workspaceId,
-                            actorId,
                             created.id,
-                            notice.inviteeUserId,
-                            context
+                            notice.inviteeUserId
                         );
                         await this.outboxService.addManyInTx(tx, entries);
 
@@ -536,12 +529,12 @@ export class WorkspaceInviteService {
 
     /** Rotates the invite token and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async resendInvite(
+        snapshot: IRequestContextUserSnapshot,
         workspaceInviteId: string,
         expiryDuration: EnumWorkspaceInviteExpiry | null,
-        actorId: string,
-        notice: IWorkspaceInviteNotice,
-        context: IRequestContext
+        notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
+        const actorId = snapshot.actorUserId;
         const resentAt = this.helperDateService.create();
 
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
@@ -571,13 +564,12 @@ export class WorkspaceInviteService {
                         );
                         await this.outboxService.addInTx(tx, effect);
                         const entries = this.inviteActivityEffects(
+                            snapshot,
                             EnumActivityLogAction.workspaceInviteResent,
                             EnumActivityLogAction.workspaceInviteResentByAdmin,
                             rotated.workspaceId,
-                            actorId,
                             workspaceInviteId,
-                            notice.inviteeUserId,
-                            context
+                            notice.inviteeUserId
                         );
                         await this.outboxService.addManyInTx(tx, entries);
 
@@ -615,11 +607,10 @@ export class WorkspaceInviteService {
 
     /** Revokes the pending invite and adds its activity entries in one transaction, dispatched after the commit. */
     async revokeInvite(
+        snapshot: IRequestContextUserSnapshot,
         workspaceInviteId: string,
         workspaceId: string,
-        actorId: string,
-        inviteeUserId: string | null,
-        context: IRequestContext
+        inviteeUserId: string | null
     ): Promise<void> {
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -632,13 +623,12 @@ export class WorkspaceInviteService {
                 }
 
                 const entries = this.inviteActivityEffects(
+                    snapshot,
                     EnumActivityLogAction.workspaceInviteRevoked,
                     EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     workspaceId,
-                    actorId,
                     workspaceInviteId,
-                    inviteeUserId,
-                    context
+                    inviteeUserId
                 );
                 await this.outboxService.addManyInTx(tx, entries);
             });

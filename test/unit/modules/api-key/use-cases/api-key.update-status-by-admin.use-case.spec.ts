@@ -8,7 +8,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -25,7 +24,10 @@ import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateStatusByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
@@ -55,7 +57,9 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context: IRequestContext = buildRequestContext('user-actor');
+    const context = buildRequestContextUser(
+        buildUser('user-actor', 'actor@example.com')
+    );
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -96,11 +100,9 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         it('updates the status on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateStatusByAdminInTx.mockResolvedValue(updated);
 
-            const result = await useCase.execute(
-                apiKey.id,
-                { isActive: false },
-                context
-            );
+            const result = await useCase.execute(context, apiKey.id, {
+                isActive: false,
+            });
 
             expect(result).toEqual({ data: updated });
             expect(apiKeyService.updateStatusByAdminInTx).toHaveBeenCalledWith(
@@ -113,18 +115,18 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         it('adds the status activity entry from the updated key and the passed context on the same tx', async () => {
             apiKeyService.updateStatusByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(apiKey.id, { isActive: false }, context);
+            await useCase.execute(context, apiKey.id, { isActive: false });
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdateStatus,
                     metadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -134,7 +136,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             apiKeyService.updateStatusByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(apiKey.id, { isActive: false }, context)
+                useCase.execute(context, apiKey.id, { isActive: false })
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -148,7 +150,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(apiKey.id, { isActive: false }, context)
+                useCase.execute(context, apiKey.id, { isActive: false })
             ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
         });
 
@@ -158,7 +160,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(apiKey.id, { isActive: false }, context)
+                useCase.execute(context, apiKey.id, { isActive: false })
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

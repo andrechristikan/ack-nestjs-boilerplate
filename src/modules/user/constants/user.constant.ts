@@ -8,9 +8,6 @@ import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.en
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /** @public */
-export const UserStoreKey = 'UserStoreKey';
-
-/** @public */
 export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
 
 /** @public */

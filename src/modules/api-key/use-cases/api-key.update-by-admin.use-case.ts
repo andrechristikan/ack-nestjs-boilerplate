@@ -1,5 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,7 +13,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
-    [string, ApiKeyUpdateRequestDto, IRequestContext],
+    [IRequestContextUser, string, ApiKeyUpdateRequestDto],
     IResponseReturn<IApiKey>
 > {
     constructor(
@@ -25,9 +25,9 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         id: string,
-        { name }: ApiKeyUpdateRequestDto,
-        context: IRequestContext
+        { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         const updated = await this.outboxService.withTransaction(async tx => {
             const apiKey = await this.apiKeyService.updateByAdminInTx(
@@ -42,11 +42,11 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
                 timestamp
             );
             const effect = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdate,
                     metadata,
-                },
-                context
+                }
             );
             await this.outboxService.addInTx(tx, effect);
 

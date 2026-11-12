@@ -12,6 +12,7 @@ import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserGetTwoFactorStatusUseCase } from '@modules/user/use-cases/user.get-two-factor-status.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGetTwoFactorStatusUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -103,7 +104,9 @@ describe('UserGetTwoFactorStatusUseCase', () => {
                 lastUsedAt: null,
             });
 
-            await expect(useCase.execute(user)).resolves.toEqual({
+            await expect(
+                useCase.execute(buildRequestContextUser(user))
+            ).resolves.toEqual({
                 data: {
                     isEnabled: true,
                     isPendingConfirmation: false,
@@ -126,7 +129,9 @@ describe('UserGetTwoFactorStatusUseCase', () => {
             userService.mapTwoFactor.mockReturnValue(disabled);
 
             await expect(
-                useCase.execute({ ...user, twoFactor: null })
+                useCase.execute(
+                    buildRequestContextUser({ ...user, twoFactor: null })
+                )
             ).resolves.toEqual({
                 data: disabled,
             });

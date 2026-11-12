@@ -5,6 +5,12 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -36,6 +42,12 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
         data: [],
     };
 
+    const user = buildUser('user-1', 'user@example.com');
+    const context = buildRequestContextWorkspace(
+        user,
+        buildWorkspace(),
+        buildWorkspaceMember(user.id)
+    );
     let useCase: ActivityLogGetListCursorByWorkspaceUseCase;
 
     beforeEach(async () => {
@@ -66,11 +78,7 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute(
-                'workspace-1',
-                null,
-                cursorQuery
-            );
+            const result = await useCase.execute(context, cursorQuery);
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
@@ -82,7 +90,11 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
             );
             expect(
                 activityLogService.getListCursorByWorkspace
-            ).toHaveBeenCalledWith('workspace-1', null, params);
+            ).toHaveBeenCalledWith(
+                context.workspace.id,
+                context.user.id,
+                params
+            );
         });
     });
 });

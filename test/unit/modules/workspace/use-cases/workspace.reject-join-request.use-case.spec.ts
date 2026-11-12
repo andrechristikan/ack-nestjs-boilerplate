@@ -15,12 +15,15 @@ import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dt
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceRejectJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.reject-join-request.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRejectJoinRequestUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const context = buildRequestContext('reviewer-1');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -50,6 +53,12 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
         expiredAt: new Date('2026-01-09T00:00:00.000Z'),
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('reviewer-1', 'jane@example.com'),
+        workspace,
+        buildWorkspaceMember('reviewer-1')
+    );
+
     let useCase: WorkspaceRejectJoinRequestUseCase;
 
     beforeEach(async () => {
@@ -100,11 +109,9 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
             );
 
             const result = await useCase.execute(
-                workspace,
-                'reviewer-1',
+                context,
                 'join-request-1',
-                body,
-                context
+                body
             );
 
             expect(result).toEqual({});
@@ -112,11 +119,10 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
             expect(
                 workspaceJoinRequestService.rejectJoinRequest
             ).toHaveBeenCalledWith(
+                context.snapshot,
                 joinRequest,
-                'reviewer-1',
                 'Acme',
-                EnumWorkspaceJoinRejectReason.wrongWorkspace,
-                context
+                EnumWorkspaceJoinRejectReason.wrongWorkspace
             );
         });
 
@@ -126,13 +132,7 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    workspace,
-                    'reviewer-1',
-                    'join-request-1',
-                    body,
-                    context
-                )
+                useCase.execute(context, 'join-request-1', body)
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(
                 workspaceJoinRequestService.getPendingById
@@ -145,13 +145,7 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    workspace,
-                    'reviewer-1',
-                    'join-request-1',
-                    body,
-                    context
-                )
+                useCase.execute(context, 'join-request-1', body)
             ).rejects.toBeInstanceOf(
                 WorkspaceJoinRequestAlreadyProcessedException
             );

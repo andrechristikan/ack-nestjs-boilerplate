@@ -21,7 +21,10 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSwitchUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -33,7 +36,6 @@ describe('WorkspaceSwitchUseCase', () => {
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
-    const context = buildRequestContext('user-1');
     const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const workspace: Workspace = {
         id: 'workspace-1',
@@ -59,6 +61,10 @@ describe('WorkspaceSwitchUseCase', () => {
         role: EnumWorkspaceMemberRole.member,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
+
     let useCase: WorkspaceSwitchUseCase;
 
     beforeEach(async () => {
@@ -113,7 +119,7 @@ describe('WorkspaceSwitchUseCase', () => {
                 return 'outbox-1';
             });
 
-            const result = await useCase.execute('user-1', body, context);
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({});
             expect(callOrder).toEqual([
@@ -134,13 +140,13 @@ describe('WorkspaceSwitchUseCase', () => {
                 'workspace-1'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceSwitched,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -150,9 +156,9 @@ describe('WorkspaceSwitchUseCase', () => {
                 new WorkspaceNotFoundException()
             );
 
-            await expect(
-                useCase.execute('user-1', body, context)
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
+                WorkspaceNotFoundException
+            );
             expect(
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).not.toHaveBeenCalled();
@@ -167,9 +173,9 @@ describe('WorkspaceSwitchUseCase', () => {
                 new WorkspaceMemberForbiddenException()
             );
 
-            await expect(
-                useCase.execute('user-1', body, context)
-            ).rejects.toBeInstanceOf(WorkspaceMemberForbiddenException);
+            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
+                WorkspaceMemberForbiddenException
+            );
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
     });

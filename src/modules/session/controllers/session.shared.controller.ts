@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -5,7 +6,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -16,10 +17,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
@@ -49,11 +47,12 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Query({ schema: SessionSharedListRequestSchema })
-        query: SessionSharedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionGetListCursorUseCase.execute(userId, query);
+        return this.sessionGetListCursorUseCase.execute(context, query);
     }
 
     @Doc({ summary: 'revoke user Session' })
@@ -65,11 +64,11 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('sessionId', { schema: RequestMongoIdSchema })
-        sessionId: string,
-        @AuthJwtPayload('userId') userId: string,
-        @RequestContextCurrent() context: IRequestContext
+        sessionId: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeUseCase.execute(userId, sessionId, context);
+        return this.sessionRevokeUseCase.execute(context, sessionId);
     }
 }

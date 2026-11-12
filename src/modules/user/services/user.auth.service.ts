@@ -1,6 +1,9 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextSnapshot,
+    IRequestContextUserSnapshot,
+} from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -86,8 +89,8 @@ export class UserAuthService {
 
     /** Resolves the active credential user of an email and counts one password attempt, adding the lockout row and entries when the budget is spent; isAttemptCounted false on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
     async countCredentialAttempt(
-        email: string,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        email: string
     ): Promise<IUserCredentialAttempt> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user || user.status !== EnumUserStatus.active) {
@@ -95,8 +98,8 @@ export class UserAuthService {
         }
 
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            user,
-            context
+            snapshot,
+            user
         );
         if (!attempt) {
             throw new UserCredentialInvalidException();
@@ -141,13 +144,13 @@ export class UserAuthService {
 
     /** Counts one password attempt of an account holding a password, then asserts the password; returns at once for an account with no password. */
     async assertCurrentPassword(
+        snapshot: IRequestContextUserSnapshot,
         user: IUser,
-        plainPassword: string | null,
-        context: IRequestContext
+        plainPassword: string | null
     ): Promise<void> {
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            user,
-            context
+            snapshot,
+            user
         );
         if (attempt === null) {
             return;
@@ -198,8 +201,8 @@ export class UserAuthService {
 
     /** Marks the user verified by the provider-verified email, clearing its password, and adds the verified entry in the same transaction. */
     async verifyEmailBySocial(
-        user: IUser,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        user: IUser
     ): Promise<IUser> {
         const row = await this.outboxService.withTransaction(async tx => {
             const marked =
@@ -207,14 +210,11 @@ export class UserAuthService {
                     tx,
                     user.id
                 );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: user.id,
-                    createdBy: user.id,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userVerifiedEmail,
+                userId: user.id,
+                createdBy: user.id,
+            });
             await this.outboxService.addInTx(tx, entry);
 
             return marked;
@@ -231,14 +231,14 @@ export class UserAuthService {
 
     /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, stamps the login, and adds the login and revoke entries in one transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens. */
     async createTokenAndSession(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IUserLoginSession> {
-        const { requestLog } = context;
+        const { requestLog } = snapshot;
         const { sessionId, jti } = this.authUtil.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
             loginAt,
@@ -302,14 +302,11 @@ export class UserAuthService {
                 );
 
                 const effects: IOutboxEffect[] = [
-                    this.activityLogService.recordEffect(
-                        {
-                            action: loginAction,
-                            userId: user.id,
-                            createdBy: user.id,
-                        },
-                        context
-                    ),
+                    this.activityLogService.recordEffect(snapshot, {
+                        action: loginAction,
+                        userId: user.id,
+                        createdBy: user.id,
+                    }),
                 ];
                 for (const { userId, sessions } of affectedSessions) {
                     const metadata =
@@ -318,13 +315,13 @@ export class UserAuthService {
                             sessions.length
                         );
                     const revokeEntry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                             userId,
                             createdBy: user.id,
                             metadata,
-                        },
-                        context
+                        }
                     );
                     effects.push(revokeEntry);
                 }
@@ -374,11 +371,11 @@ export class UserAuthService {
 
     /** Creates the login challenge; when setup is required, also generates and saves a pending authenticator secret with its setup entry. */
     async createTwoFactorChallenge(
+        snapshot: IRequestContextSnapshot,
         user: IUserTwoFactorEnabled,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        context: IRequestContext
+        loginWith: EnumUserLoginWith
     ): Promise<IUserLoginTwoFactorChallenge> {
         const challengePromise = this.authTwoFactorService.createChallenge({
             userId: user.id,
@@ -396,9 +393,9 @@ export class UserAuthService {
                 this.userTwoFactorService.setup(user),
             ]);
             await this.userTwoFactorService.saveSetup(
+                snapshot,
                 user.id,
-                encryptedSecret,
-                context
+                encryptedSecret
             );
 
             return {

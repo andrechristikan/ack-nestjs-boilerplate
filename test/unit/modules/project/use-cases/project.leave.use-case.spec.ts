@@ -6,13 +6,16 @@ import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectLeaveUseCase } from '@modules/project/use-cases/project.leave.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextProjectMember,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectLeaveUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439033');
 
     let useCase: ProjectLeaveUseCase;
 
@@ -58,15 +61,22 @@ describe('ProjectLeaveUseCase', () => {
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
             updatedBy: null,
         };
+        const context = buildRequestContextProjectMember(
+            buildUser(member.userId, 'jane@example.com'),
+            { ...buildWorkspace(), id: project.workspaceId },
+            buildWorkspaceMember(member.userId),
+            project,
+            member
+        );
 
         it('delegates leaving the project to the domain with the context', async () => {
-            const result = await useCase.execute(project, member, context);
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({});
             expect(projectMemberService.leaveProject).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
-                member,
-                context
+                member
             );
         });
 
@@ -75,9 +85,7 @@ describe('ProjectLeaveUseCase', () => {
                 new Error('boom')
             );
 
-            await expect(
-                useCase.execute(project, member, context)
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(context)).rejects.toThrow('boom');
         });
     });
 });

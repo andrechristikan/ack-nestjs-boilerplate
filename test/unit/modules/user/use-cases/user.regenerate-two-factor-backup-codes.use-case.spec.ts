@@ -8,7 +8,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -19,11 +18,11 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserRegenerateTwoFactorBackupCodesUseCase } from '@modules/user/use-cases/user.regenerate-two-factor-backup-codes.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
-    const context = buildRequestContext('user-marten');
 
     let useCase: UserRegenerateTwoFactorBackupCodesUseCase;
 
@@ -89,6 +88,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
         },
         twoFactor,
     };
+    const context = buildRequestContextUser(user);
     const verified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
@@ -119,7 +119,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
                 ['CODE1', 'CODE2']
             );
 
-            await expect(useCase.execute(user, dto, context)).resolves.toEqual({
+            await expect(useCase.execute(context, dto)).resolves.toEqual({
                 data: { backupCodes: ['CODE1', 'CODE2'] },
             });
             expect(userTwoFactorService.assertEnabled).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
             );
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(user, context);
+            ).toHaveBeenCalledWith(context.snapshot, user);
             expect(
                 userTwoFactorService.assertAttemptCounted
             ).toHaveBeenCalledBefore(userTwoFactorService.verify);
@@ -138,7 +138,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
             });
             expect(
                 userTwoFactorService.regenerateTwoFactorBackupCodes
-            ).toHaveBeenCalledWith('user-marten', context);
+            ).toHaveBeenCalledWith(context.snapshot);
         });
 
         it('verifies nothing when two-factor is not enabled', async () => {
@@ -147,7 +147,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
             });
 
             await expect(
-                useCase.execute(user, { code: '1' }, context)
+                useCase.execute(context, { code: '1' })
             ).rejects.toThrow('not enabled');
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
         });
@@ -156,7 +156,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
             userTwoFactorService.verify.mockRejectedValue(new Error('invalid'));
 
             await expect(
-                useCase.execute(user, { code: '0' }, context)
+                useCase.execute(context, { code: '0' })
             ).rejects.toThrow('invalid');
             expect(
                 userTwoFactorService.regenerateTwoFactorBackupCodes
@@ -168,7 +168,7 @@ describe('UserRegenerateTwoFactorBackupCodesUseCase', () => {
             userTwoFactorService.assertAttemptCounted.mockRejectedValue(limit);
 
             await expect(
-                useCase.execute(user, { code: '123456' }, context)
+                useCase.execute(context, { code: '123456' })
             ).rejects.toBe(limit);
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
             expect(

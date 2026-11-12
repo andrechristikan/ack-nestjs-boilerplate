@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -5,7 +6,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -25,11 +26,7 @@ import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/s
 import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
 import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -98,18 +95,17 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Param('sessionId', { schema: RequestMongoIdSchema })
-        sessionId: string,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        sessionId: string
     ): Promise<IResponseReturn<void>> {
         return this.sessionRevokeByAdminUseCase.execute(
+            context,
             userId,
-            sessionId,
-            user,
-            context
+            sessionId
         );
     }
 
@@ -133,15 +129,11 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke-all')
     async revokeAll(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeAllByAdminUseCase.execute(
-            userId,
-            user,
-            context
-        );
+        return this.sessionRevokeAllByAdminUseCase.execute(context, userId);
     }
 }

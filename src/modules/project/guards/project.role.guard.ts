@@ -1,13 +1,13 @@
+import {
+    RequestProjectStoreKey,
+    RequestWorkspaceMemberStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import {
-    ProjectRoleMetaKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
+import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -28,13 +28,15 @@ export class ProjectRoleGuard implements CanActivate {
         );
         const allowedRoles = requiredRoles ?? [];
 
-        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
+        const project = this.requestStoreService.get<Project>(
+            RequestProjectStoreKey
+        );
         if (!project) {
             throw new ProjectGuardMissingException();
         }
 
         const workspaceMember = this.requestStoreService.get<WorkspaceMember>(
-            WorkspaceMemberStoreKey
+            RequestWorkspaceMemberStoreKey
         );
         if (!workspaceMember) {
             throw new WorkspaceMemberGuardMissingException();

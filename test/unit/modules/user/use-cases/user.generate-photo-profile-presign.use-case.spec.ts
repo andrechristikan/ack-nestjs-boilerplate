@@ -7,6 +7,10 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserGeneratePhotoProfilePresignUseCase } from '@modules/user/use-cases/user.generate-photo-profile-presign.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGeneratePhotoProfilePresignUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
@@ -27,6 +31,9 @@ describe('UserGeneratePhotoProfilePresignUseCase', () => {
     });
 
     describe('execute', () => {
+        const context = buildRequestContextUser(
+            buildUser('user-sable', 'sable@example.com')
+        );
         it('wraps the presign in a response envelope', async () => {
             const dto: UserGeneratePhotoProfileRequestDto = {
                 extension: EnumFileExtensionImage.png,
@@ -43,7 +50,7 @@ describe('UserGeneratePhotoProfilePresignUseCase', () => {
                 presign
             );
 
-            await expect(useCase.execute('user-sable', dto)).resolves.toEqual({
+            await expect(useCase.execute(context, dto)).resolves.toEqual({
                 data: presign,
             });
             expect(

@@ -11,7 +11,31 @@ import { RequestValidationException } from '@common/request/exceptions/request.v
 import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
 import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request.url-version.middleware';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextProject,
+    IRequestContextPublic,
+    IRequestContextProjectMember,
+    IRequestContextSnapshot,
+    IRequestContextUser,
+    IRequestContextWorkspace,
+} from '@common/request/interfaces/request.interface';
+import {
+    EnumRoleType,
+    EnumUserGender,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
+import type {
+    Project,
+    ProjectMember,
+    Workspace,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -39,7 +63,7 @@ export function stubRequestStore(
 
 export function buildRequestContext(
     actorUserId: string | null
-): IRequestContext {
+): IRequestContextSnapshot {
     return {
         actorUserId,
         workspaceId: null,
@@ -55,6 +79,158 @@ export function buildRequestContext(
             ipAddress: '127.0.0.1',
             geoLocation: null,
         },
+    };
+}
+
+export function buildRequestContextPublic(): IRequestContextPublic {
+    const snapshot = buildRequestContext(null);
+
+    return { requestLog: snapshot.requestLog, snapshot };
+}
+
+export function buildUser(id: string, email: string): IUser {
+    const date = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        id,
+        name: 'Jane Doe',
+        username: 'jane',
+        isVerified: false,
+        verifiedAt: null,
+        email,
+        roleId: 'role-1',
+        password: null,
+        passwordExpired: null,
+        passwordCreated: null,
+        passwordAttempt: null,
+        signUpAt: date,
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: EnumUserGender.male,
+        countryId: 'country-1',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: EnumUserLoginFrom.website,
+        lastLoginWith: EnumUserLoginWith.credential,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        photo: null,
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        role: {
+            id: 'role-1',
+            name: 'user',
+            description: null,
+            type: EnumRoleType.user,
+            isImmutable: false,
+            createdAt: date,
+            createdBy: null,
+            updatedAt: date,
+            updatedBy: null,
+            policies: [],
+        },
+        twoFactor: null,
+    };
+}
+
+export function buildWorkspace(): Workspace {
+    const date = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        id: 'workspace-1',
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        name: 'Acme',
+        slug: 'acme-team',
+        description: null,
+        isPublic: false,
+    };
+}
+
+export function buildWorkspaceMember(
+    userId: string,
+    role: EnumWorkspaceMemberRole = EnumWorkspaceMemberRole.admin
+): WorkspaceMember {
+    const date = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        id: 'member-1',
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
+        workspaceId: 'workspace-1',
+        userId,
+        role,
+        joinedAt: date,
+    };
+}
+
+export function buildRequestContextUser(user: IUser): IRequestContextUser {
+    const { requestLog } = buildRequestContext(user.id);
+
+    return {
+        requestLog,
+        user,
+        session: {
+            sessionId: 'session-1',
+            deviceOwnershipId: 'device-ownership-1',
+        },
+        snapshot: { actorUserId: user.id, workspaceId: null, requestLog },
+    };
+}
+
+export function buildRequestContextWorkspace(
+    user: IUser,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember
+): IRequestContextWorkspace {
+    const context = buildRequestContextUser(user);
+
+    return {
+        ...context,
+        workspace,
+        workspaceMember,
+        snapshot: { ...context.snapshot, workspaceId: workspace.id },
+    };
+}
+
+export function buildRequestContextProject(
+    user: IUser,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    project: Project
+): IRequestContextProject {
+    return {
+        ...buildRequestContextWorkspace(user, workspace, workspaceMember),
+        project,
+    };
+}
+
+export function buildRequestContextProjectMember(
+    user: IUser,
+    workspace: Workspace,
+    workspaceMember: WorkspaceMember,
+    project: Project,
+    projectMember: ProjectMember
+): IRequestContextProjectMember {
+    return {
+        ...buildRequestContextProject(
+            user,
+            workspace,
+            workspaceMember,
+            project
+        ),
+        projectMember,
     };
 }
 

@@ -4,10 +4,17 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationGetListUserSettingUseCase } from '@modules/notification/use-cases/notification.get-list-user-setting.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationGetListUserSettingUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const context = buildRequestContextUser(
+        buildUser('user-id', 'user@example.com')
+    );
     let useCase: NotificationGetListUserSettingUseCase;
 
     beforeEach(async () => {
@@ -26,7 +33,7 @@ describe('NotificationGetListUserSettingUseCase', () => {
             const settings: NotificationUserSetting[] = [];
             notificationService.getListUserSetting.mockResolvedValue(settings);
 
-            const result = await useCase.execute('user-id');
+            const result = await useCase.execute(context);
 
             expect(notificationService.getListUserSetting).toHaveBeenCalledWith(
                 'user-id'

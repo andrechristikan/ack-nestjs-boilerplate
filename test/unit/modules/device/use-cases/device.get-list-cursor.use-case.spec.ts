@@ -18,6 +18,10 @@ import {
     DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('DeviceGetListCursorUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
@@ -77,6 +81,9 @@ describe('DeviceGetListCursorUseCase', () => {
         revokedBy: null,
         _count: { sessions: 2 },
     };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'user@example.com')
+    );
     let useCase: DeviceGetListCursorUseCase;
 
     beforeEach(async () => {
@@ -115,7 +122,7 @@ describe('DeviceGetListCursorUseCase', () => {
                 data: [withSession],
             });
 
-            const result = await useCase.execute('user-1', 'session-1', query);
+            const result = await useCase.execute(context, query);
 
             expect(result.data).toEqual([
                 {
@@ -133,8 +140,8 @@ describe('DeviceGetListCursorUseCase', () => {
                 storePatch
             );
             expect(deviceService.getListCursor).toHaveBeenCalledWith(
-                'user-1',
-                'session-1',
+                context.user.id,
+                context.session.sessionId,
                 params
             );
         });
@@ -153,7 +160,7 @@ describe('DeviceGetListCursorUseCase', () => {
                 data: [withoutSession],
             });
 
-            const result = await useCase.execute('user-1', 'session-1', query);
+            const result = await useCase.execute(context, query);
 
             expect(result.data).toEqual([
                 {

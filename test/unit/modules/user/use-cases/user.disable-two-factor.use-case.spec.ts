@@ -23,7 +23,6 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
@@ -37,6 +36,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserDisableTwoFactorUseCase } from '@modules/user/use-cases/user.disable-two-factor.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDisableTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
@@ -113,6 +113,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         },
         twoFactor,
     };
+    const context = buildRequestContextUser(user);
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -120,7 +121,6 @@ describe('UserDisableTwoFactorUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const context = buildRequestContext('user-marten');
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
@@ -196,16 +196,14 @@ describe('UserDisableTwoFactorUseCase', () => {
                 return 'outbox-id';
             });
 
-            await expect(useCase.execute(user, dto, context)).resolves.toEqual(
-                {}
-            );
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(userTwoFactorService.assertEnabled).toHaveBeenCalledWith(
                 user
             );
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(user, context);
+            ).toHaveBeenCalledWith(context.snapshot, user);
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
@@ -222,8 +220,8 @@ describe('UserDisableTwoFactorUseCase', () => {
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.userDisableTwoFactor },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.userDisableTwoFactor }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(calls).toEqual([
@@ -238,14 +236,10 @@ describe('UserDisableTwoFactorUseCase', () => {
         });
 
         it('passes a null code when the dto carries a backup code', async () => {
-            await useCase.execute(
-                user,
-                {
-                    method: EnumAuthTwoFactorMethod.backupCodes,
-                    backupCode: 'BACKUP1',
-                },
-                context
-            );
+            await useCase.execute(context, {
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                backupCode: 'BACKUP1',
+            });
 
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
@@ -259,14 +253,10 @@ describe('UserDisableTwoFactorUseCase', () => {
             userTwoFactorService.verify.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(
-                    user,
-                    {
-                        method: EnumAuthTwoFactorMethod.code,
-                        code: '000000',
-                    },
-                    context
-                )
+                useCase.execute(context, {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '000000',
+                })
             ).rejects.toBe(failure);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -278,9 +268,7 @@ describe('UserDisableTwoFactorUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(
-                useCase.execute(user, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
                 statusCodeKey:
@@ -296,9 +284,7 @@ describe('UserDisableTwoFactorUseCase', () => {
             const failure = new AuthTwoFactorNotEnabledException();
             userTwoFactorService.disableInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -308,9 +294,7 @@ describe('UserDisableTwoFactorUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(
-                useCase.execute(user, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
@@ -322,9 +306,7 @@ describe('UserDisableTwoFactorUseCase', () => {
                 new AuthTwoFactorAttemptMaxException()
             );
 
-            await expect(
-                useCase.execute(user, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
                 statusCodeKey:

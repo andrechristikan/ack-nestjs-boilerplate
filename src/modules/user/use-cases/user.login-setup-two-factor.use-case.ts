@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextPublic } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -9,7 +9,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginSetupTwoFactorUseCase implements IAppUseCase<
-    [UserLoginSetupTwoFactorRequestDto, IRequestContext],
+    [IRequestContextPublic, UserLoginSetupTwoFactorRequestDto],
     IResponseReturn<UserTwoFactorEnableResponseDto>
 > {
     constructor(
@@ -18,8 +18,8 @@ export class UserLoginSetupTwoFactorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
-        context: IRequestContext
+        context: IRequestContextPublic,
+        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const challenge =
             await this.authTwoFactorService.getChallenge(challengeToken);
@@ -29,16 +29,19 @@ export class UserLoginSetupTwoFactorUseCase implements IAppUseCase<
                 challenge.userId
             );
         // Sequential by design: gate before the work it guards
-        await this.userTwoFactorService.assertAttemptCounted(user, context);
+        await this.userTwoFactorService.assertAttemptCounted(
+            context.snapshot,
+            user
+        );
         await this.userTwoFactorService.verifySetupCode(
             user,
             pendingSecret,
             code
         );
         const backupCodes = await this.userTwoFactorService.enableTwoFactor(
+            context.snapshot,
             user.id,
-            pendingSecret,
-            context
+            pendingSecret
         );
 
         return { data: { backupCodes } };

@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -21,13 +21,12 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserChangePasswordUseCase implements IAppUseCase<
-    [IUser, UserChangePasswordRequestDto, IRequestContext],
+    [IRequestContextUser, UserChangePasswordRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -45,20 +44,20 @@ export class UserChangePasswordUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        user: IUser,
+        context: IRequestContextUser,
         {
             newPassword,
             oldPassword,
             backupCode,
             code,
             method,
-        }: UserChangePasswordRequestDto,
-        context: IRequestContext
+        }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
+        const { user } = context;
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            user,
-            context
+            context.snapshot,
+            user
         );
         if (attempt !== null) {
             await this.userAuthService.assertPasswordAttempt(
@@ -70,13 +69,13 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
         const twoFactorVerified =
             await this.userTwoFactorService.verifyIfRequired(
+                context.snapshot,
                 user,
                 {
                     code: code ?? null,
                     backupCode: backupCode ?? null,
                     method: method ?? null,
-                },
-                context
+                }
             );
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
@@ -109,10 +108,9 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     password.passwordCreated
                 );
                 const entries = [
-                    this.activityLogService.recordEffect(
-                        { action: EnumActivityLogAction.userChangePassword },
-                        context
-                    ),
+                    this.activityLogService.recordEffect(context.snapshot, {
+                        action: EnumActivityLogAction.userChangePassword,
+                    }),
                 ];
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
@@ -121,12 +119,12 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.userVerifyTwoFactor,
                             userId: user.id,
                             createdBy: user.id,
-                        },
-                        context
+                        }
                     );
                     entries.push(verifyEntry);
                 }

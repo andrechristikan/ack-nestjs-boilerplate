@@ -1,6 +1,6 @@
 # 0049. Request context is passed by the caller and snapshotted in the job payload
 
-- Status: accepted
+- Status: superseded by 0050
 - Date: 2026-11-12
 
 ## Context

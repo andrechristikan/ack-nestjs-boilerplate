@@ -7,12 +7,6 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import type { IProjectActiveFilter } from '@modules/project/interfaces/project.interface';
 
 /** @public */
-export const ProjectStoreKey = 'ProjectStoreKey';
-
-/** @public */
-export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
-
-/** @public */
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /** @public */

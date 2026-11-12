@@ -6,7 +6,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -23,7 +22,10 @@ import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.c
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyCreateByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
@@ -53,7 +55,9 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context: IRequestContext = buildRequestContext('user-actor');
+    const context = buildRequestContextUser(
+        buildUser('user-actor', 'actor@example.com')
+    );
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -105,7 +109,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         });
 
         it('creates the api key on the outbox transaction and shapes the secret-bearing response', async () => {
-            const result = await useCase.execute(body, context);
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: created });
             expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
@@ -125,7 +129,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         });
 
         it('adds only the create activity entry with the drawn id and the passed context on the same tx', async () => {
-            await useCase.execute(body, context);
+            await useCase.execute(context, body);
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
@@ -136,11 +140,11 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminApiKeyCreate,
                     metadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
@@ -150,7 +154,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
             const startAt = new Date('2026-02-01T00:00:00.000Z');
             const endAt = new Date('2026-03-01T00:00:00.000Z');
 
-            await useCase.execute({ ...body, startAt, endAt }, context);
+            await useCase.execute(context, { ...body, startAt, endAt });
 
             expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
                 tx,

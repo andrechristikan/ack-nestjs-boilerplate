@@ -1,14 +1,16 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { PasswordHistorySharedListRequestDto } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { PasswordHistorySharedListRequestSchema } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContextCurrent,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryGetListCursorUseCase } from '@modules/password-history/use-cases/password-history.get-list-cursor.use-case';
@@ -38,10 +40,11 @@ export class PasswordHistorySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Query({ schema: PasswordHistorySharedListRequestSchema })
-        query: PasswordHistorySharedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: PasswordHistorySharedListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.passwordHistoryGetListCursorUseCase.execute(userId, query);
+        return this.passwordHistoryGetListCursorUseCase.execute(context, query);
     }
 }

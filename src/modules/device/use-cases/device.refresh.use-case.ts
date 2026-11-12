@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -7,22 +7,19 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class DeviceRefreshUseCase implements IAppUseCase<
-    [string, string, DeviceRefreshRequestDto, IRequestContext],
+    [IRequestContextUser, DeviceRefreshRequestDto],
     IResponseReturn<void>
 > {
     constructor(private readonly deviceService: DeviceService) {}
 
     async execute(
-        userId: string,
-        deviceOwnershipId: string,
-        body: DeviceRefreshRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
         await this.deviceService.refresh(
-            userId,
-            deviceOwnershipId,
-            body,
-            context
+            context.snapshot,
+            context.session.deviceOwnershipId,
+            body
         );
 
         return {};

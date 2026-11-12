@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -16,7 +17,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -44,11 +45,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -123,12 +120,12 @@ export class RoleAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: RoleCreateRequestSchema })
-        body: RoleCreateRequestDto,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleCreateByAdminUseCase.execute(body, user, context);
+        return this.roleCreateByAdminUseCase.execute(context, body);
     }
 
     @Doc({ summary: 'update data a role' })
@@ -145,19 +142,14 @@ export class RoleAdminController {
     @ApiKeyProtected()
     @Put('/update/:roleId')
     async update(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
-        body: RoleUpdateRequestDto,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleUpdateByAdminUseCase.execute(
-            roleId,
-            body,
-            user,
-            context
-        );
+        return this.roleUpdateByAdminUseCase.execute(context, roleId, body);
     }
 
     @Doc({ summary: 'delete data a role' })
@@ -174,11 +166,11 @@ export class RoleAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:roleId')
     async delete(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('roleId', { schema: RequestMongoIdSchema })
-        roleId: string,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        roleId: string
     ): Promise<IResponseReturn<void>> {
-        return this.roleDeleteByAdminUseCase.execute(roleId, user, context);
+        return this.roleDeleteByAdminUseCase.execute(context, roleId);
     }
 }

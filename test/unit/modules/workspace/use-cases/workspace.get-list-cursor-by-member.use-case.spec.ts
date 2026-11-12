@@ -21,6 +21,10 @@ import {
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetListCursorByMemberUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -50,6 +54,9 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
             limit: 20,
             orderBy: [],
         };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
     let useCase: WorkspaceGetListCursorByMemberUseCase;
 
     beforeEach(async () => {
@@ -89,7 +96,7 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
             };
             workspaceService.getListCursorByMember.mockResolvedValue(page);
 
-            const result = await useCase.execute('user-1', query);
+            const result = await useCase.execute(context, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

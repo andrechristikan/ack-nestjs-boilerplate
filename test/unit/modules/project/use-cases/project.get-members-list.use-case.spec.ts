@@ -19,6 +19,12 @@ import {
     ProjectMemberUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectGetMembersListUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
@@ -78,6 +84,13 @@ describe('ProjectGetMembersListUseCase', () => {
         },
     };
 
+    const context = buildRequestContextProject(
+        buildUser('user-1', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('user-1'),
+        project
+    );
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -111,7 +124,7 @@ describe('ProjectGetMembersListUseCase', () => {
             };
             projectMemberService.getMembersList.mockResolvedValue(page);
 
-            const result = await useCase.execute(project, query);
+            const result = await useCase.execute(context, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

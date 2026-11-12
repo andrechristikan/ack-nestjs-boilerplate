@@ -10,7 +10,7 @@ import {
 } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
@@ -26,22 +26,6 @@ describe('SessionRevokeAllByAdminUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-    const context: IRequestContext = {
-        actorUserId: 'admin-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
     const userRole: IRole = {
         id: 'role-user',
         name: 'user',
@@ -99,6 +83,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
         },
         twoFactor: null,
     };
+    const context = buildRequestContextUser(admin);
     let useCase: SessionRevokeAllByAdminUseCase;
 
     beforeEach(async () => {
@@ -121,7 +106,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 throw notSelf;
             });
 
-            const rejection = useCase.execute('admin-1', admin, context);
+            const rejection = useCase.execute(context, 'admin-1');
 
             await expect(rejection).rejects.toBe(notSelf);
             expect(roleService.getOneByUserId).not.toHaveBeenCalled();
@@ -135,7 +120,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 throw rankForbidden;
             });
 
-            const rejection = useCase.execute('root-1', admin, context);
+            const rejection = useCase.execute(context, 'root-1');
 
             await expect(rejection).rejects.toBe(rankForbidden);
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
@@ -154,7 +139,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
             ];
             sessionService.revokeAllByAdmin.mockResolvedValue(refs);
 
-            const result = await useCase.execute('user-1', admin, context);
+            const result = await useCase.execute(context, 'user-1');
 
             expect(result).toEqual({});
             expect(sessionService.assertNotSelf).toHaveBeenCalledWith(
@@ -166,10 +151,9 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 EnumRoleType.user
             );
             expect(sessionService.revokeAllByAdmin).toHaveBeenCalledWith(
+                context.snapshot,
                 'user-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
         });
 
@@ -179,7 +163,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
             const failure = new SessionNotFoundException();
             sessionService.revokeAllByAdmin.mockRejectedValue(failure);
 
-            const rejection = useCase.execute('user-1', admin, context);
+            const rejection = useCase.execute(context, 'user-1');
 
             await expect(rejection).rejects.toBe(failure);
         });

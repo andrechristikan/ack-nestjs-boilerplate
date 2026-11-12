@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -17,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetMembersListUseCase implements IAppUseCase<
-    [string, WorkspaceMemberListRequestDto],
+    [IRequestContextWorkspace, WorkspaceMemberListRequestDto],
     IResponsePaginationReturn<IWorkspaceMember>
 > {
     constructor(
@@ -28,7 +29,7 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
+        context: IRequestContextWorkspace,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } =
@@ -54,7 +55,7 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceMemberService.getMembersList(
-                workspaceId,
+                context.workspace.id,
                 params,
                 role?.where
             );

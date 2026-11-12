@@ -8,7 +8,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -25,7 +24,10 @@ import { ApiKeyResetByAdminUseCase } from '@modules/api-key/use-cases/api-key.re
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyResetByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
@@ -55,7 +57,9 @@ describe('ApiKeyResetByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context: IRequestContext = buildRequestContext('user-actor');
+    const context = buildRequestContextUser(
+        buildUser('user-actor', 'actor@example.com')
+    );
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -100,7 +104,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
             });
             apiKeyUtil.mapCreate.mockReturnValue(reset);
 
-            const result = await useCase.execute(apiKey.id, context);
+            const result = await useCase.execute(context, apiKey.id);
 
             expect(result).toEqual({ data: reset });
             expect(apiKeyService.resetByAdminInTx).toHaveBeenCalledWith(
@@ -120,18 +124,18 @@ describe('ApiKeyResetByAdminUseCase', () => {
             });
             apiKeyUtil.mapCreate.mockReturnValue(reset);
 
-            await useCase.execute(apiKey.id, context);
+            await useCase.execute(context, apiKey.id);
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 apiKey,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminApiKeyReset,
                     metadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -140,7 +144,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
             const failure = new ApiKeyInactiveException();
             apiKeyService.resetByAdminInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(apiKey.id, context)).rejects.toBe(
+            await expect(useCase.execute(context, apiKey.id)).rejects.toBe(
                 failure
             );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -155,7 +159,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(apiKey.id, context)
+                useCase.execute(context, apiKey.id)
             ).rejects.toBeInstanceOf(ApiKeyInactiveException);
         });
 
@@ -165,7 +169,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(apiKey.id, context)
+                useCase.execute(context, apiKey.id)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

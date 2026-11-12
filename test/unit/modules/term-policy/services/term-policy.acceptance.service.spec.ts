@@ -7,7 +7,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -45,7 +45,7 @@ describe('TermPolicyAcceptanceService', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const context: IRequestContext = {
+    const context: IRequestContextUserSnapshot = {
         actorUserId: 'user-1',
         workspaceId: null,
         requestLog: {
@@ -422,9 +422,8 @@ describe('TermPolicyAcceptanceService', () => {
             );
 
             const promise = service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
+                context,
+                EnumTermPolicyType.privacy
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -449,9 +448,8 @@ describe('TermPolicyAcceptanceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
+                context,
+                EnumTermPolicyType.privacy
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -480,9 +478,8 @@ describe('TermPolicyAcceptanceService', () => {
             );
 
             const promise = service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
+                context,
+                EnumTermPolicyType.privacy
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -503,11 +500,7 @@ describe('TermPolicyAcceptanceService', () => {
                 fn(tx)
             );
 
-            await service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
-            );
+            await service.userAccept(context, EnumTermPolicyType.privacy);
 
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
@@ -548,15 +541,11 @@ describe('TermPolicyAcceptanceService', () => {
                 fn(tx)
             );
 
-            await service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
-            );
+            await service.userAccept(context, EnumTermPolicyType.privacy);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.userAcceptTermPolicy },
-                context
+                context,
+                { action: EnumActivityLogAction.userAcceptTermPolicy }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -568,9 +557,8 @@ describe('TermPolicyAcceptanceService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             const promise = service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
+                context,
+                EnumTermPolicyType.privacy
             );
 
             await expect(promise).rejects.toMatchObject({

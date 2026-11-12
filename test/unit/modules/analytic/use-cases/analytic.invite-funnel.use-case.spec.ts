@@ -5,8 +5,20 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticInviteFunnelUseCase', () => {
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
+    );
     const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
         mock<AnalyticWorkspaceUserService>();
 
@@ -46,7 +58,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await useCase.execute('workspace-1', {
+            const result = await useCase.execute(context, {
                 startDate,
                 endDate,
             });
@@ -66,7 +78,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
             });
             analyticWorkspaceUserService.inviteFunnel.mockResolvedValue([]);
 
-            await useCase.execute('workspace-1', { startDate, endDate });
+            await useCase.execute(context, { startDate, endDate });
 
             expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,

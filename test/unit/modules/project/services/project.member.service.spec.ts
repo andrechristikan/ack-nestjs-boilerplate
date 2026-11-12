@@ -33,7 +33,10 @@ import type {
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectMemberService', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
@@ -44,7 +47,9 @@ describe('ProjectMemberService', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContext('507f1f77bcf86cd799439033');
+    const { snapshot } = buildRequestContextUser(
+        buildUser('507f1f77bcf86cd799439033', 'jane@example.com')
+    );
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     let service: ProjectMemberService;
@@ -371,11 +376,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
+                    snapshot,
                     project,
                     plainActor,
                     targetMember,
-                    EnumProjectMemberRole.admin,
-                    context
+                    EnumProjectMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -394,11 +399,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
+                    snapshot,
                     project,
                     bypassActor,
                     null,
-                    EnumProjectMemberRole.member,
-                    context
+                    EnumProjectMemberRole.member
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -419,11 +424,11 @@ describe('ProjectMemberService', () => {
             };
 
             const rejection = service.assignMember(
+                snapshot,
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member,
-                context
+                EnumProjectMemberRole.member
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -449,11 +454,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
+                    snapshot,
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member,
-                    context
+                    EnumProjectMemberRole.member
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -484,11 +489,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
+                    snapshot,
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member,
-                    context
+                    EnumProjectMemberRole.member
                 )
             ).rejects.toBe(appError);
             expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
@@ -506,11 +511,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
+                    snapshot,
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member,
-                    context
+                    EnumProjectMemberRole.member
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -532,11 +537,11 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.createInTx.mockResolvedValue(created);
 
             const result = await service.assignMember(
+                snapshot,
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member,
-                context
+                EnumProjectMemberRole.member
             );
 
             expect(result).toBe(created);
@@ -549,25 +554,25 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberAssigned,
                     userId: bypassActor.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: bypassActor.userId },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -587,11 +592,11 @@ describe('ProjectMemberService', () => {
             );
 
             await service.assignMember(
+                snapshot,
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member,
-                context
+                EnumProjectMemberRole.member
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -607,11 +612,11 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
 
             const rejection = service.updateMemberRole(
+                snapshot,
                 project,
                 bypassActor,
                 '507f1f77bcf86cd799439021',
-                EnumProjectMemberRole.admin,
-                context
+                EnumProjectMemberRole.admin
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -636,11 +641,11 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.updateMemberRole(
+                snapshot,
                 project,
                 plainActor,
                 targetMember.id,
-                EnumProjectMemberRole.viewer,
-                context
+                EnumProjectMemberRole.viewer
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -670,11 +675,11 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(false);
 
             const rejection = service.updateMemberRole(
+                snapshot,
                 project,
                 plainActor,
                 targetMember.id,
-                EnumProjectMemberRole.viewer,
-                context
+                EnumProjectMemberRole.viewer
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -701,11 +706,11 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
 
             await service.updateMemberRole(
+                snapshot,
                 project,
                 bypassActor,
                 targetMember.id,
-                EnumProjectMemberRole.admin,
-                context
+                EnumProjectMemberRole.admin
             );
 
             expect(projectMemberRepository.updateRoleInTx).toHaveBeenCalledWith(
@@ -716,25 +721,25 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdated,
                     userId: bypassActor.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: bypassActor.userId },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -753,11 +758,11 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
 
             await service.updateMemberRole(
+                snapshot,
                 baseProject,
                 bypassActor,
                 targetMember.id,
-                EnumProjectMemberRole.admin,
-                context
+                EnumProjectMemberRole.admin
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -782,11 +787,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     baseProject,
                     bypassActor,
                     targetMember.id,
-                    EnumProjectMemberRole.admin,
-                    context
+                    EnumProjectMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -810,11 +815,11 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     baseProject,
                     bypassActor,
                     targetMember.id,
-                    EnumProjectMemberRole.admin,
-                    context
+                    EnumProjectMemberRole.admin
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
@@ -826,10 +831,10 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
 
             const rejection = service.removeMember(
+                snapshot,
                 project,
                 bypassActor,
-                '507f1f77bcf86cd799439021',
-                context
+                '507f1f77bcf86cd799439021'
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -854,10 +859,10 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.removeMember(
+                snapshot,
                 project,
                 bypassActor,
-                targetMember.id,
-                context
+                targetMember.id
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -882,10 +887,10 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.removeMember(
+                snapshot,
                 project,
                 plainActor,
-                targetMember.id,
-                context
+                targetMember.id
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -915,10 +920,10 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             const rejection = service.removeMember(
+                snapshot,
                 project,
                 plainActor,
-                targetMember.id,
-                context
+                targetMember.id
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -945,10 +950,10 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeMemberInTx.mockResolvedValue(true);
 
             await service.removeMember(
+                snapshot,
                 project,
                 bypassActor,
-                targetMember.id,
-                context
+                targetMember.id
             );
 
             expect(
@@ -960,25 +965,25 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberRemoved,
                     userId: bypassActor.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                     userId: targetMember.userId,
                     createdBy: bypassActor.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: bypassActor.userId },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -1003,10 +1008,10 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.removeMember(
+                    snapshot,
                     baseProject,
                     bypassActor,
-                    targetMember.id,
-                    context
+                    targetMember.id
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -1029,10 +1034,10 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.removeMember(
+                    snapshot,
                     baseProject,
                     bypassActor,
-                    targetMember.id,
-                    context
+                    targetMember.id
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
@@ -1043,9 +1048,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeByIdInTx.mockResolvedValue(false);
 
             const rejection = service.leaveProject(
+                snapshot,
                 baseProject,
-                baseProjectMember,
-                context
+                baseProjectMember
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -1064,7 +1069,7 @@ describe('ProjectMemberService', () => {
             const member = baseProjectMember;
             projectMemberRepository.removeByIdInTx.mockResolvedValue(true);
 
-            await service.leaveProject(baseProject, member, context);
+            await service.leaveProject(snapshot, baseProject, member);
 
             expect(projectMemberRepository.removeByIdInTx).toHaveBeenCalledWith(
                 tx,
@@ -1074,13 +1079,13 @@ describe('ProjectMemberService', () => {
                 projectMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.projectMemberLeft,
                     userId: member.userId,
                     createdBy: member.userId,
                     workspaceId: baseProject.workspaceId,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
         });
@@ -1094,7 +1099,7 @@ describe('ProjectMemberService', () => {
             );
 
             await expect(
-                service.leaveProject(baseProject, baseProjectMember, context)
+                service.leaveProject(snapshot, baseProject, baseProjectMember)
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
@@ -1108,7 +1113,7 @@ describe('ProjectMemberService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.leaveProject(baseProject, baseProjectMember, context)
+                service.leaveProject(snapshot, baseProject, baseProjectMember)
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });

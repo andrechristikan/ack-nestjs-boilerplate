@@ -3,7 +3,10 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextSnapshot,
+    IRequestContextUser,
+} from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -22,7 +25,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserRefreshUseCase implements IAppUseCase<
-    [IUser, string, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<IAuthToken>
 > {
     constructor(
@@ -36,11 +39,11 @@ export class UserRefreshUseCase implements IAppUseCase<
     ) {}
 
     private async rotateSession(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
-        refreshToken: string,
-        context: IRequestContext
+        refreshToken: string
     ): Promise<IAuthToken | null> {
-        const { requestLog } = context;
+        const { requestLog } = snapshot;
         const payload =
             this.authJwtService.payloadToken<IAuthJwtRefreshTokenPayload>(
                 refreshToken
@@ -74,10 +77,9 @@ export class UserRefreshUseCase implements IAppUseCase<
                     requestLog.ipAddress,
                     now
                 );
-                const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userRefreshToken },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userRefreshToken,
+                });
                 await this.outboxService.addInTx(tx, entry);
 
                 return true;
@@ -97,9 +99,9 @@ export class UserRefreshUseCase implements IAppUseCase<
 
         if (!isRotated) {
             await this.sessionService.revokeIfActive(
+                snapshot,
                 userId,
-                sessionId,
-                context
+                sessionId
             );
 
             return null;
@@ -113,9 +115,9 @@ export class UserRefreshUseCase implements IAppUseCase<
         );
         if (cacheUpdate === EnumSessionCacheUpdate.mismatch) {
             await this.sessionService.revokeIfActive(
+                snapshot,
                 userId,
-                sessionId,
-                context
+                sessionId
             );
 
             return null;
@@ -133,11 +135,14 @@ export class UserRefreshUseCase implements IAppUseCase<
     }
 
     async execute(
-        user: IUser,
-        refreshToken: string,
-        context: IRequestContext
+        context: IRequestContextUser,
+        refreshToken: string
     ): Promise<IResponseReturn<IAuthToken>> {
-        const tokens = await this.rotateSession(user, refreshToken, context);
+        const tokens = await this.rotateSession(
+            context.snapshot,
+            context.user,
+            refreshToken
+        );
         const refreshed = this.sessionService.getRefreshedTokens(tokens);
 
         return { data: refreshed };

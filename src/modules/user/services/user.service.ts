@@ -8,7 +8,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -525,8 +525,8 @@ export class UserService {
     }
 
     importByAdminEffect(
-        rows: IUserImport[],
-        context: IRequestContext
+        context: IRequestContextUserSnapshot,
+        rows: IUserImport[]
     ): IOutboxEffect {
         return {
             queue: EnumUserQueue.user,

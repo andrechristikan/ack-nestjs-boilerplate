@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextPublic } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -25,7 +25,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserResetPasswordUseCase implements IAppUseCase<
-    [UserForgotPasswordResetRequestDto, IRequestContext],
+    [IRequestContextPublic, UserForgotPasswordResetRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -42,14 +42,14 @@ export class UserResetPasswordUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextPublic,
         {
             newPassword,
             token,
             backupCode,
             code,
             method,
-        }: UserForgotPasswordResetRequestDto,
-        context: IRequestContext
+        }: UserForgotPasswordResetRequestDto
     ): Promise<IResponseReturn<void>> {
         const reset = await this.userPasswordService.getOneActiveReset(token);
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -57,13 +57,13 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
         const twoFactorVerified =
             await this.userTwoFactorService.verifyIfRequired(
+                context.snapshot,
                 reset.user,
                 {
                     code: code ?? null,
                     backupCode: backupCode ?? null,
                     method: method ?? null,
-                },
-                context
+                }
             );
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
@@ -104,14 +104,11 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     password.passwordCreated
                 );
                 const entries = [
-                    this.activityLogService.recordEffect(
-                        {
-                            action: EnumActivityLogAction.userResetPassword,
-                            userId: reset.userId,
-                            createdBy: reset.userId,
-                        },
-                        context
-                    ),
+                    this.activityLogService.recordEffect(context.snapshot, {
+                        action: EnumActivityLogAction.userResetPassword,
+                        userId: reset.userId,
+                        createdBy: reset.userId,
+                    }),
                 ];
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
@@ -120,12 +117,12 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.userVerifyTwoFactor,
                             userId: reset.userId,
                             createdBy: reset.userId,
-                        },
-                        context
+                        }
                     );
                     entries.push(verifyEntry);
                 }

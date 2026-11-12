@@ -1,9 +1,9 @@
+import type { IRequestContextProject } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type { Project } from '@generated/prisma-client/client';
 import {
     ProjectMemberDefaultAvailableOrderBy,
     ProjectMemberUserListCursorScope,
@@ -16,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectGetMembersListUseCase implements IAppUseCase<
-    [Project, ProjectMemberListRequestDto],
+    [IRequestContextProject, ProjectMemberListRequestDto],
     IResponsePaginationReturn<IProjectMember>
 > {
     constructor(
@@ -26,7 +26,7 @@ export class ProjectGetMembersListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        project: Project,
+        context: IRequestContextProject,
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         const { params, storePatch } =
@@ -40,7 +40,10 @@ export class ProjectGetMembersListUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.projectMemberService.getMembersList(project, params);
+            await this.projectMemberService.getMembersList(
+                context.project,
+                params
+            );
 
         return {
             data,

@@ -10,7 +10,8 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type {
-    IRequestContext,
+    IRequestContextSnapshot,
+    IRequestContextUserSnapshot,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -194,7 +195,7 @@ export class SessionService {
         try {
             await this.setLogin(userId, sessionId, jti);
         } catch (error: unknown) {
-            await this.revokeIfActive(userId, sessionId, null);
+            await this.revokeIfActive(null, userId, sessionId);
 
             if (error instanceof AppBaseException) {
                 throw error;
@@ -260,21 +261,21 @@ export class SessionService {
         );
     }
 
-    /** Revokes the session as its own user with its cache purge row, and the userRevokeSession entry when a context is given, in one transaction; does nothing when it was already revoked or a write conflict lost. */
+    /** Revokes the session as its own user with its cache purge row, and the userRevokeSession entry when a snapshot is given, in one transaction; does nothing when it was already revoked or a write conflict lost. */
     async revokeIfActive(
+        snapshot: IRequestContextSnapshot | null,
         userId: string,
-        sessionId: string,
-        context: IRequestContext | null
+        sessionId: string
     ): Promise<void> {
         const revokedAt = this.helperDateService.create();
 
         try {
             await this.outboxService.withTransaction(async tx => {
                 await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
-                if (context !== null) {
+                if (snapshot !== null) {
                     const entry = this.activityLogService.recordEffect(
-                        { action: EnumActivityLogAction.userRevokeSession },
-                        context
+                        snapshot,
+                        { action: EnumActivityLogAction.userRevokeSession }
                     );
                     await this.outboxService.addInTx(tx, entry);
                 }
@@ -416,20 +417,19 @@ export class SessionService {
 
     /** Revokes the session as its own user with its cache purge row and activity entry in one transaction; a write conflict throws SessionNotFoundException. */
     async revoke(
-        userId: string,
-        sessionId: string,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        sessionId: string
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         const revokedAt = this.helperDateService.create();
 
         try {
             await this.outboxService.withTransaction(async tx => {
                 await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
 
-                const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userRevokeSession },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userRevokeSession,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
@@ -448,12 +448,12 @@ export class SessionService {
 
     /** Revokes the session as an admin with its cache purge row and activity entries in one transaction; a write conflict throws SessionNotFoundException. */
     async revokeByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         userId: string,
         sessionId: string,
-        revokedBy: string,
-        revokedAt: Date,
-        context: IRequestContext
+        revokedAt: Date
     ): Promise<ISession> {
+        const revokedBy = snapshot.actorUserId;
         try {
             return await this.outboxService.withTransaction(async tx => {
                 const session = await this.sessionRepository.revokeByAdminInTx(
@@ -477,11 +477,11 @@ export class SessionService {
                     revokedAt
                 );
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.adminSessionRevoke,
                         metadata: actorMetadata,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, actorEntry);
 
@@ -492,13 +492,13 @@ export class SessionService {
                         revokedAt
                     );
                     const targetEntry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.userRevokeSessionByAdmin,
                             userId,
                             createdBy: revokedBy,
                             metadata: targetMetadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, targetEntry);
                 }
@@ -527,11 +527,11 @@ export class SessionService {
 
     /** Revokes every active session of the user with one cache purge row and the activity entries in one transaction; none revoked or a write conflict throws SessionNotFoundException. */
     async revokeAllByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         userId: string,
-        revokedBy: string,
-        revokedAt: Date,
-        context: IRequestContext
+        revokedAt: Date
     ): Promise<ISessionRef[]> {
+        const revokedBy = snapshot.actorUserId;
         try {
             return await this.outboxService.withTransaction(async tx => {
                 const sessions = await this.revokeActiveByUserInTx(
@@ -550,11 +550,11 @@ export class SessionService {
                         sessions.length
                     );
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.adminSessionRevokeAll,
                         metadata: actorMetadata,
-                    },
-                    context
+                    }
                 );
                 const targetMetadata =
                     this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
@@ -562,13 +562,13 @@ export class SessionService {
                         sessions.length
                     );
                 const targetEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                         userId,
                         createdBy: revokedBy,
                         metadata: targetMetadata,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [
                     actorEntry,
@@ -593,10 +593,10 @@ export class SessionService {
 
     /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as its own user, adding the activity entry, in one transaction; a write conflict throws DeviceNotFoundException. */
     async removeDeviceOwnership(
-        userId: string,
-        deviceOwnershipId: string,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        deviceOwnershipId: string
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         const now = this.helperDateService.create();
 
         try {
@@ -614,15 +614,12 @@ export class SessionService {
                     deviceOwnership,
                     revokedSessions.length
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userRemoveDevice,
-                        userId,
-                        createdBy: userId,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userRemoveDevice,
+                    userId,
+                    createdBy: userId,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
@@ -641,11 +638,11 @@ export class SessionService {
 
     /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as an admin, adding the activity entries, in one transaction; a write conflict throws DeviceNotFoundException. */
     async removeDeviceOwnershipByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         userId: string,
-        deviceOwnershipId: string,
-        removedBy: string,
-        context: IRequestContext
+        deviceOwnershipId: string
     ): Promise<void> {
+        const removedBy = snapshot.actorUserId;
         const now = this.helperDateService.create();
 
         try {
@@ -665,11 +662,11 @@ export class SessionService {
                         revokedSessions.length
                     );
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.adminDeviceRemove,
                         metadata: actorMetadata,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, actorEntry);
 
@@ -681,13 +678,13 @@ export class SessionService {
                             revokedSessions.length
                         );
                     const targetEntry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                             userId,
                             createdBy: removedBy,
                             metadata: targetMetadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, targetEntry);
                 }

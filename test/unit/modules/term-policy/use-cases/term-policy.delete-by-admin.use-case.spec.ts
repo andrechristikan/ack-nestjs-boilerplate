@@ -2,7 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
@@ -27,22 +30,9 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context: IRequestContext = {
-        actorUserId: 'admin-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(
+        buildUser('admin-1', 'actor@example.com')
+    );
 
     let useCase: TermPolicyDeleteByAdminUseCase;
 
@@ -63,12 +53,12 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         it('deletes the term policy passing the request context and returns it', async () => {
             termPolicyService.deleteByAdmin.mockResolvedValue(termPolicy);
 
-            const result = await useCase.execute('term-policy-1', context);
+            const result = await useCase.execute(context, 'term-policy-1');
 
             expect(result).toEqual({ data: termPolicy });
             expect(termPolicyService.deleteByAdmin).toHaveBeenCalledWith(
-                'term-policy-1',
-                context
+                context.snapshot,
+                'term-policy-1'
             );
         });
 
@@ -77,7 +67,7 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
             termPolicyService.deleteByAdmin.mockRejectedValue(error);
 
             await expect(
-                useCase.execute('term-policy-1', context)
+                useCase.execute(context, 'term-policy-1')
             ).rejects.toBe(error);
         });
     });

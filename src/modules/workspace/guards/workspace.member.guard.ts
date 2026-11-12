@@ -1,10 +1,12 @@
-import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestUserStoreKey,
+    RequestWorkspaceMemberStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { Injectable } from '@nestjs/common';
@@ -18,7 +20,7 @@ export class WorkspaceMemberGuard implements CanActivate {
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        const user = this.requestStoreService.get<IUser>(RequestUserStoreKey);
         if (!user) {
             throw new UserGuardMissingException();
         }
@@ -36,7 +38,7 @@ export class WorkspaceMemberGuard implements CanActivate {
                 user.id
             );
 
-        this.requestStoreService.set(WorkspaceMemberStoreKey, member);
+        this.requestStoreService.set(RequestWorkspaceMemberStoreKey, member);
 
         return true;
     }

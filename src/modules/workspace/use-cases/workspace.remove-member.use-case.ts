@@ -2,10 +2,9 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -19,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
-    [string, WorkspaceMember, string, IRequestContext],
+    [IRequestContextWorkspace, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -34,11 +33,11 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
-        actorMember: WorkspaceMember,
-        targetMemberId: string,
-        context: IRequestContext
+        context: IRequestContextWorkspace,
+        targetMemberId: string
     ): Promise<IResponseReturn<void>> {
+        const workspaceId = context.workspace.id;
+        const actorMember = context.workspaceMember;
         try {
             await this.outboxService.withTransaction(async tx => {
                 const removed =
@@ -75,24 +74,24 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     workspaceId
                 );
                 const actorEntry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.workspaceMemberRemoved,
                         userId: actorMember.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { targetUserId: removed.userId },
-                    },
-                    context
+                    }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                         userId: removed.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { actorUserId: actorMember.userId },
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [
                     actorEntry,

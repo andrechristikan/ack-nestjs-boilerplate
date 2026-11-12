@@ -1,6 +1,6 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -9,13 +9,12 @@ import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.creat
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class RoleCreateByAdminUseCase implements IAppUseCase<
-    [RoleCreateRequestDto, IUser, IRequestContext],
+    [IRequestContextUser, RoleCreateRequestDto],
     IResponseReturn<RoleDto>
 > {
     constructor(
@@ -28,9 +27,8 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        body: RoleCreateRequestDto,
-        user: IUser,
-        context: IRequestContext
+        context: IRequestContextUser,
+        body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         const roleId = this.databaseUtil.createId();
         const created = await this.outboxService.withTransaction(async tx => {
@@ -42,7 +40,10 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
                     description: body.description ?? null,
                     type: body.type,
                 },
-                { roleId: user.roleId, roleType: user.role.type }
+                {
+                    roleId: context.user.roleId,
+                    roleType: context.user.role.type,
+                }
             );
 
             const timestamp = this.helperDateService.create();
@@ -56,8 +57,11 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
                 timestamp
             );
             const effect = this.activityLogService.recordEffect(
-                { action: EnumActivityLogAction.adminRoleCreate, metadata },
-                context
+                context.snapshot,
+                {
+                    action: EnumActivityLogAction.adminRoleCreate,
+                    metadata,
+                }
             );
             await this.outboxService.addInTx(tx, effect);
 

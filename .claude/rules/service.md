@@ -13,6 +13,7 @@ A service holds one module's application logic: its operations and invariants, t
 - Path: `services/<module>[.<concern>].service.ts`, class `<Module>[<Concern>]Service` (`naming.md`).
 - A noun for one module: a method needing a higher module's service is a use case (`use-case.md`).
 - No `IRequestApp`, `Job`, response envelope, or response DTO in a signature. `DatabaseService` is `withTransaction` only; a model query on `client` is the defect (`database.md`, Access).
+- A method needing the request takes the snapshot first, `method(snapshot, ...)`, after `tx` on an `*InTx` method: `IRequestContextUserSnapshot` when it needs the actor, `IRequestContextSnapshot` when a public flow calls it too; never a scoped context or an actor id beside it. A parameter naming another user (a target) stays.
 - Adds the activity entries of its own action in that action's transaction (`activity-log.md`).
 - Throws the typed exception of the subject that failed (`exceptions.md`).
 

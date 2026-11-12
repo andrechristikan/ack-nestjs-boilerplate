@@ -6,12 +6,15 @@ import type { Project } from '@generated/prisma-client/client';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateUseCase } from '@modules/project/use-cases/project.update.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUpdateUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439015');
 
     let useCase: ProjectUpdateUseCase;
 
@@ -28,6 +31,13 @@ describe('ProjectUpdateUseCase', () => {
         deletedAt: null,
         deletedBy: null,
     };
+
+    const context = buildRequestContextProject(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('507f1f77bcf86cd799439015'),
+        project
+    );
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -55,22 +65,16 @@ describe('ProjectUpdateUseCase', () => {
             };
             projectService.updateProject.mockResolvedValue(updated);
 
-            const result = await useCase.execute(
-                project,
-                '507f1f77bcf86cd799439015',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: updated });
             expect(projectService.updateProject).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
-                '507f1f77bcf86cd799439015',
                 {
                     name: 'New Name',
                     description: 'New description',
-                },
-                context
+                }
             );
         });
 
@@ -81,18 +85,12 @@ describe('ProjectUpdateUseCase', () => {
             };
             projectService.updateProject.mockResolvedValue(project);
 
-            await useCase.execute(
-                project,
-                '507f1f77bcf86cd799439015',
-                body,
-                context
-            );
+            await useCase.execute(context, body);
 
             expect(projectService.updateProject).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
-                '507f1f77bcf86cd799439015',
-                { name: 'New Name', description: null },
-                context
+                { name: 'New Name', description: null }
             );
         });
 
@@ -100,12 +98,10 @@ describe('ProjectUpdateUseCase', () => {
             projectService.updateProject.mockRejectedValue(new Error('boom'));
 
             await expect(
-                useCase.execute(
-                    project,
-                    '507f1f77bcf86cd799439015',
-                    { name: 'New Name', description: null },
-                    context
-                )
+                useCase.execute(context, {
+                    name: 'New Name',
+                    description: null,
+                })
             ).rejects.toThrow('boom');
         });
     });

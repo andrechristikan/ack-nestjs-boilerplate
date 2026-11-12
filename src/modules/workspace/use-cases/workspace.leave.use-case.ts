@@ -2,10 +2,9 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -18,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceLeaveUseCase implements IAppUseCase<
-    [string, WorkspaceMember, IRequestContext],
+    [IRequestContextWorkspace],
     IResponseReturn<void>
 > {
     constructor(
@@ -32,10 +31,10 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
-        member: WorkspaceMember,
-        context: IRequestContext
+        context: IRequestContextWorkspace
     ): Promise<IResponseReturn<void>> {
+        const workspaceId = context.workspace.id;
+        const member = context.workspaceMember;
         try {
             await this.outboxService.withTransaction(async tx => {
                 await this.workspaceMemberService.leaveWorkspaceInTx(
@@ -58,13 +57,13 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
                     workspaceId
                 );
                 const entry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.workspaceMemberLeft,
                         userId: member.userId,
                         createdBy: member.userId,
                         workspaceId,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });

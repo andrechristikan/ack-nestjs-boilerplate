@@ -37,7 +37,6 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type {
     IAuthPassword,
     IAuthToken,
@@ -91,6 +90,7 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
+import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserLoginWithSocialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -154,7 +154,7 @@ describe('UserLoginWithSocialUseCase', () => {
         platform: EnumDevicePlatform.web,
         notificationToken: null,
     };
-    const context = buildRequestContext(null);
+    const context = buildRequestContextPublic();
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -483,10 +483,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
@@ -516,8 +516,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 [committedUser]
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                stageInput,
-                context
+                context.snapshot,
+                stageInput
             );
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
@@ -537,10 +537,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
@@ -575,10 +575,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).resolves.toEqual({
                 data: {
@@ -595,11 +595,11 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userAuthService.createTwoFactorChallenge
             ).toHaveBeenCalledWith(
+                context.snapshot,
                 twoFactorUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
-                EnumUserLoginWith.socialGoogle,
-                context
+                EnumUserLoginWith.socialGoogle
             );
             expect(
                 userAuthService.createTokenAndSession
@@ -608,10 +608,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('checks the sign-up gate with the apple provider for an apple sign-in', async () => {
             await useCase.execute(
+                context,
                 'bramble@example.com',
                 EnumUserLoginWith.socialApple,
-                dto,
-                context
+                dto
             );
 
             expect(
@@ -636,10 +636,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    { ...dto, inviteToken: 'invite-bramble' },
-                    context
+                    { ...dto, inviteToken: 'invite-bramble' }
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
@@ -679,10 +679,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    { ...dto, inviteToken: 'invite-bramble' },
-                    context
+                    { ...dto, inviteToken: 'invite-bramble' }
                 )
             ).rejects.toBe(failure);
 
@@ -720,10 +720,10 @@ describe('UserLoginWithSocialUseCase', () => {
             };
 
             await useCase.execute(
+                context,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                dtoWithoutName,
-                context
+                dtoWithoutName
             );
 
             expect(
@@ -749,10 +749,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    { ...dto, inviteToken: 'stale-token' },
-                    context
+                    { ...dto, inviteToken: 'stale-token' }
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
@@ -774,10 +774,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    { ...dto, inviteToken: 'raw-token' },
-                    context
+                    { ...dto, inviteToken: 'raw-token' }
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -800,10 +800,10 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             await useCase.execute(
+                context,
                 ' Bramble@Example.COM ',
                 EnumUserLoginWith.socialGoogle,
-                { ...dto, inviteToken: 'invite-bramble' },
-                context
+                { ...dto, inviteToken: 'invite-bramble' }
             );
 
             expect(workspaceInviteService.getSignUpInvite).toHaveBeenCalledWith(
@@ -821,10 +821,10 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             await useCase.execute(
+                context,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                dto,
-                context
+                dto
             );
 
             expect(roleService.getByName).not.toHaveBeenCalled();
@@ -847,10 +847,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).rejects.toMatchObject({ module: 'country' });
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
@@ -863,10 +863,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).rejects.toMatchObject({
                 module: 'role',
@@ -877,7 +877,7 @@ describe('UserLoginWithSocialUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('marks an unverified user verified with the passed context before logging in', async () => {
+        it('marks an unverified user verified with the passed snapshot before logging in', async () => {
             userUtil.isUnverified.mockReturnValueOnce(true);
             const unverified = { ...baseUser, isVerified: false };
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
@@ -887,24 +887,24 @@ describe('UserLoginWithSocialUseCase', () => {
             userAuthService.verifyEmailBySocial.mockResolvedValue(baseUser);
 
             await useCase.execute(
+                context,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                dto,
-                context
+                dto
             );
 
             expect(userAuthService.verifyEmailBySocial).toHaveBeenCalledWith(
-                unverified,
-                context
+                context.snapshot,
+                unverified
             );
             expect(userAuthService.assertVerified).not.toHaveBeenCalled();
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+                context.snapshot,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now,
-                context
+                now
             );
         });
 
@@ -914,10 +914,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase.execute(
+                    context,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    dto,
-                    context
+                    dto
                 )
             ).rejects.toBe(failure);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(
@@ -964,10 +964,10 @@ describe('UserLoginWithSocialUseCase', () => {
             workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
 
             await useCase['signUpWithSocial'](
+                context.snapshot,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                social,
-                context
+                social
             );
 
             expect(
@@ -1026,8 +1026,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 [committedUser]
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                stageInput,
-                context
+                context.snapshot,
+                stageInput
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 welcomeSocialEffect,
@@ -1054,10 +1054,10 @@ describe('UserLoginWithSocialUseCase', () => {
             });
 
             await useCase['signUpWithSocial'](
+                context.snapshot,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                social,
-                context
+                social
             );
 
             expect(
@@ -1078,10 +1078,10 @@ describe('UserLoginWithSocialUseCase', () => {
             });
 
             await useCase['signUpWithSocial'](
+                context.snapshot,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                { ...social, inviteToken: null },
-                context
+                { ...social, inviteToken: null }
             );
 
             expect(
@@ -1102,10 +1102,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase['signUpWithSocial'](
+                    context.snapshot,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    social,
-                    context
+                    social
                 )
             ).rejects.toBe(failure);
             expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
@@ -1119,10 +1119,10 @@ describe('UserLoginWithSocialUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await useCase['signUpWithSocial'](
+                context.snapshot,
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                social,
-                context
+                social
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
@@ -1144,10 +1144,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase['signUpWithSocial'](
+                    context.snapshot,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    social,
-                    context
+                    social
                 )
             ).rejects.toMatchObject({
                 module: 'database',
@@ -1167,10 +1167,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase['signUpWithSocial'](
+                    context.snapshot,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    social,
-                    context
+                    social
                 )
             ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
@@ -1186,10 +1186,10 @@ describe('UserLoginWithSocialUseCase', () => {
 
             await expect(
                 useCase['signUpWithSocial'](
+                    context.snapshot,
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
-                    social,
-                    context
+                    social
                 )
             ).rejects.toMatchObject({
                 module: 'app',
@@ -1201,24 +1201,24 @@ describe('UserLoginWithSocialUseCase', () => {
 
     describe('startSession', () => {
         const startArgs = [
+            context.snapshot,
             baseUser,
             deviceIdentity,
             EnumUserLoginFrom.website,
             EnumUserLoginWith.socialGoogle,
             loginAt,
-            context,
         ] as const;
 
         it('starts the session through createTokenAndSession with the passed context', async () => {
             await useCase['startSession'](...startArgs);
 
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+                context.snapshot,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                loginAt,
-                context
+                loginAt
             );
         });
 

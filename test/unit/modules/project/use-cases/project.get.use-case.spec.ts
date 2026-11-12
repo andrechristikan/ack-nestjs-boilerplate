@@ -2,6 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectGetUseCase } from '@modules/project/use-cases/project.get.use-case';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectGetUseCase', () => {
     let useCase: ProjectGetUseCase;
@@ -20,6 +26,13 @@ describe('ProjectGetUseCase', () => {
         deletedBy: null,
     };
 
+    const context = buildRequestContextProject(
+        buildUser('user-1', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('user-1'),
+        project
+    );
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -32,7 +45,7 @@ describe('ProjectGetUseCase', () => {
 
     describe('execute', () => {
         it('wraps the current project in the response envelope', async () => {
-            const result = await useCase.execute(project);
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({ data: project });
         });

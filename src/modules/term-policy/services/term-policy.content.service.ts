@@ -9,7 +9,7 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
@@ -126,9 +126,9 @@ export class TermPolicyContentService {
     }
 
     async updateContentByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload,
-        context: IRequestContext
+        { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
@@ -181,13 +181,10 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyUpdateContent,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.adminTermPolicyUpdateContent,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -207,9 +204,9 @@ export class TermPolicyContentService {
     }
 
     async addContentByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload,
-        context: IRequestContext
+        { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
@@ -259,13 +256,10 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyAddContent,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.adminTermPolicyAddContent,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -285,9 +279,9 @@ export class TermPolicyContentService {
     }
 
     async removeContentByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         termPolicyId: string,
-        language: EnumMessageLanguage,
-        context: IRequestContext
+        language: EnumMessageLanguage
     ): Promise<TermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -319,13 +313,10 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyRemoveContent,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.adminTermPolicyRemoveContent,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 

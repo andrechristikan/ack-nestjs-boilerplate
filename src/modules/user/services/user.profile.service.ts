@@ -36,7 +36,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -107,11 +107,11 @@ export class UserProfileService {
     }
 
     private async replacePhotoProfile(
-        userId: string,
+        snapshot: IRequestContextUserSnapshot,
         previousPhoto: UserPhoto | null,
-        photo: IAwsS3,
-        context: IRequestContext
+        photo: IAwsS3
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         await this.outboxService.withTransaction(async tx => {
             await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
             await this.deletePreviousPhotoInTx(
@@ -120,10 +120,9 @@ export class UserProfileService {
                 previousPhoto,
                 photo.key
             );
-            const entry = this.activityLogService.recordEffect(
-                { action: EnumActivityLogAction.userUpdatePhotoProfile },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userUpdatePhotoProfile,
+            });
             await this.outboxService.addInTx(tx, entry);
         });
     }
@@ -223,10 +222,10 @@ export class UserProfileService {
     }
 
     async updatePhotoProfile(
-        userId: string,
-        { key }: IUserUpdatePhotoProfile,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        { key }: IUserUpdatePhotoProfile
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         const isOwned = this.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
             throw new UserPhotoKeyInvalidException();
@@ -251,7 +250,7 @@ export class UserProfileService {
                 throw new UserNotFoundException();
             }
 
-            await this.replacePhotoProfile(userId, user.photo, aws, context);
+            await this.replacePhotoProfile(snapshot, user.photo, aws);
 
             return;
         } catch (err: unknown) {
@@ -266,10 +265,10 @@ export class UserProfileService {
     }
 
     async uploadPhotoProfile(
-        userId: string,
-        file: IFile,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        file: IFile
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         const isSizeAllowed = this.isPhotoSizeAllowed(file.size);
         if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
@@ -316,7 +315,7 @@ export class UserProfileService {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            await this.replacePhotoProfile(userId, user.photo, aws, context);
+            await this.replacePhotoProfile(snapshot, user.photo, aws);
 
             return;
         } catch (err: unknown) {
@@ -329,9 +328,8 @@ export class UserProfileService {
     }
 
     async claimUsername(
-        userId: string,
-        username: Lowercase<string>,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        username: Lowercase<string>
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
         const [checkUsername, checkBadWord, exist] = await Promise.all([
@@ -349,13 +347,16 @@ export class UserProfileService {
 
         try {
             await this.outboxService.withTransaction(async tx => {
-                await this.userRepository.claimUsernameInTx(tx, userId, {
-                    username,
-                });
-                const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userClaimUsername },
-                    context
+                await this.userRepository.claimUsernameInTx(
+                    tx,
+                    snapshot.actorUserId,
+                    {
+                        username,
+                    }
                 );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userClaimUsername,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 

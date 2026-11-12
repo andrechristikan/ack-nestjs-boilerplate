@@ -8,12 +8,15 @@ import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateMemberRoleUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const context = buildRequestContext('user-1');
     const member: WorkspaceMember = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -25,6 +28,12 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        member
+    );
+
     let useCase: WorkspaceUpdateMemberRoleUseCase;
 
     beforeEach(async () => {
@@ -49,23 +58,17 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 role: EnumWorkspaceMemberRole.admin,
             };
 
-            const result = await useCase.execute(
-                'workspace-1',
-                member,
-                'member-2',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, 'member-2', body);
 
             expect(result).toEqual({});
             expect(
                 workspaceMemberService.updateMemberRole
             ).toHaveBeenCalledWith(
+                context.snapshot,
                 'workspace-1',
                 member,
                 'member-2',
-                EnumWorkspaceMemberRole.admin,
-                context
+                EnumWorkspaceMemberRole.admin
             );
         });
 
@@ -75,15 +78,9 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    'workspace-1',
-                    member,
-                    'member-2',
-                    {
-                        role: EnumWorkspaceMemberRole.admin,
-                    },
-                    context
-                )
+                useCase.execute(context, 'member-2', {
+                    role: EnumWorkspaceMemberRole.admin,
+                })
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
         });
     });

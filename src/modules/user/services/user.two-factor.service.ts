@@ -9,7 +9,10 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextSnapshot,
+    IRequestContextUserSnapshot,
+} from '@common/request/interfaces/request.interface';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
@@ -209,8 +212,8 @@ export class UserTwoFactorService {
 
     /** Counts one two-factor attempt before the code is checked and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; false on a spent budget; a write conflict throws AuthTwoFactorAttemptMaxException. */
     async countAttempt(
-        user: IUser,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        user: IUser
     ): Promise<boolean> {
         try {
             return await this.outboxService.withTransaction(async tx => {
@@ -224,7 +227,7 @@ export class UserTwoFactorService {
                     const lockout = this.lockoutEffect(user.id);
                     const stages = this.buildTwoFactorLockoutStages(user.id);
                     const entries = stages.map(stage =>
-                        this.activityLogService.recordEffect(stage, context)
+                        this.activityLogService.recordEffect(snapshot, stage)
                     );
                     await this.outboxService.addManyInTx(tx, [
                         lockout,
@@ -250,10 +253,10 @@ export class UserTwoFactorService {
 
     /** Counts one two-factor attempt and throws AuthTwoFactorAttemptMaxException when the budget is spent. */
     async assertAttemptCounted(
-        user: IUser,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        user: IUser
     ): Promise<void> {
-        const isAttemptCounted = await this.countAttempt(user, context);
+        const isAttemptCounted = await this.countAttempt(snapshot, user);
         if (!isAttemptCounted) {
             throw new AuthTwoFactorAttemptMaxException();
         }
@@ -261,9 +264,9 @@ export class UserTwoFactorService {
 
     /** Returns null when the user needs no two-factor check; otherwise requires a method, counts the attempt, and verifies the code. */
     async verifyIfRequired(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
-        input: IUserTwoFactorVerifyInput,
-        context: IRequestContext
+        input: IUserTwoFactorVerifyInput
     ): Promise<IUserTwoFactorVerifyResult | null> {
         const requiresVerification =
             this.userUtil.requiresTwoFactorVerification(user);
@@ -273,7 +276,7 @@ export class UserTwoFactorService {
 
         const method = this.getProvidedMethod(input.method);
         // Sequential by design: gate before the work it guards
-        await this.assertAttemptCounted(user, context);
+        await this.assertAttemptCounted(snapshot, user);
 
         return this.verify(user, { ...input, method });
     }
@@ -359,9 +362,9 @@ export class UserTwoFactorService {
 
     /** Stores the pending secret and adds the setup entry in the same transaction. */
     async saveSetup(
+        snapshot: IRequestContextSnapshot,
         userId: string,
-        encryptedSecret: string,
-        context: IRequestContext
+        encryptedSecret: string
     ): Promise<void> {
         await this.outboxService.withTransaction(async tx => {
             await this.userTwoFactorRepository.setupTwoFactorInTx(
@@ -369,24 +372,21 @@ export class UserTwoFactorService {
                 userId,
                 encryptedSecret
             );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.userSetupTwoFactor,
-                    userId,
-                    createdBy: userId,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userSetupTwoFactor,
+                userId,
+                createdBy: userId,
+            });
             await this.outboxService.addInTx(tx, entry);
         });
     }
 
     /** Stores the pending secret and consumes the verified backup code, adding the setup entry, in one transaction; the code is consumed only while the stored codes are still the ones it was verified against, otherwise, or on a write conflict, the setup is rejected. */
     async saveSetupConsumingBackupCode(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         encryptedSecret: string,
-        verified: IUserTwoFactorVerifyResult,
-        context: IRequestContext
+        verified: IUserTwoFactorVerifyResult
     ): Promise<void> {
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -402,14 +402,11 @@ export class UserTwoFactorService {
                     throw new AuthTwoFactorInvalidException();
                 }
 
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userSetupTwoFactor,
-                        userId: user.id,
-                        createdBy: user.id,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userSetupTwoFactor,
+                    userId: user.id,
+                    createdBy: user.id,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {
@@ -439,9 +436,9 @@ export class UserTwoFactorService {
 
     /** Makes the pending secret the account's secret and adds the enable entry in the same transaction; returns plain backup codes, storing only their hashes; a pending secret that no longer matches, or a write conflict over it, throws the setup-required exception. */
     async enableTwoFactor(
+        snapshot: IRequestContextSnapshot,
         userId: string,
-        pendingSecret: string,
-        context: IRequestContext
+        pendingSecret: string
     ): Promise<string[]> {
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
@@ -457,14 +454,11 @@ export class UserTwoFactorService {
                     throw new AuthTwoFactorSetupRequiredException();
                 }
 
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userEnableTwoFactor,
-                        userId,
-                        createdBy: userId,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                    userId,
+                    createdBy: userId,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -561,9 +555,9 @@ export class UserTwoFactorService {
 
     /** Replaces the backup codes and adds the regenerate entry in one transaction; returns the plain codes; a write conflict throws the not-enabled exception. */
     async regenerateTwoFactorBackupCodes(
-        userId: string,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot
     ): Promise<string[]> {
+        const userId = snapshot.actorUserId;
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
             await this.outboxService.withTransaction(async tx => {
@@ -577,12 +571,9 @@ export class UserTwoFactorService {
                     throw new AuthTwoFactorNotEnabledException();
                 }
 
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 

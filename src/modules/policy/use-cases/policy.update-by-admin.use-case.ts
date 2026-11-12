@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,13 +13,12 @@ import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-f
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class PolicyUpdateByAdminUseCase implements IAppUseCase<
-    [string, string, PolicyUpdateRequestDto, IUser, IRequestContext],
+    [IRequestContextUser, string, string, PolicyUpdateRequestDto],
     IResponseReturn<PolicyDto>
 > {
     constructor(
@@ -32,16 +31,15 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         roleId: string,
         id: string,
-        body: PolicyUpdateRequestDto,
-        user: IUser,
-        context: IRequestContext
+        body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         // Sequential by design: gate before the work it guards
         await this.roleService.assertWritableByActor(roleId, {
-            roleId: user.roleId,
-            roleType: user.role.type,
+            roleId: context.user.roleId,
+            roleType: context.user.role.type,
         });
 
         try {
@@ -57,11 +55,11 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
                     const metadata =
                         this.policyUtil.mapActivityLogMetadata(policy);
                     const effect = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.adminPolicyUpdate,
                             metadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, effect);
 

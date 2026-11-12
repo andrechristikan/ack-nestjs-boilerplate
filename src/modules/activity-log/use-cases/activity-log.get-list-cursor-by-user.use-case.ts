@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
-    [string, ActivityLogSharedListRequestDto],
+    [IRequestContextUser, ActivityLogSharedListRequestDto],
     IResponsePaginationReturn<IActivityLog>
 > {
     constructor(
@@ -25,7 +26,7 @@ export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
@@ -39,7 +40,10 @@ export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.activityLogService.getListCursorByUser(userId, params);
+            await this.activityLogService.getListCursorByUser(
+                context.user.id,
+                params
+            );
 
         return {
             data,

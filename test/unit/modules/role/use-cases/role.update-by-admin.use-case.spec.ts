@@ -16,7 +16,7 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -104,22 +104,7 @@ describe('RoleUpdateByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const context: IRequestContext = {
-        actorUserId: actorUser.id,
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: { architecture: null },
-                device: { type: null, vendor: null, model: null },
-                engine: { name: null, version: null },
-                os: { name: null, version: null },
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(actorUser);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -164,10 +149,9 @@ describe('RoleUpdateByAdminUseCase', () => {
             roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await useCase.execute(
+                context,
                 roleWithPolicies.id,
-                body,
-                actorUser,
-                context
+                body
             );
 
             expect(result).toEqual({ data: roleWithPolicies });
@@ -182,20 +166,15 @@ describe('RoleUpdateByAdminUseCase', () => {
         it('adds the update activity entry from the updated role and the passed context on the same tx', async () => {
             roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            await useCase.execute(
-                roleWithPolicies.id,
-                body,
-                actorUser,
-                context
-            );
+            await useCase.execute(context, roleWithPolicies.id, body);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 roleWithPolicies,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.adminRoleUpdate, metadata },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.adminRoleUpdate, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -203,12 +182,10 @@ describe('RoleUpdateByAdminUseCase', () => {
         it('passes a null description through to clear it', async () => {
             roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
-            await useCase.execute(
-                roleWithPolicies.id,
-                { description: null, type: EnumRoleType.user },
-                actorUser,
-                context
-            );
+            await useCase.execute(context, roleWithPolicies.id, {
+                description: null,
+                type: EnumRoleType.user,
+            });
 
             expect(roleService.updateByAdminInTx).toHaveBeenCalledWith(
                 tx,
@@ -223,7 +200,7 @@ describe('RoleUpdateByAdminUseCase', () => {
             roleService.updateByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+                useCase.execute(context, roleWithPolicies.id, body)
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -236,7 +213,7 @@ describe('RoleUpdateByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+                useCase.execute(context, roleWithPolicies.id, body)
             ).rejects.toBeInstanceOf(RoleNotFoundException);
         });
 
@@ -246,7 +223,7 @@ describe('RoleUpdateByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(roleWithPolicies.id, body, actorUser, context)
+                useCase.execute(context, roleWithPolicies.id, body)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

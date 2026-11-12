@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
-    [string, TermPolicyAcceptedListRequestDto],
+    [IRequestContextUser, TermPolicyAcceptedListRequestDto],
     IResponsePaginationReturn<ITermPolicyUserAcceptance>
 > {
     constructor(
@@ -25,7 +26,7 @@ export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         query: TermPolicyAcceptedListRequestDto
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         const { params, storePatch } =
@@ -41,7 +42,7 @@ export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.termPolicyAcceptanceService.getListUserAccepted(
-                userId,
+                context.user.id,
                 params
             );
         return {

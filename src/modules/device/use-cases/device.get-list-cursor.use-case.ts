@@ -2,6 +2,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class DeviceGetListCursorUseCase implements IAppUseCase<
-    [string, string, DeviceSharedListRequestDto],
+    [IRequestContextUser, DeviceSharedListRequestDto],
     IResponsePaginationReturn<IDeviceOwnershipDetail>
 > {
     constructor(
@@ -25,8 +26,7 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        sessionId: string,
+        context: IRequestContextUser,
         query: DeviceSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
@@ -40,8 +40,8 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.deviceService.getListCursor(
-            userId,
-            sessionId,
+            context.user.id,
+            context.session.sessionId,
             params
         );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(

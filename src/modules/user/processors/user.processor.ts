@@ -77,19 +77,9 @@ export class UserProcessor extends QueueProcessorBase {
                     throw new UnrecoverableError(message);
                 }
 
-                const payload = data as IUserImportByAdminPayload;
-                const { actorUserId } = payload.context;
-                if (actorUserId === null) {
-                    const message = this.messageService.setMessage(
-                        'user.queue.error.actorMissing'
-                    );
-                    throw new UnrecoverableError(message);
-                }
-
                 return await this.userProcessImportByAdminUseCase.execute(
                     outboxId,
-                    payload,
-                    actorUserId
+                    data as IUserImportByAdminPayload
                 );
             }
             default: {

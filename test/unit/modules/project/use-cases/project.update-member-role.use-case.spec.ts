@@ -12,13 +12,15 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { ProjectUpdateMemberRoleUseCase } from '@modules/project/use-cases/project.update-member-role.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUpdateMemberRoleUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439033');
 
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
 
@@ -55,6 +57,13 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
         deletedBy: null,
     };
 
+    const context = buildRequestContextProject(
+        buildUser('507f1f77bcf86cd799439033', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        actorMember,
+        project
+    );
+
     beforeEach(async () => {
         vi.resetAllMocks();
         projectUtil.mapMemberActor.mockReturnValue(actor);
@@ -80,11 +89,9 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
             };
 
             const result = await useCase.execute(
-                project,
-                actorMember,
+                context,
                 '507f1f77bcf86cd799439021',
-                body,
-                context
+                body
             );
 
             expect(result).toEqual({});
@@ -92,11 +99,11 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
                 actorMember
             );
             expect(projectMemberService.updateMemberRole).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
                 actor,
                 '507f1f77bcf86cd799439021',
-                body.role,
-                context
+                body.role
             );
         });
 
@@ -106,13 +113,9 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    project,
-                    actorMember,
-                    '507f1f77bcf86cd799439021',
-                    { role: EnumProjectMemberRole.admin },
-                    context
-                )
+                useCase.execute(context, '507f1f77bcf86cd799439021', {
+                    role: EnumProjectMemberRole.admin,
+                })
             ).rejects.toThrow('boom');
         });
     });

@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -13,13 +13,12 @@ import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class RoleUpdateByAdminUseCase implements IAppUseCase<
-    [string, RoleUpdateRequestDto, IUser, IRequestContext],
+    [IRequestContextUser, string, RoleUpdateRequestDto],
     IResponseReturn<RoleDto>
 > {
     constructor(
@@ -32,10 +31,9 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         id: string,
-        body: RoleUpdateRequestDto,
-        user: IUser,
-        context: IRequestContext
+        body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         try {
             const updated = await this.outboxService.withTransaction(
@@ -47,7 +45,10 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                             description: body.description,
                             type: body.type,
                         },
-                        { roleId: user.roleId, roleType: user.role.type }
+                        {
+                            roleId: context.user.roleId,
+                            roleType: context.user.role.type,
+                        }
                     );
 
                     const timestamp = this.helperDateService.create();
@@ -56,11 +57,11 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                         timestamp
                     );
                     const effect = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.adminRoleUpdate,
                             metadata,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, effect);
 

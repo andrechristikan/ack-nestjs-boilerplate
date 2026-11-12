@@ -1,3 +1,4 @@
+import { RequestWorkspaceMemberStoreKey } from '@common/request/constants/request.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
@@ -8,10 +9,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import {
-    WorkspaceMemberStoreKey,
-    WorkspaceRoleMetaKey,
-} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceRoleMetaKey } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
@@ -72,7 +70,7 @@ describe('WorkspaceRoleGuard', () => {
                 handler
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                WorkspaceMemberStoreKey
+                RequestWorkspaceMemberStoreKey
             );
             expect(
                 workspaceMemberService.validateWorkspaceRoleGuard

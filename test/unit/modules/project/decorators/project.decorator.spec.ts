@@ -2,32 +2,20 @@ import { HttpStatus } from '@nestjs/common';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import { ClsServiceManager } from 'nestjs-cls';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
-import {
-    ProjectMemberStoreKey,
-    ProjectRoleMetaKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
+import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import {
-    ProjectCurrent,
-    ProjectMemberCurrent,
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
-import {
-    buildDecoratorTarget,
-    getParamDecoratorFactory,
-} from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import { buildDecoratorTarget } from '@test/unit/helpers/test.unit.decorator.helper';
 
 describe('project.decorator', () => {
     describe('ProjectProtected', () => {
@@ -76,111 +64,6 @@ describe('project.decorator', () => {
                     messagePath: 'workspace.error.guardMissing',
                 },
             ]);
-        });
-    });
-
-    describe('ProjectCurrent', () => {
-        const project: Project = {
-            id: '507f1f77bcf86cd799439011',
-            workspaceId: '507f1f77bcf86cd799439012',
-            name: 'Website Revamp',
-            slug: 'website-revamp',
-            description: null,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            deletedAt: null,
-            deletedBy: null,
-        };
-
-        afterEach(() => {
-            vi.restoreAllMocks();
-        });
-
-        it('returns the whole stored project with no field', () => {
-            const getMock = vi.fn().mockReturnValue(project);
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: getMock,
-            } as never);
-            const target = {};
-            ProjectCurrent()(target, 'returnsWholeProject', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'returnsWholeProject'
-            );
-
-            const result = factory(undefined);
-
-            expect(result).toBe(project);
-            expect(getMock).toHaveBeenCalledWith(ProjectStoreKey);
-        });
-
-        it('returns the requested field of the stored project', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue(project),
-            } as never);
-            const target = {};
-            ProjectCurrent('slug')(target, 'returnsField', 0);
-            const factory = getParamDecoratorFactory(target, 'returnsField');
-
-            const result = factory('slug');
-
-            expect(result).toBe('website-revamp');
-        });
-
-        it('throws ProjectGuardMissingException when no project is stored', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue(undefined),
-            } as never);
-            const target = {};
-            ProjectCurrent()(target, 'throwsWhenMissing', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'throwsWhenMissing'
-            );
-
-            let thrown: unknown;
-            try {
-                factory(undefined);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.guardMissing
-                    ],
-                messagePath: 'project.error.guardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-        });
-
-        it('throws RequestContextMissingException when the requested field is absent', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue(project),
-            } as never);
-            const target = {};
-            ProjectCurrent('description')(target, 'throwsWhenFieldMissing', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'throwsWhenFieldMissing'
-            );
-
-            let thrown: unknown;
-            try {
-                factory('description');
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestContextMissingWithKey(
-                thrown,
-                `${ProjectStoreKey}.description`
-            );
         });
     });
 
@@ -268,119 +151,6 @@ describe('project.decorator', () => {
                     messagePath: 'workspace.error.memberGuardMissing',
                 },
             ]);
-        });
-    });
-
-    describe('ProjectMemberCurrent', () => {
-        const projectMember: ProjectMember = {
-            id: '507f1f77bcf86cd799439021',
-            projectId: '507f1f77bcf86cd799439011',
-            userId: '507f1f77bcf86cd799439022',
-            role: EnumProjectMemberRole.member,
-            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        };
-
-        afterEach(() => {
-            vi.restoreAllMocks();
-        });
-
-        it('returns the whole stored project member with no field', () => {
-            const getMock = vi.fn().mockReturnValue(projectMember);
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: getMock,
-            } as never);
-            const target = {};
-            ProjectMemberCurrent()(target, 'returnsWholeMember', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'returnsWholeMember'
-            );
-
-            const result = factory(undefined);
-
-            expect(result).toBe(projectMember);
-            expect(getMock).toHaveBeenCalledWith(ProjectMemberStoreKey);
-        });
-
-        it('returns the requested field of the stored project member', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue(projectMember),
-            } as never);
-            const target = {};
-            ProjectMemberCurrent('role')(target, 'returnsMemberField', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'returnsMemberField'
-            );
-
-            const result = factory('role');
-
-            expect(result).toBe(EnumProjectMemberRole.member);
-        });
-
-        it('throws ProjectMemberGuardMissingException when no project member is stored', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue(undefined),
-            } as never);
-            const target = {};
-            ProjectMemberCurrent()(target, 'throwsWhenMemberMissing', 0);
-            const factory = getParamDecoratorFactory(
-                target,
-                'throwsWhenMemberMissing'
-            );
-
-            let thrown: unknown;
-            try {
-                factory(undefined);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberGuardMissing,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberGuardMissing
-                    ],
-                messagePath: 'project.error.memberGuardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-        });
-
-        it('throws RequestContextMissingException when the requested field is absent', () => {
-            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
-                get: vi.fn().mockReturnValue({
-                    ...projectMember,
-                    joinedAt: undefined,
-                }),
-            } as never);
-            const target = {};
-            ProjectMemberCurrent('joinedAt')(
-                target,
-                'throwsWhenMemberFieldMissing',
-                0
-            );
-            const factory = getParamDecoratorFactory(
-                target,
-                'throwsWhenMemberFieldMissing'
-            );
-
-            let thrown: unknown;
-            try {
-                factory('joinedAt');
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestContextMissingWithKey(
-                thrown,
-                `${ProjectMemberStoreKey}.joinedAt`
-            );
         });
     });
 });

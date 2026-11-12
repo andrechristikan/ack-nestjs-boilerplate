@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -8,25 +8,22 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectCreateUseCase implements IAppUseCase<
-    [string, string, ProjectCreateRequestDto, IRequestContext],
+    [IRequestContextWorkspace, ProjectCreateRequestDto],
     IResponseReturn<Project>
 > {
     constructor(private readonly projectService: ProjectService) {}
 
     async execute(
-        workspaceId: string,
-        actorId: string,
-        { name, description }: ProjectCreateRequestDto,
-        context: IRequestContext
+        context: IRequestContextWorkspace,
+        { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
         const project = await this.projectService.createProject(
-            workspaceId,
-            actorId,
+            context.snapshot,
+            context.workspace.id,
             {
                 name,
                 description: description ?? null,
-            },
-            context
+            }
         );
 
         return { data: project };

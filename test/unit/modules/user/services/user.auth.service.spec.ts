@@ -23,7 +23,11 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
@@ -53,7 +57,7 @@ import {
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type {
-    IRequestContext,
+    IRequestContextSnapshot,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -97,6 +101,9 @@ describe('UserAuthService', () => {
         mock<ActivityLogService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const context = buildRequestContext(null);
+    const userContext = buildRequestContextUser(
+        buildUser('user-marlin', 'marlin@example.com')
+    ).snapshot;
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -214,14 +221,14 @@ describe('UserAuthService', () => {
             userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
 
             await expect(
-                service.countCredentialAttempt(baseUser.email, context)
+                service.countCredentialAttempt(context, baseUser.email)
             ).resolves.toEqual(counted);
             expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
                 baseUser.email
             );
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser, context);
+            ).toHaveBeenCalledWith(context, baseUser);
         });
 
         it('returns the attempt with a spent budget', async () => {
@@ -234,7 +241,7 @@ describe('UserAuthService', () => {
             userPasswordService.countPasswordAttempt.mockResolvedValue(spent);
 
             await expect(
-                service.countCredentialAttempt(baseUser.email, context)
+                service.countCredentialAttempt(context, baseUser.email)
             ).resolves.toEqual(spent);
         });
 
@@ -242,7 +249,7 @@ describe('UserAuthService', () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
-                service.countCredentialAttempt('missing@example.com', context)
+                service.countCredentialAttempt(context, 'missing@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -264,7 +271,7 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.countCredentialAttempt('halcyon@example.com', context)
+                service.countCredentialAttempt(context, 'halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -283,7 +290,7 @@ describe('UserAuthService', () => {
             userPasswordService.countPasswordAttempt.mockResolvedValue(null);
 
             await expect(
-                service.countCredentialAttempt('halcyon@example.com', context)
+                service.countCredentialAttempt(context, 'halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -291,7 +298,7 @@ describe('UserAuthService', () => {
             });
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(passwordless, context);
+            ).toHaveBeenCalledWith(context, passwordless);
         });
     });
 
@@ -474,14 +481,14 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.assertCurrentPassword(
+                    userContext,
                     baseUser,
-                    'plain-password',
-                    context
+                    'plain-password'
                 )
             ).resolves.toBeUndefined();
             expect(
                 userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser, context);
+            ).toHaveBeenCalledWith(userContext, baseUser);
             expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
@@ -492,7 +499,7 @@ describe('UserAuthService', () => {
             userPasswordService.countPasswordAttempt.mockResolvedValue(null);
 
             await expect(
-                service.assertCurrentPassword(baseUser, null, context)
+                service.assertCurrentPassword(userContext, baseUser, null)
             ).resolves.toBeUndefined();
             expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
@@ -502,7 +509,7 @@ describe('UserAuthService', () => {
             authPasswordUtil.validatePassword.mockResolvedValue(false);
 
             await expect(
-                service.assertCurrentPassword(baseUser, 'wrong', context)
+                service.assertCurrentPassword(userContext, baseUser, 'wrong')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
@@ -520,7 +527,7 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.assertCurrentPassword(baseUser, 'plain', context)
+                service.assertCurrentPassword(userContext, baseUser, 'plain')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
@@ -719,7 +726,7 @@ describe('UserAuthService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
-                service.verifyEmailBySocial(user, context)
+                service.verifyEmailBySocial(context, user)
             ).resolves.toEqual({
                 ...writtenRow,
                 role: user.role,
@@ -729,12 +736,12 @@ describe('UserAuthService', () => {
                 userVerificationService.markVerifiedBySocialInTx
             ).toHaveBeenCalledWith(tx, user.id);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: user.id,
                     createdBy: user.id,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -779,7 +786,7 @@ describe('UserAuthService', () => {
             ipAddress: '127.0.0.1',
             geoLocation: null,
         };
-        const context: IRequestContext = {
+        const context: IRequestContextSnapshot = {
             ...buildRequestContext(null),
             requestLog,
         };
@@ -889,10 +896,12 @@ describe('UserAuthService', () => {
             userUtil.resolveLoginActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userLoginCredential
             );
-            activityLogService.recordEffect.mockImplementation(input => ({
-                ...entryEffect,
-                idempotencyKey: `${input.action}:${input.userId ?? ''}`,
-            }));
+            activityLogService.recordEffect.mockImplementation(
+                (_context, input) => ({
+                    ...entryEffect,
+                    idempotencyKey: `${input.action}:${input.userId ?? ''}`,
+                })
+            );
             deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
             deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
                 []
@@ -911,12 +920,12 @@ describe('UserAuthService', () => {
 
         it('upserts the device, creates the session, and stamps the login on one tx', async () => {
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -947,12 +956,12 @@ describe('UserAuthService', () => {
 
         it('adds the newDeviceLogin effect on the transaction after the writes when the device is new', async () => {
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(requestContextService.resolveDevice).toHaveBeenCalledWith(
@@ -992,11 +1001,6 @@ describe('UserAuthService', () => {
 
         it('sends empty display parts and address when the request log has none', async () => {
             await service.createTokenAndSession(
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt,
                 {
                     ...context,
                     requestLog: {
@@ -1009,7 +1013,12 @@ describe('UserAuthService', () => {
                         },
                         ipAddress: null,
                     },
-                }
+                },
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
             );
 
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -1025,11 +1034,6 @@ describe('UserAuthService', () => {
 
         it('sends empty parts inside a parsed user agent that lacks some fields', async () => {
             await service.createTokenAndSession(
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt,
                 {
                     ...context,
                     requestLog: {
@@ -1046,7 +1050,12 @@ describe('UserAuthService', () => {
                             os: { name: null, version: null },
                         },
                     },
-                }
+                },
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
             );
 
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -1066,12 +1075,12 @@ describe('UserAuthService', () => {
             });
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(notificationService.notify).not.toHaveBeenCalled();
@@ -1088,12 +1097,12 @@ describe('UserAuthService', () => {
             );
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(
@@ -1106,12 +1115,12 @@ describe('UserAuthService', () => {
             });
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(
@@ -1127,12 +1136,12 @@ describe('UserAuthService', () => {
 
         it("revokes other users' sessions only when other ownerships exist", async () => {
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(
@@ -1147,12 +1156,12 @@ describe('UserAuthService', () => {
             );
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(
@@ -1168,12 +1177,12 @@ describe('UserAuthService', () => {
             helperDateService.forward.mockReturnValue(expiredAt);
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(helperDateService.forward).toHaveBeenCalledWith(
@@ -1193,12 +1202,12 @@ describe('UserAuthService', () => {
 
         it('builds the tokens from sessionId, jti, deviceOwnershipId, and loginAt', async () => {
             const result = await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(authJwtService.createTokens).toHaveBeenCalledWith(
@@ -1231,12 +1240,12 @@ describe('UserAuthService', () => {
                 .mockReturnValueOnce(cloverMetadata);
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(
@@ -1246,22 +1255,22 @@ describe('UserAuthService', () => {
                 sessionUtil.mapActivityLogRevokeAllTargetMetadata
             ).toHaveBeenCalledWith('user-halcyon', 1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                     userId: 'user-thistle',
                     createdBy: 'user-halcyon',
                     metadata: thistleMetadata,
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                     userId: 'user-clover',
                     createdBy: 'user-halcyon',
                     metadata: cloverMetadata,
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({
@@ -1285,24 +1294,24 @@ describe('UserAuthService', () => {
             );
 
             await service.createTokenAndSession(
+                context,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                loginAt,
-                context
+                loginAt
             );
 
             expect(userUtil.resolveLoginActivityLogAction).toHaveBeenCalledWith(
                 EnumUserLoginWith.socialGoogle
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userLoginGoogle,
                     userId: 'user-halcyon',
                     createdBy: 'user-halcyon',
-                },
-                context
+                }
             );
         });
 
@@ -1312,12 +1321,12 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.createTokenAndSession(
+                    context,
                     baseUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential,
-                    loginAt,
-                    context
+                    loginAt
                 )
             ).rejects.toBe(failure);
             expect(authJwtService.createTokens).not.toHaveBeenCalled();
@@ -1370,11 +1379,11 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.createTwoFactorChallenge(
+                    context,
                     setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    context
+                    EnumUserLoginWith.credential
                 )
             ).resolves.toEqual({
                 isRequiredSetup: true,
@@ -1393,9 +1402,9 @@ describe('UserAuthService', () => {
             });
             expect(userTwoFactorService.setup).toHaveBeenCalledWith(setupUser);
             expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
+                context,
                 'user-halcyon',
-                'encrypted-secret',
-                context
+                'encrypted-secret'
             );
         });
 
@@ -1410,11 +1419,11 @@ describe('UserAuthService', () => {
 
             await expect(
                 service.createTwoFactorChallenge(
+                    context,
                     setupUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    context
+                    EnumUserLoginWith.credential
                 )
             ).rejects.toBe(failure);
             expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
@@ -1423,11 +1432,11 @@ describe('UserAuthService', () => {
         it('returns the verify challenge without a setup when setup is not required', async () => {
             await expect(
                 service.createTwoFactorChallenge(
+                    context,
                     twoFactorUser,
                     deviceIdentity,
                     EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    context
+                    EnumUserLoginWith.credential
                 )
             ).resolves.toEqual({
                 isRequiredSetup: false,

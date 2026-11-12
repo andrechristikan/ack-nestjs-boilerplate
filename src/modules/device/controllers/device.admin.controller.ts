@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -5,7 +6,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -29,11 +30,7 @@ import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.rem
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -98,18 +95,17 @@ export class DeviceAdminController {
     @ApiKeyProtected()
     @Delete('/remove/:deviceOwnershipId')
     async remove(
-        @UserCurrent() user: IUser,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
-        deviceOwnershipId: string,
-        @RequestContextCurrent() context: IRequestContext
+        deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceRemoveByAdminUseCase.execute(
+            context,
             userId,
-            deviceOwnershipId,
-            user,
-            context
+            deviceOwnershipId
         );
     }
 }

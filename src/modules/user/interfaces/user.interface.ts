@@ -1,5 +1,5 @@
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
@@ -399,12 +399,8 @@ export interface IUserLockoutPayload {
 
 export interface IUserImportByAdminPayload {
     rows: IUserImport[];
-    context: IRequestContext;
+    context: IRequestContextUserSnapshot;
 }
-
-export type IUserField = Extract<keyof IUser, string>;
-
-export type IUserFieldValue = NonNullable<IUser[IUserField]>;
 
 export interface IUserCreateContracts {
     signUp: IUserCreateContract;

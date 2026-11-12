@@ -1,3 +1,8 @@
+import {
+    RequestUserStoreKey,
+    RequestProjectStoreKey,
+    RequestProjectMemberStoreKey,
+} from '@common/request/constants/request.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -16,11 +21,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    ProjectMemberStoreKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
+
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -127,9 +128,9 @@ describe('ProjectMemberGuard', () => {
                 deletedBy: null,
             };
             requestStoreService.get.mockImplementation(key => {
-                if (key === ProjectStoreKey) {
+                if (key === RequestProjectStoreKey) {
                     return project;
-                } else if (key === UserStoreKey) {
+                } else if (key === RequestUserStoreKey) {
                     return user;
                 }
 
@@ -149,7 +150,7 @@ describe('ProjectMemberGuard', () => {
                 '507f1f77bcf86cd799439013'
             );
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectMemberStoreKey,
+                RequestProjectMemberStoreKey,
                 member
             );
         });
@@ -176,7 +177,7 @@ describe('ProjectMemberGuard', () => {
 
         it('throws ProjectGuardMissingException before the domain call when the project store is empty', async () => {
             requestStoreService.get.mockImplementation(key => {
-                if (key === UserStoreKey) {
+                if (key === RequestUserStoreKey) {
                     return user;
                 }
 

@@ -27,7 +27,6 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -77,6 +76,7 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
+import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserSignUpUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -111,7 +111,7 @@ describe('UserSignUpUseCase', () => {
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const context = buildRequestContext(null);
+    const context = buildRequestContextPublic();
     const activityEntry = {
         queue: 'activity-entry',
     } as unknown as IOutboxEffect;
@@ -426,7 +426,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('commits the new user on one transaction, adds the created entries and the welcome and verification effects on the same tx, and returns an empty envelope', async () => {
-            await expect(useCase.execute(dto, context)).resolves.toEqual({});
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(workspaceInviteService.getSignUpInvite).toHaveBeenCalledWith(
                 null,
@@ -454,8 +454,8 @@ describe('UserSignUpUseCase', () => {
                 [committedUser]
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                stageInput,
-                context
+                context.snapshot,
+                stageInput
             );
             expect(userVerificationUtil.mapEmailContext).toHaveBeenCalledWith(
                 'user-bramble',
@@ -480,7 +480,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('adds the effects after the last write and before the commit returns', async () => {
-            await useCase.execute(dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
@@ -493,14 +493,11 @@ describe('UserSignUpUseCase', () => {
                 inviteContext
             );
 
-            await useCase.execute(
-                {
-                    ...dto,
-                    name: 'Bramble Fox',
-                    inviteToken: 'raw-token',
-                },
-                context
-            );
+            await useCase.execute(context, {
+                ...dto,
+                name: 'Bramble Fox',
+                inviteToken: 'raw-token',
+            });
 
             expect(workspaceInviteService.getSignUpInvite).toHaveBeenCalledWith(
                 'raw-token',
@@ -525,7 +522,7 @@ describe('UserSignUpUseCase', () => {
             );
 
             await expect(
-                useCase.execute({ ...dto, inviteToken: 'raw-token' }, context)
+                useCase.execute(context, { ...dto, inviteToken: 'raw-token' })
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
@@ -547,7 +544,7 @@ describe('UserSignUpUseCase', () => {
             );
 
             await expect(
-                useCase.execute({ ...dto, inviteToken: 'raw-token' }, context)
+                useCase.execute(context, { ...dto, inviteToken: 'raw-token' })
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
@@ -568,7 +565,7 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
                 messagePath: 'role.error.notFound',
@@ -587,7 +584,7 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
                 messagePath: 'country.error.notFound',
@@ -602,7 +599,7 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
                 statusCodeKey:
@@ -619,7 +616,7 @@ describe('UserSignUpUseCase', () => {
                 throw new UserUsernameExistException();
             });
 
-            await expect(useCase.execute(dto, context)).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
                 statusCodeKey:
@@ -640,7 +637,7 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
-            await expect(useCase.execute(dto, context)).rejects.toBe(failure);
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -661,9 +658,9 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
+                    context.snapshot,
                     inviteInput,
-                    emailVerification,
-                    context
+                    emailVerification
                 )
             ).resolves.toBeUndefined();
 
@@ -731,9 +728,9 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await useCase['createSignUpUser'](
+                context.snapshot,
                 input,
-                emailVerification,
-                context
+                emailVerification
             );
 
             expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
@@ -750,9 +747,9 @@ describe('UserSignUpUseCase', () => {
 
         it('asserts the published term policy before createInTx and accepts it last', async () => {
             await useCase['createSignUpUser'](
+                context.snapshot,
                 input,
-                emailVerification,
-                context
+                emailVerification
             );
 
             expect(
@@ -767,6 +764,7 @@ describe('UserSignUpUseCase', () => {
 
         it('creates the project membership only when the invite carries a project and role', async () => {
             await useCase['createSignUpUser'](
+                context.snapshot,
                 {
                     ...inviteInput,
                     workspaceContext: {
@@ -775,8 +773,7 @@ describe('UserSignUpUseCase', () => {
                         projectMemberRole: null,
                     },
                 },
-                emailVerification,
-                context
+                emailVerification
             );
 
             expect(
@@ -787,9 +784,9 @@ describe('UserSignUpUseCase', () => {
 
         it('accepts no invite for a personal input', async () => {
             await useCase['createSignUpUser'](
+                context.snapshot,
                 input,
-                emailVerification,
-                context
+                emailVerification
             );
 
             expect(
@@ -809,7 +806,11 @@ describe('UserSignUpUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
             await expect(
-                useCase['createSignUpUser'](input, emailVerification, context)
+                useCase['createSignUpUser'](
+                    context.snapshot,
+                    input,
+                    emailVerification
+                )
             ).rejects.toBe(failure);
             expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
         });
@@ -822,7 +823,11 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase['createSignUpUser'](input, emailVerification, context)
+                useCase['createSignUpUser'](
+                    context.snapshot,
+                    input,
+                    emailVerification
+                )
             ).resolves.toBeUndefined();
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
@@ -843,7 +848,11 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase['createSignUpUser'](input, emailVerification, context)
+                useCase['createSignUpUser'](
+                    context.snapshot,
+                    input,
+                    emailVerification
+                )
             ).rejects.toMatchObject({
                 module: 'database',
                 statusCode:
@@ -861,7 +870,11 @@ describe('UserSignUpUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
-                useCase['createSignUpUser'](input, emailVerification, context)
+                useCase['createSignUpUser'](
+                    context.snapshot,
+                    input,
+                    emailVerification
+                )
             ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
                 otherError
@@ -875,7 +888,11 @@ describe('UserSignUpUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
-                useCase['createSignUpUser'](input, emailVerification, context)
+                useCase['createSignUpUser'](
+                    context.snapshot,
+                    input,
+                    emailVerification
+                )
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,

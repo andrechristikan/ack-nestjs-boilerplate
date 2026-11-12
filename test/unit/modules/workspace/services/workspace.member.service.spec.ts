@@ -39,7 +39,10 @@ import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.i
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceMemberService', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -50,7 +53,9 @@ describe('WorkspaceMemberService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const context = buildRequestContext('user-1');
+    const { snapshot } = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     let service: WorkspaceMemberService;
@@ -313,10 +318,10 @@ describe('WorkspaceMemberService', () => {
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-1',
-                    context
+                    'user-1'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceSelfTransferException,
@@ -337,10 +342,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
@@ -360,10 +365,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceCapReachedException,
@@ -393,10 +398,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).resolves.toBeUndefined();
 
@@ -430,33 +435,33 @@ describe('WorkspaceMemberService', () => {
             workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
 
             await service.transferOwnership(
+                snapshot,
                 'workspace-1',
                 actor,
-                'user-2',
-                context
+                'user-2'
             );
 
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferred,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-2' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                     userId: 'user-2',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'user-1' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -479,10 +484,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -509,10 +514,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -533,10 +538,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -553,10 +558,10 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
+                    snapshot,
                     'workspace-1',
                     actor,
-                    'user-2',
-                    context
+                    'user-2'
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
@@ -716,11 +721,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
@@ -741,11 +746,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -763,11 +768,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -786,11 +791,11 @@ describe('WorkspaceMemberService', () => {
             );
 
             await service.updateMemberRole(
+                snapshot,
                 'workspace-1',
                 actor,
                 'member-2',
-                EnumWorkspaceMemberRole.admin,
-                context
+                EnumWorkspaceMemberRole.admin
             );
 
             expect(
@@ -806,25 +811,25 @@ describe('WorkspaceMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-2' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                     userId: 'user-2',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'user-1' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -840,11 +845,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -865,11 +870,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -887,11 +892,11 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
+                    snapshot,
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin,
-                    context
+                    EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });

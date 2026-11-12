@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -534,9 +534,8 @@ export class NotificationService {
     }
 
     async updateUserSetting(
-        userId: string,
-        data: INotificationUserSettingUpdate,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        data: INotificationUserSettingUpdate
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
@@ -544,24 +543,21 @@ export class NotificationService {
             const updated =
                 await this.notificationUserSettingRepository.updateUserSettingInTx(
                     tx,
-                    userId,
+                    snapshot.actorUserId,
                     data
                 );
             if (!updated) {
                 throw new NotificationSettingInvalidException();
             }
 
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.userUpdateNotificationSetting,
-                    metadata: {
-                        channel: data.channel,
-                        type: data.type,
-                        isActive: data.isActive,
-                    },
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userUpdateNotificationSetting,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
                 },
-                context
-            );
+            });
             await this.outboxService.addInTx(tx, entry);
         });
     }

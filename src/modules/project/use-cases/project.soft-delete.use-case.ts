@@ -3,10 +3,9 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextProject } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -17,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectSoftDeleteUseCase implements IAppUseCase<
-    [Project, string, IRequestContext],
+    [IRequestContextProject],
     IResponseReturn<void>
 > {
     constructor(
@@ -30,10 +29,10 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        project: Project,
-        actorId: string,
-        context: IRequestContext
+        context: IRequestContextProject
     ): Promise<IResponseReturn<void>> {
+        const project = context.project;
+        const actorId = context.user.id;
         const deletedAt = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -48,13 +47,13 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
                     project.id
                 );
                 const entry = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.projectDeleted,
                         userId: actorId,
                         createdBy: actorId,
                         workspaceId: project.workspaceId,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });

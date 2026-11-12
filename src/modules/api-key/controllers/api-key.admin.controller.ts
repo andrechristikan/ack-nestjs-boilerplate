@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { ApiKeyListRequestSchema } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -17,7 +18,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -109,11 +110,12 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: ApiKeyCreateRequestSchema })
-        body: ApiKeyCreateRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyCreateByAdminUseCase.execute(body, context);
+        return this.apiKeyCreateByAdminUseCase.execute(context, body);
     }
 
     @Doc({ summary: 'reset secret an api key' })
@@ -132,11 +134,12 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/reset/:apiKeyId')
     async reset(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string,
-        @RequestContextCurrent() context: IRequestContext
+        apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyResetByAdminUseCase.execute(apiKeyId, context);
+        return this.apiKeyResetByAdminUseCase.execute(context, apiKeyId);
     }
 
     @Doc({ summary: 'update data an api key' })
@@ -155,13 +158,14 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Put('/update/:apiKeyId')
     async update(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string,
-        @RequestContextCurrent() context: IRequestContext
+        apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyUpdateByAdminUseCase.execute(apiKeyId, body, context);
+        return this.apiKeyUpdateByAdminUseCase.execute(context, apiKeyId, body);
     }
 
     @Doc({ summary: 'update date of api key' })
@@ -180,16 +184,17 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Put('/update/:apiKeyId/date')
     async updateDate(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string,
-        @RequestContextCurrent() context: IRequestContext
+        apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateDatesByAdminUseCase.execute(
+            context,
             apiKeyId,
-            body,
-            context
+            body
         );
     }
 
@@ -209,16 +214,17 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
-        body: ApiKeyUpdateStatusRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateStatusByAdminUseCase.execute(
+            context,
             apiKeyId,
-            body,
-            context
+            body
         );
     }
 
@@ -238,10 +244,11 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:apiKeyId')
     async delete(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string,
-        @RequestContextCurrent() context: IRequestContext
+        apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyDeleteByAdminUseCase.execute(apiKeyId, context);
+        return this.apiKeyDeleteByAdminUseCase.execute(context, apiKeyId);
     }
 }

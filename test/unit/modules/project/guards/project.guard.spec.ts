@@ -6,11 +6,14 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Project, Workspace } from '@generated/prisma-client/client';
-import { ProjectStoreKey } from '@modules/project/constants/project.constant';
+
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestProjectStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('ProjectGuard', () => {
@@ -80,7 +83,7 @@ describe('ProjectGuard', () => {
                 '507f1f77bcf86cd799439012'
             );
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                ProjectStoreKey,
+                RequestProjectStoreKey,
                 project
             );
         });

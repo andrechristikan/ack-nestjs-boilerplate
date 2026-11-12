@@ -18,6 +18,10 @@ import {
     NotificationSharedListCursorScope,
 } from '@modules/notification/constants/notification.list.constant';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationGetListCursorUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
@@ -27,6 +31,9 @@ describe('NotificationGetListCursorUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const context = buildRequestContextUser(
+        buildUser('user-id', 'user@example.com')
+    );
     let useCase: NotificationGetListCursorUseCase;
 
     const cursorParams = {
@@ -71,7 +78,7 @@ describe('NotificationGetListCursorUseCase', () => {
             });
             notificationService.getListCursor.mockResolvedValue(cursorPage);
 
-            const result = await useCase.execute('user-id', query, null);
+            const result = await useCase.execute(context, query, null);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: NotificationSharedListCursorScope,
@@ -130,7 +137,7 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => `translated:${path}`
             );
 
-            const result = await useCase.execute('user-id', query, 'en');
+            const result = await useCase.execute(context, query, 'en');
 
             expect(requestStoreService.get).not.toHaveBeenCalled();
             expect(
@@ -195,7 +202,7 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => path
             );
 
-            await useCase.execute('user-id', query, null);
+            await useCase.execute(context, query, null);
 
             expect(
                 notificationService.toMessageProperties
@@ -236,7 +243,7 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => path
             );
 
-            await useCase.execute('user-id', query, null);
+            await useCase.execute(context, query, null);
 
             expect(
                 notificationService.toRejectReasonProperties

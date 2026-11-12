@@ -16,7 +16,11 @@ import type {
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectAssignMemberUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
@@ -24,8 +28,6 @@ describe('ProjectAssignMemberUseCase', () => {
 
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439033');
 
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
 
@@ -86,6 +88,13 @@ describe('ProjectAssignMemberUseCase', () => {
         },
     };
 
+    const context = buildRequestContextProject(
+        buildUser('507f1f77bcf86cd799439033', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        actorMember,
+        project
+    );
+
     beforeEach(async () => {
         vi.resetAllMocks();
         projectUtil.mapMemberActor.mockReturnValue(actor);
@@ -132,12 +141,7 @@ describe('ProjectAssignMemberUseCase', () => {
             const created = { ...projectMemberRow, userId: body.userId };
             projectMemberService.assignMember.mockResolvedValue(created);
 
-            const result = await useCase.execute(
-                project,
-                actorMember,
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: created });
             expect(
@@ -147,11 +151,11 @@ describe('ProjectAssignMemberUseCase', () => {
                 actorMember
             );
             expect(projectMemberService.assignMember).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
                 actor,
                 targetMember,
-                body.role,
-                context
+                body.role
             );
         });
 
@@ -163,14 +167,14 @@ describe('ProjectAssignMemberUseCase', () => {
                 projectMemberRow
             );
 
-            await useCase.execute(project, actorMember, body, context);
+            await useCase.execute(context, body);
 
             expect(projectMemberService.assignMember).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
                 actor,
                 null,
-                body.role,
-                context
+                body.role
             );
         });
 
@@ -182,9 +186,9 @@ describe('ProjectAssignMemberUseCase', () => {
                 new Error('boom')
             );
 
-            await expect(
-                useCase.execute(project, actorMember, body, context)
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(context, body)).rejects.toThrow(
+                'boom'
+            );
         });
     });
 });

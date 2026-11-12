@@ -7,16 +7,21 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserAddMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
 
-    const context = buildRequestContext('user-swift');
+    const context = buildRequestContextUser(
+        buildUser('user-swift', 'user-swift@example.com')
+    );
 
     let useCase: UserAddMobileNumberUseCase;
 
@@ -74,29 +79,26 @@ describe('UserAddMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('adds the mobile number, passes the context, and wraps it in a response envelope', async () => {
+        it('adds the mobile number, passes the snapshot, and wraps it in a response envelope', async () => {
             userMobileNumberService.addMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
-            await expect(
-                useCase.execute('user-swift', dto, context)
-            ).resolves.toEqual({
+            await expect(useCase.execute(context, dto)).resolves.toEqual({
                 data: mobileNumber,
             });
             expect(countryService.getOne).toHaveBeenCalledWith(dto.countryId);
             expect(
                 userMobileNumberService.addMobileNumber
             ).toHaveBeenCalledWith(
-                'user-swift',
+                context.snapshot,
                 {
                     number: dto.number,
                     countryId: dto.countryId,
                     phoneCode: dto.phoneCode,
                 },
                 mobileNumber.country.phoneCode,
-                false,
-                context
+                false
             );
             expect(
                 userMobileNumberService.existsMobileNumber
@@ -126,7 +128,7 @@ describe('UserAddMobileNumberUseCase', () => {
                 mobileNumber
             );
 
-            await useCase.execute('user-swift', dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 userMobileNumberService.addMobileNumber
@@ -138,9 +140,9 @@ describe('UserAddMobileNumberUseCase', () => {
                 new CountryNotFoundException()
             );
 
-            await expect(
-                useCase.execute('user-swift', dto, context)
-            ).rejects.toBeInstanceOf(CountryNotFoundException);
+            await expect(useCase.execute(context, dto)).rejects.toBeInstanceOf(
+                CountryNotFoundException
+            );
 
             expect(
                 userMobileNumberService.addMobileNumber
@@ -152,9 +154,7 @@ describe('UserAddMobileNumberUseCase', () => {
                 new Error('boom')
             );
 
-            await expect(
-                useCase.execute('user-swift', dto, context)
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(context, dto)).rejects.toThrow('boom');
         });
     });
 });

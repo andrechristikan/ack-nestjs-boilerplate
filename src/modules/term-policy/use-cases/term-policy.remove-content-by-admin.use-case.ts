@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { Injectable } from '@nestjs/common';
@@ -7,7 +7,7 @@ import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dto
 
 @Injectable()
 export class TermPolicyRemoveContentByAdminUseCase implements IAppUseCase<
-    [string, TermPolicyRemoveContentRequestDto, IRequestContext],
+    [IRequestContextUser, string, TermPolicyRemoveContentRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -15,14 +15,14 @@ export class TermPolicyRemoveContentByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         termPolicyId: string,
-        { language }: TermPolicyRemoveContentRequestDto,
-        context: IRequestContext
+        { language }: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentService.removeContentByAdmin(
+            context.snapshot,
             termPolicyId,
-            language,
-            context
+            language
         );
 
         return {};

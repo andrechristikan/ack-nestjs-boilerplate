@@ -17,7 +17,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import {
     EnumActivityLogAction,
@@ -68,7 +68,7 @@ describe('SessionService', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const context: IRequestContext = {
+    const context: IRequestContextUserSnapshot = {
         actorUserId: 'admin-1',
         workspaceId: null,
         requestLog: {
@@ -83,6 +83,10 @@ describe('SessionService', () => {
             ipAddress: '127.0.0.1',
             geoLocation: null,
         },
+    };
+    const userContext: IRequestContextUserSnapshot = {
+        ...context,
+        actorUserId: 'user-1',
     };
     const actorEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -449,7 +453,7 @@ describe('SessionService', () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
+                service.revokeIfActive(null, 'user-1', 'session-1')
             ).resolves.toBeUndefined();
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -472,7 +476,7 @@ describe('SessionService', () => {
         it('adds no entry when no context is given', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revokeIfActive('user-1', 'session-1', null);
+            await service.revokeIfActive(null, 'user-1', 'session-1');
 
             expect(activityLogService.recordEffect).not.toHaveBeenCalled();
         });
@@ -481,11 +485,11 @@ describe('SessionService', () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
             activityLogService.recordEffect.mockReturnValue(actorEffect);
 
-            await service.revokeIfActive('user-1', 'session-1', context);
+            await service.revokeIfActive(userContext, 'user-1', 'session-1');
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.userRevokeSession },
-                context
+                userContext,
+                { action: EnumActivityLogAction.userRevokeSession }
             );
             expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
             expect(outboxService.addInTx).toHaveBeenLastCalledWith(
@@ -498,7 +502,7 @@ describe('SessionService', () => {
             sessionRepository.revokeInTx.mockResolvedValue(false);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
+                service.revokeIfActive(null, 'user-1', 'session-1')
             ).resolves.toBeUndefined();
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -512,7 +516,7 @@ describe('SessionService', () => {
             );
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
+                service.revokeIfActive(null, 'user-1', 'session-1')
             ).resolves.toBeUndefined();
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -523,7 +527,7 @@ describe('SessionService', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
+                service.revokeIfActive(null, 'user-1', 'session-1')
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
@@ -534,7 +538,7 @@ describe('SessionService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
+                service.revokeIfActive(null, 'user-1', 'session-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -866,11 +870,11 @@ describe('SessionService', () => {
         it('adds the userRevokeSession entry from the passed context on the same tx after the purge row', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revoke('user-1', 'session-1', context);
+            await service.revoke(userContext, 'session-1');
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                { action: EnumActivityLogAction.userRevokeSession },
-                context
+                userContext,
+                { action: EnumActivityLogAction.userRevokeSession }
             );
             expect(outboxService.addInTx).toHaveBeenLastCalledWith(
                 tx,
@@ -882,7 +886,7 @@ describe('SessionService', () => {
         it('revokes the session as its own user and adds its purge row on one outbox tx', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revoke('user-1', 'session-1', context);
+            await service.revoke(userContext, 'session-1');
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionRepository.revokeInTx).toHaveBeenCalledWith(
@@ -904,7 +908,7 @@ describe('SessionService', () => {
         it('throws SessionNotFoundException when the guarded revoke matches no active session', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(false);
 
-            const rejection = service.revoke('user-1', 'session-1', context);
+            const rejection = service.revoke(userContext, 'session-1');
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'session',
@@ -926,7 +930,7 @@ describe('SessionService', () => {
             );
 
             await expect(
-                service.revoke('user-1', 'session-1', context)
+                service.revoke(userContext, 'session-1')
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
@@ -945,7 +949,7 @@ describe('SessionService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.revoke('user-1', 'session-1', context)
+                service.revoke(userContext, 'session-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -969,15 +973,15 @@ describe('SessionService', () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
 
             await service.revokeByAdmin(
+                context,
                 'user-1',
                 'session-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context,
                 {
                     action: EnumActivityLogAction.adminSessionRevoke,
                     metadata: {
@@ -986,11 +990,11 @@ describe('SessionService', () => {
                         sessionId: 'session-1',
                         timestamp: revokedAt,
                     },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context,
                 {
                     action: EnumActivityLogAction.userRevokeSessionByAdmin,
                     userId: 'user-1',
@@ -1000,8 +1004,7 @@ describe('SessionService', () => {
                         sessionId: 'session-1',
                         timestamp: revokedAt,
                     },
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenNthCalledWith(
                 2,
@@ -1022,11 +1025,10 @@ describe('SessionService', () => {
             });
 
             await service.revokeByAdmin(
+                context,
                 'admin-1',
                 'session-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -1037,11 +1039,10 @@ describe('SessionService', () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
 
             const result = await service.revokeByAdmin(
+                context,
                 'user-1',
                 'session-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             expect(result).toBe(session);
@@ -1066,11 +1067,10 @@ describe('SessionService', () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(null);
 
             const rejection = service.revokeByAdmin(
+                context,
                 'user-1',
                 'session-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -1093,13 +1093,7 @@ describe('SessionService', () => {
             );
 
             await expect(
-                service.revokeByAdmin(
-                    'user-1',
-                    'session-1',
-                    'admin-1',
-                    revokedAt,
-                    context
-                )
+                service.revokeByAdmin(context, 'user-1', 'session-1', revokedAt)
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
@@ -1118,13 +1112,7 @@ describe('SessionService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.revokeByAdmin(
-                    'user-1',
-                    'session-1',
-                    'admin-1',
-                    revokedAt,
-                    context
-                )
+                service.revokeByAdmin(context, 'user-1', 'session-1', revokedAt)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -1180,12 +1168,7 @@ describe('SessionService', () => {
                 { id: 'session-2' },
             ]);
 
-            await service.revokeAllByAdmin(
-                'user-1',
-                'admin-1',
-                revokedAt,
-                context
-            );
+            await service.revokeAllByAdmin(context, 'user-1', revokedAt);
 
             expect(
                 sessionUtil.mapActivityLogRevokeAllActorMetadata
@@ -1195,21 +1178,21 @@ describe('SessionService', () => {
             ).toHaveBeenCalledWith('admin-1', 2);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context,
                 {
                     action: EnumActivityLogAction.adminSessionRevokeAll,
                     metadata: { targetUserId: 'user-1', sessionCount: 2 },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                     userId: 'user-1',
                     createdBy: 'admin-1',
                     metadata: { actorUserId: 'admin-1', sessionCount: 2 },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 actorEffect,
@@ -1225,10 +1208,9 @@ describe('SessionService', () => {
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
             const result = await service.revokeAllByAdmin(
+                context,
                 'user-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             expect(result).toBe(refs);
@@ -1250,10 +1232,9 @@ describe('SessionService', () => {
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue([]);
 
             const rejection = service.revokeAllByAdmin(
+                context,
                 'user-1',
-                'admin-1',
-                revokedAt,
-                context
+                revokedAt
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -1276,12 +1257,7 @@ describe('SessionService', () => {
             );
 
             await expect(
-                service.revokeAllByAdmin(
-                    'user-1',
-                    'admin-1',
-                    revokedAt,
-                    context
-                )
+                service.revokeAllByAdmin(context, 'user-1', revokedAt)
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
@@ -1300,12 +1276,7 @@ describe('SessionService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.revokeAllByAdmin(
-                    'user-1',
-                    'admin-1',
-                    revokedAt,
-                    context
-                )
+                service.revokeAllByAdmin(context, 'user-1', revokedAt)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -1470,9 +1441,8 @@ describe('SessionService', () => {
             });
 
             await service.removeDeviceOwnership(
-                'user-1',
-                'device-ownership-1',
-                context
+                userContext,
+                'device-ownership-1'
             );
 
             expect(
@@ -1511,9 +1481,8 @@ describe('SessionService', () => {
             );
 
             await service.removeDeviceOwnership(
-                'user-1',
-                'device-ownership-1',
-                context
+                userContext,
+                'device-ownership-1'
             );
 
             expect(deviceService.mapActivityLogMetadata).toHaveBeenCalledWith(
@@ -1521,13 +1490,13 @@ describe('SessionService', () => {
                 1
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                userContext,
                 {
                     action: EnumActivityLogAction.userRemoveDevice,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     metadata: { deviceOwnershipId: 'device-ownership-1' },
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenLastCalledWith(
                 tx,
@@ -1543,11 +1512,7 @@ describe('SessionService', () => {
             );
 
             await expect(
-                service.removeDeviceOwnership(
-                    'user-1',
-                    'device-ownership-1',
-                    context
-                )
+                service.removeDeviceOwnership(userContext, 'device-ownership-1')
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -1562,11 +1527,7 @@ describe('SessionService', () => {
             deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
 
             await expect(
-                service.removeDeviceOwnership(
-                    'user-1',
-                    'device-ownership-1',
-                    context
-                )
+                service.removeDeviceOwnership(userContext, 'device-ownership-1')
             ).rejects.toBe(notFound);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
@@ -1577,11 +1538,7 @@ describe('SessionService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.removeDeviceOwnership(
-                    'user-1',
-                    'device-ownership-1',
-                    context
-                )
+                service.removeDeviceOwnership(userContext, 'device-ownership-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -1661,10 +1618,9 @@ describe('SessionService', () => {
 
         it('removes the ownership as the admin with the purge row on one outbox tx', async () => {
             await service.removeDeviceOwnershipByAdmin(
+                context,
                 'user-1',
-                'device-ownership-1',
-                'admin-1',
-                context
+                'device-ownership-1'
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -1688,10 +1644,9 @@ describe('SessionService', () => {
 
         it('adds the actor and target entries on the same tx when the admin removes another user device', async () => {
             await service.removeDeviceOwnershipByAdmin(
+                context,
                 'user-1',
-                'device-ownership-1',
-                'admin-1',
-                context
+                'device-ownership-1'
             );
 
             expect(
@@ -1702,21 +1657,21 @@ describe('SessionService', () => {
             ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context,
                 {
                     action: EnumActivityLogAction.adminDeviceRemove,
                     metadata: { targetUserId: 'user-1' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context,
                 {
                     action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                     userId: 'user-1',
                     createdBy: 'admin-1',
                     metadata: { actorUserId: 'admin-1' },
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenNthCalledWith(
                 2,
@@ -1732,10 +1687,9 @@ describe('SessionService', () => {
 
         it('adds only the actor entry when the admin removes their own device', async () => {
             await service.removeDeviceOwnershipByAdmin(
+                context,
                 'admin-1',
-                'device-ownership-1',
-                'admin-1',
-                context
+                'device-ownership-1'
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -1751,10 +1705,9 @@ describe('SessionService', () => {
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(
+                    context,
                     'user-1',
-                    'device-ownership-1',
-                    'admin-1',
-                    context
+                    'device-ownership-1'
                 )
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
@@ -1769,10 +1722,9 @@ describe('SessionService', () => {
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(
+                    context,
                     'user-1',
-                    'device-ownership-1',
-                    'admin-1',
-                    context
+                    'device-ownership-1'
                 )
             ).rejects.toBe(notFound);
         });
@@ -1784,10 +1736,9 @@ describe('SessionService', () => {
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(
+                    context,
                     'user-1',
-                    'device-ownership-1',
-                    'admin-1',
-                    context
+                    'device-ownership-1'
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,

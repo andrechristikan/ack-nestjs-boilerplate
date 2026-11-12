@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -15,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ActivityLogGetListCursorByWorkspaceUseCase implements IAppUseCase<
-    [string, string | null, ActivityLogSharedListRequestDto],
+    [IRequestContextWorkspace, ActivityLogSharedListRequestDto],
     IResponsePaginationReturn<IActivityLog>
 > {
     constructor(
@@ -25,8 +26,7 @@ export class ActivityLogGetListCursorByWorkspaceUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
-        userId: string | null,
+        context: IRequestContextWorkspace,
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
@@ -41,8 +41,8 @@ export class ActivityLogGetListCursorByWorkspaceUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.activityLogService.getListCursorByWorkspace(
-                workspaceId,
-                userId,
+                context.workspace.id,
+                context.user.id,
                 params
             );
 

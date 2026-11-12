@@ -1,10 +1,6 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type {
-    Project,
-    Workspace,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
@@ -15,7 +11,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceCreateInviteUseCase implements IAppUseCase<
-    [Workspace, string, WorkspaceInviteCreateRequestDto, IRequestContext],
+    [IRequestContextWorkspace, WorkspaceInviteCreateRequestDto],
     IResponseReturn<WorkspaceInvite>
 > {
     constructor(
@@ -25,16 +21,14 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspace: Workspace,
-        actorId: string,
+        context: IRequestContextWorkspace,
         {
             email,
             workspaceRole,
             projectId,
             projectRole,
             expiryDuration,
-        }: WorkspaceInviteCreateRequestDto,
-        context: IRequestContext
+        }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         const create: IWorkspaceInviteCreate = {
             email,
@@ -50,7 +44,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         if (create.projectId !== null) {
             projectLookup = this.projectService.getActiveByIdAndWorkspace(
                 create.projectId,
-                workspace.id
+                context.workspace.id
             );
         }
 
@@ -61,25 +55,24 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         this.workspaceInviteService.assertCreatable(create, project);
         if (existingUser) {
             await this.workspaceInviteService.assertInviteeNotMember(
-                workspace.id,
+                context.workspace.id,
                 existingUser.id
             );
         }
 
         const inviterName = await this.workspaceInviteService.getInviterName(
-            workspace,
-            actorId
+            context.workspace,
+            context.user.id
         );
         const { invite } = await this.workspaceInviteService.createInvite(
-            workspace.id,
-            actorId,
+            context.snapshot,
+            context.workspace.id,
             create,
             {
-                workspaceName: workspace.name,
+                workspaceName: context.workspace.name,
                 inviterName,
                 inviteeUserId: existingUser?.id ?? null,
-            },
-            context
+            }
         );
 
         return { data: invite };

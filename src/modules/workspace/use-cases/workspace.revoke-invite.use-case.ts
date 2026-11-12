@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -7,7 +7,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
-    [string, string, string, IRequestContext],
+    [IRequestContextWorkspace, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -16,14 +16,12 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
-        actorId: string,
-        workspaceInviteId: string,
-        context: IRequestContext
+        context: IRequestContextWorkspace,
+        workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
         const existing = await this.workspaceInviteService.getPendingById(
             workspaceInviteId,
-            workspaceId
+            context.workspace.id
         );
 
         const existingUser = await this.userService.getOneActiveByEmail(
@@ -31,11 +29,10 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
         );
 
         await this.workspaceInviteService.revokeInvite(
+            context.snapshot,
             workspaceInviteId,
-            workspaceId,
-            actorId,
-            existingUser?.id ?? null,
-            context
+            context.workspace.id,
+            existingUser?.id ?? null
         );
 
         return {};

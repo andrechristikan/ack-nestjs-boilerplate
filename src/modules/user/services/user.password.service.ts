@@ -8,7 +8,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextSnapshot } from '@common/request/interfaces/request.interface';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -161,8 +161,8 @@ export class UserPasswordService {
     }
 
     private async incrementPasswordAttempt(
-        userId: string,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        userId: string
     ): Promise<boolean> {
         if (!this.passwordAttemptEnabled) {
             return true;
@@ -181,7 +181,7 @@ export class UserPasswordService {
                         this.userTwoFactorService.lockoutEffect(userId);
                     const stages = this.buildPasswordLockoutStages(userId);
                     const entries = stages.map(stage =>
-                        this.activityLogService.recordEffect(stage, context)
+                        this.activityLogService.recordEffect(snapshot, stage)
                     );
                     await this.outboxService.addManyInTx(tx, [
                         lockout,
@@ -221,8 +221,8 @@ export class UserPasswordService {
 
     /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; null for a passwordless user, isAttemptCounted false on a spent budget; a write conflict throws UserPasswordAttemptMaxException. */
     async countPasswordAttempt(
-        user: IUser,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        user: IUser
     ): Promise<IUserCredentialAttempt | null> {
         const hasPassword = this.hasPassword(user);
         if (!hasPassword) {
@@ -230,8 +230,8 @@ export class UserPasswordService {
         }
 
         const isAttemptCounted = await this.incrementPasswordAttempt(
-            user.id,
-            context
+            snapshot,
+            user.id
         );
 
         return { user, hashedPassword: user.password, isAttemptCounted };
@@ -279,10 +279,10 @@ export class UserPasswordService {
 
     /** Replaces the user's unused requests with the new one and adds the forgotPassword effect and the activity entry in the same transaction, dispatched after the commit. */
     async createForgotPassword(
+        snapshot: IRequestContextSnapshot,
         userId: string,
         email: string,
-        forgot: IUserForgotPasswordCreate,
-        context: IRequestContext
+        forgot: IUserForgotPasswordCreate
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
 
@@ -304,14 +304,11 @@ export class UserPasswordService {
                     expiredInMinutes: forgot.expiredInMinutes,
                 }
             );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.userForgotPassword,
-                    userId,
-                    createdBy: userId,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userForgotPassword,
+                userId,
+                createdBy: userId,
+            });
             await this.outboxService.addManyInTx(tx, [entry, effect]);
         });
     }

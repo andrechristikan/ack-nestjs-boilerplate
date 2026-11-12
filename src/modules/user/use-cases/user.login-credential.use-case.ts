@@ -1,5 +1,8 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextPublic,
+    IRequestContextSnapshot,
+} from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -27,7 +30,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLoginCredentialUseCase implements IAppUseCase<
-    [UserLoginRequestDto, IRequestContext],
+    [IRequestContextPublic, UserLoginRequestDto],
     IResponseReturn<IUserLoginOutcome>
 > {
     constructor(
@@ -44,20 +47,20 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     ) {}
 
     private async startSession(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
+            snapshot,
             user,
             device,
             loginFrom,
             loginWith,
-            loginAt,
-            context
+            loginAt
         );
         await this.sessionService.setLoginOrRevoke(
             user.id,
@@ -69,12 +72,12 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     }
 
     private async resolveLoginOutcome(
+        snapshot: IRequestContextSnapshot,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        context: IRequestContext
+        loginAt: Date
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
@@ -86,12 +89,12 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
             const tokens = await this.startSession(
+                snapshot,
                 user,
                 device,
                 loginFrom,
                 loginWith,
-                loginAt,
-                context
+                loginAt
             );
 
             return {
@@ -103,11 +106,11 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         }
 
         const twoFactor = await this.userAuthService.createTwoFactorChallenge(
+            snapshot,
             user,
             device,
             loginFrom,
-            loginWith,
-            context
+            loginWith
         );
 
         return {
@@ -119,8 +122,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     }
 
     private async requestVerificationEmail(
-        user: IUser,
-        context: IRequestContext
+        snapshot: IRequestContextSnapshot,
+        user: IUser
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
         const isResendable =
@@ -135,26 +138,23 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 user.id,
                 user.email
             );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId: user.id,
-                    createdBy: user.id,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.userSendVerificationEmail,
+                userId: user.id,
+                createdBy: user.id,
+            });
             await this.outboxService.addInTx(tx, entry);
         });
     }
 
     async execute(
-        { email, password, from, device }: UserLoginRequestDto,
-        context: IRequestContext
+        context: IRequestContextPublic,
+        { email, password, from, device }: UserLoginRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const attempt = await this.userAuthService.countCredentialAttempt(
-            email,
-            context
+            context.snapshot,
+            email
         );
 
         this.userPasswordService.assertAttemptCounted(attempt.isAttemptCounted);
@@ -166,12 +166,12 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         );
         if (!isMatch) {
             const failedEntry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userLoginFailed,
                     userId: attempt.user.id,
                     createdBy: attempt.user.id,
-                },
-                context
+                }
             );
             await this.outboxService.add(failedEntry);
         }
@@ -179,19 +179,19 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         const isUnverified = this.userUtil.isUnverified(attempt.user);
         if (isUnverified) {
-            await this.requestVerificationEmail(attempt.user, context);
+            await this.requestVerificationEmail(context.snapshot, attempt.user);
         }
         this.userAuthService.assertVerified(attempt.user);
         this.userAuthService.assertPasswordNotExpired(attempt.user);
 
         const loginAt = this.helperDateService.create();
         const outcome = await this.resolveLoginOutcome(
+            context.snapshot,
             attempt.user,
             deviceIdentity,
             from,
             EnumUserLoginWith.credential,
-            loginAt,
-            context
+            loginAt
         );
 
         return { data: outcome };

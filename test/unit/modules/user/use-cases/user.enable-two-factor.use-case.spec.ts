@@ -8,7 +8,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -22,12 +21,12 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserEnableTwoFactorUseCase } from '@modules/user/use-cases/user.enable-two-factor.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserEnableTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const context = buildRequestContext('user-marten');
 
     let useCase: UserEnableTwoFactorUseCase;
 
@@ -93,6 +92,7 @@ describe('UserEnableTwoFactorUseCase', () => {
         },
         twoFactor,
     };
+    const context = buildRequestContextUser(user);
     const verified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
@@ -149,32 +149,30 @@ describe('UserEnableTwoFactorUseCase', () => {
                 }
             );
 
-            await expect(
-                useCase.execute(user, enableDto, context)
-            ).resolves.toEqual({
+            await expect(useCase.execute(context, enableDto)).resolves.toEqual({
                 data: { backupCodes: ['CODE1'] },
             });
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+                context.snapshot,
                 user,
-                'Current-pass1',
-                context
+                'Current-pass1'
             );
             expect(userTwoFactorService.getPendingSecret).toHaveBeenCalledWith(
                 user
             );
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(user, context);
+            ).toHaveBeenCalledWith(context.snapshot, user);
             expect(userTwoFactorService.verifySetupCode).toHaveBeenCalledWith(
                 user,
                 'pending-secret',
                 '123456'
             );
             expect(userTwoFactorService.enableTwoFactor).toHaveBeenCalledWith(
+                context.snapshot,
                 'user-marten',
-                'pending-secret',
-                context
+                'pending-secret'
             );
             expect(calls).toEqual([
                 'assertCurrentPassword',
@@ -190,12 +188,12 @@ describe('UserEnableTwoFactorUseCase', () => {
             );
             userTwoFactorService.enableTwoFactor.mockResolvedValue(['CODE1']);
 
-            await useCase.execute(user, { code: '123456' }, context);
+            await useCase.execute(context, { code: '123456' });
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+                context.snapshot,
                 user,
-                null,
-                context
+                null
             );
         });
 
@@ -204,9 +202,9 @@ describe('UserEnableTwoFactorUseCase', () => {
                 throw new Error('no pending');
             });
 
-            await expect(
-                useCase.execute(user, enableDto, context)
-            ).rejects.toThrow('no pending');
+            await expect(useCase.execute(context, enableDto)).rejects.toThrow(
+                'no pending'
+            );
             expect(userTwoFactorService.verifySetupCode).not.toHaveBeenCalled();
         });
 
@@ -218,7 +216,7 @@ describe('UserEnableTwoFactorUseCase', () => {
             userTwoFactorService.verifySetupCode.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(user, { ...enableDto, code: '000000' }, context)
+                useCase.execute(context, { ...enableDto, code: '000000' })
             ).rejects.toBe(failure);
             expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
         });
@@ -229,7 +227,7 @@ describe('UserEnableTwoFactorUseCase', () => {
             );
 
             await expect(
-                useCase.execute(user, { code: '123456' }, context)
+                useCase.execute(context, { code: '123456' })
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
@@ -253,9 +251,9 @@ describe('UserEnableTwoFactorUseCase', () => {
             );
             userTwoFactorService.assertAttemptCounted.mockRejectedValue(limit);
 
-            await expect(
-                useCase.execute(user, enableDto, context)
-            ).rejects.toBe(limit);
+            await expect(useCase.execute(context, enableDto)).rejects.toBe(
+                limit
+            );
             expect(userTwoFactorService.verifySetupCode).not.toHaveBeenCalled();
             expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
         });

@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
@@ -9,7 +9,7 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 
 @Injectable()
 export class TermPolicyCreateByAdminUseCase implements IAppUseCase<
-    [TermPolicyCreateRequestDto, IRequestContext],
+    [IRequestContextUser, TermPolicyCreateRequestDto],
     IResponseReturn<TermPolicy>
 > {
     constructor(
@@ -18,14 +18,14 @@ export class TermPolicyCreateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        body: TermPolicyCreateRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
         const termPolicyId = this.databaseUtil.createId();
         const created = await this.termPolicyService.createByAdmin(
+            context.snapshot,
             termPolicyId,
-            body,
-            context
+            body
         );
 
         return { data: created };

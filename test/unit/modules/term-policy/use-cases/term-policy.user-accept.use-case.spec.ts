@@ -10,7 +10,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -20,22 +20,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
         mock<TermPolicyAcceptanceService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const context: IRequestContext = {
-        actorUserId: 'user-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
     const user: IUser = {
         id: 'user-1',
         name: 'Andre Christi',
@@ -81,6 +65,7 @@ describe('TermPolicyUserAcceptUseCase', () => {
         },
         twoFactor: null,
     };
+    const context = buildRequestContextUser(user);
 
     let useCase: TermPolicyUserAcceptUseCase;
 
@@ -104,17 +89,14 @@ describe('TermPolicyUserAcceptUseCase', () => {
         it('accepts the type for the user passing the request context and returns an empty envelope', async () => {
             termPolicyAcceptanceService.userAccept.mockResolvedValue();
 
-            const result = await useCase.execute(
-                user,
-                { type: EnumTermPolicyType.privacy },
-                context
-            );
+            const result = await useCase.execute(context, {
+                type: EnumTermPolicyType.privacy,
+            });
 
             expect(result).toEqual({});
             expect(termPolicyAcceptanceService.userAccept).toHaveBeenCalledWith(
-                'user-1',
-                EnumTermPolicyType.privacy,
-                context
+                context.snapshot,
+                EnumTermPolicyType.privacy
             );
         });
 
@@ -123,11 +105,7 @@ describe('TermPolicyUserAcceptUseCase', () => {
             termPolicyAcceptanceService.userAccept.mockRejectedValue(error);
 
             await expect(
-                useCase.execute(
-                    user,
-                    { type: EnumTermPolicyType.privacy },
-                    context
-                )
+                useCase.execute(context, { type: EnumTermPolicyType.privacy })
             ).rejects.toBe(error);
         });
     });

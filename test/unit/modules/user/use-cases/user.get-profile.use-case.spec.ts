@@ -12,6 +12,10 @@ import {
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGetProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
@@ -92,10 +96,13 @@ describe('UserGetProfileUseCase', () => {
     });
 
     describe('execute', () => {
+        const context = buildRequestContextUser(
+            buildUser('user-sable', 'sable@example.com')
+        );
         it('wraps the profile in a response envelope', async () => {
             userProfileService.getProfile.mockResolvedValue(profile);
 
-            await expect(useCase.execute('user-sable')).resolves.toEqual({
+            await expect(useCase.execute(context)).resolves.toEqual({
                 data: profile,
             });
         });

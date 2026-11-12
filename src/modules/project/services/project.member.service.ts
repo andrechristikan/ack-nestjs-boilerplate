@@ -4,7 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -140,11 +140,11 @@ export class ProjectMemberService {
 
     /** Creates the member and adds the actor's and the assignee's activity entries in one transaction, dispatched after the commit. */
     async assignMember(
+        snapshot: IRequestContextUserSnapshot,
         project: Project,
         actor: IProjectMemberActor,
         targetMember: WorkspaceMember | null,
-        role: EnumProjectMemberRole,
-        context: IRequestContext
+        role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
         this.assertPeerAllowed(actor, role);
 
@@ -162,26 +162,26 @@ export class ProjectMemberService {
                     actor.userId
                 );
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.projectMemberAssigned,
                         userId: actor.userId,
                         createdBy: actor.userId,
                         workspaceId: project.workspaceId,
                         metadata: { targetUserId: targetMember.userId },
-                    },
-                    context
+                    }
                 );
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
                     const assigneeEntry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                             userId: targetMember.userId,
                             createdBy: actor.userId,
                             workspaceId: project.workspaceId,
                             metadata: { actorUserId: actor.userId },
-                        },
-                        context
+                        }
                     );
                     entries.push(assigneeEntry);
                 }
@@ -208,11 +208,11 @@ export class ProjectMemberService {
 
     /** Swaps the role guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
     async updateMemberRole(
+        snapshot: IRequestContextUserSnapshot,
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string,
-        newRole: EnumProjectMemberRole,
-        context: IRequestContext
+        newRole: EnumProjectMemberRole
     ): Promise<void> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
@@ -239,26 +239,26 @@ export class ProjectMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.projectMemberRoleUpdated,
                         userId: actor.userId,
                         createdBy: actor.userId,
                         workspaceId: project.workspaceId,
                         metadata: { targetUserId: targetMember.userId },
-                    },
-                    context
+                    }
                 );
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
                     const targetEntry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                             userId: targetMember.userId,
                             createdBy: actor.userId,
                             workspaceId: project.workspaceId,
                             metadata: { actorUserId: actor.userId },
-                        },
-                        context
+                        }
                     );
                     entries.push(targetEntry);
                 }
@@ -280,10 +280,10 @@ export class ProjectMemberService {
 
     /** Removes the member guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
     async removeMember(
+        snapshot: IRequestContextUserSnapshot,
         project: Project,
         actor: IProjectMemberActor,
-        targetMemberId: string,
-        context: IRequestContext
+        targetMemberId: string
     ): Promise<void> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
@@ -313,24 +313,24 @@ export class ProjectMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.projectMemberRemoved,
                         userId: actor.userId,
                         createdBy: actor.userId,
                         workspaceId: project.workspaceId,
                         metadata: { targetUserId: targetMember.userId },
-                    },
-                    context
+                    }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                         userId: targetMember.userId,
                         createdBy: actor.userId,
                         workspaceId: project.workspaceId,
                         metadata: { actorUserId: actor.userId },
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [
                     actorEntry,
@@ -353,9 +353,9 @@ export class ProjectMemberService {
 
     /** Removes the member row and adds the member's activity entry in one transaction, dispatched after the commit. */
     async leaveProject(
+        snapshot: IRequestContextUserSnapshot,
         project: Project,
-        member: ProjectMember,
-        context: IRequestContext
+        member: ProjectMember
     ): Promise<void> {
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -368,15 +368,12 @@ export class ProjectMemberService {
                     throw new ProjectMemberNotFoundException();
                 }
 
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.projectMemberLeft,
-                        userId: member.userId,
-                        createdBy: member.userId,
-                        workspaceId: project.workspaceId,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.projectMemberLeft,
+                    userId: member.userId,
+                    createdBy: member.userId,
+                    workspaceId: project.workspaceId,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

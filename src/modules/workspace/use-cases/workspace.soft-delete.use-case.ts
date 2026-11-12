@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -19,7 +19,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
-    [string, string, IRequestContext],
+    [IRequestContextWorkspace],
     IResponseReturn<void>
 > {
     private readonly deleteTimeoutInMs: number;
@@ -41,10 +41,10 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
     }
 
     async execute(
-        workspaceId: string,
-        actorId: string,
-        context: IRequestContext
+        context: IRequestContextWorkspace
     ): Promise<IResponseReturn<void>> {
+        const workspaceId = context.workspace.id;
+        const actorId = context.user.id;
         const deletedAt = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(
@@ -70,13 +70,13 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
                         workspaceId
                     );
                     const entry = this.activityLogService.recordEffect(
+                        context.snapshot,
                         {
                             action: EnumActivityLogAction.workspaceDeleted,
                             userId: actorId,
                             createdBy: actorId,
                             workspaceId,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, entry);
                 },

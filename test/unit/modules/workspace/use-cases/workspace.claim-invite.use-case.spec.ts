@@ -30,7 +30,10 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceClaimInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
@@ -41,7 +44,6 @@ describe('WorkspaceClaimInviteUseCase', () => {
         mock<ProjectMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const context = buildRequestContext('user-1');
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -82,6 +84,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
     };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
+    const context = buildRequestContextUser(
+        buildUser('user-2', 'account@example.com')
+    );
+
     let useCase: WorkspaceClaimInviteUseCase;
 
     beforeEach(async () => {
@@ -157,12 +163,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 return [];
             });
 
-            const result = await useCase.execute(
-                'user-2',
-                'invitee@example.com',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({});
             expect(callOrder).toEqual([
@@ -174,7 +175,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             ]);
             expect(
                 workspaceInviteService.validateInviteForEmail
-            ).toHaveBeenCalledWith('raw-token', 'invitee@example.com');
+            ).toHaveBeenCalledWith('raw-token', context.user.email);
             expect(
                 workspaceInviteService.assertInviteeNotMember
             ).not.toHaveBeenCalled();
@@ -197,25 +198,25 @@ describe('WorkspaceClaimInviteUseCase', () => {
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceInviteAccepted,
                     userId: 'user-2',
                     createdBy: 'user-2',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-1' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                     userId: 'user-1',
                     createdBy: 'user-2',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'user-2' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
@@ -242,12 +243,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 return mock();
             });
 
-            await useCase.execute(
-                'user-2',
-                'invitee@example.com',
-                body,
-                context
-            );
+            await useCase.execute(context, body);
 
             expect(callOrder).toEqual([
                 'setLastWorkspace',
@@ -268,12 +264,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 invitedByUserId: 'user-2',
             });
 
-            await useCase.execute(
-                'user-2',
-                'invitee@example.com',
-                body,
-                context
-            );
+            await useCase.execute(context, body);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -286,9 +277,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 new FeatureFlagDisabledException()
             );
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
+                FeatureFlagDisabledException
+            );
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
@@ -298,9 +289,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 new WorkspaceInviteInvalidException()
             );
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
+            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
+                WorkspaceInviteInvalidException
+            );
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
@@ -310,9 +301,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             workspaceMemberService.createInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, body)).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
@@ -333,9 +322,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, body)).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
@@ -351,9 +338,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             workspaceMemberService.createInTx.mockRejectedValue(failure);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, body)).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: failure,
             });
@@ -365,9 +350,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 new WorkspaceInviteAlreadyProcessedException()
             );
 
-            await expect(
-                useCase.execute('user-2', 'invitee@example.com', body, context)
-            ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
+            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
+                WorkspaceInviteAlreadyProcessedException
+            );
             expect(workspaceMemberService.createInTx).not.toHaveBeenCalled();
             expect(userService.setLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();

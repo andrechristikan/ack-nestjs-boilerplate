@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -11,13 +11,12 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class RoleDeleteByAdminUseCase implements IAppUseCase<
-    [string, IUser, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -30,16 +29,18 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        id: string,
-        user: IUser,
-        context: IRequestContext
+        context: IRequestContextUser,
+        id: string
     ): Promise<IResponseReturn<void>> {
         try {
             await this.outboxService.withTransaction(async tx => {
                 const deleted = await this.roleService.deleteByAdminInTx(
                     tx,
                     id,
-                    { roleId: user.roleId, roleType: user.role.type }
+                    {
+                        roleId: context.user.roleId,
+                        roleType: context.user.role.type,
+                    }
                 );
 
                 const timestamp = this.helperDateService.create();
@@ -48,11 +49,11 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
                     timestamp
                 );
                 const effect = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.adminRoleDelete,
                         metadata,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, effect);
             });

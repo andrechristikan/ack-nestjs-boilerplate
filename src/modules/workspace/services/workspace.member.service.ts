@@ -8,7 +8,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -87,10 +87,10 @@ export class WorkspaceMemberService {
     }
 
     private async transferOwnershipGuarded(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
         actorMember: WorkspaceMember,
-        targetMember: WorkspaceMember,
-        context: IRequestContext
+        targetMember: WorkspaceMember
     ): Promise<void> {
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -125,24 +125,24 @@ export class WorkspaceMemberService {
                 }
 
                 const ownerEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.workspaceOwnershipTransferred,
                         userId: actorMember.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { targetUserId: targetMember.userId },
-                    },
-                    context
+                    }
                 );
                 const newOwnerEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                         userId: targetMember.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { actorUserId: actorMember.userId },
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [
                     ownerEntry,
@@ -251,10 +251,10 @@ export class WorkspaceMemberService {
 
     /** Swaps the owner and adds both activity entries in one transaction, dispatched after the commit. */
     async transferOwnership(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
         actorMember: WorkspaceMember,
-        targetUserId: string,
-        context: IRequestContext
+        targetUserId: string
     ): Promise<void> {
         if (targetUserId === actorMember.userId) {
             throw new WorkspaceSelfTransferException();
@@ -270,10 +270,10 @@ export class WorkspaceMemberService {
         }
 
         await this.transferOwnershipGuarded(
+            snapshot,
             workspaceId,
             actorMember,
-            targetMember,
-            context
+            targetMember
         );
     }
 
@@ -316,11 +316,11 @@ export class WorkspaceMemberService {
 
     /** Swaps the role guarded by the role read and adds both activity entries in one transaction, dispatched after the commit. */
     async updateMemberRole(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string,
-        newRole: EnumWorkspaceMemberRole,
-        context: IRequestContext
+        newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
@@ -351,24 +351,24 @@ export class WorkspaceMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                         userId: actorMember.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { targetUserId: targetMember.userId },
-                    },
-                    context
+                    }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
+                    snapshot,
                     {
                         action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                         userId: targetMember.userId,
                         createdBy: actorMember.userId,
                         workspaceId,
                         metadata: { actorUserId: actorMember.userId },
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [
                     actorEntry,

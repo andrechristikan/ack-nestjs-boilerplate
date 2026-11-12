@@ -20,7 +20,12 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { WorkspaceSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.soft-delete.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSoftDeleteUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -33,7 +38,6 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const context = buildRequestContext('user-1');
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -44,6 +48,12 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1')
+    );
+
     let useCase: WorkspaceSoftDeleteUseCase;
 
     beforeEach(async () => {
@@ -108,11 +118,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 return 'outbox-1';
             });
 
-            const result = await useCase.execute(
-                'workspace-1',
-                'user-1',
-                context
-            );
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({});
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -132,13 +138,13 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 workspaceJoinRequestService.cancelPendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceDeleted,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
             expect(callOrder).toEqual([
@@ -155,9 +161,9 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 new WorkspaceNotFoundException()
             );
 
-            await expect(
-                useCase.execute('workspace-1', 'user-1', context)
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                WorkspaceNotFoundException
+            );
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 projectService.softDeleteByWorkspaceInTx
@@ -172,7 +178,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
         });
 
         it('opens the transaction with workspace.delete.timeoutInMs', async () => {
-            await useCase.execute('workspace-1', 'user-1', context);
+            await useCase.execute(context);
 
             expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
@@ -187,9 +193,9 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(
-                useCase.execute('workspace-1', 'user-1', context)
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                WorkspaceNotFoundException
+            );
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -200,9 +206,9 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             );
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(
-                useCase.execute('workspace-1', 'user-1', context)
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
+                AppUnknownException
+            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

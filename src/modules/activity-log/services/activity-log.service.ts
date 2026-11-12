@@ -5,7 +5,7 @@ import type {
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
-    IRequestContext,
+    IRequestContextSnapshot,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -206,8 +206,8 @@ export class ActivityLogService {
     }
 
     recordEffect(
-        input: IActivityLogInput<EnumActivityLogAction>,
-        context: IRequestContext
+        context: IRequestContextSnapshot,
+        input: IActivityLogInput<EnumActivityLogAction>
     ): IOutboxEffect {
         const contract = this.getContract(input.action);
         const isUserIdValid = this.isTargetOnlyFieldValid(

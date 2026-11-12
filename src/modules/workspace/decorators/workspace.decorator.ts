@@ -1,36 +1,15 @@
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
 import {
     WorkspaceMemberProtectedDocErrors,
-    WorkspaceMemberStoreKey,
     WorkspaceProtectedDocErrors,
     WorkspaceRoleMetaKey,
     WorkspaceRoleProtectedDocErrors,
 } from '@modules/workspace/constants/workspace.constant';
-import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
-import {
-    SetMetadata,
-    UseGuards,
-    applyDecorators,
-    createParamDecorator,
-} from '@nestjs/common';
-import { ClsServiceManager } from 'nestjs-cls';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
-import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
+import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import { DocErrors } from '@common/doc/decorators/doc.decorator';
-import type {
-    IWorkspaceField,
-    IWorkspaceFieldValue,
-    IWorkspaceMemberField,
-    IWorkspaceMemberFieldValue,
-} from '@modules/workspace/interfaces/workspace.interface';
 
 /** @public */
 export function WorkspaceProtected(): MethodDecorator {
@@ -39,34 +18,6 @@ export function WorkspaceProtected(): MethodDecorator {
         DocErrors(...WorkspaceProtectedDocErrors)
     );
 }
-
-/** @public */
-export const WorkspaceCurrent = createParamDecorator<
-    IWorkspaceField | undefined,
-    Workspace | IWorkspaceFieldValue
->((field: IWorkspaceField | undefined): Workspace | IWorkspaceFieldValue => {
-    const workspace =
-        ClsServiceManager.getClsService().get<Workspace | null>(
-            RequestWorkspaceStoreKey
-        ) ?? null;
-    if (workspace === null) {
-        throw new WorkspaceGuardMissingException();
-    }
-
-    const fieldKey = field ?? null;
-    if (fieldKey === null) {
-        return workspace;
-    }
-
-    const value = workspace[fieldKey] ?? null;
-    if (value === null) {
-        throw new RequestContextMissingException(
-            `${RequestWorkspaceStoreKey}.${field}`
-        );
-    }
-
-    return value;
-});
 
 /** @public */
 export function WorkspaceMemberProtected(
@@ -85,35 +36,3 @@ export function WorkspaceMemberProtected(
         DocErrors(...WorkspaceRoleProtectedDocErrors)
     );
 }
-
-/** @public */
-export const WorkspaceMemberCurrent = createParamDecorator<
-    IWorkspaceMemberField | undefined,
-    WorkspaceMember | IWorkspaceMemberFieldValue
->(
-    (
-        field: IWorkspaceMemberField | undefined
-    ): WorkspaceMember | IWorkspaceMemberFieldValue => {
-        const workspaceMember =
-            ClsServiceManager.getClsService().get<WorkspaceMember | null>(
-                WorkspaceMemberStoreKey
-            ) ?? null;
-        if (workspaceMember === null) {
-            throw new WorkspaceMemberGuardMissingException();
-        }
-
-        const fieldKey = field ?? null;
-        if (fieldKey === null) {
-            return workspaceMember;
-        }
-
-        const value = workspaceMember[fieldKey] ?? null;
-        if (value === null) {
-            throw new RequestContextMissingException(
-                `${WorkspaceMemberStoreKey}.${field}`
-            );
-        }
-
-        return value;
-    }
-);

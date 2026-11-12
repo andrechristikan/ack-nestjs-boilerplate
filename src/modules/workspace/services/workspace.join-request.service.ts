@@ -11,7 +11,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -92,36 +92,30 @@ export class WorkspaceJoinRequestService {
     }
 
     private reviewActivityEffects(
+        snapshot: IRequestContextUserSnapshot,
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
-        reviewerId: string,
-        joinRequest: WorkspaceJoinRequest,
-        context: IRequestContext
+        joinRequest: WorkspaceJoinRequest
     ): IOutboxEffect[] {
-        const reviewerEntry = this.activityLogService.recordEffect(
-            {
-                action,
-                userId: reviewerId,
-                createdBy: reviewerId,
-                workspaceId: joinRequest.workspaceId,
-                metadata: { targetUserId: joinRequest.userId },
-            },
-            context
-        );
+        const reviewerId = snapshot.actorUserId;
+        const reviewerEntry = this.activityLogService.recordEffect(snapshot, {
+            action,
+            userId: reviewerId,
+            createdBy: reviewerId,
+            workspaceId: joinRequest.workspaceId,
+            metadata: { targetUserId: joinRequest.userId },
+        });
         if (joinRequest.userId === reviewerId) {
             return [reviewerEntry];
         }
 
-        const requesterEntry = this.activityLogService.recordEffect(
-            {
-                action: byAdminAction,
-                userId: joinRequest.userId,
-                createdBy: reviewerId,
-                workspaceId: joinRequest.workspaceId,
-                metadata: { actorUserId: reviewerId },
-            },
-            context
-        );
+        const requesterEntry = this.activityLogService.recordEffect(snapshot, {
+            action: byAdminAction,
+            userId: joinRequest.userId,
+            createdBy: reviewerId,
+            workspaceId: joinRequest.workspaceId,
+            metadata: { actorUserId: reviewerId },
+        });
 
         return [reviewerEntry, requesterEntry];
     }
@@ -159,15 +153,15 @@ export class WorkspaceJoinRequestService {
 
     /** Creates the pending request and adds one notification row per reviewer and the requester's activity entry in one transaction, dispatched after the commit. */
     async createJoinRequest(
-        userId: string,
+        snapshot: IRequestContextUserSnapshot,
         create: IWorkspaceJoinRequestCreate,
         {
             workspaceName,
             requesterName,
             reviewerIds,
-        }: IWorkspaceJoinRequestNotice,
-        context: IRequestContext
+        }: IWorkspaceJoinRequestNotice
     ): Promise<WorkspaceJoinRequest> {
+        const userId = snapshot.actorUserId;
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceJoinRequestNoncePattern,
             { workspaceId: create.workspaceId, userId }
@@ -210,15 +204,12 @@ export class WorkspaceJoinRequestService {
                     )
                 );
                 await this.outboxService.addManyInTx(tx, effects);
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.workspaceJoinRequested,
-                        userId,
-                        createdBy: userId,
-                        workspaceId: create.workspaceId,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.workspaceJoinRequested,
+                    userId,
+                    createdBy: userId,
+                    workspaceId: create.workspaceId,
+                });
                 await this.outboxService.addInTx(tx, entry);
 
                 return joinRequest;
@@ -275,11 +266,11 @@ export class WorkspaceJoinRequestService {
 
     /** Accepts the request, adds the member, the requester's notification row, and the activity entries in one transaction, dispatched after the commit. */
     async acceptJoinRequest(
+        snapshot: IRequestContextUserSnapshot,
         joinRequest: WorkspaceJoinRequest,
-        reviewerId: string,
-        workspaceName: string,
-        context: IRequestContext
+        workspaceName: string
     ): Promise<void> {
+        const reviewerId = snapshot.actorUserId;
         const reviewedAt = this.helperDateService.create();
 
         try {
@@ -315,11 +306,10 @@ export class WorkspaceJoinRequestService {
                 );
                 await this.outboxService.addInTx(tx, effect);
                 const entries = this.reviewActivityEffects(
+                    snapshot,
                     EnumActivityLogAction.workspaceJoinAccepted,
                     EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
-                    reviewerId,
-                    joinRequest,
-                    context
+                    joinRequest
                 );
                 await this.outboxService.addManyInTx(tx, entries);
             });
@@ -347,12 +337,12 @@ export class WorkspaceJoinRequestService {
 
     /** Rejects the request and adds the requester's notification row and the activity entries in one transaction, dispatched after the commit. */
     async rejectJoinRequest(
+        snapshot: IRequestContextUserSnapshot,
         joinRequest: WorkspaceJoinRequest,
-        reviewerId: string,
         workspaceName: string,
-        rejectReasonCode: EnumWorkspaceJoinRejectReason,
-        context: IRequestContext
+        rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
+        const reviewerId = snapshot.actorUserId;
         const reviewedAt = this.helperDateService.create();
         const rejectReasonLabel = this.messageService.setMessage(
             `notification.rejectReason.${rejectReasonCode}`
@@ -386,11 +376,10 @@ export class WorkspaceJoinRequestService {
                 );
                 await this.outboxService.addInTx(tx, effect);
                 const entries = this.reviewActivityEffects(
+                    snapshot,
                     EnumActivityLogAction.workspaceJoinRejected,
                     EnumActivityLogAction.workspaceJoinRejectedByAdmin,
-                    reviewerId,
-                    joinRequest,
-                    context
+                    joinRequest
                 );
                 await this.outboxService.addManyInTx(tx, entries);
             });

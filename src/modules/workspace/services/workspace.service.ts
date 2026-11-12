@@ -9,7 +9,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
@@ -165,10 +165,10 @@ export class WorkspaceService {
 
     /** Creates the workspace with its owner row and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
     async createWorkspace(
-        userId: string,
-        create: IWorkspaceCreate,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        create: IWorkspaceCreate
     ): Promise<Workspace> {
+        const userId = snapshot.actorUserId;
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
@@ -193,13 +193,13 @@ export class WorkspaceService {
                         workspaceId
                     );
                     const entry = this.activityLogService.recordEffect(
+                        snapshot,
                         {
                             action: EnumActivityLogAction.workspaceCreated,
                             userId,
                             createdBy: userId,
                             workspaceId: workspace.id,
-                        },
-                        context
+                        }
                     );
                     await this.outboxService.addInTx(tx, entry);
 
@@ -225,10 +225,9 @@ export class WorkspaceService {
 
     /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspace(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
-        actorId: string,
-        update: IWorkspaceUpdate,
-        context: IRequestContext
+        update: IWorkspaceUpdate
     ): Promise<Workspace> {
         return this.outboxService.withTransaction(async tx => {
             const workspace = await this.workspaceRepository.updateDetailsInTx(
@@ -236,15 +235,12 @@ export class WorkspaceService {
                 workspaceId,
                 update
             );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.workspaceUpdated,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: snapshot.actorUserId,
+                createdBy: snapshot.actorUserId,
+                workspaceId,
+            });
             await this.outboxService.addInTx(tx, entry);
 
             return workspace;
@@ -253,10 +249,9 @@ export class WorkspaceService {
 
     /** Writes the visibility and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceIsPublic(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
-        actorId: string,
-        isPublic: boolean,
-        context: IRequestContext
+        isPublic: boolean
     ): Promise<Workspace> {
         return this.outboxService.withTransaction(async tx => {
             const workspace = await this.workspaceRepository.updateIsPublicInTx(
@@ -264,15 +259,12 @@ export class WorkspaceService {
                 workspaceId,
                 isPublic
             );
-            const entry = this.activityLogService.recordEffect(
-                {
-                    action: EnumActivityLogAction.workspaceVisibilityUpdated,
-                    userId: actorId,
-                    createdBy: actorId,
-                    workspaceId,
-                },
-                context
-            );
+            const entry = this.activityLogService.recordEffect(snapshot, {
+                action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                userId: snapshot.actorUserId,
+                createdBy: snapshot.actorUserId,
+                workspaceId,
+            });
             await this.outboxService.addInTx(tx, entry);
 
             return workspace;
@@ -281,10 +273,9 @@ export class WorkspaceService {
 
     /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceSlug(
+        snapshot: IRequestContextUserSnapshot,
         workspaceId: string,
-        actorId: string,
-        slug: string,
-        context: IRequestContext
+        slug: string
     ): Promise<Workspace> {
         const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
@@ -298,15 +289,12 @@ export class WorkspaceService {
                     workspaceId,
                     slug
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.workspaceUpdated,
-                        userId: actorId,
-                        createdBy: actorId,
-                        workspaceId,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.workspaceUpdated,
+                    userId: snapshot.actorUserId,
+                    createdBy: snapshot.actorUserId,
+                    workspaceId,
+                });
                 await this.outboxService.addInTx(tx, entry);
 
                 return workspace;

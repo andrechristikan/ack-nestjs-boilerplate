@@ -98,8 +98,6 @@ export interface IAuthTwoFactorChallengeCache {
     loginWith: EnumUserLoginWith;
 }
 
-export type IAuthJwtPayloadField<T> = Extract<keyof T, string>;
-
 export type IAuthJwtAccessTokenPayloadUser = Pick<
     IAuthJwtAccessTokenPayload,
     'userId' | 'loginWith'

@@ -1,3 +1,7 @@
+import {
+    RequestWorkspaceMemberStoreKey,
+    RequestProjectStoreKey,
+} from '@common/request/constants/request.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -11,15 +15,11 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import {
-    ProjectRoleMetaKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
+import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 
 describe('ProjectRoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
@@ -79,9 +79,9 @@ describe('ProjectRoleGuard', () => {
             const workspaceMember = stubWorkspaceMember;
             reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
             requestStoreService.get.mockImplementation(key => {
-                if (key === ProjectStoreKey) {
+                if (key === RequestProjectStoreKey) {
                     return project;
-                } else if (key === WorkspaceMemberStoreKey) {
+                } else if (key === RequestWorkspaceMemberStoreKey) {
                     return workspaceMember;
                 }
 
@@ -110,9 +110,9 @@ describe('ProjectRoleGuard', () => {
         it('validates with an empty role list when the handler declares none', async () => {
             reflector.get.mockReturnValue(undefined);
             requestStoreService.get.mockImplementation(key => {
-                if (key === ProjectStoreKey) {
+                if (key === RequestProjectStoreKey) {
                     return stubProject;
-                } else if (key === WorkspaceMemberStoreKey) {
+                } else if (key === RequestWorkspaceMemberStoreKey) {
                     return stubWorkspaceMember;
                 }
 
@@ -157,7 +157,7 @@ describe('ProjectRoleGuard', () => {
         it('throws WorkspaceMemberGuardMissingException before the domain call when the workspace member store is empty', async () => {
             reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
             requestStoreService.get.mockImplementation(key => {
-                if (key === ProjectStoreKey) {
+                if (key === RequestProjectStoreKey) {
                     return stubProject;
                 }
 

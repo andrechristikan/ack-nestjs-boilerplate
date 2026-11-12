@@ -4,8 +4,20 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticMemberRolesUseCase', () => {
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
+    );
     const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
         mock<AnalyticWorkspaceUserService>();
 
@@ -33,7 +45,7 @@ describe('AnalyticMemberRolesUseCase', () => {
                 { role: 'admin', count: 2 },
             ]);
 
-            const result = await useCase.execute('workspace-1');
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({
                 data: { roles: [{ role: 'admin', count: 2 }] },

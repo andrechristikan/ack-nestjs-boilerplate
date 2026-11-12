@@ -5,7 +5,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -22,7 +21,10 @@ import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.u
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
@@ -51,7 +53,9 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context: IRequestContext = buildRequestContext('user-actor');
+    const context = buildRequestContextUser(
+        buildUser('user-actor', 'actor@example.com')
+    );
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -91,11 +95,9 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         it('renames the key on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateByAdminInTx.mockResolvedValue(updated);
 
-            const result = await useCase.execute(
-                apiKey.id,
-                { name: 'Renamed' },
-                context
-            );
+            const result = await useCase.execute(context, apiKey.id, {
+                name: 'Renamed',
+            });
 
             expect(result).toEqual({ data: updated });
             expect(apiKeyService.updateByAdminInTx).toHaveBeenCalledWith(
@@ -108,18 +110,18 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         it('adds the update activity entry from the updated key and the passed context on the same tx', async () => {
             apiKeyService.updateByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(apiKey.id, { name: 'Renamed' }, context);
+            await useCase.execute(context, apiKey.id, { name: 'Renamed' });
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdate,
                     metadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -129,7 +131,7 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
             apiKeyService.updateByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(apiKey.id, { name: 'Renamed' }, context)
+                useCase.execute(context, apiKey.id, { name: 'Renamed' })
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

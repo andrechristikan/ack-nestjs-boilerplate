@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -12,7 +12,7 @@ import { OutboxService } from '@modules/outbox/services/outbox.service';
 
 @Injectable()
 export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
-    [string, string, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -25,9 +25,8 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        termPolicyId: string,
-        updatedBy: string,
-        context: IRequestContext
+        context: IRequestContextUser,
+        termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         const termPolicy =
             await this.termPolicyService.getPublishedByAdmin(termPolicyId);
@@ -42,7 +41,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
                 version: termPolicy.version,
                 recipientCutoffAt,
             },
-            updatedBy
+            context.user.id
         );
 
         const timestamp = this.helperDateService.create();
@@ -50,13 +49,10 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             termPolicy,
             timestamp
         );
-        const entry = this.activityLogService.recordEffect(
-            {
-                action: EnumActivityLogAction.adminTermPolicyResendEmail,
-                metadata,
-            },
-            context
-        );
+        const entry = this.activityLogService.recordEffect(context.snapshot, {
+            action: EnumActivityLogAction.adminTermPolicyResendEmail,
+            metadata,
+        });
         await this.outboxService.addMany([resend, entry]);
 
         return {};

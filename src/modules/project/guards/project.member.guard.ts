@@ -1,12 +1,12 @@
+import {
+    RequestProjectMemberStoreKey,
+    RequestProjectStoreKey,
+    RequestUserStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Project } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
-import {
-    ProjectMemberStoreKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { Injectable } from '@nestjs/common';
@@ -20,12 +20,14 @@ export class ProjectMemberGuard implements CanActivate {
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        const user = this.requestStoreService.get<IUser>(RequestUserStoreKey);
         if (!user) {
             throw new UserGuardMissingException();
         }
 
-        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
+        const project = this.requestStoreService.get<Project>(
+            RequestProjectStoreKey
+        );
         if (!project) {
             throw new ProjectGuardMissingException();
         }
@@ -36,7 +38,7 @@ export class ProjectMemberGuard implements CanActivate {
                 user.id
             );
 
-        this.requestStoreService.set(ProjectMemberStoreKey, member);
+        this.requestStoreService.set(RequestProjectMemberStoreKey, member);
 
         return true;
     }

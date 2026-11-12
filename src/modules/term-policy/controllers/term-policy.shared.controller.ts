@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import { TermPolicyAcceptedListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -11,14 +12,8 @@ import {
     Post,
     Query,
 } from '@nestjs/common';
-import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from '@modules/auth/decorators/auth.jwt.decorator';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     Response,
     ResponsePagination,
@@ -31,7 +26,7 @@ import {
     RequestContextCurrent,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -45,7 +40,6 @@ import type {
     ITermPolicyPending,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -70,11 +64,15 @@ export class TermPolicySharedController {
     @ApiKeyProtected()
     @Get('/acceptance/list')
     async listAccepted(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Query({ schema: TermPolicyAcceptedListRequestSchema })
-        query: TermPolicyAcceptedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: TermPolicyAcceptedListRequestDto
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
-        return this.termPolicyGetListUserAcceptedUseCase.execute(userId, query);
+        return this.termPolicyGetListUserAcceptedUseCase.execute(
+            context,
+            query
+        );
     }
 
     @Doc({
@@ -90,9 +88,10 @@ export class TermPolicySharedController {
     @ApiKeyProtected()
     @Get('/pending/list')
     async listPending(
-        @AuthJwtPayload('userId') userId: string
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser
     ): Promise<IResponseReturn<ITermPolicyPending>> {
-        return this.termPolicyGetListUserPendingUseCase.execute(userId);
+        return this.termPolicyGetListUserPendingUseCase.execute(context);
     }
 
     @Doc({ summary: 'user accepts term or policy' })
@@ -104,11 +103,11 @@ export class TermPolicySharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(
-        @UserCurrent() user: IUser,
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: TermPolicyAcceptRequestSchema })
-        body: TermPolicyAcceptRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyUserAcceptUseCase.execute(user, body, context);
+        return this.termPolicyUserAcceptUseCase.execute(context, body);
     }
 }

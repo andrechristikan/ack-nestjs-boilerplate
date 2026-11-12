@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextPublic } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
@@ -7,14 +7,14 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserForgotPasswordUseCase implements IAppUseCase<
-    [UserForgotPasswordRequestDto, IRequestContext],
+    [IRequestContextPublic, UserForgotPasswordRequestDto],
     IResponseReturn<void>
 > {
     constructor(private readonly userPasswordService: UserPasswordService) {}
 
     async execute(
-        { email }: UserForgotPasswordRequestDto,
-        context: IRequestContext
+        context: IRequestContextPublic,
+        { email }: UserForgotPasswordRequestDto
     ): Promise<IResponseReturn<void>> {
         const prepared =
             await this.userPasswordService.prepareForgotPassword(email);
@@ -24,10 +24,10 @@ export class UserForgotPasswordUseCase implements IAppUseCase<
 
         const { user, forgot } = prepared;
         await this.userPasswordService.createForgotPassword(
+            context.snapshot,
             user.id,
             email,
-            forgot,
-            context
+            forgot
         );
 
         return {};

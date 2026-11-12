@@ -270,7 +270,7 @@ describe('UserVerificationService', () => {
 
     describe('verifyEmail', () => {
         it('marks the verification and the user verified and adds the verifiedEmail effect in one transaction', async () => {
-            await service.verifyEmail(verification, requestContext);
+            await service.verifyEmail(requestContext, verification);
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -282,12 +282,12 @@ describe('UserVerificationService', () => {
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                requestContext,
                 {
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: 'user-flint',
                     createdBy: 'user-flint',
-                },
-                requestContext
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entry,
@@ -310,7 +310,7 @@ describe('UserVerificationService', () => {
         it('throws UserTokenInvalidException when the token was already used', async () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
 
-            const call = service.verifyEmail(verification, requestContext);
+            const call = service.verifyEmail(requestContext, verification);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -328,7 +328,7 @@ describe('UserVerificationService', () => {
                 new DatabaseWriteConflictException()
             );
 
-            const call = service.verifyEmail(verification, requestContext);
+            const call = service.verifyEmail(requestContext, verification);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -341,7 +341,7 @@ describe('UserVerificationService', () => {
             const error = new UserNotFoundException();
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(verification, requestContext);
+            const call = service.verifyEmail(requestContext, verification);
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -355,7 +355,7 @@ describe('UserVerificationService', () => {
             const error = new Error('boom');
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(verification, requestContext);
+            const call = service.verifyEmail(requestContext, verification);
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -522,9 +522,9 @@ describe('UserVerificationService', () => {
             userVerificationUtil.mapEmailContext.mockReturnValue(context);
 
             await service.sendEmail(
+                requestContext,
                 'user-flint',
-                'flint@example.com',
-                requestContext
+                'flint@example.com'
             );
 
             expect(userVerificationUtil.createEmail).toHaveBeenCalledWith();
@@ -554,12 +554,12 @@ describe('UserVerificationService', () => {
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledBefore(outboxService.addInTx);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                requestContext,
                 {
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: 'user-flint',
                     createdBy: 'user-flint',
-                },
-                requestContext
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -572,9 +572,9 @@ describe('UserVerificationService', () => {
 
             await expect(
                 service.sendEmail(
+                    requestContext,
                     'user-flint',
-                    'flint@example.com',
-                    requestContext
+                    'flint@example.com'
                 )
             ).rejects.toThrow('boom');
             expect(outboxService.addInTx).not.toHaveBeenCalled();

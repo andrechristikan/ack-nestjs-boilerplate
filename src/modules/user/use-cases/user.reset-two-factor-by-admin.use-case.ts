@@ -1,5 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -9,7 +9,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
@@ -17,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
-    [string, IUser, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -33,10 +32,10 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        user: IUser,
-        context: IRequestContext
+        context: IRequestContextUser,
+        userId: string
     ): Promise<IResponseReturn<void>> {
+        const user = context.user;
         this.userService.assertNotSelf(userId, user.id);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -69,20 +68,20 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
                 user.id
             );
             const actorEntry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
                     metadata: actorMetadata,
-                },
-                context
+                }
             );
             const targetEntry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                     userId,
                     createdBy: user.id,
                     metadata: targetMetadata,
-                },
-                context
+                }
             );
             await this.outboxService.addManyInTx(tx, [
                 actorEntry,

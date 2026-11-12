@@ -17,7 +17,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -58,7 +58,7 @@ describe('TermPolicyContentService', () => {
         mock<HelperDateService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx = {} as IDatabaseTransactionClient;
-    const context: IRequestContext = {
+    const context: IRequestContextUserSnapshot = {
         actorUserId: 'admin-1',
         workspaceId: null,
         requestLog: {
@@ -295,13 +295,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: contentMaxSizeInBytes + 1,
                     key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -324,15 +324,11 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                service.updateContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/en.hbs',
-                    },
-                    context
-                )
+                service.updateContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
                 module: 'termPolicy',
@@ -352,15 +348,11 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(
-                service.updateContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/en.hbs',
-                    },
-                    context
-                )
+                service.updateContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentInvalidException,
                 module: 'termPolicy',
@@ -379,15 +371,11 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(
-                service.updateContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/en.hbs',
-                    },
-                    context
-                )
+                service.updateContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyStatusInvalidException,
                 module: 'termPolicy',
@@ -405,13 +393,13 @@ describe('TermPolicyContentService', () => {
             termPolicyUtil.toContents.mockReturnValue([]);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -428,13 +416,13 @@ describe('TermPolicyContentService', () => {
             termPolicyUtil.isContentKeyInPath.mockReturnValue(false);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'other/path/en.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -460,13 +448,13 @@ describe('TermPolicyContentService', () => {
             awsS3Service.isInitialized.mockReturnValue(false);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -491,15 +479,11 @@ describe('TermPolicyContentService', () => {
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
             termPolicyRepository.updateContentInTx.mockResolvedValue(true);
 
-            await service.updateContentByAdmin(
-                'term-policy-1',
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 2048,
-                    key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
-            );
+            await service.updateContentByAdmin(context, 'term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'term-policies/privacy/v1/en-2.hbs',
+            });
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
@@ -507,11 +491,11 @@ describe('TermPolicyContentService', () => {
                 timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.adminTermPolicyUpdateContent,
                     metadata: activityMetadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -526,15 +510,11 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(
-                service.updateContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 2048,
-                        key: 'term-policies/privacy/v1/en-2.hbs',
-                    },
-                    context
-                )
+                service.updateContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: 'term-policies/privacy/v1/en-2.hbs',
+                })
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
@@ -545,15 +525,11 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.updateContentInTx.mockResolvedValue(false);
 
             await expect(
-                service.updateContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 2048,
-                        key: 'term-policies/privacy/v1/en-2.hbs',
-                    },
-                    context
-                )
+                service.updateContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: 'term-policies/privacy/v1/en-2.hbs',
+                })
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -565,13 +541,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.updateContentInTx.mockResolvedValue(true);
 
             const result = await service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
@@ -599,15 +575,11 @@ describe('TermPolicyContentService', () => {
             awsS3Service.mapPresign.mockReturnValue(mapped);
             termPolicyRepository.updateContentInTx.mockResolvedValue(true);
 
-            await service.updateContentByAdmin(
-                'term-policy-1',
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 2048,
-                    key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
-            );
+            await service.updateContentByAdmin(context, 'term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 2048,
+                key: 'term-policies/privacy/v1/en-2.hbs',
+            });
 
             expect(termPolicyRepository.updateContentInTx).toHaveBeenCalledWith(
                 tx,
@@ -624,13 +596,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.updateContentInTx.mockResolvedValue(false);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -648,13 +620,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.updateContentInTx.mockRejectedValue(rawError);
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -676,13 +648,13 @@ describe('TermPolicyContentService', () => {
             });
 
             const promise = service.updateContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toBe(error);
@@ -705,13 +677,13 @@ describe('TermPolicyContentService', () => {
             termPolicyUtil.isContentKeyInPath.mockReturnValue(false);
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 1024,
                     key: 'other/path/en.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -725,13 +697,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: contentMaxSizeInBytes + 1,
                     key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -752,15 +724,11 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                service.addContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/fr.hbs',
-                    },
-                    context
-                )
+                service.addContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
                 module: 'termPolicy',
@@ -780,15 +748,11 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(
-                service.addContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/fr.hbs',
-                    },
-                    context
-                )
+                service.addContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentInvalidException,
                 module: 'termPolicy',
@@ -805,13 +769,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 1024,
                     key: 'term-policies/privacy/v1/en.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -832,13 +796,13 @@ describe('TermPolicyContentService', () => {
             awsS3Service.isInitialized.mockReturnValue(false);
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -862,26 +826,22 @@ describe('TermPolicyContentService', () => {
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
             termPolicyRepository.addContentInTx.mockResolvedValue(true);
 
-            await service.addContentByAdmin(
-                'term-policy-1',
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 1024,
-                    key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
-            );
+            await service.addContentByAdmin(context, 'term-policy-1', {
+                language: EnumMessageLanguage.en,
+                size: 1024,
+                key: 'term-policies/privacy/v1/fr.hbs',
+            });
 
             expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 draftTermPolicy,
                 timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.adminTermPolicyAddContent,
                     metadata: activityMetadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -898,15 +858,11 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(
-                service.addContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/fr.hbs',
-                    },
-                    context
-                )
+                service.addContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
         });
 
@@ -917,15 +873,11 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.addContentInTx.mockResolvedValue(false);
 
             await expect(
-                service.addContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/fr.hbs',
-                    },
-                    context
-                )
+                service.addContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -941,13 +893,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.addContentInTx.mockResolvedValue(true);
 
             const result = await service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 1024,
                     key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
+                }
             );
 
             expect(termPolicyRepository.addContentInTx).toHaveBeenCalledWith(
@@ -965,13 +917,13 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.addContentInTx.mockResolvedValue(false);
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 1024,
                     key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -988,15 +940,11 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.addContentInTx.mockRejectedValue(rawError);
 
             await expect(
-                service.addContentByAdmin(
-                    'term-policy-1',
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 1024,
-                        key: 'term-policies/privacy/v1/fr.hbs',
-                    },
-                    context
-                )
+                service.addContentByAdmin(context, 'term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 module: 'app',
@@ -1017,13 +965,13 @@ describe('TermPolicyContentService', () => {
             });
 
             const promise = service.addContentByAdmin(
+                context,
                 'term-policy-1',
                 {
                     language: EnumMessageLanguage.en,
                     size: 1024,
                     key: 'term-policies/privacy/v1/fr.hbs',
-                },
-                context
+                }
             );
 
             await expect(promise).rejects.toBe(error);
@@ -1046,9 +994,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
@@ -1070,9 +1018,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentInvalidException,
@@ -1092,9 +1040,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentNotFoundException,
@@ -1113,9 +1061,9 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.removeContentInTx.mockResolvedValue(true);
 
             await service.removeContentByAdmin(
+                context,
                 'term-policy-1',
-                EnumMessageLanguage.en,
-                context
+                EnumMessageLanguage.en
             );
 
             expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
@@ -1123,11 +1071,11 @@ describe('TermPolicyContentService', () => {
                 timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.adminTermPolicyRemoveContent,
                     metadata: activityMetadata,
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -1143,9 +1091,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
         });
@@ -1156,9 +1104,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -1169,9 +1117,9 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.removeContentInTx.mockResolvedValue(true);
 
             const result = await service.removeContentByAdmin(
+                context,
                 'term-policy-1',
-                EnumMessageLanguage.en,
-                context
+                EnumMessageLanguage.en
             );
 
             expect(termPolicyRepository.removeContentInTx).toHaveBeenCalledWith(
@@ -1191,9 +1139,9 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.removeContentInTx.mockResolvedValue(true);
 
             await service.removeContentByAdmin(
+                context,
                 'term-policy-1',
-                EnumMessageLanguage.en,
-                context
+                EnumMessageLanguage.en
             );
 
             expect(termPolicyRepository.removeContentInTx).toHaveBeenCalledWith(
@@ -1210,9 +1158,9 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.removeContentInTx.mockResolvedValue(false);
 
             const promise = service.removeContentByAdmin(
+                context,
                 'term-policy-1',
-                EnumMessageLanguage.en,
-                context
+                EnumMessageLanguage.en
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -1227,9 +1175,9 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.removeContentInTx.mockRejectedValue(error);
 
             const promise = service.removeContentByAdmin(
+                context,
                 'term-policy-1',
-                EnumMessageLanguage.en,
-                context
+                EnumMessageLanguage.en
             );
 
             await expect(promise).rejects.toBe(error);
@@ -1252,9 +1200,9 @@ describe('TermPolicyContentService', () => {
 
             await expect(
                 service.removeContentByAdmin(
+                    context,
                     'term-policy-1',
-                    EnumMessageLanguage.en,
-                    context
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,

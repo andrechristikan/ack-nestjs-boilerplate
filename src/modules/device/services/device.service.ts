@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -239,11 +239,11 @@ export class DeviceService {
     }
 
     async refresh(
-        userId: string,
+        snapshot: IRequestContextUserSnapshot,
         deviceOwnershipId: string,
-        data: IDeviceRefresh,
-        context: IRequestContext
+        data: IDeviceRefresh
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         const notificationProvider = this.resolveNotificationProvider(
             data.platform,
             data.notificationToken
@@ -278,10 +278,9 @@ export class DeviceService {
                     );
                 }
 
-                const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userDeviceRefresh },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userDeviceRefresh,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

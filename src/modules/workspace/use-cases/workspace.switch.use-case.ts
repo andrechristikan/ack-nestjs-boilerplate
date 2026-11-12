@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -12,7 +12,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceSwitchUseCase implements IAppUseCase<
-    [string, WorkspaceSwitchRequestDto, IRequestContext],
+    [IRequestContextUser, WorkspaceSwitchRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -24,10 +24,10 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        { workspaceId }: WorkspaceSwitchRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { workspaceId }: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
+        const userId = context.user.id;
         // Sequential by design: gate before the work it guards
         await this.workspaceService.validateWorkspaceGuard(workspaceId);
         await this.workspaceMemberService.validateWorkspaceMemberGuard(
@@ -42,13 +42,13 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
                 workspaceId
             );
             const entry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceSwitched,
                     userId,
                     createdBy: userId,
                     workspaceId,
-                },
-                context
+                }
             );
             await this.outboxService.addInTx(tx, entry);
         });

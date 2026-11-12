@@ -24,6 +24,12 @@ import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/requ
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetInvitesListUseCase } from '@modules/workspace/use-cases/workspace.get-invites-list.use-case';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetInvitesListUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
@@ -40,6 +46,11 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             limit: 20,
             orderBy: [],
         };
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1')
+    );
     let useCase: WorkspaceGetInvitesListUseCase;
 
     beforeEach(async () => {
@@ -89,7 +100,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute('workspace-1', query);
+            await useCase.execute(context, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceInviteUserListCursorScope,
@@ -122,7 +133,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute('workspace-1', {});
+            await useCase.execute(context, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

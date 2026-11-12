@@ -7,12 +7,14 @@ import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/work
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const context = buildRequestContext('user-1');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -26,6 +28,10 @@ describe('WorkspaceCreateUseCase', () => {
         description: null,
         isPublic: false,
     };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
+
     let useCase: WorkspaceCreateUseCase;
 
     beforeEach(async () => {
@@ -50,17 +56,16 @@ describe('WorkspaceCreateUseCase', () => {
             };
             workspaceService.createWorkspace.mockResolvedValue(workspace);
 
-            const result = await useCase.execute('user-1', body, context);
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
-                'user-1',
+                context.snapshot,
                 {
                     name: 'Acme',
                     description: 'Our team workspace',
                     isPublic: true,
-                },
-                context
+                }
             );
         });
 
@@ -68,12 +73,11 @@ describe('WorkspaceCreateUseCase', () => {
             const body: WorkspaceCreateRequestDto = { name: 'Acme' };
             workspaceService.createWorkspace.mockResolvedValue(workspace);
 
-            await useCase.execute('user-1', body, context);
+            await useCase.execute(context, body);
 
             expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
-                'user-1',
-                { name: 'Acme', description: null, isPublic: null },
-                context
+                context.snapshot,
+                { name: 'Acme', description: null, isPublic: null }
             );
         });
 
@@ -83,7 +87,7 @@ describe('WorkspaceCreateUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-1', { name: 'Acme' }, context)
+                useCase.execute(context, { name: 'Acme' })
             ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
         });
     });

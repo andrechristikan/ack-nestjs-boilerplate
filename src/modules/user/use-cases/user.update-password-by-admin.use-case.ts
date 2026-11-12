@@ -1,5 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -14,14 +14,13 @@ import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
-    [string, IUser, IRequestContext],
+    [IRequestContextUser, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -38,10 +37,10 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        user: IUser,
-        context: IRequestContext
+        context: IRequestContextUser,
+        userId: string
     ): Promise<IResponseReturn<void>> {
+        const user = context.user;
         this.userService.assertNotSelf(userId, user.id);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -102,20 +101,20 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 user.id
             );
             const actorEntry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminUserUpdatePassword,
                     metadata: actorMetadata,
-                },
-                context
+                }
             );
             const targetEntry = this.activityLogService.recordEffect(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                     userId,
                     createdBy: user.id,
                     metadata: targetMetadata,
-                },
-                context
+                }
             );
             await this.outboxService.addManyInTx(tx, [
                 actorEntry,

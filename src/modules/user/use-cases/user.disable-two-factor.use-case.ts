@@ -4,21 +4,20 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserDisableTwoFactorUseCase implements IAppUseCase<
-    [IUser, UserTwoFactorDisableRequestDto, IRequestContext],
+    [IRequestContextUser, UserTwoFactorDisableRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -31,13 +30,16 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        user: IUser,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
+        const { user } = context;
         this.userTwoFactorService.assertEnabled(user);
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.userTwoFactorService.assertAttemptCounted(user, context);
+        await this.userTwoFactorService.assertAttemptCounted(
+            context.snapshot,
+            user
+        );
         await this.userTwoFactorService.verify(user, {
             code: code ?? null,
             backupCode: backupCode ?? null,
@@ -55,8 +57,10 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
                     now
                 );
                 const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userDisableTwoFactor },
-                    context
+                    context.snapshot,
+                    {
+                        action: EnumActivityLogAction.userDisableTwoFactor,
+                    }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });

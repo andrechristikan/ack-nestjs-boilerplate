@@ -5,8 +5,20 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticSummaryUseCase', () => {
+    const context = buildRequestContextWorkspace(
+        buildUser('user-1', 'jane@example.com'),
+        buildWorkspace(),
+        buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
+    );
     const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
         mock<AnalyticWorkspaceUserService>();
 
@@ -48,7 +60,7 @@ describe('AnalyticSummaryUseCase', () => {
                 activityCount: 9,
             });
 
-            const result = await useCase.execute('workspace-1', {
+            const result = await useCase.execute(context, {
                 startDate,
                 endDate,
             });
@@ -78,7 +90,7 @@ describe('AnalyticSummaryUseCase', () => {
                 activityCount: 0,
             });
 
-            await useCase.execute('workspace-1', {});
+            await useCase.execute(context, {});
 
             expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
                 null,

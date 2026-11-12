@@ -7,16 +7,21 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdateMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
 
-    const context = buildRequestContext('user-swift');
+    const context = buildRequestContextUser(
+        buildUser('user-swift', 'user-swift@example.com')
+    );
 
     let useCase: UserUpdateMobileNumberUseCase;
 
@@ -74,13 +79,13 @@ describe('UserUpdateMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the mobile number, passes the context, and wraps it in a response envelope', async () => {
+        it('updates the mobile number, passes the snapshot, and wraps it in a response envelope', async () => {
             userMobileNumberService.updateMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
             await expect(
-                useCase.execute('user-swift', mobileNumber.id, dto, context)
+                useCase.execute(context, mobileNumber.id, dto)
             ).resolves.toEqual({ data: mobileNumber });
             expect(
                 userMobileNumberService.getOneMobileNumber
@@ -89,7 +94,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
             expect(
                 userMobileNumberService.updateMobileNumber
             ).toHaveBeenCalledWith(
-                'user-swift',
+                context.snapshot,
                 mobileNumber,
                 {
                     number: dto.number,
@@ -97,8 +102,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
                     phoneCode: dto.phoneCode,
                 },
                 mobileNumber.country.phoneCode,
-                false,
-                context
+                false
             );
             expect(
                 userMobileNumberService.existsMobileNumber
@@ -128,7 +132,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
                 mobileNumber
             );
 
-            await useCase.execute('user-swift', mobileNumber.id, dto, context);
+            await useCase.execute(context, mobileNumber.id, dto);
 
             expect(
                 userMobileNumberService.updateMobileNumber
@@ -141,7 +145,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-swift', mobileNumber.id, dto, context)
+                useCase.execute(context, mobileNumber.id, dto)
             ).rejects.toBeInstanceOf(CountryNotFoundException);
 
             expect(
@@ -153,9 +157,9 @@ describe('UserUpdateMobileNumberUseCase', () => {
             const error = new Error('mobile-number-missing');
             userMobileNumberService.getOneMobileNumber.mockRejectedValue(error);
 
-            await expect(
-                useCase.execute('user-swift', 'missing', dto, context)
-            ).rejects.toBe(error);
+            await expect(useCase.execute(context, 'missing', dto)).rejects.toBe(
+                error
+            );
 
             expect(countryService.getOne).not.toHaveBeenCalled();
             expect(

@@ -4,7 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -16,7 +16,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserLogoutUseCase implements IAppUseCase<
-    [string, string, string, IRequestContext],
+    [IRequestContextUser],
     IResponseReturn<void>
 > {
     constructor(
@@ -29,11 +29,10 @@ export class UserLogoutUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        sessionId: string,
-        deviceOwnershipId: string,
-        context: IRequestContext
+        context: IRequestContextUser
     ): Promise<IResponseReturn<void>> {
+        const userId = context.user.id;
+        const { sessionId, deviceOwnershipId } = context.session;
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -52,8 +51,10 @@ export class UserLogoutUseCase implements IAppUseCase<
                     now
                 );
                 const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userLogout },
-                    context
+                    context.snapshot,
+                    {
+                        action: EnumActivityLogAction.userLogout,
+                    }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });

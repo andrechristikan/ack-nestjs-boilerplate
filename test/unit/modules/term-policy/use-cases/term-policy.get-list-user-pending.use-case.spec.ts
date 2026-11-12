@@ -7,11 +7,18 @@ import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-
 import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
 import type { ITermPolicyRef } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('TermPolicyGetListUserPendingUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
 
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'user@example.com')
+    );
     let useCase: TermPolicyGetListUserPendingUseCase;
 
     beforeEach(async () => {
@@ -43,7 +50,7 @@ describe('TermPolicyGetListUserPendingUseCase', () => {
                 termPolicies
             );
 
-            const result = await useCase.execute('user-1');
+            const result = await useCase.execute(context);
 
             expect(result).toEqual({ data: { termPolicies } });
             expect(

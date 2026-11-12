@@ -13,6 +13,10 @@ import {
     ActivityLogSharedUserListCursorScope,
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogGetListCursorByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
@@ -37,6 +41,9 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
         data: [],
     };
 
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'user@example.com')
+    );
     let useCase: ActivityLogGetListCursorByUserUseCase;
 
     beforeEach(async () => {
@@ -67,7 +74,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute('user-1', cursorQuery);
+            const result = await useCase.execute(context, cursorQuery);
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(

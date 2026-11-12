@@ -13,7 +13,7 @@ import type {
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -153,9 +153,9 @@ export class TermPolicyService {
     }
 
     async createByAdmin(
+        snapshot: IRequestContextUserSnapshot,
         termPolicyId: string,
-        { contents, type, version }: ITermPolicyCreate,
-        context: IRequestContext
+        { contents, type, version }: ITermPolicyCreate
     ): Promise<TermPolicy> {
         // Sequential by design: gate before the work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
@@ -223,13 +223,10 @@ export class TermPolicyService {
                     { id: termPolicyId, type, version },
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyCreate,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.adminTermPolicyCreate,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
 
                 return created;
@@ -258,8 +255,8 @@ export class TermPolicyService {
     }
 
     async deleteByAdmin(
-        termPolicyId: string,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        termPolicyId: string
     ): Promise<TermPolicy> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const termPolicy =
@@ -293,13 +290,10 @@ export class TermPolicyService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyDelete,
-                        metadata,
-                    },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.adminTermPolicyDelete,
+                    metadata,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -319,9 +313,8 @@ export class TermPolicyService {
     }
 
     async publishByAdmin(
-        termPolicyId: string,
-        updatedBy: string,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        termPolicyId: string
     ): Promise<TermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
@@ -417,7 +410,7 @@ export class TermPolicyService {
                                     recipientCutoffAt,
                                     resendNonce: null,
                                 },
-                                updatedBy
+                                snapshot.actorUserId
                             );
                         await this.outboxService.addManyInTx(tx, [
                             copyEffect,
@@ -430,11 +423,11 @@ export class TermPolicyService {
                                 row.updatedAt
                             );
                         const entry = this.activityLogService.recordEffect(
+                            snapshot,
                             {
                                 action: EnumActivityLogAction.adminTermPolicyPublish,
                                 metadata,
-                            },
-                            context
+                            }
                         );
                         await this.outboxService.addInTx(tx, entry);
 

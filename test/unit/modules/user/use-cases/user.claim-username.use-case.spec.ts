@@ -5,12 +5,17 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserClaimUsernameUseCase } from '@modules/user/use-cases/user.claim-username.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserClaimUsernameUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContext('user-sable');
+    const context = buildRequestContextUser(
+        buildUser('user-sable', 'user-sable@example.com')
+    );
 
     let useCase: UserClaimUsernameUseCase;
 
@@ -27,17 +32,16 @@ describe('UserClaimUsernameUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the username and the context to the domain', async () => {
+        it('delegates the username and the snapshot to the domain', async () => {
             const dto: UserClaimUsernameRequestDto = {
                 username: 'sableGrove' as Lowercase<string>,
             };
 
-            await useCase.execute('user-sable', dto, context);
+            await useCase.execute(context, dto);
 
             expect(userProfileService.claimUsername).toHaveBeenCalledWith(
-                'user-sable',
-                dto.username,
-                context
+                context.snapshot,
+                dto.username
             );
         });
     });

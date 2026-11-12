@@ -15,7 +15,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
 import {
@@ -36,6 +35,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserResetTwoFactorByAdminUseCase } from '@modules/user/use-cases/user.reset-two-factor-by-admin.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserResetTwoFactorByAdminUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
@@ -116,7 +116,6 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
         },
         twoFactor,
     };
-    const context = buildRequestContext('admin-marten');
     const adminEntry = { queue: 'admin-entry' } as unknown as IOutboxEffect;
     const targetEntry = { queue: 'target-entry' } as unknown as IOutboxEffect;
     const snapshot: INotificationSnapshot = {
@@ -146,7 +145,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.recordEffect.mockImplementation(input =>
+        activityLogService.recordEffect.mockImplementation((_context, input) =>
             input.action === EnumActivityLogAction.adminUserResetTwoFactor
                 ? adminEntry
                 : targetEntry
@@ -188,6 +187,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             id: 'admin-marten',
             role: { ...user.role, type: EnumRoleType.admin },
         };
+        const context = buildRequestContextUser(admin);
 
         beforeEach(() => {
             userService.getOneWithRole.mockResolvedValue(user);
@@ -232,7 +232,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-marten', admin, context)
+                useCase.execute(context, 'user-marten')
             ).resolves.toEqual({});
 
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
@@ -274,21 +274,21 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
                     metadata: { targetUserId: 'user-marten' },
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                     userId: 'user-marten',
                     createdBy: 'admin-marten',
                     metadata: { actorUserId: 'admin-marten' },
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 adminEntry,
@@ -315,7 +315,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                 }
             );
 
-            await useCase.execute('user-marten', admin, context);
+            await useCase.execute(context, 'user-marten');
 
             expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
@@ -329,7 +329,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-marten', admin, context)
+                useCase.execute(context, 'user-marten')
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -341,7 +341,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-marten', admin, context)
+                useCase.execute(context, 'user-marten')
             ).rejects.toThrow('read');
             expect(
                 sessionService.revokeActiveByUserInTx
@@ -353,9 +353,9 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
 
-            await expect(
-                useCase.execute('user-marten', admin, context)
-            ).rejects.toBe(cause);
+            await expect(useCase.execute(context, 'user-marten')).rejects.toBe(
+                cause
+            );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });

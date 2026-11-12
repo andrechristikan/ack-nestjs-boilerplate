@@ -24,7 +24,6 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -46,6 +45,7 @@ import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.d
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -78,7 +78,6 @@ describe('UserDeleteSelfUseCase', () => {
     let useCase: UserDeleteSelfUseCase;
 
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContext('user-cinder');
     const now = new Date('2026-03-05T00:00:00.000Z');
     const configValues: Record<string, unknown> = {
         'user.deleteSelf.timeoutInMs': 30000,
@@ -128,6 +127,7 @@ describe('UserDeleteSelfUseCase', () => {
         },
         twoFactor: null,
     };
+    const context = buildRequestContextUser(baseUser);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -226,7 +226,7 @@ describe('UserDeleteSelfUseCase', () => {
             });
 
             await expect(
-                useCase.execute(superAdmin, dto, context)
+                useCase.execute(buildRequestContextUser(superAdmin), dto)
             ).rejects.toBe(failure);
 
             expect(userService.assertSelfDeletable).toHaveBeenCalledWith(
@@ -332,14 +332,12 @@ describe('UserDeleteSelfUseCase', () => {
                 }
             );
 
-            await expect(
-                useCase.execute(baseUser, dto, context)
-            ).resolves.toEqual({});
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+                context.snapshot,
                 baseUser,
-                'plain-password',
-                context
+                'plain-password'
             );
             expect(
                 workspaceService.softDeleteOwnedByUserInTx
@@ -406,17 +404,17 @@ describe('UserDeleteSelfUseCase', () => {
             ).toHaveBeenCalledWith(tx, 'user-cinder', null);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessions,
                     userId: 'user-cinder',
                     createdBy: 'user-cinder',
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                { action: EnumActivityLogAction.userDeleteSelf },
-                context
+                context.snapshot,
+                { action: EnumActivityLogAction.userDeleteSelf }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entryEffect,
@@ -432,9 +430,7 @@ describe('UserDeleteSelfUseCase', () => {
                 failure
             );
 
-            await expect(useCase.execute(baseUser, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
 
             expect(
                 workspaceService.softDeleteOwnedByUserInTx
@@ -449,9 +445,7 @@ describe('UserDeleteSelfUseCase', () => {
                 'workspace-one',
             ]);
 
-            await expect(
-                useCase.execute(baseUser, dto, context)
-            ).resolves.toEqual({});
+            await expect(useCase.execute(context, dto)).resolves.toEqual({});
 
             expect(
                 workspaceService.assertOwnedHasNoOtherMembersInTx
@@ -468,7 +462,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it("cancels the user's own pending join requests on the same tx", async () => {
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 workspaceJoinRequestService.cancelPendingByRequesterInTx
@@ -476,7 +470,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it("revokes the pending invites to the user's email on the same tx before the soft delete", async () => {
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 workspaceInviteService.revokeAllPendingByEmailInTx
@@ -487,7 +481,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
@@ -502,9 +496,7 @@ describe('UserDeleteSelfUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(
-                useCase.execute(baseUser, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
                 messagePath: 'user.error.notFound',
@@ -519,25 +511,25 @@ describe('UserDeleteSelfUseCase', () => {
                 'workspace-two',
             ]);
 
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceDeleted,
                     userId: 'user-cinder',
                     createdBy: 'user-cinder',
                     workspaceId: 'workspace-one',
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context.snapshot,
                 {
                     action: EnumActivityLogAction.workspaceDeleted,
                     userId: 'user-cinder',
                     createdBy: 'user-cinder',
                     workspaceId: 'workspace-two',
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(4);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
@@ -550,7 +542,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('cascades no workspace when the user owns none', async () => {
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 projectService.softDeleteByWorkspaceInTx
@@ -567,14 +559,12 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('passes a null password for an absent one', async () => {
-            await expect(
-                useCase.execute(baseUser, {}, context)
-            ).resolves.toEqual({});
+            await expect(useCase.execute(context, {})).resolves.toEqual({});
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+                context.snapshot,
                 baseUser,
-                null,
-                context
+                null
             );
             expect(userService.deleteSelfInTx).toHaveBeenCalledTimes(1);
         });
@@ -584,9 +574,7 @@ describe('UserDeleteSelfUseCase', () => {
                 new UserPasswordNotMatchException()
             );
 
-            await expect(
-                useCase.execute(baseUser, {}, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, {})).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 statusCodeKey:
@@ -604,9 +592,7 @@ describe('UserDeleteSelfUseCase', () => {
             const failure = new UserPasswordExpiredException();
             userAuthService.assertCurrentPassword.mockRejectedValue(failure);
 
-            await expect(useCase.execute(baseUser, dto, context)).rejects.toBe(
-                failure
-            );
+            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
@@ -618,7 +604,7 @@ describe('UserDeleteSelfUseCase', () => {
                 photo,
             });
 
-            await useCase.execute(baseUser, dto, context);
+            await useCase.execute(context, dto);
 
             expect(
                 userProfileService.deleteOwnedPhotoInTx
@@ -630,9 +616,7 @@ describe('UserDeleteSelfUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(
-                useCase.execute(baseUser, dto, context)
-            ).rejects.toMatchObject({
+            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });

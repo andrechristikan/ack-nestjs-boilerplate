@@ -1,12 +1,10 @@
+import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
-import {
-    UserGuardIsVerifiedMetaKey,
-    UserStoreKey,
-} from '@modules/user/constants/user.constant';
+import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
 import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
@@ -37,7 +35,7 @@ export class UserGuard implements CanActivate {
             isVerified
         );
 
-        this.requestStoreService.set(UserStoreKey, user);
+        this.requestStoreService.set(RequestUserStoreKey, user);
 
         return true;
     }

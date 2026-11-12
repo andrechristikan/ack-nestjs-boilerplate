@@ -6,12 +6,15 @@ import type { Project } from '@generated/prisma-client/client';
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateSlugUseCase } from '@modules/project/use-cases/project.update-slug.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextProject,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUpdateSlugUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439015');
 
     let useCase: ProjectUpdateSlugUseCase;
 
@@ -28,6 +31,13 @@ describe('ProjectUpdateSlugUseCase', () => {
         deletedAt: null,
         deletedBy: null,
     };
+
+    const context = buildRequestContextProject(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('507f1f77bcf86cd799439015'),
+        project
+    );
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -48,19 +58,13 @@ describe('ProjectUpdateSlugUseCase', () => {
             const updated = { ...project, slug: 'p-new-slug' };
             projectService.updateProjectSlug.mockResolvedValue(updated);
 
-            const result = await useCase.execute(
-                project,
-                '507f1f77bcf86cd799439015',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: updated });
             expect(projectService.updateProjectSlug).toHaveBeenCalledWith(
+                context.snapshot,
                 project,
-                '507f1f77bcf86cd799439015',
-                'p-new-slug',
-                context
+                'p-new-slug'
             );
         });
 
@@ -70,12 +74,7 @@ describe('ProjectUpdateSlugUseCase', () => {
             );
 
             await expect(
-                useCase.execute(
-                    project,
-                    '507f1f77bcf86cd799439015',
-                    { slug: 'p-new-slug' },
-                    context
-                )
+                useCase.execute(context, { slug: 'p-new-slug' })
             ).rejects.toThrow('boom');
         });
     });

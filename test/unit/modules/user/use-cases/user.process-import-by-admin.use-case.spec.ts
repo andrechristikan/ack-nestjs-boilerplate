@@ -56,7 +56,10 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserProcessImportByAdminUseCase', () => {
     const userImportService: MockProxy<UserImportService> =
@@ -88,7 +91,9 @@ describe('UserProcessImportByAdminUseCase', () => {
         'user.default.country': 'ID',
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const context = buildRequestContext('admin-bramble');
+    const context = buildRequestContextUser(
+        buildUser('admin-bramble', 'admin@example.com')
+    ).snapshot;
     const rows: IUserImport[] = [
         {
             username: 'bramble2fox',
@@ -291,11 +296,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
     describe('execute', () => {
         it('creates the users, then adds the activity, welcome, and result effects on one tx and dispatches once', async () => {
-            const response = await useCase.execute(
-                'outbox-bramble',
-                payload,
-                'admin-bramble'
-            );
+            const response = await useCase.execute('outbox-bramble', payload);
 
             expect(response).toEqual({
                 message: 'user.queue.importByAdmin',
@@ -329,8 +330,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                 userImportService.buildImportByAdminStages
             ).toHaveBeenCalledWith([input], [committedUser]);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                stageInput,
-                context
+                context,
+                stageInput
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -345,7 +346,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('notifies each created user with a welcome carrying the admin as the proceeding user', async () => {
-            await useCase.execute('outbox-bramble', payload, 'admin-bramble');
+            await useCase.execute('outbox-bramble', payload);
 
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeByAdmin,
@@ -360,7 +361,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('notifies the admin with a result of the created count, no failures, and no reasons keyed by the row id', async () => {
-            await useCase.execute('outbox-bramble', payload, 'admin-bramble');
+            await useCase.execute('outbox-bramble', payload);
 
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.userImportResult,
@@ -375,20 +376,19 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
         });
 
-        it('acts for the supplied actor without inspecting the context actor', async () => {
-            const response = await useCase.execute(
-                'outbox-bramble',
-                { rows, context: buildRequestContext(null) },
-                'admin-bramble'
-            );
+        it('acts for the payload actor and records the payload context', async () => {
+            const response = await useCase.execute('outbox-bramble', payload);
 
             expect(response.created).toBe(1);
-            expect(notificationService.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.userImportResult,
-                expect.objectContaining({
-                    userId: 'admin-bramble',
-                    proceedBy: 'admin-bramble',
-                })
+            expect(userImportService.prepareImportByAdmin).toHaveBeenCalledWith(
+                rows,
+                payload.context.actorUserId,
+                role,
+                'country-bramble'
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                payload.context,
+                stageInput
             );
         });
 
@@ -398,7 +398,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
@@ -414,7 +414,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
@@ -433,7 +433,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).resolves.toEqual({
                 message: 'user.queue.importByAdmin',
                 created: 0,
@@ -472,7 +472,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).resolves.toEqual({
                 message: 'user.queue.importByAdmin',
                 created: 0,
@@ -498,7 +498,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).resolves.toMatchObject({ created: 1, failed: 0 });
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
@@ -520,7 +520,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );
@@ -535,7 +535,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(unexpected);
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: unexpected,
@@ -552,7 +552,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             userCreateUtil.mapCreateCollision.mockReturnValue(notCollision);
 
             await expect(
-                useCase.execute('outbox-bramble', payload, 'admin-bramble')
+                useCase.execute('outbox-bramble', payload)
             ).rejects.toBe(notCollision);
             expect(outboxService.add).not.toHaveBeenCalled();
         });

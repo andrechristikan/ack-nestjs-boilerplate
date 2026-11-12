@@ -6,12 +6,15 @@ import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectCreateUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-
-    const context = buildRequestContext('507f1f77bcf86cd799439015');
 
     let useCase: ProjectCreateUseCase;
 
@@ -28,6 +31,12 @@ describe('ProjectCreateUseCase', () => {
         deletedAt: null,
         deletedBy: null,
     };
+
+    const context = buildRequestContextWorkspace(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
+        { ...buildWorkspace(), id: '507f1f77bcf86cd799439012' },
+        buildWorkspaceMember('507f1f77bcf86cd799439015')
+    );
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -50,22 +59,16 @@ describe('ProjectCreateUseCase', () => {
             };
             projectService.createProject.mockResolvedValue(project);
 
-            const result = await useCase.execute(
-                '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({ data: project });
             expect(projectService.createProject).toHaveBeenCalledWith(
+                context.snapshot,
                 '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
                 {
                     name: 'Website Revamp',
                     description: 'Marketing site redesign',
-                },
-                context
+                }
             );
         });
 
@@ -73,32 +76,21 @@ describe('ProjectCreateUseCase', () => {
             const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
             projectService.createProject.mockRejectedValue(new Error('boom'));
 
-            await expect(
-                useCase.execute(
-                    '507f1f77bcf86cd799439012',
-                    '507f1f77bcf86cd799439015',
-                    body,
-                    context
-                )
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(context, body)).rejects.toThrow(
+                'boom'
+            );
         });
 
         it('passes null for an omitted description', async () => {
             const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
             projectService.createProject.mockResolvedValue(project);
 
-            await useCase.execute(
-                '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
-                body,
-                context
-            );
+            await useCase.execute(context, body);
 
             expect(projectService.createProject).toHaveBeenCalledWith(
+                context.snapshot,
                 '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439015',
-                { name: 'Website Revamp', description: null },
-                context
+                { name: 'Website Revamp', description: null }
             );
         });
     });

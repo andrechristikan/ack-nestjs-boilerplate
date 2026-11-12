@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -958,7 +958,7 @@ describe('NotificationService', () => {
 
     describe('updateUserSetting', () => {
         const tx = {} as IDatabaseTransactionClient;
-        const context: IRequestContext = {
+        const context: IRequestContextUserSnapshot = {
             actorUserId: 'user-id',
             workspaceId: null,
             requestLog: {
@@ -997,14 +997,10 @@ describe('NotificationService', () => {
 
         it('throws NotificationInvalidTypeException before writing when the type is not configurable', async () => {
             await expect(
-                service.updateUserSetting(
-                    'user-id',
-                    {
-                        ...data,
-                        type: EnumNotificationType.securityAlert,
-                    },
-                    context
-                )
+                service.updateUserSetting(context, {
+                    ...data,
+                    type: EnumNotificationType.securityAlert,
+                })
             ).rejects.toMatchObject({
                 constructor: NotificationInvalidTypeException,
                 module: 'notification',
@@ -1022,15 +1018,11 @@ describe('NotificationService', () => {
 
         it('throws NotificationInvalidChannelException before writing when the channel is not allowed for the type', async () => {
             await expect(
-                service.updateUserSetting(
-                    'user-id',
-                    {
-                        ...data,
-                        type: EnumNotificationType.marketing,
-                        channel: EnumNotificationChannel.inApp,
-                    },
-                    context
-                )
+                service.updateUserSetting(context, {
+                    ...data,
+                    type: EnumNotificationType.marketing,
+                    channel: EnumNotificationChannel.inApp,
+                })
             ).rejects.toMatchObject({
                 constructor: NotificationInvalidChannelException,
                 module: 'notification',
@@ -1051,7 +1043,7 @@ describe('NotificationService', () => {
                 true
             );
 
-            await service.updateUserSetting('user-id', data, context);
+            await service.updateUserSetting(context, data);
 
             expect(
                 notificationUserSettingRepository.updateUserSettingInTx
@@ -1063,9 +1055,10 @@ describe('NotificationService', () => {
                 true
             );
 
-            await service.updateUserSetting('user-id', data, context);
+            await service.updateUserSetting(context, data);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userUpdateNotificationSetting,
                     metadata: {
@@ -1073,8 +1066,7 @@ describe('NotificationService', () => {
                         type: data.type,
                         isActive: data.isActive,
                     },
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -1085,7 +1077,7 @@ describe('NotificationService', () => {
             );
 
             await expect(
-                service.updateUserSetting('user-id', data, context)
+                service.updateUserSetting(context, data)
             ).rejects.toBeInstanceOf(NotificationSettingInvalidException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -1096,7 +1088,7 @@ describe('NotificationService', () => {
             );
 
             await expect(
-                service.updateUserSetting('user-id', data, context)
+                service.updateUserSetting(context, data)
             ).rejects.toMatchObject({
                 constructor: NotificationSettingInvalidException,
                 module: 'notification',

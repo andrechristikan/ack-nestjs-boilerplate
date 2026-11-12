@@ -1,3 +1,4 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -17,7 +18,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
-    [string, WorkspaceJoinRequestListRequestDto],
+    [IRequestContextWorkspace, WorkspaceJoinRequestListRequestDto],
     IResponsePaginationReturn<WorkspaceJoinRequest>
 > {
     constructor(
@@ -28,7 +29,7 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
+        context: IRequestContextWorkspace,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards
@@ -58,7 +59,7 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceJoinRequestService.getJoinRequestsList(
-                workspaceId,
+                context.workspace.id,
                 params,
                 status?.where
             );

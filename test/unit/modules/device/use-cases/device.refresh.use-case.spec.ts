@@ -3,7 +3,10 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
@@ -11,22 +14,9 @@ import { DeviceRefreshUseCase } from '@modules/device/use-cases/device.refresh.u
 
 describe('DeviceRefreshUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const context: IRequestContext = {
-        actorUserId: 'user-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
+    const context = buildRequestContextUser(
+        buildUser('user-1', 'actor@example.com')
+    );
     const body: DeviceRefreshRequestDto = {
         name: 'iPhone 13',
         platform: EnumDevicePlatform.ios,
@@ -51,19 +41,13 @@ describe('DeviceRefreshUseCase', () => {
         it('forwards the refresh body and the request context to the domain and returns an empty response', async () => {
             deviceService.refresh.mockResolvedValue();
 
-            const result = await useCase.execute(
-                'user-1',
-                'device-ownership-1',
-                body,
-                context
-            );
+            const result = await useCase.execute(context, body);
 
             expect(result).toEqual({});
             expect(deviceService.refresh).toHaveBeenCalledWith(
-                'user-1',
-                'device-ownership-1',
-                body,
-                context
+                context.snapshot,
+                context.session.deviceOwnershipId,
+                body
             );
         });
 
@@ -71,9 +55,7 @@ describe('DeviceRefreshUseCase', () => {
             const notFound = new DeviceNotFoundException();
             deviceService.refresh.mockRejectedValue(notFound);
 
-            await expect(
-                useCase.execute('user-1', 'device-ownership-1', body, context)
-            ).rejects.toBe(notFound);
+            await expect(useCase.execute(context, body)).rejects.toBe(notFound);
         });
     });
 });

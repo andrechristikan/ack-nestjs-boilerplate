@@ -1,3 +1,4 @@
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
@@ -37,12 +38,8 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import type {
-    IUser,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -65,7 +62,7 @@ import {
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -150,12 +147,12 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Body({ schema: UserCreateRequestSchema })
-        body: UserCreateRequestDto,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        body: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userCreateByAdminUseCase.execute(body, user, context);
+        return this.userCreateByAdminUseCase.execute(context, body);
     }
 
     @Doc({ summary: 'update status of user' })
@@ -172,18 +169,17 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Patch('/update/:userId/status')
     async updateStatus(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @UserCurrent() user: IUser,
         @Body({ schema: UserUpdateStatusRequestSchema })
-        body: UserUpdateStatusRequestDto,
-        @RequestContextCurrent() context: IRequestContext
+        body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.userUpdateStatusByAdminUseCase.execute(
+            context,
             userId,
-            body,
-            user,
-            context
+            body
         );
     }
 
@@ -201,16 +197,12 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Put('/update/:userId/password')
     async updatePassword(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdatePasswordByAdminUseCase.execute(
-            userId,
-            user,
-            context
-        );
+        return this.userUpdatePasswordByAdminUseCase.execute(context, userId);
     }
 
     @Doc({ summary: 'reset user' })
@@ -227,16 +219,12 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string,
-        @UserCurrent() user: IUser,
-        @RequestContextCurrent() context: IRequestContext
+        userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.userResetTwoFactorByAdminUseCase.execute(
-            userId,
-            user,
-            context
-        );
+        return this.userResetTwoFactorByAdminUseCase.execute(context, userId);
     }
 
     @Doc({ summary: 'import users via csv file' })
@@ -256,6 +244,8 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
+        @RequestContextCurrent(EnumRequestContextScope.user)
+        context: IRequestContextUser,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
@@ -264,10 +254,9 @@ export class UserAdminController {
                 maxDataImportConfigKey: 'user.maxDataImport',
             })
         )
-        data: UserImportRequestDto[],
-        @RequestContextCurrent() context: IRequestContext
+        data: UserImportRequestDto[]
     ): Promise<IResponseReturn<UserImportResponseDto>> {
-        return this.userImportByAdminUseCase.execute(data, context);
+        return this.userImportByAdminUseCase.execute(context, data);
     }
 
     @Doc({ summary: 'export users via csv file' })

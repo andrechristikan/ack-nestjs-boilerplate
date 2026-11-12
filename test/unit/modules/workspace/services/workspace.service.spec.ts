@@ -41,7 +41,10 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceService', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
@@ -51,7 +54,9 @@ describe('WorkspaceService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const context = buildRequestContext('user-1');
+    const { snapshot } = buildRequestContextUser(
+        buildUser('user-1', 'jane@example.com')
+    );
     const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperStringService: MockProxy<HelperStringService> =
@@ -314,7 +319,7 @@ describe('WorkspaceService', () => {
             workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
 
             await expect(
-                service.createWorkspace('user-1', create, context)
+                service.createWorkspace(snapshot, create)
             ).rejects.toMatchObject({
                 constructor: WorkspaceCapReachedException,
                 module: 'workspace',
@@ -341,11 +346,7 @@ describe('WorkspaceService', () => {
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            const result = await service.createWorkspace(
-                'user-1',
-                create,
-                context
-            );
+            const result = await service.createWorkspace(snapshot, create);
 
             expect(result).toBe(workspace);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
@@ -369,16 +370,16 @@ describe('WorkspaceService', () => {
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            await service.createWorkspace('user-1', create, context);
+            await service.createWorkspace(snapshot, create);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -392,11 +393,7 @@ describe('WorkspaceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            const result = await service.createWorkspace(
-                'user-1',
-                create,
-                context
-            );
+            const result = await service.createWorkspace(snapshot, create);
 
             expect(result).toBe(workspace);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
@@ -416,7 +413,7 @@ describe('WorkspaceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.createWorkspace('user-1', create, context)
+                service.createWorkspace(snapshot, create)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -431,7 +428,7 @@ describe('WorkspaceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.createWorkspace('user-1', create, context)
+                service.createWorkspace(snapshot, create)
             ).rejects.toBe(typedError);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
         });
@@ -443,7 +440,7 @@ describe('WorkspaceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                service.createWorkspace('user-1', create, context)
+                service.createWorkspace(snapshot, create)
             ).rejects.toMatchObject({
                 constructor: DatabaseUniqueValueGenerationFailedException,
                 module: 'database',
@@ -467,10 +464,9 @@ describe('WorkspaceService', () => {
             workspaceRepository.updateDetailsInTx.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspace(
+                snapshot,
                 'workspace-1',
-                'user-1',
-                update,
-                context
+                update
             );
 
             expect(result).toBe(workspace);
@@ -480,13 +476,13 @@ describe('WorkspaceService', () => {
                 update
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -503,10 +499,9 @@ describe('WorkspaceService', () => {
             workspaceRepository.updateIsPublicInTx.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspaceIsPublic(
+                snapshot,
                 'workspace-1',
-                'user-1',
-                true,
-                context
+                true
             );
 
             expect(result).toBe(workspace);
@@ -516,13 +511,13 @@ describe('WorkspaceService', () => {
                 true
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceVisibilityUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
@@ -538,10 +533,9 @@ describe('WorkspaceService', () => {
         it('throws WorkspaceSlugInvalidException before writing when the slug is not allowed', async () => {
             await expect(
                 service.updateWorkspaceSlug(
+                    snapshot,
                     'workspace-1',
-                    'user-1',
-                    'Not Allowed!',
-                    context
+                    'Not Allowed!'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceSlugInvalidException,
@@ -564,10 +558,9 @@ describe('WorkspaceService', () => {
 
             await expect(
                 service.updateWorkspaceSlug(
+                    snapshot,
                     'workspace-1',
-                    'user-1',
-                    'taken-slug',
-                    context
+                    'taken-slug'
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceSlugAlreadyExistsException,
@@ -591,12 +584,7 @@ describe('WorkspaceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.updateWorkspaceSlug(
-                    'workspace-1',
-                    'user-1',
-                    'new-slug',
-                    context
-                )
+                service.updateWorkspaceSlug(snapshot, 'workspace-1', 'new-slug')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -607,10 +595,9 @@ describe('WorkspaceService', () => {
             workspaceRepository.updateSlugInTx.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspaceSlug(
+                snapshot,
                 'workspace-1',
-                'user-1',
-                'new-slug',
-                context
+                'new-slug'
             );
 
             expect(result).toBe(workspace);
@@ -620,13 +607,13 @@ describe('WorkspaceService', () => {
                 'new-slug'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                snapshot,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     workspaceId: 'workspace-1',
-                },
-                context
+                }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });

@@ -6,13 +6,18 @@ import { UserMobileNumberService } from '@modules/user/services/user.mobile-numb
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDeleteMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
 
-    const context = buildRequestContext('user-swift');
+    const context = buildRequestContextUser(
+        buildUser('user-swift', 'user-swift@example.com')
+    );
 
     let useCase: UserDeleteMobileNumberUseCase;
 
@@ -68,17 +73,17 @@ describe('UserDeleteMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('deletes the mobile number, passes the context, and wraps it in a response envelope', async () => {
+        it('deletes the mobile number, passes the snapshot, and wraps it in a response envelope', async () => {
             userMobileNumberService.deleteMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
             await expect(
-                useCase.execute('user-swift', mobileNumber.id, context)
+                useCase.execute(context, mobileNumber.id)
             ).resolves.toEqual({ data: mobileNumber });
             expect(
                 userMobileNumberService.deleteMobileNumber
-            ).toHaveBeenCalledWith('user-swift', mobileNumber.id, context);
+            ).toHaveBeenCalledWith(context.snapshot, mobileNumber.id);
         });
     });
 });

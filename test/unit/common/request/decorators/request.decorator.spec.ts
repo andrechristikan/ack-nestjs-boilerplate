@@ -7,15 +7,17 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
     RequestCustomTimeoutMetaKey,
     RequestCustomTimeoutValueMetaKey,
-    RequestActorStoreKey,
     RequestEnvMetaKey,
     RequestLanguageStoreKey,
     RequestLogStoreKey,
+    RequestProjectMemberStoreKey,
+    RequestProjectStoreKey,
     RequestThrottleOptionsMetaKey,
+    RequestUserStoreKey,
+    RequestWorkspaceMemberStoreKey,
     RequestWorkspaceStoreKey,
 } from '@common/request/constants/request.constant';
 import {
-    RequestContextCurrent,
     RequestEnvProtected,
     RequestGeoLocation,
     RequestIPAddress,
@@ -26,18 +28,25 @@ import {
 } from '@common/request/decorators/request.decorator';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
 import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
-import type {
-    IRequestContext,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { EnumRequestContextScope } from '@common/request/enums/request.enum';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import type {
     GeoLocation,
+    Project,
+    ProjectMember,
     UserAgent,
     Workspace,
+    WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
+import {
+    buildContextFactory,
+    getParamDecoratorFactory,
+} from '@test/unit/helpers/test.unit.decorator.helper';
 import {
     expectRequestContextMissing,
+    expectRequestContextMissingWithKey,
     stubRequestStore,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
@@ -420,66 +429,222 @@ describe('request.decorator', () => {
     });
 
     describe('RequestContextCurrent', () => {
-        const target = {} as Type<unknown>;
-        RequestContextCurrent()(target, 'context', 0);
-        const factory = getParamDecoratorFactory(target, 'context');
         const requestLog: IRequestLog = {
             userAgent: defaultUserAgent,
             ipAddress: '127.0.0.1',
             geoLocation: defaultGeoLocation,
         };
-        const workspace: Workspace = {
-            id: 'workspace-1',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            deletedAt: null,
-            deletedBy: null,
-            name: 'Acme',
-            slug: 'acme-team',
-            description: null,
-            isPublic: false,
+        const user = { id: 'user-1' } as IUser;
+        const workspace = { id: 'workspace-1' } as Workspace;
+        const workspaceMember = { id: 'member-1' } as WorkspaceMember;
+        const project = { id: 'project-1' } as Project;
+        const projectMember = { id: 'project-member-1' } as ProjectMember;
+        const session = {
+            sessionId: 'session-1',
+            deviceOwnershipId: 'device-1',
+        };
+        const fullStore = {
+            [RequestLogStoreKey]: requestLog,
+            [RequestUserStoreKey]: user,
+            [RequestWorkspaceStoreKey]: workspace,
+            [RequestWorkspaceMemberStoreKey]: workspaceMember,
+            [RequestProjectStoreKey]: project,
+            [RequestProjectMemberStoreKey]: projectMember,
         };
 
-        it('returns the actor, the workspace id, and the request log', () => {
-            stubRequestStore(clsService, {
-                [RequestActorStoreKey]: 'user-1',
-                [RequestWorkspaceStoreKey]: workspace,
-                [RequestLogStoreKey]: requestLog,
+        const factories: Record<
+            EnumRequestContextScope,
+            (data: unknown, ctx?: ExecutionContext) => unknown
+        > = {
+            public: buildContextFactory(EnumRequestContextScope.public),
+            user: buildContextFactory(EnumRequestContextScope.user),
+            workspace: buildContextFactory(EnumRequestContextScope.workspace),
+            project: buildContextFactory(EnumRequestContextScope.project),
+            projectMember: buildContextFactory(
+                EnumRequestContextScope.projectMember
+            ),
+        };
+        const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
+            mock<HttpArgumentsHost>();
+
+        beforeEach(() => {
+            executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
+            httpArgumentsHost.getRequest.mockReturnValue({ user: session });
+        });
+
+        it('returns the log, user, session, workspace, member, and snapshot for the workspace scope', () => {
+            stubRequestStore(clsService, fullStore);
+
+            expect(
+                factories.workspace(
+                    EnumRequestContextScope.workspace,
+                    executionContext
+                )
+            ).toEqual({
+                requestLog,
+                user,
+                session,
+                workspace,
+                workspaceMember,
+                snapshot: {
+                    actorUserId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    requestLog,
+                },
             });
-
-            const expected: IRequestContext = {
-                actorUserId: 'user-1',
-                workspaceId: 'workspace-1',
-                requestLog,
-            };
-            expect(factory(undefined, executionContext)).toEqual(expected);
         });
 
-        it('returns null for the actor and the workspace when the store holds none', () => {
-            stubRequestStore(clsService, { [RequestLogStoreKey]: requestLog });
+        it('returns a null-actor, null-workspace snapshot for the public scope', () => {
+            stubRequestStore(clsService, fullStore);
 
-            const expected: IRequestContext = {
-                actorUserId: null,
-                workspaceId: null,
+            expect(
+                factories.public(
+                    EnumRequestContextScope.public,
+                    executionContext
+                )
+            ).toEqual({
                 requestLog,
-            };
-            expect(factory(undefined, executionContext)).toEqual(expected);
+                snapshot: {
+                    actorUserId: null,
+                    workspaceId: null,
+                    requestLog,
+                },
+            });
         });
 
-        it('throws RequestContextMissingException when the request-log store is empty', () => {
-            stubRequestStore(clsService, { [RequestActorStoreKey]: 'user-1' });
+        it('returns the user and a null-workspace snapshot for the user scope', () => {
+            stubRequestStore(clsService, fullStore);
+
+            expect(
+                factories.user(EnumRequestContextScope.user, executionContext)
+            ).toEqual({
+                requestLog,
+                user,
+                session,
+                snapshot: {
+                    actorUserId: 'user-1',
+                    workspaceId: null,
+                    requestLog,
+                },
+            });
+        });
+
+        it('adds the project for the project scope', () => {
+            stubRequestStore(clsService, fullStore);
+
+            expect(
+                factories.project(
+                    EnumRequestContextScope.project,
+                    executionContext
+                )
+            ).toEqual({
+                requestLog,
+                user,
+                session,
+                workspace,
+                workspaceMember,
+                project,
+                snapshot: {
+                    actorUserId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    requestLog,
+                },
+            });
+        });
+
+        it('adds the project member for the projectMember scope', () => {
+            stubRequestStore(clsService, fullStore);
+
+            expect(
+                factories.projectMember(
+                    EnumRequestContextScope.projectMember,
+                    executionContext
+                )
+            ).toEqual({
+                requestLog,
+                user,
+                session,
+                workspace,
+                workspaceMember,
+                project,
+                projectMember,
+                snapshot: {
+                    actorUserId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    requestLog,
+                },
+            });
+        });
+
+        it.each([
+            [EnumRequestContextScope.public, RequestLogStoreKey],
+            [EnumRequestContextScope.user, RequestUserStoreKey],
+            [EnumRequestContextScope.workspace, RequestWorkspaceStoreKey],
+            [EnumRequestContextScope.workspace, RequestWorkspaceMemberStoreKey],
+            [EnumRequestContextScope.project, RequestProjectStoreKey],
+            [
+                EnumRequestContextScope.projectMember,
+                RequestProjectMemberStoreKey,
+            ],
+        ])(
+            'throws RequestContextMissingException naming the key for the %s scope without %s',
+            (scope, missingKey) => {
+                stubRequestStore(clsService, {
+                    ...fullStore,
+                    [missingKey]: null,
+                });
+
+                let thrown: unknown;
+                try {
+                    factories[scope](scope, executionContext);
+                } catch (error) {
+                    thrown = error;
+                }
+
+                expectRequestContextMissingWithKey(thrown, missingKey);
+            }
+        );
+
+        it('throws RequestContextMissingException naming request.user when it is null', () => {
+            stubRequestStore(clsService, fullStore);
+
+            httpArgumentsHost.getRequest.mockReturnValue({ user: null });
 
             let thrown: unknown;
             try {
-                factory(undefined, executionContext);
+                factories.user(EnumRequestContextScope.user, executionContext);
             } catch (error) {
                 thrown = error;
             }
 
-            expectRequestContextMissing(thrown);
+            expectRequestContextMissingWithKey(thrown, 'request.user');
         });
+
+        it.each(['sessionId', 'deviceOwnershipId'])(
+            'throws RequestContextMissingException naming request.user.%s when it is missing',
+            field => {
+                stubRequestStore(clsService, fullStore);
+
+                httpArgumentsHost.getRequest.mockReturnValue({
+                    user: { ...session, [field]: undefined },
+                });
+
+                let thrown: unknown;
+                try {
+                    factories.user(
+                        EnumRequestContextScope.user,
+                        executionContext
+                    );
+                } catch (error) {
+                    thrown = error;
+                }
+
+                expectRequestContextMissingWithKey(
+                    thrown,
+                    `request.user.${field}`
+                );
+            }
+        );
     });
 
     describe('RequestLanguageCurrent', () => {

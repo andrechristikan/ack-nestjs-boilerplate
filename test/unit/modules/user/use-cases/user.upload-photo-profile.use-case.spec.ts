@@ -5,12 +5,17 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserUploadPhotoProfileUseCase } from '@modules/user/use-cases/user.upload-photo-profile.use-case';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUploadPhotoProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContext('user-sable');
+    const context = buildRequestContextUser(
+        buildUser('user-sable', 'user-sable@example.com')
+    );
 
     let useCase: UserUploadPhotoProfileUseCase;
 
@@ -27,19 +32,18 @@ describe('UserUploadPhotoProfileUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the file and the context to the domain', async () => {
+        it('delegates the file and the snapshot to the domain', async () => {
             const file = {
                 originalname: 'photo.png',
                 size: 2048,
                 buffer: Buffer.from('binary-data'),
             } as IFile;
 
-            await useCase.execute('user-sable', file, context);
+            await useCase.execute(context, file);
 
             expect(userProfileService.uploadPhotoProfile).toHaveBeenCalledWith(
-                'user-sable',
-                file,
-                context
+                context.snapshot,
+                file
             );
         });
     });

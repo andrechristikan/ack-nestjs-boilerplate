@@ -5,7 +5,10 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type {
+    IRequestContextSnapshot,
+    IRequestContextUser,
+} from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -30,7 +33,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserCreateByAdminUseCase implements IAppUseCase<
-    [UserCreateRequestDto, IUser, IRequestContext],
+    [IRequestContextUser, UserCreateRequestDto],
     IResponseReturn<DatabaseIdResponseDto>
 > {
     private readonly createTimeoutInMs: number;
@@ -57,10 +60,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     }
 
     private async createAdminUsers(
+        snapshot: IRequestContextSnapshot,
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
-        timeoutInMs: number,
-        context: IRequestContext
+        timeoutInMs: number
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -97,8 +100,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
                             return stages.map(stage =>
                                 this.activityLogService.recordEffect(
-                                    stage,
-                                    context
+                                    snapshot,
+                                    stage
                                 )
                             );
                         });
@@ -133,10 +136,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     }
 
     async execute(
-        { countryId, email, name, roleId, username }: UserCreateRequestDto,
-        actor: IUser,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { countryId, email, name, roleId, username }: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+        const actor = context.user;
         // Sequential by design: gate before the work it guards
         const role = await this.roleService.getById(roleId);
         this.roleService.assertActorOutranks(actor.role.type, role.type);
@@ -177,10 +180,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         }
 
         const users = await this.createAdminUsers(
+            context.snapshot,
             [input],
             effects,
-            this.createTimeoutInMs,
-            context
+            this.createTimeoutInMs
         );
         const created = users[0]!;
 

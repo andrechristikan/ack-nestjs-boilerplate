@@ -1,6 +1,5 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextProject } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -11,7 +10,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectAssignMemberUseCase implements IAppUseCase<
-    [Project, WorkspaceMember, ProjectMemberAssignRequestDto, IRequestContext],
+    [IRequestContextProject, ProjectMemberAssignRequestDto],
     IResponseReturn<IProjectMember>
 > {
     constructor(
@@ -21,23 +20,21 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        project: Project,
-        actorMember: WorkspaceMember,
-        { userId, role }: ProjectMemberAssignRequestDto,
-        context: IRequestContext
+        context: IRequestContextProject,
+        { userId, role }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        const actor = this.projectUtil.mapMemberActor(actorMember);
+        const actor = this.projectUtil.mapMemberActor(context.workspaceMember);
         const targetMember =
             await this.workspaceMemberService.getOneByWorkspaceAndUser(
-                project.workspaceId,
+                context.project.workspaceId,
                 userId
             );
         const member = await this.projectMemberService.assignMember(
-            project,
+            context.snapshot,
+            context.project,
             actor,
             targetMember,
-            role,
-            context
+            role
         );
 
         return { data: member };

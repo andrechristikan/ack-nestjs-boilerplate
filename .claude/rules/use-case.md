@@ -19,7 +19,7 @@ A use case holds the business logic of one user- or job-facing action: it assemb
 - Composes in sequence:
     1. a cross-module gate (`RoleService.assertActorOutranks`);
     2. the subject service, or the cross-module write transaction it owns, its side effects and activity entries added inside it (`outbox.md`, `activity-log.md`).
-- Takes `IRequestContext` from its controller or job payload and forwards it to each service that needs it (`security.md`).
+- A use case taking the request takes its controller's scoped context first, `execute(context, ...rest)`; from the `user` scope up it reads the actor as `context.user.id` and the session from `context.session`; it passes `context.snapshot` to each service, `recordEffect`, and job payload; it takes no actor id beside the context (`security.md`). A job use case reads the snapshot its payload carries.
 - Injects no repository and writes no module's operation (`service.md`).
 - Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the second and third:
     - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`database.md`, Transactions);

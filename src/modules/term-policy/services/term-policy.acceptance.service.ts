@@ -6,7 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -127,10 +127,10 @@ export class TermPolicyAcceptanceService {
     }
 
     async userAccept(
-        userId: string,
-        type: EnumTermPolicyType,
-        context: IRequestContext
+        snapshot: IRequestContextUserSnapshot,
+        type: EnumTermPolicyType
     ): Promise<void> {
+        const userId = snapshot.actorUserId;
         try {
             await this.outboxService.withTransaction(async tx => {
                 const [latest] =
@@ -163,10 +163,9 @@ export class TermPolicyAcceptanceService {
                 );
                 await this.outboxService.addInTx(tx, effect);
 
-                const entry = this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userAcceptTermPolicy },
-                    context
-                );
+                const entry = this.activityLogService.recordEffect(snapshot, {
+                    action: EnumActivityLogAction.userAcceptTermPolicy,
+                });
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

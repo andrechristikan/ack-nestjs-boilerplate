@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
@@ -10,7 +10,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
-    [string, WorkspaceJoinRequestCreateRequestDto, IRequestContext],
+    [IRequestContextUser, WorkspaceJoinRequestCreateRequestDto],
     IResponseReturn<WorkspaceJoinRequest>
 > {
     constructor(
@@ -20,30 +20,28 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
         const workspace =
             await this.workspaceJoinRequestService.getJoinableWorkspace(
-                userId,
+                context.user.id,
                 workspaceId
             );
 
         const [requester, reviewerIds] = await Promise.all([
-            this.userService.getNameById(userId),
+            this.userService.getNameById(context.user.id),
             this.workspaceMemberService.getReviewerUserIds(workspace.id),
         ]);
         const requesterName =
             this.workspaceJoinRequestService.resolveRequesterName(requester);
         const joinRequest =
             await this.workspaceJoinRequestService.createJoinRequest(
-                userId,
+                context.snapshot,
                 { workspaceId, message: message ?? null },
-                { workspaceName: workspace.name, requesterName, reviewerIds },
-                context
+                { workspaceName: workspace.name, requesterName, reviewerIds }
             );
 
         return { data: joinRequest };

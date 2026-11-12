@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
-    IRequestContext,
+    IRequestContextSnapshot,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -87,7 +87,7 @@ describe('ActivityLogService', () => {
     });
 
     describe('recordEffect', () => {
-        const context: IRequestContext = {
+        const context: IRequestContextSnapshot = {
             actorUserId: 'actor-1',
             workspaceId: 'workspace-1',
             requestLog,
@@ -103,13 +103,10 @@ describe('ActivityLogService', () => {
         });
 
         it('returns the createMany effect holding one row built from the input and the context', () => {
-            const result = service.recordEffect(
-                {
-                    action: EnumActivityLogAction.userUpdateProfile,
-                    metadata: {},
-                },
-                context
-            );
+            const result = service.recordEffect(context, {
+                action: EnumActivityLogAction.userUpdateProfile,
+                metadata: {},
+            });
 
             expect(result).toEqual({
                 queue: EnumActivityLogQueue.activityLog,
@@ -138,14 +135,11 @@ describe('ActivityLogService', () => {
         });
 
         it('keeps the input user and createdBy for a target action', () => {
-            const result = service.recordEffect(
-                {
-                    action: EnumActivityLogAction.userLoginCredential,
-                    userId: 'user-1',
-                    createdBy: 'creator-1',
-                },
-                context
-            );
+            const result = service.recordEffect(context, {
+                action: EnumActivityLogAction.userLoginCredential,
+                userId: 'user-1',
+                createdBy: 'creator-1',
+            });
 
             expect(result.data).toMatchObject({
                 rows: [{ userId: 'user-1', createdBy: 'creator-1' }],
@@ -155,10 +149,9 @@ describe('ActivityLogService', () => {
         it('throws when the action carries no contract', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(
-                    { action: 'notAnAction' as EnumActivityLogAction },
-                    context
-                );
+                service.recordEffect(context, {
+                    action: 'notAnAction' as EnumActivityLogAction,
+                });
             } catch (error) {
                 thrown = error;
             }
@@ -169,13 +162,10 @@ describe('ActivityLogService', () => {
         it('throws when a target action omits its user field', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userLoginCredential,
-                        createdBy: 'creator-1',
-                    },
-                    context
-                );
+                service.recordEffect(context, {
+                    action: EnumActivityLogAction.userLoginCredential,
+                    createdBy: 'creator-1',
+                });
             } catch (error) {
                 thrown = error;
             }
@@ -186,14 +176,11 @@ describe('ActivityLogService', () => {
         it('throws when a workspace target action omits its workspaceId', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(
-                    {
-                        action: EnumActivityLogAction.workspaceCreated,
-                        userId: 'user-1',
-                        createdBy: 'creator-1',
-                    },
-                    context
-                );
+                service.recordEffect(context, {
+                    action: EnumActivityLogAction.workspaceCreated,
+                    userId: 'user-1',
+                    createdBy: 'creator-1',
+                });
             } catch (error) {
                 thrown = error;
             }
@@ -205,8 +192,8 @@ describe('ActivityLogService', () => {
             let thrown: unknown;
             try {
                 service.recordEffect(
-                    { action: EnumActivityLogAction.userUpdateProfile },
-                    { ...context, actorUserId: null }
+                    { ...context, actorUserId: null },
+                    { action: EnumActivityLogAction.userUpdateProfile }
                 );
             } catch (error) {
                 thrown = error;
@@ -218,13 +205,10 @@ describe('ActivityLogService', () => {
         it('throws with the zod error as the raw error when metadata breaks the contract', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userUpdateProfile,
-                        metadata: { unexpected: 'value' },
-                    },
-                    context
-                );
+                service.recordEffect(context, {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                    metadata: { unexpected: 'value' },
+                });
             } catch (error) {
                 thrown = error;
             }

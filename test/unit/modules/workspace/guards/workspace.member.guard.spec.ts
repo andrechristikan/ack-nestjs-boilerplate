@@ -18,11 +18,14 @@ import {
     EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import { RequestWorkspaceStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestUserStoreKey,
+    RequestWorkspaceMemberStoreKey,
+    RequestWorkspaceStoreKey,
+} from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
+
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -132,7 +135,7 @@ describe('WorkspaceMemberGuard', () => {
             requestStoreService.get.mockImplementation(
                 (key: string): unknown => {
                     if (key === RequestWorkspaceStoreKey) return workspace;
-                    if (key === UserStoreKey) return user;
+                    if (key === RequestUserStoreKey) return user;
                     return null;
                 }
             );
@@ -147,7 +150,7 @@ describe('WorkspaceMemberGuard', () => {
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                WorkspaceMemberStoreKey,
+                RequestWorkspaceMemberStoreKey,
                 member
             );
         });
@@ -180,7 +183,7 @@ describe('WorkspaceMemberGuard', () => {
         it('throws WorkspaceGuardMissingException before the domain call when the workspace store is empty', async () => {
             requestStoreService.get.mockImplementation(
                 (key: string): unknown => {
-                    if (key === UserStoreKey) return user;
+                    if (key === RequestUserStoreKey) return user;
                     return null;
                 }
             );

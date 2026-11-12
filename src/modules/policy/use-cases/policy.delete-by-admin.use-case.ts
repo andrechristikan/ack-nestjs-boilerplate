@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -11,13 +11,12 @@ import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-f
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class PolicyDeleteByAdminUseCase implements IAppUseCase<
-    [string, string, IUser, IRequestContext],
+    [IRequestContextUser, string, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -30,15 +29,14 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
+        context: IRequestContextUser,
         roleId: string,
-        id: string,
-        user: IUser,
-        context: IRequestContext
+        id: string
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
         await this.roleService.assertWritableByActor(roleId, {
-            roleId: user.roleId,
-            roleType: user.role.type,
+            roleId: context.user.roleId,
+            roleType: context.user.role.type,
         });
 
         try {
@@ -52,11 +50,11 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                 const metadata =
                     this.policyUtil.mapActivityLogMetadata(deleted);
                 const effect = this.activityLogService.recordEffect(
+                    context.snapshot,
                     {
                         action: EnumActivityLogAction.adminPolicyDelete,
                         metadata,
-                    },
-                    context
+                    }
                 );
                 await this.outboxService.addInTx(tx, effect);
             });

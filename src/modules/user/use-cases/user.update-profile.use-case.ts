@@ -1,4 +1,4 @@
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -11,7 +11,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserUpdateProfileUseCase implements IAppUseCase<
-    [string, UserUpdateProfileRequestDto, IRequestContext],
+    [IRequestContextUser, UserUpdateProfileRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -22,22 +22,27 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        userId: string,
-        { countryId, gender, name }: UserUpdateProfileRequestDto,
-        context: IRequestContext
+        context: IRequestContextUser,
+        { countryId, gender, name }: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
         await this.countryService.getOne(countryId);
 
         await this.outboxService.withTransaction(async tx => {
-            await this.userProfileService.updateProfileInTx(tx, userId, {
-                countryId,
-                gender,
-                name,
-            });
+            await this.userProfileService.updateProfileInTx(
+                tx,
+                context.user.id,
+                {
+                    countryId,
+                    gender,
+                    name,
+                }
+            );
             const entry = this.activityLogService.recordEffect(
-                { action: EnumActivityLogAction.userUpdateProfile },
-                context
+                context.snapshot,
+                {
+                    action: EnumActivityLogAction.userUpdateProfile,
+                }
             );
             await this.outboxService.addInTx(tx, entry);
         });

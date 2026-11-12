@@ -282,7 +282,7 @@ describe('UserPasswordService', () => {
             const passwordless: IUser = { ...baseUser, password: null };
 
             await expect(
-                service.countPasswordAttempt(passwordless, context)
+                service.countPasswordAttempt(context, passwordless)
             ).resolves.toBeNull();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -292,7 +292,7 @@ describe('UserPasswordService', () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
 
             await expect(
-                service.countPasswordAttempt(baseUser, context)
+                service.countPasswordAttempt(context, baseUser)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
@@ -354,7 +354,7 @@ describe('UserPasswordService', () => {
             const untracked = module.get(UserPasswordService);
 
             await expect(
-                untracked.countPasswordAttempt(baseUser, context)
+                untracked.countPasswordAttempt(context, baseUser)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
@@ -374,7 +374,7 @@ describe('UserPasswordService', () => {
             );
 
             await expect(
-                service.countPasswordAttempt(baseUser, context)
+                service.countPasswordAttempt(context, baseUser)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
@@ -390,7 +390,7 @@ describe('UserPasswordService', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                service.countPasswordAttempt(baseUser, context)
+                service.countPasswordAttempt(context, baseUser)
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
@@ -401,7 +401,7 @@ describe('UserPasswordService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.countPasswordAttempt(baseUser, context)
+                service.countPasswordAttempt(context, baseUser)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -421,14 +421,15 @@ describe('UserPasswordService', () => {
                 false
             );
             userTwoFactorService.lockoutEffect.mockReturnValue(lockoutEffect);
-            activityLogService.recordEffect.mockImplementation(input =>
-                input.action === EnumActivityLogAction.userRevokeAllSessions
-                    ? revokeAllEntry
-                    : reachMaxEntry
+            activityLogService.recordEffect.mockImplementation(
+                (_context, input) =>
+                    input.action === EnumActivityLogAction.userRevokeAllSessions
+                        ? revokeAllEntry
+                        : reachMaxEntry
             );
 
             await expect(
-                service.countPasswordAttempt(baseUser, context)
+                service.countPasswordAttempt(context, baseUser)
             ).resolves.toEqual({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
@@ -443,21 +444,21 @@ describe('UserPasswordService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
+                context,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessions,
                     userId: 'user-hollow',
                     createdBy: 'user-hollow',
-                },
-                context
+                }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
+                context,
                 {
                     action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                     userId: 'user-hollow',
                     createdBy: 'user-hollow',
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -621,10 +622,10 @@ describe('UserPasswordService', () => {
 
         it('replaces the unused requests and adds the forgotPassword effect and entry on one transaction', async () => {
             await service.createForgotPassword(
+                context,
                 'user-hollow',
                 'hollow@example.com',
-                forgot,
-                context
+                forgot
             );
 
             expect(
@@ -647,12 +648,12 @@ describe('UserPasswordService', () => {
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                context,
                 {
                     action: EnumActivityLogAction.userForgotPassword,
                     userId: 'user-hollow',
                     createdBy: 'user-hollow',
-                },
-                context
+                }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 forgotEntry,
@@ -671,10 +672,10 @@ describe('UserPasswordService', () => {
 
             await expect(
                 service.createForgotPassword(
+                    context,
                     'user-hollow',
                     'hollow@example.com',
-                    forgot,
-                    context
+                    forgot
                 )
             ).rejects.toBe(cause);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();

@@ -4,7 +4,6 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
-    Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
@@ -110,16 +109,6 @@ export interface IWorkspaceJoinRequestCreateData {
     expiredAt: Date;
     nonce: string;
 }
-
-export type IWorkspaceField = Extract<keyof Workspace, string>;
-
-export type IWorkspaceFieldValue = NonNullable<Workspace[IWorkspaceField]>;
-
-export type IWorkspaceMemberField = Extract<keyof WorkspaceMember, string>;
-
-export type IWorkspaceMemberFieldValue = NonNullable<
-    WorkspaceMember[IWorkspaceMemberField]
->;
 
 export type IWorkspaceActiveFilter = NonNullable<
     Prisma.WorkspaceWhereInput['OR']

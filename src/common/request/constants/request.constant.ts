@@ -63,3 +63,15 @@ export const RequestWorkspaceIdStoreKey = 'RequestWorkspaceIdStoreKey';
 
 /** @public */
 export const RequestWorkspaceStoreKey = 'RequestWorkspaceStoreKey';
+
+/** @public */
+export const RequestUserStoreKey = 'RequestUserStoreKey';
+
+/** @public */
+export const RequestWorkspaceMemberStoreKey = 'RequestWorkspaceMemberStoreKey';
+
+/** @public */
+export const RequestProjectStoreKey = 'RequestProjectStoreKey';
+
+/** @public */
+export const RequestProjectMemberStoreKey = 'RequestProjectMemberStoreKey';

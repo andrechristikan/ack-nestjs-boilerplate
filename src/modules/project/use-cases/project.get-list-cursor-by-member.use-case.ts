@@ -1,9 +1,10 @@
+import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableSearch,
@@ -16,7 +17,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
-    [string, WorkspaceMember, ProjectUserListRequestDto],
+    [IRequestContextWorkspace, ProjectUserListRequestDto],
     IResponsePaginationReturn<Project>
 > {
     constructor(
@@ -26,8 +27,7 @@ export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        workspaceId: string,
-        workspaceMember: WorkspaceMember,
+        context: IRequestContextWorkspace,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } =
@@ -40,8 +40,8 @@ export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.projectService.getListCursorByMember(
-                workspaceId,
-                workspaceMember,
+                context.workspace.id,
+                context.workspaceMember,
                 params
             );
 

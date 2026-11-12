@@ -51,7 +51,10 @@ import {
     EnumUserSignUpWorkspaceContextType,
 } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContextUser,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 describe('UserService', () => {
@@ -1390,9 +1393,11 @@ describe('UserService', () => {
                     name: null,
                 },
             ];
-            const context = buildRequestContext('admin-bramble');
+            const context = buildRequestContextUser(
+                buildUser('admin-bramble', 'admin@example.com')
+            ).snapshot;
 
-            const effect = service.importByAdminEffect(rows, context);
+            const effect = service.importByAdminEffect(context, rows);
 
             expect(effect).toEqual({
                 queue: EnumUserQueue.user,

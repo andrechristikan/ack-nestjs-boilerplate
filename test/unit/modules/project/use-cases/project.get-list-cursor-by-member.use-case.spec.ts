@@ -21,6 +21,11 @@ import {
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGetListCursorByMemberUseCase } from '@modules/project/use-cases/project.get-list-cursor-by-member.use-case';
+import {
+    buildRequestContextWorkspace,
+    buildUser,
+    buildWorkspace,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectGetListCursorByMemberUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
@@ -67,6 +72,12 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
         updatedBy: null,
     };
 
+    const context = buildRequestContextWorkspace(
+        buildUser(workspaceMember.userId, 'jane@example.com'),
+        { ...buildWorkspace(), id: '507f1f77bcf86cd799439012' },
+        workspaceMember
+    );
+
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -97,11 +108,7 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
             };
             projectService.getListCursorByMember.mockResolvedValue(page);
 
-            const result = await useCase.execute(
-                '507f1f77bcf86cd799439012',
-                workspaceMember,
-                query
-            );
+            const result = await useCase.execute(context, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

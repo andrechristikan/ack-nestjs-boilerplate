@@ -1,3 +1,4 @@
+import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
@@ -7,20 +8,23 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserGeneratePhotoProfilePresignUseCase implements IAppUseCase<
-    [string, UserGeneratePhotoProfileRequestDto],
+    [IRequestContextUser, UserGeneratePhotoProfileRequestDto],
     IResponseReturn<IAwsS3Presign>
 > {
     constructor(private readonly userProfileService: UserProfileService) {}
 
     async execute(
-        userId: string,
+        context: IRequestContextUser,
         { extension, size }: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
         const presign =
-            await this.userProfileService.generatePhotoProfilePresign(userId, {
-                extension,
-                size,
-            });
+            await this.userProfileService.generatePhotoProfilePresign(
+                context.user.id,
+                {
+                    extension,
+                    size,
+                }
+            );
 
         return { data: presign };
     }

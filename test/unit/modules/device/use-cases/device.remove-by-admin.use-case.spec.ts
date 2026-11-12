@@ -8,7 +8,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
@@ -20,22 +20,6 @@ import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.rem
 describe('DeviceRemoveByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const context: IRequestContext = {
-        actorUserId: 'admin-1',
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
-        },
-    };
     const admin: IUser = {
         id: 'admin-1',
         name: 'Admin One',
@@ -81,6 +65,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
         },
         twoFactor: null,
     };
+    const context = buildRequestContextUser(admin);
     const userRole: IRole = {
         id: 'role-user',
         name: 'user',
@@ -109,10 +94,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
             sessionService.removeDeviceOwnershipByAdmin.mockResolvedValue();
 
             const result = await useCase.execute(
+                context,
                 'user-1',
-                'device-ownership-1',
-                admin,
-                context
+                'device-ownership-1'
             );
 
             expect(result).toEqual({});
@@ -124,10 +108,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
             expect(
                 sessionService.removeDeviceOwnershipByAdmin
             ).toHaveBeenCalledWith(
+                context.snapshot,
                 'user-1',
-                'device-ownership-1',
-                'admin-1',
-                context
+                'device-ownership-1'
             );
         });
 
@@ -139,7 +122,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin, context)
+                useCase.execute(context, 'user-1', 'device-ownership-1')
             ).rejects.toBe(notFound);
         });
 
@@ -154,7 +137,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute('user-1', 'device-ownership-1', admin, context)
+                useCase.execute(context, 'user-1', 'device-ownership-1')
             ).rejects.toBe(rankForbidden);
             expect(
                 sessionService.removeDeviceOwnershipByAdmin
