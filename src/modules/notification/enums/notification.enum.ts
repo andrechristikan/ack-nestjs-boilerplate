@@ -7,41 +7,23 @@ export enum EnumNotificationQueue {
 
 /** @public */
 export enum EnumNotificationProcess {
-    welcomeByAdmin = 'welcomeByAdmin',
-    welcome = 'welcome',
-    welcomeSocial = 'welcomeSocial',
-    temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
-    changePassword = 'changePassword',
-    verifiedEmail = 'verifiedEmail',
-    verifiedMobileNumber = 'verifiedMobileNumber',
-    verificationEmail = 'verificationEmail',
-    forgotPassword = 'forgotPassword',
-    resetPassword = 'resetPassword',
-    newDeviceLogin = 'newDeviceLogin',
-    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    notify = 'notify',
     publishTermPolicy = 'publishTermPolicy',
     resendPublishTermPolicy = 'resendPublishTermPolicy',
-    userAcceptTermPolicy = 'userAcceptTermPolicy',
-    workspaceInvite = 'workspaceInvite',
-    workspaceInviteUnregistered = 'workspaceInviteUnregistered',
-    workspaceJoinRequest = 'workspaceJoinRequest',
-    workspaceJoinAccepted = 'workspaceJoinAccepted',
-    workspaceJoinRejected = 'workspaceJoinRejected',
+}
+
+/** @public */
+export enum EnumNotificationEmailProcess {
+    send = 'send',
+    sendUnregistered = 'sendUnregistered',
+    publishTermPolicy = 'publishTermPolicy',
 }
 
 /** @public */
 export enum EnumNotificationPushProcess {
+    send = 'send',
     cleanupTokens = 'cleanupTokens',
     cleanupStaleTokens = 'cleanupStaleTokens',
-    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
-    temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
-    forgotPassword = 'forgotPassword',
-    resetPassword = 'resetPassword',
-    newDeviceLogin = 'newDeviceLogin',
-    workspaceInvite = 'workspaceInvite',
-    workspaceJoinRequest = 'workspaceJoinRequest',
-    workspaceJoinAccepted = 'workspaceJoinAccepted',
-    workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
 /** @public */
@@ -68,13 +50,18 @@ export enum EnumNotificationKind {
 
 /** @public */
 export enum EnumNotificationStep {
-    createNotification = 'createNotification',
     sendEmail = 'sendEmail',
-    sendWelcomeEmail = 'sendWelcomeEmail',
-    sendVerificationEmail = 'sendVerificationEmail',
     sendPush = 'sendPush',
     updateProcessAt = 'updateProcessAt',
     sendMulticast = 'sendMulticast',
-    cleanupTokens = 'cleanupTokens',
     updateSentAt = 'updateSentAt',
+}
+
+/** @public */
+export enum EnumNotificationKeyPattern {
+    userPattern = 'userPattern',
+    referencePattern = 'referencePattern',
+    joinRequestPattern = 'joinRequestPattern',
+    userTermPolicyPattern = 'userTermPolicyPattern',
+    termPolicyPublishPattern = 'termPolicyPublishPattern',
 }

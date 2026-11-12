@@ -62,10 +62,11 @@ Each command runs in a fresh session, so it starts from the files the previous o
 `/ack-plan .scratch/<feature>/spec.md` runs in the session.
 
 1. It breaks the spec into tickets, one file each, with the tickets that block it, its seam, its first failing spec, and its acceptance criteria.
-2. It sets the model and effort each ticket is built and reviewed at.
+2. It sets the level of each ticket: the effort it is built at and the model and effort it is reviewed at.
 3. It writes `plan.md`, the index a person reads: ticket order, levels, status, evidence.
-4. A fresh `reviewer` reads the tickets cold and reports every guess a builder would have to make. The tickets are fixed until a fresh reviewer has no question, three rounds at most.
-5. The owner approves the plan.
+4. A fresh `reviewer` reads the tickets cold and reports every guess a builder would have to make. A read with no question and no mismatch ends the step.
+5. The session fixes the tickets and a second fresh `reviewer` reads them. When it still has a question or a mismatch, `advisor` makes the third and last attempt and edits the files itself.
+6. The owner approves the plan.
 
 ### Build
 
@@ -96,6 +97,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | --- | --- | --- | --- |
 | `coder` | builds one ticket or one pinned fix, test-first | `src/`, `test/unit/`, `prisma/schema.prisma`, the run surface | sonnet, medium |
 | `reviewer` | cold-reads a plan, judges a feature, a fix, or the harness | nothing | sonnet, high |
+| `advisor` | settles what two cold reads of a plan left open | the spec, the plan, and the tickets under `.scratch/` | fable, medium |
 | `debugger` | reproduces a symptom and finds its root cause | nothing | opus, high |
 | `tester` | covers existing code with unit specs | `test/unit/` | sonnet, high |
 | `writer` | docs, root people files, pull request text | `docs/`, `generated/docs/` | sonnet, medium |
@@ -121,9 +123,10 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 ## Model and Effort
 
-- `/ack-plan` picks a level per ticket: a ticket inside one module runs at sonnet, a ticket that crosses modules or touches the schema, a transaction, concurrency, or security runs at opus, high.
+- `coder` builds every ticket on sonnet. `/ack-plan` picks its effort per ticket: high for a ticket that touches the schema, a transaction, concurrency, or security, medium for any other.
+- `/ack-plan` picks the `reviewer` level per ticket: opus, high for a ticket that crosses modules or touches the schema, a transaction, concurrency, or security, sonnet, high for any other.
 - TypeSafe's Jev can pick the level instead. It is optional: set `TYPESAFE_API_KEY` in the `env` of `.claude/settings.local.json`, and unset it or set `JEV_ROUTER_DISABLED=1` to turn it off.
-- No agent runs below the `model` and `effort` in its own file, or above the ceiling in `.claude/hooks/jev.json` (`max`: opus, high).
+- No agent runs below the `model` and `effort` in its own file. `reviewer` rises to the ceiling in `.claude/hooks/jev.json` at most (`max`: opus, high).
 
 ## Rules and Hooks
 
@@ -193,6 +196,8 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 | `/ack-plan` | a spec that adds a status code | the ticket names the status-code procedure |
 | `/ack-plan` | a spec with an unnamed message key | the cold read asks for it, the ticket is fixed, a fresh reviewer reads again |
 | `/ack-plan` | no `TYPESAFE_API_KEY` | levels come from the table, and `plan.md` says so |
+| `/ack-plan` | a first cold read with no question and no mismatch | no second `reviewer` runs |
+| `/ack-plan` | a ticket two readers still question | `advisor` edits the tickets and no reader runs after it |
 | `/ack-build` | a plan that is not approved | stops and names `/ack-plan` |
 | `/ack-build` | one ticket | the hand-back quotes the spec failing, then passing, and `plan.md` records it |
 | `/ack-build` | a plan with two tickets done | continues from the third |

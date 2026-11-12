@@ -4,8 +4,7 @@
     "max": { "model": "opus", "effort": "high" },
     "thresholds": {
         "noul_yes": 0.7,
-        "effort_sonnet": 0.5,
-        "effort_opus": 1.8
+        "effort_high": 1.8
     },
     "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
     "level_questions": {
@@ -15,7 +14,7 @@
             "criteria": [
                 "A lookup, a rename, or a one-line edit",
                 "A change inside one feature module, with its tests",
-                "A design across several modules, or concurrency, security, or data-model work"
+                "Data-model, transaction, concurrency, or security work"
             ]
         },
         "spans_modules": {

@@ -6,10 +6,11 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -45,10 +46,11 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -86,7 +88,6 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
 
@@ -99,10 +100,6 @@ describe('UserLoginWithSocialUseCase', () => {
         mock<UserRegistrationService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -120,7 +117,7 @@ describe('UserLoginWithSocialUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -132,18 +129,6 @@ describe('UserLoginWithSocialUseCase', () => {
     const configValues: Record<string, unknown> = {
         'user.default.role': 'user',
         'user.create.timeoutInMs': 5000,
-    };
-    const requestLog: IRequestLog = {
-        userAgent: {
-            ua: 'ua',
-            browser: null,
-            cpu: null,
-            device: null,
-            engine: null,
-            os: null,
-        },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
     };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
@@ -175,9 +160,17 @@ describe('UserLoginWithSocialUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-bramble',
+    const welcomeSocialEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.welcomeSocial,
+            context: { userId: 'user-bramble', proceedBy: 'user-bramble' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'welcomeSocial-user-bramble',
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -260,8 +253,6 @@ describe('UserLoginWithSocialUseCase', () => {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
-        requestLog,
-        isNewDevice: true,
         revokeStages: [],
     };
     const country: Country = {
@@ -373,21 +364,17 @@ describe('UserLoginWithSocialUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
         activityLogService.prepare.mockReturnValue(activityLog);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
+        notificationService.notify.mockReturnValue(welcomeSocialEffect);
         userUtil.resolveLoginActivityLogAction.mockReturnValue(
             EnumActivityLogAction.userLoginCredential
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        notificationService.getRecipient.mockResolvedValue(recipient);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
@@ -431,13 +418,11 @@ describe('UserLoginWithSocialUseCase', () => {
                 { provide: CountryService, useValue: countryService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: NotificationUtil, useValue: notificationUtil },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DeviceUtil, useValue: deviceUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -487,7 +472,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
         });
 
-        it('commits the new user, stages the created rows, logs in, and sends the social welcome after the login', async () => {
+        it('commits the new user with the social welcome effect, stages the created rows, and logs in', async () => {
             const callOrder: string[] = [];
             userAuthService.getOneForSocialLogin.mockResolvedValue(
                 committedUser
@@ -502,9 +487,6 @@ describe('UserLoginWithSocialUseCase', () => {
                     return session;
                 }
             );
-            notificationQueue.sendWelcomeSocial.mockImplementation(async () => {
-                callOrder.push('sendWelcomeSocial');
-            });
 
             await expect(
                 useCase.execute(
@@ -529,7 +511,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 social,
                 { roleId: 'role-bramble', workspaceContext: personalContext }
             );
-            expect(databaseService.withTransaction).toHaveBeenNthCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenNthCalledWith(
                 1,
                 expect.any(Function),
                 { timeout: 5000 }
@@ -540,16 +522,15 @@ describe('UserLoginWithSocialUseCase', () => {
                 [committedUser]
             );
             expect(activityLogService.prepare).toHaveBeenCalledWith(stageInput);
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
-                committedUser,
+            expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
-                [],
-                []
+                { userId: 'user-bramble', proceedBy: 'user-bramble' }
             );
-            expect(notificationQueue.sendWelcomeSocial).toHaveBeenCalledWith(
-                recipient
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                welcomeSocialEffect
             );
-            expect(callOrder).toEqual(['login', 'sendWelcomeSocial']);
+            expect(callOrder).toEqual(['login']);
         });
 
         it('logs an existing user in without creating one or sending a welcome', async () => {
@@ -574,8 +555,11 @@ describe('UserLoginWithSocialUseCase', () => {
             );
             expect(userAuthService.verifyEmailBySocial).not.toHaveBeenCalled();
             expect(userAuthService.assertVerified).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeSocial,
+                expect.anything()
+            );
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
@@ -714,7 +698,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledTimes(
                 1
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('leaves no user row when the workspace join fails', async () => {
@@ -740,7 +724,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [inviteInput]
@@ -752,7 +736,10 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userAuthService.createTokenAndSession
             ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeSocial,
+                expect.anything()
+            );
         });
 
         it('passes a null name and forwards the invite token', async () => {
@@ -877,7 +864,10 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userRegistrationService.buildSocialCreate
             ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeSocial,
+                expect.anything()
+            );
         });
 
         it('answers the country gate before the username gate', async () => {
@@ -951,7 +941,7 @@ describe('UserLoginWithSocialUseCase', () => {
             );
         });
 
-        it('rejects without the welcome when the login of a new user fails', async () => {
+        it('keeps the committed welcome effect when the login of a new user fails', async () => {
             const failure = new Error('login failed');
             userAuthService.getOneForSocialLogin.mockRejectedValue(failure);
 
@@ -962,7 +952,10 @@ describe('UserLoginWithSocialUseCase', () => {
                     dto
                 )
             ).rejects.toBe(failure);
-            expect(notificationQueue.sendWelcomeSocial).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                welcomeSocialEffect
+            );
         });
     });
 
@@ -1057,8 +1050,19 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeSocial,
+                { userId: 'user-bramble', proceedBy: 'user-bramble' }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                welcomeSocialEffect
+            );
+            expect(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
+            ).toHaveBeenCalledBefore(outboxService.addInTx);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -1131,7 +1135,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
             const collision = new Error('slug collision');
-            databaseService.withTransaction
+            outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -1146,7 +1150,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 inputs: [inviteInput],
                 users: [committedUser],
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [inviteInput],
                 1
@@ -1158,7 +1162,7 @@ describe('UserLoginWithSocialUseCase', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            databaseService.withTransaction.mockRejectedValue(
+            outboxService.withTransaction.mockRejectedValue(
                 new Error('slug collision')
             );
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -1175,12 +1179,12 @@ describe('UserLoginWithSocialUseCase', () => {
                     EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
                 messagePath: 'database.error.uniqueValueGenerationFailed',
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('throws the exception the create util maps a non-slug collision to', async () => {
             const otherError = new Error('duplicate email');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             const mapped = new UserEmailExistException();
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
@@ -1199,7 +1203,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
             const otherError = new Error('unexpected');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
@@ -1236,16 +1240,9 @@ describe('UserLoginWithSocialUseCase', () => {
             loginAt,
         ] as const;
 
-        it('reads the recipient before createTokenAndSession', async () => {
+        it('starts the session through createTokenAndSession', async () => {
             await useCase['startSession'](...startArgs);
 
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.newDeviceLogin
-            );
-            expect(notificationService.getRecipient).toHaveBeenCalledBefore(
-                userAuthService.createTokenAndSession
-            );
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
                 baseUser,
                 deviceIdentity,
@@ -1266,31 +1263,6 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
             );
-        });
-
-        it('sends the new-device notification only for a new device', async () => {
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    requestLog,
-                    loginFrom: EnumUserLoginFrom.website,
-                    loginWith: EnumUserLoginWith.socialGoogle,
-                    loginAt: '2026-03-05T00:00:00.000Z',
-                },
-                'session-bramble'
-            );
-
-            notificationQueue.sendNewDeviceLogin.mockClear();
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                isNewDevice: false,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
         it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
@@ -1345,21 +1317,7 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('fails before the service call when the recipient read rejects', async () => {
-            const failure = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(failure);
-
-            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
-                failure
-            );
-
-            expect(
-                userAuthService.createTokenAndSession
-            ).not.toHaveBeenCalled();
         });
     });
 });

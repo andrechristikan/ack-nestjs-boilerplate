@@ -16,14 +16,38 @@ import { NotificationAlreadyReadException } from '@modules/notification/exceptio
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationEmailProcess,
+    EnumNotificationKeyPattern,
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationPushProcess,
+    EnumNotificationQueue,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { ConfigService } from '@nestjs/config';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type {
+    INotificationContext,
+    INotificationContextMap,
+    INotificationKeyPatterns,
+    INotificationPublishTermPolicyInput,
+    INotificationPublishTermPolicyPayload,
     INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokensResult,
-    INotificationRecipient,
+    INotificationRecipientRecord,
+    INotificationSealedContext,
+    INotificationSealedRecord,
+    INotificationSnapshot,
     INotificationUserSettingPreference,
     INotificationUserSettingUpdate,
+    INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
@@ -35,13 +59,170 @@ import type { IMessageProperties } from '@common/message/interfaces/message.inte
 
 @Injectable()
 export class NotificationService {
+    private readonly keyPatterns: INotificationKeyPatterns;
+    private readonly stepPattern: string;
+    private readonly termPolicyResendPattern: string;
+
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly notificationUtil: NotificationUtil,
         private readonly deviceService: DeviceService,
-        private readonly messageService: MessageService
-    ) {}
+        private readonly messageService: MessageService,
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService,
+        private readonly outboxService: OutboxService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {
+        this.stepPattern = this.configService.get<string>(
+            'notification.idempotencyKey.stepPattern'
+        )!;
+        this.termPolicyResendPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyResendPattern'
+        )!;
+        const userPattern = this.configService.get<string>(
+            'notification.idempotencyKey.userPattern'
+        )!;
+        const referencePattern = this.configService.get<string>(
+            'notification.idempotencyKey.referencePattern'
+        )!;
+        const joinRequestPattern = this.configService.get<string>(
+            'notification.idempotencyKey.joinRequestPattern'
+        )!;
+        const userTermPolicyPattern = this.configService.get<string>(
+            'notification.idempotencyKey.userTermPolicyPattern'
+        )!;
+        const termPolicyPublishPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyPublishPattern'
+        )!;
+        this.keyPatterns = {
+            [EnumNotificationKeyPattern.userPattern]: userPattern,
+            [EnumNotificationKeyPattern.referencePattern]: referencePattern,
+            [EnumNotificationKeyPattern.joinRequestPattern]: joinRequestPattern,
+            [EnumNotificationKeyPattern.userTermPolicyPattern]:
+                userTermPolicyPattern,
+            [EnumNotificationKeyPattern.termPolicyPublishPattern]:
+                termPolicyPublishPattern,
+        };
+    }
+
+    private sealContext(
+        context: INotificationContext | INotificationWorkspaceInviteFields,
+        secrets: string[],
+        encryptionContext: string
+    ): INotificationSealedRecord {
+        const sealed: INotificationSealedRecord = {};
+        for (const [field, value] of Object.entries(context)) {
+            const isSecret = secrets.includes(field);
+            if (!isSecret) {
+                sealed[field] = value;
+
+                continue;
+            }
+
+            const sealedField = this.notificationUtil.toSealedField(field);
+            sealed[sealedField] = this.notificationUtil.encryptPayload(
+                value,
+                encryptionContext
+            );
+        }
+
+        return sealed;
+    }
+
+    private findKindByTitle(title: string): EnumNotificationKind | null {
+        const kinds = Object.values(EnumNotificationKind);
+
+        return (
+            kinds.find(
+                kind => NotificationKindContract[kind].title === title
+            ) ?? null
+        );
+    }
+
+    private toStepKey(
+        notificationId: string,
+        step: EnumNotificationStep
+    ): string {
+        return this.helperStringService.fillPattern(this.stepPattern, {
+            notificationId,
+            step,
+        });
+    }
+
+    private sendEmailEffect(
+        kind: EnumNotificationKind,
+        notificationId: string,
+        context: INotificationSealedContext,
+        { userId, username, encryptedEmail }: INotificationRecipientRecord
+    ): IOutboxEffect {
+        const { queuePriority } = NotificationKindContract[kind];
+        const idempotencyKey = this.toStepKey(
+            notificationId,
+            EnumNotificationStep.sendEmail
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationEmail,
+            name: EnumNotificationEmailProcess.send,
+            data: {
+                kind,
+                notificationId,
+                userId,
+                username,
+                encryptedEmail,
+                context,
+                completedSteps: [],
+            },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
+    private sendPushEffect(
+        kind: EnumNotificationKind,
+        notificationId: string,
+        context: INotificationSealedContext,
+        { userId, username, encryptedTokens }: INotificationRecipientRecord
+    ): IOutboxEffect {
+        const { queuePriority } = NotificationKindContract[kind];
+        const idempotencyKey = this.toStepKey(
+            notificationId,
+            EnumNotificationStep.sendPush
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationPush,
+            name: EnumNotificationPushProcess.send,
+            data: {
+                kind,
+                notificationId,
+                userId,
+                username,
+                encryptedTokens,
+                context,
+                completedSteps: [],
+                encryptedPendingTokens: null,
+                encryptedFailureTokens: null,
+            },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
+    private toKeyValues(
+        process: string,
+        sealed: INotificationSealedRecord
+    ): Record<string, string> {
+        const values: Record<string, string> = { process };
+        for (const [field, value] of Object.entries(sealed)) {
+            if (typeof value === 'string') {
+                values[field] = value;
+            }
+        }
+
+        return values;
+    }
 
     private listConfigurableSettings(
         settings: NotificationUserSetting[]
@@ -78,6 +259,220 @@ export class NotificationService {
         return this.listMutedInAppTypes(settings);
     }
 
+    private sealSnapshot(
+        { id, email, username }: IUserRecipient,
+        tokens: string[]
+    ): INotificationSnapshot {
+        const encryptedEmail = this.notificationUtil.encryptPayload(email, id);
+        const encryptedTokens = [...new Set(tokens)].map(token =>
+            this.notificationUtil.encryptPayload(token, id)
+        );
+
+        return { username, encryptedEmail, encryptedTokens };
+    }
+
+    /** The outbox effect that resolves the recipient, creates the notification, and fans it out; each secret of the kind is encrypted against the recipient's user id. */
+    notify<K extends EnumNotificationKind>(
+        kind: K,
+        context: INotificationContextMap[K]
+    ): IOutboxEffect {
+        const { userId, proceedBy } = context;
+        const { secrets, keyPattern, queuePriority } =
+            NotificationKindContract[kind];
+        const sealed = this.sealContext(context, secrets, userId);
+        let idempotencyKey: string | null = null;
+        if (keyPattern !== null) {
+            const values = this.toKeyValues(kind, sealed);
+            idempotencyKey = this.helperStringService.fillPattern(
+                this.keyPatterns[keyPattern],
+                values
+            );
+        }
+
+        return {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.notify,
+            data: {
+                kind,
+                context: { ...sealed, userId, proceedBy },
+                recipient: null,
+                notificationId: null,
+            },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
+    /** The outbox effect that emails an invitee with no account; the address and the link are encrypted against the invite reference. */
+    notifyUnregisteredInvite(
+        email: string,
+        payload: INotificationWorkspaceInviteFields
+    ): IOutboxEffect {
+        const { reference } = payload;
+        const { secrets, queuePriority } =
+            NotificationKindContract[EnumNotificationKind.workspaceInvite];
+        const encryptedEmail = this.notificationUtil.encryptPayload(
+            email,
+            reference
+        );
+        const sealed = this.sealContext(payload, secrets, reference);
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.keyPatterns[EnumNotificationKeyPattern.referencePattern],
+            {
+                process: EnumNotificationEmailProcess.sendUnregistered,
+                reference,
+            }
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationEmail,
+            name: EnumNotificationEmailProcess.sendUnregistered,
+            data: { encryptedEmail, context: { ...sealed, reference } },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
+    toRecipientRecord(
+        user: IUserRecipient,
+        tokens: string[],
+        channels: EnumNotificationChannel[]
+    ): INotificationRecipientRecord {
+        const snapshot = this.sealSnapshot(user, tokens);
+
+        return { userId: user.id, ...snapshot, channels };
+    }
+
+    /** The encrypted address and the encrypted tokens of the devices with a live session now, to be read before a revoke ends those sessions. */
+    async getSnapshot(user: IUserRecipient): Promise<INotificationSnapshot> {
+        const tokens = await this.deviceService.getNotificationTokens(user.id);
+
+        return this.sealSnapshot(user, tokens);
+    }
+
+    /** The recipient a snapshot yields, with every channel the kind lists and the user's settings ignored. */
+    toSnapshotRecipientRecord(
+        kind: EnumNotificationKind,
+        userId: string,
+        snapshot: INotificationSnapshot
+    ): INotificationRecipientRecord {
+        const channels = this.notificationUtil.resolveChannels(kind, []);
+
+        return { userId, ...snapshot, channels };
+    }
+
+    /** Creates the notification on the caller's transaction and adds its email and push rows: email when the channels hold it, push when the channels hold it and the recipient has tokens. */
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        notificationId: string,
+        kind: EnumNotificationKind,
+        context: INotificationSealedContext,
+        recipient: INotificationRecipientRecord
+    ): Promise<void> {
+        const { userId, username, channels, encryptedTokens } = recipient;
+        const metadata = this.notificationUtil.toMetadata(
+            kind,
+            context,
+            username
+        );
+        await this.notificationRepository.createInTx(tx, kind, {
+            id: notificationId,
+            userId,
+            metadata,
+            createdBy: context.proceedBy,
+            channels,
+        });
+
+        const effects: IOutboxEffect[] = [];
+        if (channels.includes(EnumNotificationChannel.email)) {
+            const effect = this.sendEmailEffect(
+                kind,
+                notificationId,
+                context,
+                recipient
+            );
+            effects.push(effect);
+        }
+
+        if (
+            channels.includes(EnumNotificationChannel.push) &&
+            encryptedTokens.length > 0
+        ) {
+            const effect = this.sendPushEffect(
+                kind,
+                notificationId,
+                context,
+                recipient
+            );
+            effects.push(effect);
+        }
+
+        if (effects.length > 0) {
+            await this.outboxService.addManyInTx(tx, effects);
+        }
+    }
+
+    /** The outbox effect that pages the active recipients up to the cutoff and adds one email batch row per page. */
+    publishTermPolicyEffect(
+        payload: INotificationPublishTermPolicyPayload,
+        proceedBy: string
+    ): IOutboxEffect {
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.keyPatterns[
+                EnumNotificationKeyPattern.termPolicyPublishPattern
+            ],
+            {
+                process: EnumNotificationProcess.publishTermPolicy,
+                termPolicyId: payload.termPolicyId,
+            }
+        );
+
+        return {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.publishTermPolicy,
+            data: { proceedBy, data: payload },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey,
+        };
+    }
+
+    /** The operator re-run of the publish effect: a fresh nonce sits in its data and its key, and in every batch key it adds. */
+    resendPublishTermPolicyEffect(
+        payload: INotificationPublishTermPolicyInput,
+        proceedBy: string
+    ): IOutboxEffect {
+        const resendNonce = this.databaseUtil.createId();
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.termPolicyResendPattern,
+            {
+                process: EnumNotificationProcess.resendPublishTermPolicy,
+                termPolicyId: payload.termPolicyId,
+                resendNonce,
+            }
+        );
+
+        return {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.resendPublishTermPolicy,
+            data: { proceedBy, data: { ...payload, resendNonce } },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey,
+        };
+    }
+
+    cleanupTokensEffect(
+        userId: string,
+        encryptedFailureTokens: string[]
+    ): IOutboxEffect {
+        return {
+            queue: EnumNotificationQueue.notificationPush,
+            name: EnumNotificationPushProcess.cleanupTokens,
+            data: { userId, encryptedFailureTokens },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+    }
+
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
@@ -100,18 +495,6 @@ export class NotificationService {
             );
 
         return this.listConfigurableSettings(settings);
-    }
-
-    async getRecipient(
-        user: IUserRecipient,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient> {
-        const [tokens, settings] = await Promise.all([
-            this.deviceService.getNotificationTokens(user.id),
-            this.getListUserSetting(user.id),
-        ]);
-
-        return this.notificationUtil.mapRecipient(user, kind, tokens, settings);
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
@@ -223,7 +606,11 @@ export class NotificationService {
         return { message, countRemovedTokens };
     }
 
-    toMessageProperties(metadata: Prisma.JsonValue): IMessageProperties {
+    /** The message properties of a stored notification: the metadata's primitive values, the kind's date fields formatted for display. The kind is the one whose contract row owns the title. */
+    toMessageProperties(
+        title: string,
+        metadata: Prisma.JsonValue
+    ): IMessageProperties {
         const properties: IMessageProperties = {};
         if (
             metadata === null ||
@@ -243,7 +630,12 @@ export class NotificationService {
             }
         }
 
-        return properties;
+        const kind = this.findKindByTitle(title);
+        if (kind === null) {
+            return properties;
+        }
+
+        return this.notificationUtil.toDisplayProperties(kind, properties);
     }
 
     toRejectReasonProperties(

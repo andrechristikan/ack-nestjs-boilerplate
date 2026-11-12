@@ -9,9 +9,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -29,16 +26,13 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
     constructor(
         private readonly userAuthService: UserAuthService,
         private readonly userTwoFactorService: UserTwoFactorService,
-        private readonly notificationService: NotificationService,
         private readonly sessionService: SessionService,
         private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -46,11 +40,6 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.notificationService.getRecipient(
-            user,
-            EnumNotificationKind.newDeviceLogin
-        );
         const session = await this.userAuthService.createTokenAndSession(
             user,
             device,
@@ -58,30 +47,11 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
             loginWith,
             loginAt
         );
-        const promises = [
-            this.sessionService.setLoginOrRevoke(
-                user.id,
-                session.sessionId,
-                session.jti
-            ),
-        ];
-        if (session.isNewDevice) {
-            const loginAtIso = this.helperDateService.formatToIso(loginAt);
-            const newDeviceLoginSent =
-                this.notificationQueue.sendNewDeviceLogin(
-                    recipient,
-                    {
-                        requestLog: session.requestLog,
-                        loginFrom,
-                        loginWith,
-                        loginAt: loginAtIso,
-                    },
-                    session.sessionId
-                );
-            promises.push(newDeviceLoginSent);
-        }
-
-        await Promise.all(promises);
+        await this.sessionService.setLoginOrRevoke(
+            user.id,
+            session.sessionId,
+            session.jti
+        );
 
         if (session.revokeStages.length > 0) {
             const revokeLogs = session.revokeStages.map(stage =>

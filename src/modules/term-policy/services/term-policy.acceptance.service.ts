@@ -2,11 +2,13 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -25,7 +27,8 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 export class TermPolicyAcceptanceService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
+        private readonly notificationService: NotificationService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -116,12 +119,9 @@ export class TermPolicyAcceptanceService {
         await this.termPolicyRepository.acceptManyInTx(tx, rows);
     }
 
-    async userAccept(
-        userId: string,
-        type: EnumTermPolicyType
-    ): Promise<ITermPolicyRef> {
+    async userAccept(userId: string, type: EnumTermPolicyType): Promise<void> {
         try {
-            return await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 const [latest] =
                     await this.termPolicyRepository.findLatestPublishedByTypesInTx(
                         tx,
@@ -140,7 +140,17 @@ export class TermPolicyAcceptanceService {
                     acceptedAt
                 );
 
-                return latest;
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.userAcceptTermPolicy,
+                    {
+                        userId,
+                        proceedBy: userId,
+                        termPolicyId: latest.id,
+                        type: latest.type,
+                        version: latest.version,
+                    }
+                );
+                await this.outboxService.addInTx(tx, effect);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

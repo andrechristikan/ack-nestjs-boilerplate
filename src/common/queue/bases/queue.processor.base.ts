@@ -96,7 +96,11 @@ export abstract class QueueProcessorBase extends WorkerHost {
         }
     }
 
-    protected abstract handle(job: Job, data: unknown): Promise<IQueueResponse>;
+    protected abstract handle(
+        job: Job,
+        data: unknown,
+        outboxId: string | null
+    ): Promise<IQueueResponse>;
 
     protected throwUnknownException(error: unknown): never {
         const message = this.messageService.setMessage('queue.error.unknown');
@@ -120,7 +124,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
         try {
             const data = await this.loadData(job, outboxId);
             rowId = outboxId;
-            result = await this.handle(job, data);
+            result = await this.handle(job, data, outboxId);
 
             await this.writeJobLog(
                 job,

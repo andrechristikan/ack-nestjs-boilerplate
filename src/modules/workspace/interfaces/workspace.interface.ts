@@ -4,12 +4,10 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
-    User,
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
 import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -27,9 +25,10 @@ export interface IWorkspaceInviteInviter {
     username: string;
 }
 
-export interface IWorkspaceInviteInvitee {
-    existingUser: User | null;
-    recipient: INotificationRecipient | null;
+export interface IWorkspaceInviteNotice {
+    workspaceName: string;
+    inviterName: string;
+    inviteeUserId: string | null;
 }
 
 export interface IWorkspaceInviteTokenData {
@@ -96,6 +95,12 @@ export interface IWorkspaceInvitePreviewSummary {
 export interface IWorkspaceJoinRequestCreate {
     workspaceId: string;
     message: string | null;
+}
+
+export interface IWorkspaceJoinRequestNotice {
+    workspaceName: string;
+    requesterName: string;
+    reviewerIds: string[];
 }
 
 export interface IWorkspaceJoinRequestCreateData {

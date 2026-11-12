@@ -11,33 +11,21 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type {
     IUser,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-password.use-case';
 
 describe('UserForgotPasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let useCase: UserForgotPasswordUseCase;
 
@@ -93,11 +81,6 @@ describe('UserForgotPasswordUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: user.id,
-    };
-    const now = new Date('2026-03-05T00:00:00.000Z');
     const forgot: IUserForgotPasswordCreate = {
         reference: 'FGT-linden',
         expiredAt: new Date('2026-03-05T00:00:00.000Z'),
@@ -111,23 +94,12 @@ describe('UserForgotPasswordUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-01T00:00:00.000Z'
-        );
-        notificationService.getRecipient.mockResolvedValue(recipient);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserForgotPasswordUseCase,
                 { provide: UserPasswordService, useValue: userPasswordService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         useCase = module.get(UserForgotPasswordUseCase);
@@ -145,7 +117,7 @@ describe('UserForgotPasswordUseCase', () => {
             });
         });
 
-        it('gates the flag, creates the request, stages the row, then notifies', async () => {
+        it('gates the flag, creates the request with its notification, then stages the row', async () => {
             const calls: string[] = [];
             userPasswordService.createForgotPassword.mockImplementation(
                 async () => {
@@ -155,11 +127,6 @@ describe('UserForgotPasswordUseCase', () => {
             activityLogService.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
-            notificationQueue.sendForgotPassword.mockImplementation(
-                async () => {
-                    calls.push('notify');
-                }
-            );
 
             await expect(useCase.execute(dto)).resolves.toEqual({});
 
@@ -168,27 +135,13 @@ describe('UserForgotPasswordUseCase', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.forgotPassword
-            );
             expect(
                 userPasswordService.createForgotPassword
             ).toHaveBeenCalledWith('user-linden', 'linden@example.com', forgot);
-            expect(notificationQueue.sendForgotPassword).toHaveBeenCalledWith(
-                recipient,
-                {
-                    expiredAt: '2026-03-01T00:00:00.000Z',
-                    link: forgot.link,
-                    reference: 'FGT-linden',
-                    expiredInMinutes: 15,
-                    resendInMinutes: 5,
-                }
-            );
-            expect(calls).toEqual(['create', 'stage', 'notify']);
+            expect(calls).toEqual(['create', 'stage']);
         });
 
-        it('answers empty and sends nothing when no active user holds the email', async () => {
+        it('answers empty and creates nothing when no active user holds the email', async () => {
             userPasswordService.prepareForgotPassword.mockResolvedValue(null);
 
             await expect(useCase.execute(dto)).resolves.toEqual({});
@@ -196,24 +149,19 @@ describe('UserForgotPasswordUseCase', () => {
             expect(
                 userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
-            expect(notificationService.getRecipient).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('creates nothing when the recipient read rejects', async () => {
-            notificationService.getRecipient.mockRejectedValue(
-                new Error('read')
+        it('stages nothing when the create rejects', async () => {
+            userPasswordService.createForgotPassword.mockRejectedValue(
+                new Error('write')
             );
 
-            await expect(useCase.execute(dto)).rejects.toThrow('read');
-            expect(
-                userPasswordService.createForgotPassword
-            ).not.toHaveBeenCalled();
+            await expect(useCase.execute(dto)).rejects.toThrow('write');
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('sends nothing when the service call rejects', async () => {
+        it('creates nothing when the prepare rejects', async () => {
             userPasswordService.prepareForgotPassword.mockRejectedValue(
                 new Error('flag')
             );
@@ -222,7 +170,6 @@ describe('UserForgotPasswordUseCase', () => {
             expect(
                 userPasswordService.createForgotPassword
             ).not.toHaveBeenCalled();
-            expect(notificationQueue.sendForgotPassword).not.toHaveBeenCalled();
         });
     });
 });

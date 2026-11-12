@@ -1,4 +1,8 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { RequestContextService } from '@common/request/services/request.context.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationUserAgentDisplay } from '@modules/notification/interfaces/notification.interface';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -6,6 +10,7 @@ import {
     EnumUserLoginWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import type { UserAgent } from '@generated/prisma-client/client';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -52,8 +57,22 @@ export class UserAuthService {
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly outboxService: OutboxService,
+        private readonly notificationService: NotificationService,
+        private readonly requestContextService: RequestContextService,
         private readonly helperDateService: HelperDateService
     ) {}
+
+    private toUserAgentDisplay({
+        browser,
+        device,
+        os,
+    }: UserAgent): INotificationUserAgentDisplay {
+        return {
+            browser: `${browser?.name ?? ''} ${browser?.version ?? ''}`,
+            deviceDetail: `${device?.vendor ?? ''} ${device?.model ?? ''} (${device?.type ?? ''})`,
+            os: `${os?.name ?? ''} ${os?.version ?? ''}`,
+        };
+    }
 
     private requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
         return user.twoFactor.requiredSetup;
@@ -165,7 +184,7 @@ export class UserAuthService {
         }
     }
 
-    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, and stamps the login in one transaction; returns the tokens and the activity stages the caller stages after commit. */
+    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, and stamps the login in one transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens and the activity stages the caller stages after commit. */
     async createTokenAndSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -183,7 +202,7 @@ export class UserAuthService {
             })
         );
         const now = this.helperDateService.create();
-        const { isNewDevice, affected, deviceOwnershipId } =
+        const { affected, deviceOwnershipId } =
             await this.outboxService.withTransaction(async tx => {
                 const upserted = await this.deviceService.upsertForLoginInTx(
                     tx,
@@ -233,9 +252,36 @@ export class UserAuthService {
                     requestLog.ipAddress,
                     now
                 );
+                if (upserted.isNewDevice) {
+                    const loginAtIso =
+                        this.helperDateService.formatToIso(loginAt);
+                    const device = this.requestContextService.resolveDevice(
+                        requestLog.userAgent
+                    );
+                    const city = this.requestContextService.resolveCity(
+                        requestLog.geoLocation
+                    );
+                    const display = this.toUserAgentDisplay(
+                        requestLog.userAgent
+                    );
+                    const effect = this.notificationService.notify(
+                        EnumNotificationKind.newDeviceLogin,
+                        {
+                            userId: user.id,
+                            proceedBy: user.id,
+                            loginFrom,
+                            loginWith,
+                            loginAt: loginAtIso,
+                            device,
+                            city,
+                            ...display,
+                            ipAddress: requestLog.ipAddress ?? '',
+                        }
+                    );
+                    await this.outboxService.addInTx(tx, effect);
+                }
 
                 return {
-                    isNewDevice: upserted.isNewDevice,
                     affected: affectedSessions,
                     deviceOwnershipId: upserted.deviceOwnership.id,
                 };
@@ -266,8 +312,6 @@ export class UserAuthService {
             tokens,
             sessionId,
             jti,
-            requestLog,
-            isNewDevice,
             revokeStages,
         };
     }

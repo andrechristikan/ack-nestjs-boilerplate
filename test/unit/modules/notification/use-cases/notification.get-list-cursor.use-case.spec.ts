@@ -139,7 +139,7 @@ describe('NotificationGetListCursorUseCase', () => {
             );
             expect(
                 notificationService.toMessageProperties
-            ).toHaveBeenCalledWith(stored.metadata);
+            ).toHaveBeenCalledWith(stored.title, stored.metadata);
             expect(
                 notificationService.toRejectReasonProperties
             ).toHaveBeenCalledWith(metadataProperties, 'en');
@@ -158,6 +158,57 @@ describe('NotificationGetListCursorUseCase', () => {
                     body: 'translated:notification.notify.workspaceJoinRejected.body',
                 },
             ]);
+        });
+
+        it('translates the title and body with the date the service formats', async () => {
+            const stored: Notification = {
+                id: 'notification-id',
+                userId: 'user-id',
+                type: EnumNotificationType.securityAlert,
+                priority: EnumNotificationPriority.critical,
+                title: 'notification.notify.newDeviceLogin.title',
+                body: 'notification.notify.newDeviceLogin.body',
+                metadata: {
+                    username: 'ana',
+                    loginAt: '2026-03-01T00:05:00.000Z',
+                },
+                isRead: false,
+                readAt: null,
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            const properties = {
+                username: 'ana',
+                loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
+            };
+            paginationQueryUtil.cursor.mockReturnValue({
+                params: cursorParams,
+                storePatch: {},
+            });
+            notificationService.getListCursor.mockResolvedValue({
+                ...cursorPage,
+                data: [stored],
+            });
+            requestStoreService.get.mockReturnValue(null);
+            notificationService.toMessageProperties.mockReturnValue(properties);
+            notificationService.toRejectReasonProperties.mockReturnValue(
+                properties
+            );
+            messageService.setMessage.mockImplementation(
+                (path: string) => path
+            );
+
+            await useCase.execute('user-id', query);
+
+            expect(
+                notificationService.toMessageProperties
+            ).toHaveBeenCalledWith(stored.title, stored.metadata);
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.newDeviceLogin.body',
+                { properties }
+            );
         });
 
         it('translates with no custom language when none is stored', async () => {

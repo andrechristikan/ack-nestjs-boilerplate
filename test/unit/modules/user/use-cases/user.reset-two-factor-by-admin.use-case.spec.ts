@@ -17,12 +17,16 @@ import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -48,8 +52,6 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
 
     let useCase: UserResetTwoFactorByAdminUseCase;
 
@@ -122,9 +124,22 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: user.id,
+    const snapshot: INotificationSnapshot = {
+        username: 'martenFrost',
+        encryptedEmail: 'cipher(marten@example.com)',
+        encryptedTokens: ['cipher(token-one)'],
+    };
+    const notifyEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.resetTwoFactorByAdmin,
+            context: { userId: 'user-marten', proceedBy: 'admin-marten' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
     };
     const twoFactorAttempt: IUserTwoFactorAttempt = {
         isAttemptCounted: true,
@@ -147,7 +162,8 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
         );
         userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
         userTwoFactorService.verify.mockResolvedValue(verified);
-        notificationService.getRecipient.mockResolvedValue(recipient);
+        notificationService.getSnapshot.mockResolvedValue(snapshot);
+        notificationService.notify.mockReturnValue(notifyEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -167,7 +183,6 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
             ],
         }).compile();
         useCase = module.get(UserResetTwoFactorByAdminUseCase);
@@ -204,6 +219,11 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                     calls.push('resetInTx');
                 }
             );
+            notificationService.getSnapshot.mockImplementation(async () => {
+                calls.push('snapshot');
+
+                return snapshot;
+            });
             sessionService.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -211,6 +231,11 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
                     return revoked;
                 }
             );
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addEffect');
+
+                return 'outbox-id';
+            });
 
             await expect(
                 useCase.execute('user-marten', admin)
@@ -230,10 +255,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             expect(userTwoFactorService.assertEnabled).toHaveBeenCalledWith(
                 user
             );
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.resetTwoFactorByAdmin
-            );
+            expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
             expect(userTwoFactorService.resetByAdminInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marten'
@@ -246,13 +268,20 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             );
             expect(calls).toEqual([
                 'begin',
+                'snapshot',
                 'resetInTx',
                 'revokeSessions',
+                'addEffect',
                 'commit',
             ]);
-            expect(
-                notificationQueue.sendResetTwoFactorByAdmin
-            ).toHaveBeenCalledWith(recipient, 'admin-marten');
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.resetTwoFactorByAdmin,
+                { userId: 'user-marten', proceedBy: 'admin-marten', snapshot }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
+            );
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminUserResetTwoFactor,
                 metadata: { targetUserId: 'user-marten' },
@@ -269,6 +298,32 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             ]);
         });
 
+        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
+            let snapshotStarted = false;
+            let startedWhenFirstSettles = false;
+            notificationService.getSnapshot.mockImplementation(async () => {
+                snapshotStarted = true;
+
+                return snapshot;
+            });
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            userTwoFactorService.resetByAdminInTx.mockImplementation(
+                async () => {
+                    await Promise.resolve();
+                    startedWhenFirstSettles = snapshotStarted;
+                }
+            );
+
+            await useCase.execute('user-marten', admin);
+
+            expect(startedWhenFirstSettles).toBe(true);
+            expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
+                sessionService.revokeActiveByUserInTx
+            );
+        });
+
         it('stops at the rank gate before the blocked gate', async () => {
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw new Error('rank');
@@ -281,15 +336,18 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('resets nothing when the recipient read rejects', async () => {
-            notificationService.getRecipient.mockRejectedValue(
+        it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
+            notificationService.getSnapshot.mockRejectedValue(
                 new Error('read')
             );
 
             await expect(useCase.execute('user-marten', admin)).rejects.toThrow(
                 'read'
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                sessionService.revokeActiveByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -300,9 +358,7 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
             await expect(useCase.execute('user-marten', admin)).rejects.toBe(
                 cause
             );
-            expect(
-                notificationQueue.sendResetTwoFactorByAdmin
-            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

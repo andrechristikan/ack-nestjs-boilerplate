@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -129,32 +130,22 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async createMany(
-        entries: INotificationCreateEntry[]
-    ): Promise<Notification[]> {
-        const today = this.helperDateService.create();
-        const ids = entries.map(({ payload }) => payload.id);
-
-        return this.databaseService.withTransaction(async tx => {
-            const existing = await tx.notification.findMany({
-                where: { id: { in: ids } },
-            });
-            const existingIds = new Set(existing.map(row => row.id));
-            const created: Notification[] = [];
-            for (const { kind, payload } of entries) {
-                if (existingIds.has(payload.id)) {
-                    continue;
-                }
-
-                const createData = this.buildCreateData(kind, payload, today);
-                const row = await tx.notification.create({
-                    data: createData,
-                });
-                created.push(row);
-            }
-
-            return [...existing, ...created];
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        kind: EnumNotificationKind,
+        payload: INotificationCreate
+    ): Promise<void> {
+        const existing = await tx.notification.findUnique({
+            where: { id: payload.id },
+            select: { id: true },
         });
+        if (existing) {
+            return;
+        }
+
+        const today = this.helperDateService.create();
+        const createData = this.buildCreateData(kind, payload, today);
+        await tx.notification.create({ data: createData });
     }
 
     async findTermPolicyRecipients(
@@ -182,7 +173,8 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async createTermPolicyRecipients(
+    async createTermPolicyRecipientsInTx(
+        tx: IDatabaseTransactionClient,
         proceedBy: string,
         termPolicyId: string,
         batchId: string,
@@ -191,25 +183,23 @@ export class NotificationRepository implements INotificationRepository {
     ): Promise<void> {
         const today = this.helperDateService.create();
 
-        await this.databaseService.withTransaction(async tx => {
-            for (const { kind, payload } of entries) {
-                const createData = this.buildCreateData(kind, payload, today);
-                await tx.notification.create({ data: createData });
-            }
+        for (const { kind, payload } of entries) {
+            const createData = this.buildCreateData(kind, payload, today);
+            await tx.notification.create({ data: createData });
+        }
 
-            await tx.termPolicyRecipient.createMany({
-                data: recipients.map(({ userId, notificationId }) => ({
-                    termPolicyId,
-                    userId,
-                    notificationId,
-                    batchId,
-                    sentAt: null,
-                    claimedAt: null,
-                    claimNonce: null,
-                    createdBy: proceedBy,
-                    updatedBy: proceedBy,
-                })),
-            });
+        await tx.termPolicyRecipient.createMany({
+            data: recipients.map(({ userId, notificationId }) => ({
+                termPolicyId,
+                userId,
+                notificationId,
+                batchId,
+                sentAt: null,
+                claimedAt: null,
+                claimNonce: null,
+                createdBy: proceedBy,
+                updatedBy: proceedBy,
+            })),
         });
     }
 
@@ -336,6 +326,21 @@ export class NotificationRepository implements INotificationRepository {
                 where: { notificationId, channel },
                 data: { failureTokens, sentAt: at },
             });
+
+        return count > 0;
+    }
+
+    async updateDeliverySentAtInTx(
+        tx: IDatabaseTransactionClient,
+        notificationId: string,
+        channel: EnumNotificationChannel,
+        at: Date,
+        failureTokens: string[]
+    ): Promise<boolean> {
+        const { count } = await tx.notificationDelivery.updateMany({
+            where: { notificationId, channel },
+            data: { failureTokens, sentAt: at },
+        });
 
         return count > 0;
     }

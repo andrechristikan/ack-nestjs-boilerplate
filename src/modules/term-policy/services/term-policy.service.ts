@@ -11,11 +11,13 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -58,6 +60,8 @@ export class TermPolicyService {
         private readonly helperArrayService: HelperArrayService,
         private readonly helperStringService: HelperStringService,
         private readonly outboxService: OutboxService,
+        private readonly notificationService: NotificationService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
@@ -270,7 +274,10 @@ export class TermPolicyService {
         }
     }
 
-    async publishByAdmin(termPolicyId: string): Promise<TermPolicy> {
+    async publishByAdmin(
+        termPolicyId: string,
+        updatedBy: string
+    ): Promise<TermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -347,12 +354,30 @@ export class TermPolicyService {
                             throw new TermPolicyStatusInvalidException();
                         }
 
-                        const effect = this.copyContentEffect({
+                        const copyEffect = this.copyContentEffect({
                             termPolicyId,
                             contents,
                             destination,
                         });
-                        await this.outboxService.addInTx(tx, effect);
+                        const recipientCutoffAt =
+                            this.helperDateService.formatToIso(
+                                row.publishedAt!
+                            );
+                        const publishEffect =
+                            this.notificationService.publishTermPolicyEffect(
+                                {
+                                    termPolicyId,
+                                    type: row.type,
+                                    version: row.version,
+                                    recipientCutoffAt,
+                                    resendNonce: null,
+                                },
+                                updatedBy
+                            );
+                        await this.outboxService.addManyInTx(tx, [
+                            copyEffect,
+                            publishEffect,
+                        ]);
 
                         return row;
                     }

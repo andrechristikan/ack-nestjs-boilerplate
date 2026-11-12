@@ -458,24 +458,6 @@ describe('UserService', () => {
         });
     });
 
-    describe('getManyActiveByIds', () => {
-        it('delegates to the repository', async () => {
-            const rows = [
-                { id: 'user-a', email: 'a@example.com', username: 'a' },
-                { id: 'user-b', email: 'b@example.com', username: 'b' },
-            ];
-            userRepository.findManyActiveByIds.mockResolvedValue(rows);
-
-            await expect(
-                service.getManyActiveByIds(['user-a', 'user-b'])
-            ).resolves.toBe(rows);
-            expect(userRepository.findManyActiveByIds).toHaveBeenCalledWith([
-                'user-a',
-                'user-b',
-            ]);
-        });
-    });
-
     describe('getManyActiveRecipientsByIds', () => {
         it('delegates to the repository with the creation bound', async () => {
             const rows = [

@@ -4,7 +4,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -25,13 +24,6 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type {
-    INotificationRecipient,
-    INotificationVerificationEmailPayload,
-} from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -47,13 +39,10 @@ import type {
     IUserLoginOutcome,
     IUserLoginTwoFactorChallenge,
     IUserTwoFactorEnabled,
-    IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 
 describe('UserLoginCredentialUseCase', () => {
@@ -63,12 +52,6 @@ describe('UserLoginCredentialUseCase', () => {
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
@@ -81,18 +64,6 @@ describe('UserLoginCredentialUseCase', () => {
 
     const now = new Date('2026-03-01T00:00:00.000Z');
     const loginAt = new Date('2026-03-01T00:05:00.000Z');
-    const requestLog: IRequestLog = {
-        userAgent: {
-            ua: 'ua',
-            browser: null,
-            cpu: null,
-            device: null,
-            engine: null,
-            os: null,
-        },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
         roleType: EnumRoleType.user,
@@ -122,10 +93,6 @@ describe('UserLoginCredentialUseCase', () => {
         userId: null,
         createdBy: null,
         workspaceId: null,
-    };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-bramble',
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -212,24 +179,18 @@ describe('UserLoginCredentialUseCase', () => {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
-        requestLog,
-        isNewDevice: true,
         revokeStages: [],
     };
     beforeEach(async () => {
         vi.resetAllMocks();
 
         helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
         activityLogService.prepare.mockReturnValue(activityLog);
         userUtil.resolveLoginActivityLogAction.mockReturnValue(
             EnumActivityLogAction.userLoginCredential
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        notificationService.getRecipient.mockResolvedValue(recipient);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
@@ -243,19 +204,13 @@ describe('UserLoginCredentialUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: NotificationService, useValue: notificationService },
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
-                {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
-                },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -281,22 +236,6 @@ describe('UserLoginCredentialUseCase', () => {
             lastWorkspaceChangedAt: new Date('2026-02-01T00:00:00.000Z'),
         };
         const unverifiedUser: IUser = { ...baseUser, isVerified: false };
-        const emailVerification: IUserVerificationEmailCreate = {
-            type: 'email',
-            reference: 'VRF-bramble',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-            expiredInMinutes: 15,
-            resendInMinutes: 5,
-            token: 'random-token',
-            hashedToken: 'hashed-token',
-            link: 'https://example.com/verify?token=random-token',
-        };
-        const emailPayload: INotificationVerificationEmailPayload = {
-            link: 'https://example.com/verify?token=random-token',
-            expiredAt: '2026-03-05T00:00:00.000Z',
-            expiredInMinutes: 15,
-            reference: 'VRF-bramble',
-        };
         const emailNotVerifiedFields = {
             module: 'user',
             statusCode: EnumUserStatusCodeError.emailNotVerified,
@@ -318,10 +257,7 @@ describe('UserLoginCredentialUseCase', () => {
                 async () => {
                     callOrder.push('createTokenAndSession');
 
-                    return {
-                        ...session,
-                        isNewDevice: false,
-                    };
+                    return session;
                 }
             );
             activityLogService.stagePrepared.mockImplementation(() => {
@@ -513,25 +449,12 @@ describe('UserLoginCredentialUseCase', () => {
                     return true;
                 }
             );
-            notificationService.getRecipient.mockImplementation(async () => {
-                callOrder.push('getRecipient');
-
-                return recipient;
-            });
-            userVerificationService.createEmail.mockImplementation(async () => {
-                callOrder.push('createEmail');
-
-                return emailVerification;
+            userVerificationService.sendEmail.mockImplementation(async () => {
+                callOrder.push('sendEmail');
             });
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
-            userVerificationUtil.mapEmailPayload.mockReturnValue(emailPayload);
-            notificationQueue.sendVerificationEmail.mockImplementation(
-                async () => {
-                    callOrder.push('sendVerificationEmail');
-                }
-            );
             userAuthService.assertVerified.mockImplementation(() => {
                 callOrder.push('assertVerified');
 
@@ -546,11 +469,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).toHaveBeenCalledWith(unverifiedUser);
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                unverifiedUser,
-                EnumNotificationKind.verificationEmail
-            );
-            expect(userVerificationService.createEmail).toHaveBeenCalledWith(
+            expect(userVerificationService.sendEmail).toHaveBeenCalledWith(
                 'user-bramble',
                 'bramble@example.com'
             );
@@ -562,12 +481,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenLastCalledWith([
                 activityLog,
             ]);
-            expect(userVerificationUtil.mapEmailPayload).toHaveBeenCalledWith(
-                emailVerification
-            );
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).toHaveBeenCalledWith(recipient, emailPayload);
             expect(userAuthService.assertVerified).toHaveBeenCalledWith(
                 unverifiedUser
             );
@@ -575,10 +488,8 @@ describe('UserLoginCredentialUseCase', () => {
                 'stagePrepared',
                 'verifyCredential',
                 'isEmailResendable',
-                'getRecipient',
-                'createEmail',
+                'sendEmail',
                 'stagePrepared',
-                'sendVerificationEmail',
                 'assertVerified',
             ]);
             expect(
@@ -607,14 +518,11 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).toHaveBeenCalledWith(unverifiedUser);
-            expect(notificationService.getRecipient).not.toHaveBeenCalled();
-            expect(userVerificationService.createEmail).not.toHaveBeenCalled();
+            expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).not.toHaveBeenCalled();
+            expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
             expect(userAuthService.assertVerified).toHaveBeenCalledWith(
                 unverifiedUser
             );
@@ -630,10 +538,6 @@ describe('UserLoginCredentialUseCase', () => {
                 user: unverifiedUser,
             });
             userVerificationService.isEmailResendable.mockResolvedValue(true);
-            userVerificationService.createEmail.mockResolvedValue(
-                emailVerification
-            );
-            userVerificationUtil.mapEmailPayload.mockReturnValue(emailPayload);
             userAuthService.assertVerified.mockImplementation(() => {
                 throw new UserEmailNotVerifiedException();
             });
@@ -645,9 +549,10 @@ describe('UserLoginCredentialUseCase', () => {
                 emailNotVerifiedFields
             );
 
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).toHaveBeenCalledWith(recipient, emailPayload);
+            expect(userVerificationService.sendEmail).toHaveBeenCalledWith(
+                'user-bramble',
+                'bramble@example.com'
+            );
             expect(
                 userAuthService.assertPasswordNotExpired
             ).not.toHaveBeenCalled();
@@ -665,9 +570,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).not.toHaveBeenCalled();
+            expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
             expect(userAuthService.assertVerified).toHaveBeenCalledWith(
                 baseUser
             );
@@ -708,9 +611,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).not.toHaveBeenCalled();
+            expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
         });
 
         it('rejects a spent budget of an unverified user with the attempt limit and runs neither the check nor the send', async () => {
@@ -755,9 +656,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendVerificationEmail
-            ).not.toHaveBeenCalled();
+            expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
         });
 
         it('rejects an unverified two-factor user with the unverified error before any challenge or session', async () => {
@@ -961,16 +860,9 @@ describe('UserLoginCredentialUseCase', () => {
             loginAt,
         ] as const;
 
-        it('reads the recipient before createTokenAndSession', async () => {
+        it('starts the session through createTokenAndSession', async () => {
             await useCase['startSession'](...startArgs);
 
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.newDeviceLogin
-            );
-            expect(notificationService.getRecipient).toHaveBeenCalledBefore(
-                userAuthService.createTokenAndSession
-            );
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
                 baseUser,
                 deviceIdentity,
@@ -991,31 +883,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
             );
-        });
-
-        it('sends the new-device notification only for a new device', async () => {
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    requestLog,
-                    loginFrom: EnumUserLoginFrom.website,
-                    loginWith: EnumUserLoginWith.credential,
-                    loginAt: '2026-03-05T00:00:00.000Z',
-                },
-                'session-bramble'
-            );
-
-            notificationQueue.sendNewDeviceLogin.mockClear();
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                isNewDevice: false,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
         it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
@@ -1070,21 +937,7 @@ describe('UserLoginCredentialUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('fails before the service call when the recipient read rejects', async () => {
-            const failure = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(failure);
-
-            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
-                failure
-            );
-
-            expect(
-                userAuthService.createTokenAndSession
-            ).not.toHaveBeenCalled();
         });
 
         it('rejects with the login cache failure from setLoginOrRevoke', async () => {

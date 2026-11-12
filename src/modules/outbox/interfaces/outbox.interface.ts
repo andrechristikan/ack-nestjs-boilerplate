@@ -1,4 +1,20 @@
 import type {
+    EnumNotificationEmailProcess,
+    EnumNotificationProcess,
+    EnumNotificationPushProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationBulkQueuePayload,
+    INotificationEmailBulkQueuePayload,
+    INotificationEmailSendPayload,
+    INotificationEmailSendUnregisteredPayload,
+    INotificationNotifyPayload,
+    INotificationPublishTermPolicyPayload,
+    INotificationPushCleanupTokenEncryptedPayload,
+    INotificationPushSendPayload,
+} from '@modules/notification/interfaces/notification.interface';
+import type {
     EnumSessionProcess,
     EnumSessionQueue,
 } from '@modules/session/enums/session.enum';
@@ -57,12 +73,68 @@ interface IOutboxTermPolicyCopyContentEffect extends IOutboxEffectBase {
     data: ITermPolicyCopyContentPayload;
 }
 
+interface IOutboxNotificationNotifyEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.notify;
+    data: INotificationNotifyPayload;
+}
+
+interface IOutboxNotificationPublishTermPolicyEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.publishTermPolicy;
+    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+interface IOutboxNotificationResendPublishTermPolicyEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.resendPublishTermPolicy;
+    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+interface IOutboxNotificationEmailPublishTermPolicyEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.publishTermPolicy;
+    data: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+interface IOutboxNotificationEmailSendEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.send;
+    data: INotificationEmailSendPayload;
+}
+
+interface IOutboxNotificationEmailSendUnregisteredEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.sendUnregistered;
+    data: INotificationEmailSendUnregisteredPayload;
+}
+
+interface IOutboxNotificationPushSendEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.send;
+    data: INotificationPushSendPayload;
+}
+
+interface IOutboxNotificationPushCleanupTokensEffect extends IOutboxEffectBase {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.cleanupTokens;
+    data: INotificationPushCleanupTokenEncryptedPayload;
+}
+
 export type IOutboxEffect =
     | IOutboxSessionPurgeLoginsEffect
     | IOutboxUserLockoutEffect
     | IOutboxUserDeletePhotoEffect
     | IOutboxTermPolicyDeleteContentEffect
-    | IOutboxTermPolicyCopyContentEffect;
+    | IOutboxTermPolicyCopyContentEffect
+    | IOutboxNotificationNotifyEffect
+    | IOutboxNotificationPublishTermPolicyEffect
+    | IOutboxNotificationResendPublishTermPolicyEffect
+    | IOutboxNotificationEmailPublishTermPolicyEffect
+    | IOutboxNotificationEmailSendEffect
+    | IOutboxNotificationEmailSendUnregisteredEffect
+    | IOutboxNotificationPushSendEffect
+    | IOutboxNotificationPushCleanupTokensEffect;
 
 export interface IOutboxJobPayload {
     outboxId: string;

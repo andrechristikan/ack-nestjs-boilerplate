@@ -2,11 +2,8 @@ import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceService } from '@modules/device/services/device.service';
-import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type { INotificationPushCleanupTokenEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 
 describe('NotificationPushProcessCleanupTokensUseCase', () => {
@@ -42,16 +39,12 @@ describe('NotificationPushProcessCleanupTokensUseCase', () => {
             notificationService.toCleanupTokensResult.mockReturnValue(
                 cleanupResult
             );
-            const job = buildQueueJob<
-                INotificationPushCleanupTokenEncryptedPayload,
-                IQueueResponse,
-                EnumNotificationPushProcess
-            >({
+            const data: INotificationPushCleanupTokenEncryptedPayload = {
                 userId: 'user-id',
                 encryptedFailureTokens: ['cipher(token-1)', 'cipher(token-2)'],
-            });
+            };
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(data);
 
             expect(
                 notificationService.decryptFailureTokens
@@ -73,13 +66,12 @@ describe('NotificationPushProcessCleanupTokensUseCase', () => {
             notificationService.decryptFailureTokens.mockImplementation(() => {
                 throw failure;
             });
-            const job = buildQueueJob<
-                INotificationPushCleanupTokenEncryptedPayload,
-                IQueueResponse,
-                EnumNotificationPushProcess
-            >({ userId: 'user-id', encryptedFailureTokens: ['bad'] });
+            const data: INotificationPushCleanupTokenEncryptedPayload = {
+                userId: 'user-id',
+                encryptedFailureTokens: ['bad'],
+            };
 
-            await expect(useCase.execute(job)).rejects.toBe(failure);
+            await expect(useCase.execute(data)).rejects.toBe(failure);
             expect(
                 deviceService.cleanupNotificationTokens
             ).not.toHaveBeenCalled();

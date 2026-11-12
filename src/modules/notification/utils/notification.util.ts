@@ -1,4 +1,5 @@
 import type { IFirebasePushResult } from '@common/firebase/interfaces/firebase.interface';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
@@ -7,10 +8,8 @@ import { NotificationSettingContract } from '@modules/notification/contracts/not
 import type {
     INotificationPushSendOutcome,
     INotificationPushTokenPair,
-    INotificationRecipient,
+    INotificationSealedRecord,
     INotificationStepFailure,
-    INotificationStepOutcomes,
-    INotificationStepResult,
     INotificationUserSettingPreference,
 } from '@modules/notification/interfaces/notification.interface';
 import {
@@ -18,10 +17,8 @@ import {
     EnumNotificationProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
@@ -31,7 +28,8 @@ export class NotificationUtil {
     constructor(
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly helperDateService: HelperDateService
     ) {
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
@@ -47,7 +45,20 @@ export class NotificationUtil {
             .map(pair => pair.encrypted);
     }
 
-    private resolveChannels(
+    private pickFields(
+        fields: string[],
+        context: INotificationSealedRecord,
+        username: string
+    ): Record<string, string> {
+        const picked: Record<string, string> = { username };
+        for (const field of fields) {
+            picked[field] = String(context[field]);
+        }
+
+        return picked;
+    }
+
+    resolveChannels(
         kind: EnumNotificationKind,
         settings: INotificationUserSettingPreference[]
     ): EnumNotificationChannel[] {
@@ -99,32 +110,86 @@ export class NotificationUtil {
         );
     }
 
-    toStepResponse({
-        message,
-        completedSteps,
-    }: INotificationStepResult): IQueueResponse {
-        return { message, completedSteps };
+    encryptPayload(value: string, context: string): string {
+        return this.helperEncryptionService.aes256Encrypt(
+            value,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            context
+        );
     }
 
-    foldStepOutcomes(
-        steps: EnumNotificationStep[],
-        outcomes: PromiseSettledResult<void>[]
-    ): INotificationStepOutcomes {
-        const completedSteps: EnumNotificationStep[] = [];
-        const failedSteps: INotificationStepFailure[] = [];
-        for (const [index, outcome] of outcomes.entries()) {
-            const step = steps[index]!;
-            if (outcome.status === 'fulfilled') {
-                completedSteps.push(step);
+    toSealedField(field: string): string {
+        const head = field.charAt(0).toUpperCase();
+
+        return `encrypted${head}${field.slice(1)}`;
+    }
+
+    /** Returns the context with each secret field of the kind decrypted from its `encrypted<Field>` value. */
+    openContext(
+        kind: EnumNotificationKind,
+        sealed: INotificationSealedRecord,
+        encryptionContext: string
+    ): INotificationSealedRecord {
+        const { secrets } = NotificationKindContract[kind];
+        const opened: INotificationSealedRecord = {};
+        const sealedFields = secrets.map(field => this.toSealedField(field));
+        for (const [field, value] of Object.entries(sealed)) {
+            const index = sealedFields.indexOf(field);
+            if (index === -1) {
+                opened[field] = value;
 
                 continue;
             }
 
-            const failure = this.toStepFailure(step, outcome.reason);
-            failedSteps.push(failure);
+            opened[secrets[index]!] = this.decryptPayload(
+                String(value),
+                encryptionContext
+            );
         }
 
-        return { completedSteps, failedSteps };
+        return opened;
+    }
+
+    /** The context values the kind's `metadataFields` name, plus `username`. */
+    toMetadata(
+        kind: EnumNotificationKind,
+        context: INotificationSealedRecord,
+        username: string
+    ): Record<string, string> {
+        const { metadataFields } = NotificationKindContract[kind];
+
+        return this.pickFields(metadataFields, context, username);
+    }
+
+    /** The context values the kind's `templateFields` name, plus `username`, with each `dateFields` value in RFC 2822. */
+    toTemplateData(
+        kind: EnumNotificationKind,
+        context: INotificationSealedRecord,
+        username: string
+    ): Record<string, string> {
+        const { templateFields } = NotificationKindContract[kind];
+        const picked = this.pickFields(templateFields, context, username);
+
+        return this.toDisplayProperties(kind, picked);
+    }
+
+    /** The properties with each of the kind's `dateFields` value formatted from ISO to RFC 2822, for text a person reads. */
+    toDisplayProperties<T extends string | number | boolean | Date>(
+        kind: EnumNotificationKind,
+        properties: Record<string, T>
+    ): Record<string, T | string> {
+        const { dateFields } = NotificationKindContract[kind];
+        const displayed: Record<string, T | string> = { ...properties };
+        for (const field of dateFields) {
+            const value = properties[field];
+            if (typeof value === 'string') {
+                const date = this.helperDateService.createFromIso(value);
+                displayed[field] = this.helperDateService.formatToRFC2822(date);
+            }
+        }
+
+        return displayed;
     }
 
     decryptPayload(encrypted: string, context: string): string {
@@ -174,35 +239,9 @@ export class NotificationUtil {
         };
     }
 
-    toNoChannelResult(
-        process: EnumNotificationProcess,
-        completedSteps: EnumNotificationStep[]
-    ): INotificationStepResult {
-        const message = this.messageService.setMessage(
-            'notification.queue.error.noChannel',
-            { properties: { process } }
-        );
-
-        return { message, completedSteps, failedSteps: [] };
-    }
-
-    mapRecipient(
-        { id, email, username }: IUserRecipient,
-        kind: EnumNotificationKind,
-        tokens: (string | null)[],
-        settings: INotificationUserSettingPreference[]
-    ): INotificationRecipient {
-        const notificationTokens = [
-            ...new Set(
-                tokens.filter((token): token is string => token !== null)
-            ),
-        ];
-        const channels = this.resolveChannels(kind, settings);
-
-        return { userId: id, email, username, notificationTokens, channels };
-    }
-
-    toTemplateLabel(process: EnumNotificationProcess): string {
+    toTemplateLabel(
+        process: EnumNotificationProcess | EnumNotificationKind
+    ): string {
         return process.replace(/[A-Z]/g, letter => ` ${letter.toLowerCase()}`);
     }
 }

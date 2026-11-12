@@ -1,11 +1,9 @@
 import { registerAs } from '@nestjs/config';
-import ms from 'ms';
 
 export interface IConfigEmail {
     noreply: string | null;
     support: string | null;
     batchSize: number;
-    batchDelayInMs: number;
 }
 
 export default registerAs('email', (): IConfigEmail => {
@@ -19,6 +17,5 @@ export default registerAs('email', (): IConfigEmail => {
                 ? null
                 : (process.env.EMAIL_SUPPORT ?? null),
         batchSize: 50,
-        batchDelayInMs: ms('1s'),
     };
 });

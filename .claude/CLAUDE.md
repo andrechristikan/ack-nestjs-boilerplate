@@ -13,7 +13,7 @@ The owner types every `/ack-*` skill: each carries `disable-model-invocation: tr
 | Skill | Runs in | Does |
 | --- | --- | --- |
 | `/ack-design` | session | question rounds with the owner, the test seams, the spec |
-| `/ack-plan` | session, `reviewer` | tickets, the plan index, a cold read, the owner's approval |
+| `/ack-plan` | session, `reviewer`, `advisor` | tickets, the plan index, a cold read, the owner's approval |
 | `/ack-build` | session, `coder`, `reviewer` | every ticket test-first, gates, review |
 
 The rest stand alone, when the owner calls one:
@@ -51,9 +51,9 @@ A platform issue is created only when the owner asks; `gh issue create` is an `a
 
 ### Levels
 
-- `/ack-plan` sets the model and effort `coder` and `reviewer` run each ticket at. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
+- `/ack-plan` sets each ticket's level: the `coder` effort, always on sonnet, and the `reviewer` model and effort. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
 - Without `TYPESAFE_API_KEY`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; `/ack-plan` then uses its own table.
-- No agent runs below its frontmatter `model` and `effort`, or above opus, high (`max` in `.claude/hooks/jev.json`, beside the questions and thresholds).
+- No agent runs below its frontmatter `model` and `effort`; `reviewer` stops at opus, high (`max` in `.claude/hooks/jev.json`).
 - Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
 
 ### Agents
@@ -62,6 +62,7 @@ Skills dispatch the agents in `.claude/agents/`:
 
 - `coder`: builds one ticket or one pin in `src/`, test-first, seeds and the run surface included.
 - `reviewer`: judges a plan, a feature, a pin, or the harness; reports, does not fix.
+- `advisor`: the last cold-read attempt of `/ack-plan`; edits the spec, plan, and tickets.
 - `debugger`: reproduces a symptom, finds its root cause, reports a pin.
 - `tester`: writes or repairs unit specs under `test/unit/` for code that exists.
 - `writer`: `docs/`, the root people files, `.github/` markdown, PR and version text.

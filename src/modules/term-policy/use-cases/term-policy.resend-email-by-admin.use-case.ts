@@ -7,7 +7,8 @@ import type { ITermPolicyActivityLogSubject } from '@modules/term-policy/interfa
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
@@ -19,7 +20,8 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         private readonly termPolicyService: TermPolicyService,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
+        private readonly notificationService: NotificationService,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -57,7 +59,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         const recipientCutoffAt = this.helperDateService.formatToIso(
             termPolicy.publishedAt!
         );
-        await this.notificationQueue.sendResendPublishTermPolicy(
+        const effect = this.notificationService.resendPublishTermPolicyEffect(
             {
                 termPolicyId: termPolicy.id,
                 type: termPolicy.type,
@@ -66,6 +68,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             },
             updatedBy
         );
+        await this.outboxService.add(effect);
 
         this.activityLogService.stagePrepared(activityLogs);
 

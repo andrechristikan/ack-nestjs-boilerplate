@@ -45,20 +45,24 @@ export interface IWorkspaceInviteRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>>;
-    createPending({
-        workspaceInviteId,
-        workspaceId,
-        email,
-        workspaceRole,
-        projectId,
-        projectRole,
-        hashedToken,
-        reference,
-        expiredAt,
-        invitedByUserId,
-        nonce,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite>;
-    rotateForResend(
+    createPendingInTx(
+        tx: IDatabaseTransactionClient,
+        {
+            workspaceInviteId,
+            workspaceId,
+            email,
+            workspaceRole,
+            projectId,
+            projectRole,
+            hashedToken,
+            reference,
+            expiredAt,
+            invitedByUserId,
+            nonce,
+        }: IWorkspaceInviteCreateData
+    ): Promise<WorkspaceInvite>;
+    rotateForResendInTx(
+        tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
         hashedToken: string,
         reference: string,

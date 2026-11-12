@@ -1,7 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -9,8 +8,8 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -24,6 +23,7 @@ import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserSignUp,
+    IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
@@ -52,12 +52,11 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationService: NotificationService,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
@@ -79,7 +78,8 @@ export class UserSignUpUseCase implements IAppUseCase<
     }
 
     private async createSignUpUser(
-        input: IUserCreateWithWorkspaceInput
+        input: IUserCreateWithWorkspaceInput,
+        emailVerification: IUserVerificationEmailCreate
     ): Promise<IUser> {
         const inputs = [input];
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
@@ -89,7 +89,7 @@ export class UserSignUpUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                const users = await this.databaseService.withTransaction(
+                const users = await this.outboxService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -138,6 +138,24 @@ export class UserSignUpUseCase implements IAppUseCase<
                             tx,
                             termPolicyAcceptances
                         );
+
+                        const welcome = this.notificationService.notify(
+                            EnumNotificationKind.welcome,
+                            { userId: input.userId, proceedBy: input.userId }
+                        );
+                        const verificationContext =
+                            this.userVerificationUtil.mapEmailContext(
+                                input.userId,
+                                emailVerification
+                            );
+                        const verification = this.notificationService.notify(
+                            EnumNotificationKind.verificationEmail,
+                            verificationContext
+                        );
+                        await this.outboxService.addManyInTx(tx, [
+                            welcome,
+                            verification,
+                        ]);
 
                         return created;
                     },
@@ -212,23 +230,13 @@ export class UserSignUpUseCase implements IAppUseCase<
                 roleId: role.id,
                 workspaceContext,
             });
-        const created = await this.createSignUpUser(input);
+        const created = await this.createSignUpUser(input, emailVerification);
         const stages = this.userCreateUtil.buildStages(
             UserCreateContract.signUp,
             [input],
             [created]
         );
         this.stageActivities(stages);
-
-        const recipient = this.notificationUtil.mapRecipient(
-            created,
-            EnumNotificationKind.welcome,
-            [],
-            []
-        );
-        const payload =
-            this.userVerificationUtil.mapEmailPayload(emailVerification);
-        await this.notificationQueue.sendWelcome(recipient, payload);
 
         return {};
     }

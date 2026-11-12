@@ -12,7 +12,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -43,7 +42,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
@@ -96,13 +94,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                 method: method ?? null,
             }
         );
-        const [password, recipient] = await Promise.all([
-            this.authPasswordUtil.createPassword(newPassword),
-            this.notificationService.getRecipient(
-                reset.user,
-                EnumNotificationKind.resetPassword
-            ),
-        ]);
+        const password =
+            await this.authPasswordUtil.createPassword(newPassword);
         const activityLogs = [
             this.activityLogService.prepare({
                 action: EnumActivityLogAction.userResetPassword,
@@ -121,12 +114,15 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
         try {
             await this.outboxService.withTransaction(async tx => {
-                await this.userService.updatePasswordInTx(
-                    tx,
-                    reset.userId,
-                    password,
-                    reset.userId
-                );
+                const [snapshot] = await Promise.all([
+                    this.notificationService.getSnapshot(reset.user),
+                    this.userService.updatePasswordInTx(
+                        tx,
+                        reset.userId,
+                        password,
+                        reset.userId
+                    ),
+                ]);
                 await this.passwordHistoryService.createInTx(
                     tx,
                     reset.userId,
@@ -158,6 +154,15 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                 }
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.resetPassword,
+                    {
+                        userId: reset.userId,
+                        proceedBy: reset.userId,
+                        snapshot,
+                    }
+                );
+                await this.outboxService.addInTx(tx, effect);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -171,7 +176,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-        await this.notificationQueue.sendResetPassword(recipient, reset.id);
 
         this.activityLogService.stagePrepared(activityLogs);
 

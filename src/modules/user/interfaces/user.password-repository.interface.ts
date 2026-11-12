@@ -12,7 +12,8 @@ export interface IUserPasswordRepository {
     findOneLatestByForgotPassword(
         userId: string
     ): Promise<ForgotPassword | null>;
-    createReplacingUnused(
+    createReplacingUnusedInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         email: string,
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate

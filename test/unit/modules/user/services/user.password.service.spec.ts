@@ -45,6 +45,12 @@ import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { Duration } from 'luxon';
 
 describe('UserPasswordService', () => {
@@ -62,6 +68,8 @@ describe('UserPasswordService', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
@@ -209,6 +217,10 @@ describe('UserPasswordService', () => {
                     useValue: userTwoFactorService,
                 },
                 { provide: OutboxService, useValue: outboxService },
+                {
+                    provide: NotificationService,
+                    useValue: notificationService,
+                },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: FeatureFlagService, useValue: featureFlagService },
@@ -313,6 +325,10 @@ describe('UserPasswordService', () => {
                         useValue: userTwoFactorService,
                     },
                     { provide: OutboxService, useValue: outboxService },
+                    {
+                        provide: NotificationService,
+                        useValue: notificationService,
+                    },
                     { provide: DatabaseUtil, useValue: databaseUtil },
                     { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                     {
@@ -545,7 +561,30 @@ describe('UserPasswordService', () => {
     });
 
     describe('createForgotPassword', () => {
-        it('replaces the unused requests with the new one', async () => {
+        const forgotEffect: IOutboxEffect = {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.notify,
+            data: {
+                kind: EnumNotificationKind.forgotPassword,
+                context: { userId: 'user-hollow', proceedBy: 'user-hollow' },
+                recipient: null,
+                notificationId: null,
+            },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey: 'forgotPassword-FGT-hollow',
+        };
+
+        beforeEach(() => {
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-03-05T00:00:00.000Z'
+            );
+            notificationService.notify.mockReturnValue(forgotEffect);
+        });
+
+        it('replaces the unused requests and adds the forgotPassword effect on one transaction', async () => {
             await service.createForgotPassword(
                 'user-hollow',
                 'hollow@example.com',
@@ -553,8 +592,47 @@ describe('UserPasswordService', () => {
             );
 
             expect(
-                userPasswordRepository.createReplacingUnused
-            ).toHaveBeenCalledWith('user-hollow', 'hollow@example.com', forgot);
+                userPasswordRepository.createReplacingUnusedInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-hollow',
+                'hollow@example.com',
+                forgot
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.forgotPassword,
+                {
+                    userId: 'user-hollow',
+                    proceedBy: 'user-hollow',
+                    link: 'https://example.com/reset?token=raw-token',
+                    reference: 'FGT-hollow',
+                    expiredAt: '2026-03-05T00:00:00.000Z',
+                    expiredInMinutes: 15,
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                forgotEffect
+            );
+            expect(
+                userPasswordRepository.createReplacingUnusedInTx
+            ).toHaveBeenCalledBefore(outboxService.addInTx);
+        });
+
+        it('adds no effect when the replace rejects', async () => {
+            const cause = new Error('write');
+            userPasswordRepository.createReplacingUnusedInTx.mockRejectedValue(
+                cause
+            );
+
+            await expect(
+                service.createForgotPassword(
+                    'user-hollow',
+                    'hollow@example.com',
+                    forgot
+                )
+            ).rejects.toBe(cause);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 

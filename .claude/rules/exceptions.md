@@ -59,11 +59,11 @@ The mappings: the Prisma ones in `database.md`, Access; a Redis connection error
 
 ## Side effects
 
-A request's side effect (notification, activity rows, session cache purge, S3 object delete) is a job on a queue the module owning that side effect registers; it never changes the response. A notification or activity-log job is added after the transaction commits (`queue.md`, Enqueuing); any other side effect is an outbox row (`outbox.md`).
+A request's side effect (notification, activity rows, session cache purge, S3 object delete) is a job on a queue the module owning that side effect registers; it never changes the response. An activity-log job is added after the transaction commits (`queue.md`, Enqueuing); any other side effect, a notification included, is an outbox row (`outbox.md`).
 
 - A post-commit enqueue runs through `QueueBase.addSideEffect` or `addBulkSideEffect` (`src/common/queue/bases/queue.base.ts`) inside the queue-class method: a throw from `add` or `addBulk` is wrapped in `QueueSideEffectFailedException`, logged at `error` (`logging.md`), reported through `SentryService`, and resolved. Its caller awaits it unwrapped: a service for its own module's queue, a use case for any module's.
 - An exception the request throws before the enqueue stays its answer.
-- A route whose only work is the enqueue (term-policy resend) calls a queue method using `add` and answers its failure as 500 (`AppUnknownException`), or 503 (`RedisUnavailableException`) on a Redis connection error. A queue method a job calls uses `add` too: the throw fails the job and BullMQ retries it.
+- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add`: a failed insert answers as `database.md` maps it, and a failed dispatch leaves the row `pending` and the route answers 200.
 
 ## Status codes
 

@@ -9,10 +9,8 @@ import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserService } from '@modules/user/services/user.service';
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type { INotificationBulkQueuePayload } from '@modules/notification/interfaces/notification.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { MessageService } from '@common/message/services/message.service';
 import { NotificationProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.process-publish-term-policy.use-case';
 
@@ -55,11 +53,10 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
         const u2 = { id: 'u2', email: 'u2@example.com', username: 'u2' };
         const u3 = { id: 'u3', email: 'u3@example.com', username: 'u3' };
         const u4 = { id: 'u4', email: 'u4@example.com', username: 'u4' };
-        const job = buildQueueJob<
-            INotificationBulkQueuePayload<typeof data>,
-            unknown,
-            EnumNotificationProcess
-        >({ proceedBy: 'admin-id', data });
+        const payload: INotificationBulkQueuePayload<typeof data> = {
+            proceedBy: 'admin-id',
+            data,
+        };
 
         beforeEach(() => {
             helperDateService.createFromIso.mockReturnValue(cutoff);
@@ -70,7 +67,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             );
         });
 
-        it('pages the active users at the cutoff and sends each page as batches, advancing the batch index', async () => {
+        it('pages the active users at the cutoff and sends each page as batches, counting the batches', async () => {
             userService.getListActiveRecipientCursor
                 .mockResolvedValueOnce(cursorPage([u1, u2, u3], true))
                 .mockResolvedValueOnce(cursorPage([u4], false));
@@ -81,7 +78,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 .mockResolvedValueOnce(secondPage);
             notificationTermPolicyService.sendFreshBatch.mockResolvedValue(1);
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(helperDateService.createFromIso).toHaveBeenCalledWith(
                 data.recipientCutoffAt
@@ -104,8 +101,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 1,
                 'admin-id',
                 data,
-                firstPage.freshUsers,
-                0
+                firstPage.freshUsers
             );
             expect(
                 notificationTermPolicyService.sendFreshBatch
@@ -113,8 +109,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 2,
                 'admin-id',
                 data,
-                secondPage.freshUsers,
-                1
+                secondPage.freshUsers
             );
             expect(
                 notificationTermPolicyService.getPending
@@ -144,7 +139,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             );
             notificationTermPolicyService.sendFreshBatch.mockResolvedValue(0);
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 notificationTermPolicyService.getPending
@@ -154,7 +149,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             ).toHaveBeenCalledWith(['u4'], cutoff);
             expect(
                 notificationTermPolicyService.sendPendingBatches
-            ).toHaveBeenCalledWith('admin-id', data, page, pending, [u4], 0);
+            ).toHaveBeenCalledWith('admin-id', data, page, pending, [u4]);
             expect(result).toMatchObject({
                 candidateCounts: 1,
                 createdCounts: 0,
@@ -162,7 +157,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             });
         });
 
-        it('creates the fresh batch while the pending batches read their markers and users, numbering it after them', async () => {
+        it('creates the fresh batch while the pending batches read their markers and users, counting both', async () => {
             userService.getListActiveRecipientCursor.mockResolvedValueOnce(
                 cursorPage([u1, u2], false)
             );
@@ -189,11 +184,11 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 2
             );
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 notificationTermPolicyService.sendFreshBatch
-            ).toHaveBeenCalledWith('admin-id', data, [u2], 2);
+            ).toHaveBeenCalledWith('admin-id', data, [u2]);
             expect(result).toMatchObject({ createdCounts: 1, batches: 3 });
         });
 
@@ -206,7 +201,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 .mockResolvedValueOnce(buildTermPolicyPage([u4], []));
             notificationTermPolicyService.sendFreshBatch.mockResolvedValue(0);
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 userService.getListActiveRecipientCursor
@@ -228,7 +223,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             );
             notificationTermPolicyService.sendFreshBatch.mockResolvedValue(1);
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 userService.getListActiveRecipientCursor
@@ -245,7 +240,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
             );
             notificationTermPolicyService.sendFreshBatch.mockResolvedValue(1);
 
-            await useCase.execute(job);
+            await useCase.execute(payload);
 
             expect(
                 userService.getListActiveRecipientCursor
@@ -257,7 +252,7 @@ describe('NotificationProcessPublishTermPolicyUseCase', () => {
                 cursorPage([], false)
             );
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 notificationTermPolicyService.getPage

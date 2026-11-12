@@ -9,9 +9,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -22,7 +19,6 @@ import type {
     IUserLoginOutcome,
 } from '@modules/user/interfaces/user.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -36,18 +32,14 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userVerificationService: UserVerificationService,
-        private readonly notificationService: NotificationService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
-        private readonly userVerificationUtil: UserVerificationUtil,
         private readonly deviceUtil: DeviceUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -55,11 +47,6 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.notificationService.getRecipient(
-            user,
-            EnumNotificationKind.newDeviceLogin
-        );
         const session = await this.userAuthService.createTokenAndSession(
             user,
             device,
@@ -67,30 +54,11 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             loginWith,
             loginAt
         );
-        const promises = [
-            this.sessionService.setLoginOrRevoke(
-                user.id,
-                session.sessionId,
-                session.jti
-            ),
-        ];
-        if (session.isNewDevice) {
-            const loginAtIso = this.helperDateService.formatToIso(loginAt);
-            const newDeviceLoginSent =
-                this.notificationQueue.sendNewDeviceLogin(
-                    recipient,
-                    {
-                        requestLog: session.requestLog,
-                        loginFrom,
-                        loginWith,
-                        loginAt: loginAtIso,
-                    },
-                    session.sessionId
-                );
-            promises.push(newDeviceLoginSent);
-        }
-
-        await Promise.all(promises);
+        await this.sessionService.setLoginOrRevoke(
+            user.id,
+            session.sessionId,
+            session.jti
+        );
 
         if (session.revokeStages.length > 0) {
             const revokeLogs = session.revokeStages.map(stage =>
@@ -103,7 +71,6 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         return session.tokens;
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -151,7 +118,6 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         };
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,
@@ -192,7 +158,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         return outcome;
     }
 
-    private async sendVerificationEmail(user: IUser): Promise<void> {
+    private async requestVerificationEmail(user: IUser): Promise<void> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const isResendable =
             await this.userVerificationService.isEmailResendable(user);
@@ -207,18 +173,9 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 createdBy: user.id,
             }),
         ];
-        const recipient = await this.notificationService.getRecipient(
-            user,
-            EnumNotificationKind.verificationEmail
-        );
-        const emailVerification =
-            await this.userVerificationService.createEmail(user.id, user.email);
+        await this.userVerificationService.sendEmail(user.id, user.email);
 
         this.activityLogService.stagePrepared(activityLogs);
-
-        const payload =
-            this.userVerificationUtil.mapEmailPayload(emailVerification);
-        await this.notificationQueue.sendVerificationEmail(recipient, payload);
     }
 
     async execute({
@@ -257,7 +214,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         const isUnverified = this.userUtil.isUnverified(attempt.user);
         if (isUnverified) {
-            await this.sendVerificationEmail(attempt.user);
+            await this.requestVerificationEmail(attempt.user);
         }
         this.userAuthService.assertVerified(attempt.user);
         this.userAuthService.assertPasswordNotExpired(attempt.user);

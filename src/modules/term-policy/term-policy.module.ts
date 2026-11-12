@@ -1,4 +1,5 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { NotificationModule } from '@modules/notification/notification.module';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyQueueFactory } from '@modules/term-policy/factories/term-policy.queue.factory';
 import { TermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/repositories/term-policy.acceptance.analytic.repository';
@@ -38,6 +39,7 @@ import { Global, Module } from '@nestjs/common';
     ],
     imports: [
         AwsModule,
+        NotificationModule,
         BullModule.registerQueueAsync({
             name: EnumTermPolicyQueue.termPolicy,
             useClass: TermPolicyQueueFactory,

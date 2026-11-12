@@ -1,6 +1,9 @@
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
+    INotificationCreate,
     INotificationCreateEntry,
     INotificationReadState,
     INotificationTermPolicyRecipientCreate,
@@ -26,7 +29,11 @@ export interface INotificationRepository {
         userId: string,
         notificationId: string
     ): Promise<INotificationReadState | null>;
-    createMany(entries: INotificationCreateEntry[]): Promise<Notification[]>;
+    createInTx(
+        tx: IDatabaseTransactionClient,
+        kind: EnumNotificationKind,
+        payload: INotificationCreate
+    ): Promise<void>;
     findTermPolicyRecipients(
         termPolicyId: string,
         userIds: string[]
@@ -35,7 +42,8 @@ export interface INotificationRepository {
         termPolicyId: string,
         batchIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]>;
-    createTermPolicyRecipients(
+    createTermPolicyRecipientsInTx(
+        tx: IDatabaseTransactionClient,
         proceedBy: string,
         termPolicyId: string,
         batchId: string,
@@ -73,6 +81,13 @@ export interface INotificationRepository {
         at: Date
     ): Promise<boolean>;
     updateDeliverySentAt(
+        notificationId: string,
+        channel: EnumNotificationChannel,
+        at: Date,
+        failureTokens: string[]
+    ): Promise<boolean>;
+    updateDeliverySentAtInTx(
+        tx: IDatabaseTransactionClient,
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,

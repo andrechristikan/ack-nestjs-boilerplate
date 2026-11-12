@@ -103,7 +103,8 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async createReplacingActive(
+    async createReplacingActiveInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         userEmail: string,
         {
@@ -114,33 +115,31 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification> {
-        return this.databaseService.withTransaction(async tx => {
-            await tx.verification.updateMany({
-                where: {
-                    userId,
-                    type,
-                    isUsed: false,
-                    expiredAt: {
-                        gt: createdAt,
-                    },
+        await tx.verification.updateMany({
+            where: {
+                userId,
+                type,
+                isUsed: false,
+                expiredAt: {
+                    gt: createdAt,
                 },
-                data: {
-                    expiredAt: createdAt,
-                },
-            });
+            },
+            data: {
+                expiredAt: createdAt,
+            },
+        });
 
-            return tx.verification.create({
-                data: {
-                    userId,
-                    expiredAt,
-                    reference,
-                    token: hashedToken,
-                    type,
-                    to: userEmail,
-                    createdBy: userId,
-                    createdAt,
-                },
-            });
+        return tx.verification.create({
+            data: {
+                userId,
+                expiredAt,
+                reference,
+                token: hashedToken,
+                type,
+                to: userEmail,
+                createdBy: userId,
+                createdAt,
+            },
         });
     }
 }

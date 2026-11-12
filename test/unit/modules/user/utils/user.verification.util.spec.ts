@@ -88,8 +88,8 @@ describe('UserVerificationUtil', () => {
         });
     });
 
-    describe('mapEmailPayload', () => {
-        it('maps the verification into the email payload with an ISO expiry', () => {
+    describe('mapEmailContext', () => {
+        it('maps the verification into the notification context with an RFC 2822 expiry', () => {
             const verification: IUserVerificationEmailCreate = {
                 type: EnumVerificationType.email,
                 reference: 'VRF-random-token',
@@ -104,7 +104,9 @@ describe('UserVerificationUtil', () => {
                 '2026-03-01T00:15:00.000Z'
             );
 
-            expect(util.mapEmailPayload(verification)).toEqual({
+            expect(util.mapEmailContext('user-flint', verification)).toEqual({
+                userId: 'user-flint',
+                proceedBy: 'user-flint',
                 link: 'https://example.com/verify?token=random-token',
                 expiredAt: '2026-03-01T00:15:00.000Z',
                 expiredInMinutes: 15,

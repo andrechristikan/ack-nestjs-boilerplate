@@ -8,18 +8,11 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
-import type {
-    IWorkspaceInviteCreate,
-    IWorkspaceInviteTokenData,
-} from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceInviteCreate } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -32,10 +25,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly projectService: ProjectService,
         private readonly userService: UserService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     /** Temporary: recordEffect inside the transaction (phase 3D). */
@@ -70,37 +60,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         }
 
         return activityLogs;
-    }
-
-    /** Temporary: notificationService.notify inside the transaction (phase 3C). */
-    private async sendInviteNotification(
-        workspace: Workspace,
-        invite: WorkspaceInvite,
-        tokenData: IWorkspaceInviteTokenData,
-        actorId: string,
-        inviterName: string,
-        recipient: INotificationRecipient | null
-    ): Promise<void> {
-        const payload = this.workspaceUtil.mapInviteNotificationPayload(
-            workspace,
-            invite,
-            inviterName
-        );
-
-        if (recipient) {
-            await this.notificationQueue.sendWorkspaceInvite(
-                recipient,
-                { ...payload, inviteAcceptLink: tokenData.claimLink },
-                actorId
-            );
-
-            return;
-        }
-
-        await this.notificationEmailQueue.sendWorkspaceInviteUnregistered(
-            invite.email,
-            { ...payload, inviteAcceptLink: tokenData.signUpLink }
-        );
     }
 
     async execute(
@@ -144,16 +103,20 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             );
         }
 
-        const [inviterName, recipient] = await Promise.all([
-            this.workspaceInviteService.getInviterName(workspace, actorId),
-            this.workspaceInviteService.getInviteeRecipient(existingUser),
-        ]);
-        const { invite, tokenData } =
-            await this.workspaceInviteService.createInvite(
-                workspace.id,
-                actorId,
-                create
-            );
+        const inviterName = await this.workspaceInviteService.getInviterName(
+            workspace,
+            actorId
+        );
+        const { invite } = await this.workspaceInviteService.createInvite(
+            workspace.id,
+            actorId,
+            create,
+            {
+                workspaceName: workspace.name,
+                inviterName,
+                inviteeUserId: existingUser?.id ?? null,
+            }
+        );
 
         const activityLogs = this.prepareInviteActivityLogs(
             EnumActivityLogAction.workspaceInviteCreated,
@@ -164,15 +127,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             existingUser
         );
         this.activityLogService.stagePrepared(activityLogs);
-
-        await this.sendInviteNotification(
-            workspace,
-            invite,
-            tokenData,
-            actorId,
-            inviterName,
-            recipient
-        );
 
         return { data: invite };
     }

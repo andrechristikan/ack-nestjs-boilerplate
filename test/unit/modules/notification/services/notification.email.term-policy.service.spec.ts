@@ -12,7 +12,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { NotificationEmailTermPolicyService } from '@modules/notification/services/notification.email.term-policy.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { EnumNotificationEmailProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type { INotificationTermPolicyBatchRecipientEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -127,7 +127,7 @@ describe('NotificationEmailTermPolicyService', () => {
 
             expect(awsSESService.sendBulk).toHaveBeenCalledTimes(1);
             expect(awsSESService.sendBulk).toHaveBeenCalledWith({
-                templateName: EnumNotificationProcess.publishTermPolicy,
+                templateName: EnumNotificationEmailProcess.publishTermPolicy,
                 recipients: [
                     {
                         recipient: 'nadia@example.com',

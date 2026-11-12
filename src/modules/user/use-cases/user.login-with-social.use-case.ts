@@ -1,7 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -17,8 +16,7 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -68,13 +66,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly countryService: CountryService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly deviceUtil: DeviceUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
@@ -132,7 +128,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                const users = await this.databaseService.withTransaction(
+                const users = await this.outboxService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -182,6 +178,12 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             termPolicyAcceptances
                         );
 
+                        const welcome = this.notificationService.notify(
+                            EnumNotificationKind.welcomeSocial,
+                            { userId: input.userId, proceedBy: input.userId }
+                        );
+                        await this.outboxService.addInTx(tx, welcome);
+
                         return created;
                     },
                     { timeout: this.createTimeoutInMs }
@@ -209,7 +211,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async startSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -217,11 +218,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        // Sequential by design: write must not run if an earlier step throws
-        const recipient = await this.notificationService.getRecipient(
-            user,
-            EnumNotificationKind.newDeviceLogin
-        );
         const session = await this.userAuthService.createTokenAndSession(
             user,
             device,
@@ -229,30 +225,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             loginWith,
             loginAt
         );
-        const promises = [
-            this.sessionService.setLoginOrRevoke(
-                user.id,
-                session.sessionId,
-                session.jti
-            ),
-        ];
-        if (session.isNewDevice) {
-            const loginAtIso = this.helperDateService.formatToIso(loginAt);
-            const newDeviceLoginSent =
-                this.notificationQueue.sendNewDeviceLogin(
-                    recipient,
-                    {
-                        requestLog: session.requestLog,
-                        loginFrom,
-                        loginWith,
-                        loginAt: loginAtIso,
-                    },
-                    session.sessionId
-                );
-            promises.push(newDeviceLoginSent);
-        }
-
-        await Promise.all(promises);
+        await this.sessionService.setLoginOrRevoke(
+            user.id,
+            session.sessionId,
+            session.jti
+        );
 
         if (session.revokeStages.length > 0) {
             const revokeLogs = session.revokeStages.map(stage =>
@@ -265,7 +242,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         return session.tokens;
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async resolveLoginOutcome(
         user: IUser,
         device: IDeviceIdentity,
@@ -313,7 +289,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         };
     }
 
-    /** Temporary: UserAuthService.createTokenAndSession recording the login effects in its transaction (phase 3C). */
     private async completeLogin(
         user: IUser,
         device: IDeviceIdentity,
@@ -419,15 +394,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             from,
             loginWith
         );
-        if (created !== null) {
-            const recipient = this.notificationUtil.mapRecipient(
-                created.users[0]!,
-                EnumNotificationKind.welcomeSocial,
-                [],
-                []
-            );
-            await this.notificationQueue.sendWelcomeSocial(recipient);
-        }
 
         return { data: outcome };
     }

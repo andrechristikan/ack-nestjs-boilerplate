@@ -8,7 +8,6 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -32,7 +31,6 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly roleService: RoleService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
@@ -46,45 +44,56 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         this.roleService.assertActorOutranks(user.role.type, target.role.type);
         this.userService.assertUnblocked(target);
 
-        const [{ password, passwordString }, recipient] = await Promise.all([
-            this.userPasswordService.createTemporaryPassword(),
-            this.notificationService.getRecipient(
-                target,
-                EnumNotificationKind.temporaryPasswordByAdmin
-            ),
-        ]);
+        const { password, passwordString } =
+            await this.userPasswordService.createTemporaryPassword();
+        const passwordCreatedAt = this.helperDateService.formatToIso(
+            password.passwordCreated
+        );
+        const passwordExpiredAt = this.helperDateService.formatToIso(
+            password.passwordExpired
+        );
 
-        const { row, passwordHistoryId } =
-            await this.outboxService.withTransaction(async tx => {
-                const row = await this.userService.updatePasswordInTx(
+        const row = await this.outboxService.withTransaction(async tx => {
+            const [updated, snapshot] = await Promise.all([
+                this.userService.updatePasswordInTx(
                     tx,
                     userId,
                     password,
                     user.id
-                );
-                const passwordHistory =
-                    await this.passwordHistoryService.createInTx(
-                        tx,
-                        userId,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.admin,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        user.id
-                    );
-                await this.userPasswordService.markUnusedResetsUsedInTx(
-                    tx,
-                    userId
-                );
-                await this.sessionService.revokeActiveByUserInTx(
-                    tx,
+                ),
+                this.notificationService.getSnapshot(target),
+            ]);
+            await this.passwordHistoryService.createInTx(
+                tx,
+                userId,
+                password.passwordHash,
+                EnumPasswordHistoryType.admin,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                user.id
+            );
+            await this.userPasswordService.markUnusedResetsUsedInTx(tx, userId);
+            await this.sessionService.revokeActiveByUserInTx(
+                tx,
+                userId,
+                user.id,
+                password.passwordCreated
+            );
+            const effect = this.notificationService.notify(
+                EnumNotificationKind.temporaryPasswordByAdmin,
+                {
                     userId,
-                    user.id,
-                    password.passwordCreated
-                );
+                    proceedBy: user.id,
+                    password: passwordString,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                    snapshot,
+                }
+            );
+            await this.outboxService.addInTx(tx, effect);
 
-                return { row, passwordHistoryId: passwordHistory.id };
-            });
+            return updated;
+        });
 
         const actorMetadata = this.userUtil.mapActivityLogActorMetadata(row);
         const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
@@ -103,23 +112,6 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 metadata: targetMetadata,
             }),
         ];
-        const passwordCreatedAt = this.helperDateService.formatToIso(
-            password.passwordCreated
-        );
-        const passwordExpiredAt = this.helperDateService.formatToIso(
-            password.passwordExpired
-        );
-        await this.notificationQueue.sendTemporaryPasswordByAdmin(
-            recipient,
-            {
-                password: passwordString,
-                passwordCreatedAt,
-                passwordExpiredAt,
-            },
-            user.id,
-            passwordHistoryId
-        );
-
         this.activityLogService.stagePrepared(activityLogs);
 
         return {};

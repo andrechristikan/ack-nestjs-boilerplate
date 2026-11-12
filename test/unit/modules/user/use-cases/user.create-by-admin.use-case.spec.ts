@@ -21,10 +21,14 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -45,24 +49,21 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
 
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -72,7 +73,7 @@ describe('UserCreateByAdminUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const tx = {} as IDatabaseTransactionClient;
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
@@ -95,9 +96,17 @@ describe('UserCreateByAdminUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-bramble',
+    const welcomeEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.welcomeByAdmin,
+            context: { userId: 'user-bramble', proceedBy: 'admin-bramble' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'welcomeByAdmin-user-bramble',
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -237,11 +246,11 @@ describe('UserCreateByAdminUseCase', () => {
         helperDateService.create.mockReturnValue(now);
         helperDateService.forward.mockImplementation(date => date);
         helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
+            '2026-03-05T07:00:00.000+07:00'
         );
         activityLogService.prepare.mockReturnValue(activityLog);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        notificationService.notify.mockReturnValue(welcomeEffect);
+        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
             { userId: 'user-bramble', types: [], createdBy: 'user-bramble' },
@@ -256,7 +265,7 @@ describe('UserCreateByAdminUseCase', () => {
                 UserCreateByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: WorkspaceService, useValue: workspaceService },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 {
@@ -270,8 +279,7 @@ describe('UserCreateByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: NotificationUtil, useValue: notificationUtil },
+                { provide: NotificationService, useValue: notificationService },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -310,7 +318,7 @@ describe('UserCreateByAdminUseCase', () => {
             ]);
         });
 
-        it('commits once without the policy assertion, stages the rows, and sends the welcome with the generated password', async () => {
+        it('commits once without the policy assertion, stages the rows, and adds the welcome effect with the generated password on the same tx', async () => {
             await expect(useCase.execute(dto, actor)).resolves.toEqual({
                 data: { id: 'user-bramble' },
             });
@@ -330,8 +338,8 @@ describe('UserCreateByAdminUseCase', () => {
                 'admin-bramble',
                 role
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -339,30 +347,28 @@ describe('UserCreateByAdminUseCase', () => {
                 tx,
                 [input]
             );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeByAdmin,
+                {
+                    userId: 'user-bramble',
+                    proceedBy: 'admin-bramble',
+                    password: 'random-password',
+                    passwordCreatedAt: '2026-03-05T07:00:00.000+07:00',
+                    passwordExpiredAt: '2026-03-05T07:00:00.000+07:00',
+                }
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                welcomeEffect,
+            ]);
             expect(
                 userRegistrationService.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
-                committedUser,
-                EnumNotificationKind.welcomeByAdmin,
-                [],
-                []
-            );
-            expect(notificationQueue.sendWelcomeByAdmin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    password: 'random-password',
-                    passwordCreatedAt: '2026-03-05T00:00:00.000Z',
-                    passwordExpiredAt: '2026-03-05T00:00:00.000Z',
-                },
-                'admin-bramble'
-            );
         });
 
-        it('sends no welcome when the created account carries no password', async () => {
+        it('adds no welcome effect when the created account carries no password', async () => {
             userService.prepareCreateByAdmin.mockResolvedValue({
                 input: { ...input, password: null, passwordHistoryType: null },
                 passwordString: 'random-password',
@@ -370,7 +376,8 @@ describe('UserCreateByAdminUseCase', () => {
 
             await useCase.execute(dto, actor);
 
-            expect(notificationQueue.sendWelcomeByAdmin).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, []);
         });
 
         it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {
@@ -458,10 +465,14 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
-            const users = await useCase['createAdminUsers']([input], 7000);
+            const users = await useCase['createAdminUsers'](
+                [input],
+                [welcomeEffect],
+                7000
+            );
 
             expect(users).toEqual([committedUser]);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [input]
@@ -484,12 +495,18 @@ describe('UserCreateByAdminUseCase', () => {
             ).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                welcomeEffect,
+            ]);
+            expect(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
+            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
         it('passes timeoutInMs to withTransaction', async () => {
-            await useCase['createAdminUsers']([input], 7000);
+            await useCase['createAdminUsers']([input], [welcomeEffect], 7000);
 
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 7000 }
             );
@@ -497,15 +514,19 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('retries with the next attempt after a slug collision', async () => {
             const collision = new Error('slug collision');
-            databaseService.withTransaction
+            outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            const users = await useCase['createAdminUsers']([input], 5000);
+            const users = await useCase['createAdminUsers'](
+                [input],
+                [welcomeEffect],
+                5000
+            );
 
             expect(users).toEqual([committedUser]);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [input],
                 1
@@ -518,13 +539,13 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('throws the mapped AppBaseException of mapCreateCollision', async () => {
             const otherError = new Error('duplicate email');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             const mapped = new WorkspaceNotFoundException();
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
-                useCase['createAdminUsers']([input], 5000)
+                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
             ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
                 otherError
@@ -533,12 +554,12 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('wraps an unmapped error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
-                useCase['createAdminUsers']([input], 5000)
+                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -546,17 +567,17 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
-            databaseService.withTransaction.mockRejectedValue(
+            outboxService.withTransaction.mockRejectedValue(
                 new Error('slug collision')
             );
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase['createAdminUsers']([input], 5000)
+                useCase['createAdminUsers']([input], [welcomeEffect], 5000)
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
         });
     });
 });

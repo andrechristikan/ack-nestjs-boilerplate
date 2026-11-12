@@ -19,20 +19,15 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type {
-    INotificationRecipient,
-    INotificationWorkspaceInvitePushPayload,
-} from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
-import type { IWorkspaceInviteTokenData } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
+import type {
+    IWorkspaceInviteNotice,
+    IWorkspaceInviteTokenData,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceResendInviteUseCase } from '@modules/workspace/use-cases/workspace.resend-invite.use-case';
 
 describe('WorkspaceResendInviteUseCase', () => {
@@ -41,11 +36,6 @@ describe('WorkspaceResendInviteUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
-        mock<NotificationEmailQueue>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -120,17 +110,10 @@ describe('WorkspaceResendInviteUseCase', () => {
             'https://app.example.com/workspace/invites?inviteToken=token-value',
         signUpLink: 'https://app.example.com/sign-up/token-value',
     };
-    const payload: INotificationWorkspaceInvitePushPayload = {
-        workspaceId: 'workspace-1',
+    const notice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
         inviterName: 'Jane Doe',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
-        reference: 'WIN-abc123',
-        expiredAt: '2026-02-01T00:00:00.000Z',
-    };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-2',
+        inviteeUserId: null,
     };
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.workspaceInviteCreated,
@@ -154,12 +137,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationEmailQueue,
-                    useValue: notificationEmailQueue,
-                },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
             ],
         }).compile();
 
@@ -172,18 +149,14 @@ describe('WorkspaceResendInviteUseCase', () => {
         beforeEach(() => {
             workspaceInviteService.getResendableById.mockResolvedValue(invite);
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            workspaceInviteService.getInviterName.mockResolvedValue('Acme');
-            workspaceUtil.mapInviteNotificationPayload.mockReturnValue(payload);
+            workspaceInviteService.getInviterName.mockResolvedValue('Jane Doe');
             workspaceInviteService.resendInvite.mockResolvedValue({
                 invite,
                 tokenData,
             });
-            workspaceInviteService.getInviteeRecipient.mockImplementation(
-                async user => (user ? recipient : null)
-            );
         });
 
-        it('reads the pending invite, prepares the row, rotates, stages, and emails an unregistered invitee in order', async () => {
+        it('reads the pending invite, prepares the row, rotates with the notice for an invitee with no account, then stages in order', async () => {
             const callOrder: string[] = [];
             workspaceInviteService.getResendableById.mockImplementation(
                 async () => {
@@ -205,11 +178,6 @@ describe('WorkspaceResendInviteUseCase', () => {
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stage');
             });
-            notificationEmailQueue.sendWorkspaceInviteUnregistered.mockImplementation(
-                async () => {
-                    callOrder.push('email');
-                }
-            );
 
             const result = await useCase.execute(
                 workspace,
@@ -224,7 +192,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                 'prepare',
                 'rotate',
                 'stage',
-                'email',
             ]);
             expect(
                 workspaceInviteService.getResendableById
@@ -234,7 +201,9 @@ describe('WorkspaceResendInviteUseCase', () => {
             );
             expect(workspaceInviteService.resendInvite).toHaveBeenCalledWith(
                 'invite-1',
-                null
+                null,
+                'user-1',
+                notice
             );
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.workspaceInviteResent,
@@ -242,12 +211,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                 createdBy: 'user-1',
                 workspaceId: 'workspace-1',
                 metadata: { workspaceInviteId: 'invite-1' },
-            });
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith('invitee@example.com', {
-                ...payload,
-                inviteAcceptLink: tokenData.signUpLink,
             });
         });
 
@@ -258,38 +221,23 @@ describe('WorkspaceResendInviteUseCase', () => {
 
             expect(workspaceInviteService.resendInvite).toHaveBeenCalledWith(
                 'invite-1',
-                14
+                14,
+                'user-1',
+                notice
             );
         });
 
-        it('emails the token data the domain stored', async () => {
-            const storedTokenData: IWorkspaceInviteTokenData = {
-                ...tokenData,
-                signUpLink: 'https://app.example.com/sign-up/retried-token',
-            };
-            workspaceInviteService.resendInvite.mockResolvedValue({
-                invite,
-                tokenData: storedTokenData,
-            });
-
-            await useCase.execute(workspace, 'user-1', 'invite-1', body);
-
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith('invitee@example.com', {
-                ...payload,
-                inviteAcceptLink: storedTokenData.signUpLink,
-            });
-        });
-
-        it('stages the actor row and the invitee row and notifies the in-app recipient when the invitee differs from the actor', async () => {
+        it('passes the invitee user id and stages the actor row and the invitee row when the invitee differs from the actor', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
             await useCase.execute(workspace, 'user-1', 'invite-1', body);
 
-            expect(
-                workspaceInviteService.getInviteeRecipient
-            ).toHaveBeenCalledWith(existingUser);
+            expect(workspaceInviteService.resendInvite).toHaveBeenCalledWith(
+                'invite-1',
+                null,
+                'user-1',
+                { ...notice, inviteeUserId: 'user-2' }
+            );
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.workspaceInviteResentByAdmin,
                 userId: 'user-2',
@@ -297,11 +245,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                 workspaceId: 'workspace-1',
                 metadata: { actorUserId: 'user-1' },
             });
-            expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledWith(
-                recipient,
-                { ...payload, inviteAcceptLink: tokenData.claimLink },
-                'user-1'
-            );
         });
 
         it('stages only the actor row when the invitee account is the actor', async () => {
@@ -323,19 +266,6 @@ describe('WorkspaceResendInviteUseCase', () => {
             expect(workspaceInviteService.resendInvite).not.toHaveBeenCalled();
         });
 
-        it('rotates nothing when the invitee recipient read rejects', async () => {
-            const failure = new Error('read-failed');
-            userService.getOneActiveByEmail.mockResolvedValue(existingUser);
-            workspaceInviteService.getInviteeRecipient.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                useCase.execute(workspace, 'user-1', 'invite-1', body)
-            ).rejects.toBe(failure);
-            expect(workspaceInviteService.resendInvite).not.toHaveBeenCalled();
-        });
-
         it('rotates nothing when the inviter name read rejects', async () => {
             const failure = new Error('read-failed');
             workspaceInviteService.getInviterName.mockRejectedValue(failure);
@@ -346,7 +276,7 @@ describe('WorkspaceResendInviteUseCase', () => {
             expect(workspaceInviteService.resendInvite).not.toHaveBeenCalled();
         });
 
-        it('stages nothing and notifies nobody when the rotation rejects', async () => {
+        it('stages nothing when the rotation rejects', async () => {
             workspaceInviteService.resendInvite.mockRejectedValue(
                 new WorkspaceInviteAlreadyProcessedException()
             );
@@ -355,9 +285,6 @@ describe('WorkspaceResendInviteUseCase', () => {
                 useCase.execute(workspace, 'user-1', 'invite-1', body)
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
         });
     });
 });

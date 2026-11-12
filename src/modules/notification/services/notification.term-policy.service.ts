@@ -1,16 +1,15 @@
-import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
+    EnumNotificationEmailProcess,
     EnumNotificationKind,
-    EnumNotificationProcess,
-    EnumNotificationStep,
+    EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
     INotificationPublishTermPolicyPayload,
-    INotificationRecipientEncryptedPayload,
-    INotificationStepResult,
     INotificationTermPolicyBatchRecipient,
     INotificationTermPolicyPage,
     INotificationTermPolicyPending,
@@ -18,28 +17,36 @@ import type {
     INotificationTermPolicyRecipientState,
     INotificationTermPolicyUser,
 } from '@modules/notification/interfaces/notification.interface';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MessageService } from '@common/message/services/message.service';
 
 @Injectable()
 export class NotificationTermPolicyService {
     readonly emailBatchSize: number;
+    private readonly batchPattern: string;
+    private readonly batchResendPattern: string;
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly messageService: MessageService
+        private readonly helperStringService: HelperStringService,
+        private readonly outboxService: OutboxService
     ) {
         this.emailBatchSize =
             this.configService.get<number>('email.batchSize')!;
+        this.batchPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyBatchPattern'
+        )!;
+        this.batchResendPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyBatchResendPattern'
+        )!;
     }
 
     private listPendingBatchIds(
@@ -62,11 +69,50 @@ export class NotificationTermPolicyService {
         ];
     }
 
-    private async createAndEnqueueTermPolicyBatch(
+    private batchEffect(
+        data: INotificationPublishTermPolicyPayload,
+        batchId: string,
+        proceedBy: string,
+        recipients: INotificationTermPolicyBatchRecipient[]
+    ): IOutboxEffect {
+        const { resendNonce } = data;
+        const pattern =
+            resendNonce === null ? this.batchPattern : this.batchResendPattern;
+        const idempotencyKey = this.helperStringService.fillPattern(pattern, {
+            process: EnumNotificationEmailProcess.publishTermPolicy,
+            termPolicyId: data.termPolicyId,
+            batchId,
+            ...(resendNonce !== null && { resendNonce }),
+        });
+        const encryptedRecipients = recipients.map(
+            ({ userId, notificationId, email, username }) => {
+                const encryptedEmail = this.notificationUtil.encryptPayload(
+                    email,
+                    userId
+                );
+
+                return { userId, notificationId, encryptedEmail, username };
+            }
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationEmail,
+            name: EnumNotificationEmailProcess.publishTermPolicy,
+            data: {
+                data,
+                batchId,
+                proceedBy,
+                recipients: encryptedRecipients,
+            },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey,
+        };
+    }
+
+    private async createTermPolicyBatch(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,
-        users: INotificationTermPolicyUser[],
-        index: number
+        users: INotificationTermPolicyUser[]
     ): Promise<void> {
         const batchId = this.databaseUtil.createId();
         const { pendingChannels, deliveredChannels } =
@@ -94,22 +140,19 @@ export class NotificationTermPolicyService {
                 userId,
                 notificationId,
             }));
+        const effect = this.batchEffect(data, batchId, proceedBy, recipients);
 
-        // Sequential by design: write must not run if an earlier step throws
-        await this.notificationRepository.createTermPolicyRecipients(
-            proceedBy,
-            data.termPolicyId,
-            batchId,
-            entries,
-            markers
-        );
-        await this.notificationEmailQueue.sendPublishTermPolicyBatch(
-            data,
-            batchId,
-            proceedBy,
-            index,
-            recipients
-        );
+        await this.outboxService.withTransaction(async tx => {
+            await this.notificationRepository.createTermPolicyRecipientsInTx(
+                tx,
+                proceedBy,
+                data.termPolicyId,
+                batchId,
+                entries,
+                markers
+            );
+            await this.outboxService.addInTx(tx, effect);
+        });
     }
 
     async getPage(
@@ -149,15 +192,18 @@ export class NotificationTermPolicyService {
         return { sendableMarkers, offPageUserIds };
     }
 
-    /** Re-adds each pending batch of one page from its stored markers, and returns how many it enqueued. */
+    /** Re-adds each pending batch of one page from its stored markers in one outbox add, and returns how many it added. */
     async sendPendingBatches(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,
         { users, pendingBatchIds }: INotificationTermPolicyPage,
         { sendableMarkers }: INotificationTermPolicyPending,
-        offPageUsers: INotificationTermPolicyUser[],
-        index: number
+        offPageUsers: INotificationTermPolicyUser[]
     ): Promise<number> {
+        if (pendingBatchIds.length === 0) {
+            return 0;
+        }
+
         const userById = new Map(
             [...users, ...offPageUsers].map(user => [user.id, user])
         );
@@ -180,108 +226,31 @@ export class NotificationTermPolicyService {
             }
         }
 
-        await Promise.all(
-            pendingBatchIds.map((batchId, i) =>
-                this.notificationEmailQueue.sendPublishTermPolicyBatch(
-                    data,
-                    batchId,
-                    proceedBy,
-                    index + i,
-                    recipientsByBatchId.get(batchId) ?? []
-                )
+        const effects = pendingBatchIds.map(batchId =>
+            this.batchEffect(
+                data,
+                batchId,
+                proceedBy,
+                recipientsByBatchId.get(batchId) ?? []
             )
         );
+        await this.outboxService.addMany(effects);
 
         return pendingBatchIds.length;
     }
 
-    /** Creates the rows of the fresh users and enqueues them as one batch; returns 0 when there are none, otherwise 1. */
+    /** Creates the rows of the fresh users and adds them as one batch row on the same transaction; returns 0 when there are none, otherwise 1. */
     async sendFreshBatch(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,
-        freshUsers: INotificationTermPolicyUser[],
-        index: number
+        freshUsers: INotificationTermPolicyUser[]
     ): Promise<number> {
         if (freshUsers.length === 0) {
             return 0;
         }
 
-        await this.createAndEnqueueTermPolicyBatch(
-            proceedBy,
-            data,
-            freshUsers,
-            index
-        );
+        await this.createTermPolicyBatch(proceedBy, data, freshUsers);
 
         return 1;
-    }
-
-    async processUserAcceptTermPolicy(
-        userId: string,
-        recipient: INotificationRecipientEncryptedPayload,
-        data: INotificationAcceptTermPolicyPayload,
-        notificationId: string,
-        completedSteps: EnumNotificationStep[]
-    ): Promise<INotificationStepResult> {
-        const done = [...completedSteps];
-        if (recipient.channels.length === 0) {
-            return this.notificationUtil.toNoChannelResult(
-                EnumNotificationProcess.userAcceptTermPolicy,
-                done
-            );
-        }
-
-        if (!done.includes(EnumNotificationStep.createNotification)) {
-            try {
-                await this.notificationRepository.createMany([
-                    {
-                        kind: EnumNotificationKind.userAcceptTermPolicy,
-                        payload: {
-                            id: notificationId,
-                            userId,
-                            metadata: {
-                                username: recipient.username,
-                                type: data.type,
-                                version: data.version,
-                            },
-                            createdBy: userId,
-                            channels: recipient.channels,
-                        },
-                    },
-                ]);
-                done.push(EnumNotificationStep.createNotification);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.createNotification,
-                    error
-                );
-
-                const message = this.messageService.setMessage(
-                    'notification.queue.error.failed',
-                    {
-                        properties: {
-                            process:
-                                EnumNotificationProcess.userAcceptTermPolicy,
-                        },
-                    }
-                );
-
-                return {
-                    message,
-                    completedSteps: done,
-                    failedSteps: [failure],
-                };
-            }
-        }
-
-        const message = this.messageService.setMessage(
-            'notification.queue.userAcceptTermPolicy'
-        );
-
-        return {
-            message,
-            completedSteps: done,
-            failedSteps: [],
-        };
     }
 }

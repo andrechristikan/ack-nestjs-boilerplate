@@ -29,8 +29,12 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -50,7 +54,6 @@ import type {
     IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
 
 describe('UserChangePasswordUseCase', () => {
@@ -69,8 +72,6 @@ describe('UserChangePasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
@@ -134,9 +135,17 @@ describe('UserChangePasswordUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: user.id,
+    const notifyEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.changePassword,
+            context: { userId: 'user-linden', proceedBy: 'user-linden' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: null,
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
@@ -182,7 +191,7 @@ describe('UserChangePasswordUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.getRecipient.mockResolvedValue(recipient);
+        notificationService.notify.mockReturnValue(notifyEffect);
         userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
         userTwoFactorService.getProvidedMethod.mockReturnValue(
             EnumAuthTwoFactorMethod.code
@@ -211,7 +220,6 @@ describe('UserChangePasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
             ],
@@ -299,6 +307,11 @@ describe('UserChangePasswordUseCase', () => {
                     return revoked;
                 }
             );
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addEffect');
+
+                return 'outbox-id';
+            });
 
             await expect(useCase.execute(user, dto)).resolves.toEqual({});
 
@@ -326,9 +339,13 @@ describe('UserChangePasswordUseCase', () => {
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userChangePassword,
             });
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.changePassword
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.changePassword,
+                { userId: 'user-linden', proceedBy: 'user-linden' }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
             );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -363,12 +380,9 @@ describe('UserChangePasswordUseCase', () => {
                 'createHistory',
                 'markUnusedResetsUsed',
                 'revokeSessions',
+                'addEffect',
                 'commit',
             ]);
-            expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
-                recipient,
-                'history-linden'
-            );
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
@@ -724,21 +738,12 @@ describe('UserChangePasswordUseCase', () => {
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
         });
 
-        it('writes nothing when the recipient read rejects', async () => {
-            notificationService.getRecipient.mockRejectedValue(
-                new Error('read')
-            );
-
-            await expect(useCase.execute(user, dto)).rejects.toThrow('read');
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-        });
-
         it('notifies and stages nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(useCase.execute(user, dto)).rejects.toBe(cause);
-            expect(notificationQueue.sendChangePassword).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
                 activityLogService.stagePrepared
             ).toHaveBeenCalledExactlyOnceWith([]);

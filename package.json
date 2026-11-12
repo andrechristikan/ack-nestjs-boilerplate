@@ -83,7 +83,6 @@
         "dotenv": "^18.0.1",
         "file-type": "^22.1.1",
         "firebase-admin": "^14.4.0",
-        "flat": "^6.0.1",
         "geoip-lite": "^2.0.3",
         "google-auth-library": "^11.1.0",
         "helmet": "^8.3.0",

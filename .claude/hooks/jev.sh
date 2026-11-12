@@ -2,10 +2,10 @@
 # Jev, TypeSafe's decision model, for ack-plan. Run by the session from ack-plan's level step, never as a hook. Calls Jev
 # only when TYPESAFE_API_KEY is set and JEV_ROUTER_DISABLED is not 1; otherwise it prints an off block and ack-plan uses
 # its own table.
-#   level     one ticket, JSON on stdin {"request","location"}: prints a <jev_level> block with the model and effort
-#             coder and reviewer run that ticket at.
+#   level     one ticket, JSON on stdin {"request","location"}: prints a <jev_level> block with the effort coder runs
+#             that ticket at and the model and effort reviewer runs it at.
 # Questions, thresholds, and the ceiling (max) live in jev.json; each agent's floor is the model: and effort: of its
-# .claude/agents/<name>.md frontmatter. No agent runs below its floor or above the ceiling.
+# .claude/agents/<name>.md frontmatter. coder keeps its floor model and rises in effort only; reviewer rises on both.
 set -uo pipefail
 
 mode="${1:-}"
@@ -29,7 +29,6 @@ fallback = "ack-plan uses its table"
 
 MODELS = ["haiku", "sonnet", "opus"]
 EFFORTS = ["low", "medium", "high"]
-LEVELS = list(zip(MODELS, EFFORTS))
 
 
 def ask(state, questions):
@@ -74,11 +73,11 @@ def floor(agent):
     return found
 
 
-def at(agent, level):
-    """The agent at the level: raised to its floor on either axis, then held at the ceiling."""
+def at(agent, model_up, effort_up):
+    """The agent at its floor, an axis raised to the ceiling when asked."""
     base, cap = floor(agent), cfg["max"]
-    m = min(max(LEVELS[level][0], base["model"], key=MODELS.index), cap["model"], key=MODELS.index)
-    e = min(max(LEVELS[level][1], base["effort"], key=EFFORTS.index), cap["effort"], key=EFFORTS.index)
+    m = max(base["model"], cap["model"], key=MODELS.index) if model_up else base["model"]
+    e = max(base["effort"], cap["effort"], key=EFFORTS.index) if effort_up else base["effort"]
     return f"{agent} ({m}, {e})"
 
 
@@ -107,11 +106,10 @@ def level():
 
     effort = a["effort"]["score"]
     spans = a["spans_modules"]["noul"]
-    n = 0 if effort < t["effort_sonnet"] else 1 if effort < t["effort_opus"] else 2
-    # a ticket that crosses feature areas runs at the top level, as the table in ack-plan gives
-    if spans >= t["noul_yes"]:
-        n = 2
-    block(f"{at('coder', n)}, {at('reviewer', n)}.", f"Signals: effort={effort:.1f}, spans_modules={spans:.2f}.")
+    hard = effort >= t["effort_high"]
+    # a ticket that crosses feature areas raises the reviewer alone, as the table in ack-plan gives
+    wide = hard or spans >= t["noul_yes"]
+    block(f"{at('coder', False, hard)}, {at('reviewer', wide, wide)}.", f"Signals: effort={effort:.1f}, spans_modules={spans:.2f}.")
 
 
 {"level": level}.get(os.environ["JEV_MODE"], lambda: None)()

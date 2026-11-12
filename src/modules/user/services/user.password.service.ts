@@ -15,6 +15,8 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
@@ -58,6 +60,7 @@ export class UserPasswordService {
         private readonly userService: UserService,
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly outboxService: OutboxService,
+        private readonly notificationService: NotificationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
@@ -272,16 +275,34 @@ export class UserPasswordService {
         return { user, forgot };
     }
 
+    /** Replaces the user's unused requests with the new one and adds the forgotPassword effect in the same transaction, dispatched after the commit. */
     async createForgotPassword(
         userId: string,
         email: string,
         forgot: IUserForgotPasswordCreate
     ): Promise<void> {
-        await this.userPasswordRepository.createReplacingUnused(
-            userId,
-            email,
-            forgot
-        );
+        const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
+
+        await this.outboxService.withTransaction(async tx => {
+            await this.userPasswordRepository.createReplacingUnusedInTx(
+                tx,
+                userId,
+                email,
+                forgot
+            );
+            const effect = this.notificationService.notify(
+                EnumNotificationKind.forgotPassword,
+                {
+                    userId,
+                    proceedBy: userId,
+                    link: forgot.link,
+                    reference: forgot.reference,
+                    expiredAt,
+                    expiredInMinutes: forgot.expiredInMinutes,
+                }
+            );
+            await this.outboxService.addInTx(tx, effect);
+        });
     }
 
     /** Gates on `changePassword.forgotAllowed`, then reads the active reset of a token. */

@@ -5,13 +5,16 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { Prisma } from '@generated/prisma-client/client';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
@@ -24,7 +27,9 @@ import type {
 describe('TermPolicyAcceptanceService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -46,7 +51,8 @@ describe('TermPolicyAcceptanceService', () => {
                     provide: TermPolicyRepository,
                     useValue: termPolicyRepository,
                 },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: NotificationService, useValue: notificationService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
             ],
@@ -375,7 +381,7 @@ describe('TermPolicyAcceptanceService', () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 []
             );
-            databaseService.withTransaction.mockImplementation(async fn =>
+            outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
@@ -402,7 +408,7 @@ describe('TermPolicyAcceptanceService', () => {
                 'unique',
                 { code: 'P2002', clientVersion: 'test' }
             );
-            databaseService.withTransaction.mockRejectedValue(collision);
+            outboxService.withTransaction.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = service.userAccept(
@@ -429,7 +435,7 @@ describe('TermPolicyAcceptanceService', () => {
 
         it('throws TermPolicyAlreadyAcceptedException when the transaction hits a write conflict', async () => {
             const conflict = new Error('write conflict');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
@@ -448,20 +454,18 @@ describe('TermPolicyAcceptanceService', () => {
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
-        it('accepts the latest published policy re-read inside the transaction and returns it', async () => {
+        it('accepts the latest published policy re-read inside the transaction and adds the notification row on the same tx', async () => {
+            const effect = { idempotencyKey: 'effect-key' } as IOutboxEffect;
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
-            databaseService.withTransaction.mockImplementation(async fn =>
+            notificationService.notify.mockReturnValue(effect);
+            outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
-            const result = await service.userAccept(
-                'user-1',
-                EnumTermPolicyType.privacy
-            );
+            await service.userAccept('user-1', EnumTermPolicyType.privacy);
 
-            expect(result).toBe(latest);
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
             ).toHaveBeenCalledWith(tx, [EnumTermPolicyType.privacy]);
@@ -472,11 +476,25 @@ describe('TermPolicyAcceptanceService', () => {
                 'user-1',
                 timestamp
             );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.userAcceptTermPolicy,
+                {
+                    userId: 'user-1',
+                    proceedBy: 'user-1',
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.acceptInTx
+            );
         });
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             const rawError = new Error('write failed');
-            databaseService.withTransaction.mockRejectedValue(rawError);
+            outboxService.withTransaction.mockRejectedValue(rawError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             databaseUtil.toException.mockReturnValue(null);
 

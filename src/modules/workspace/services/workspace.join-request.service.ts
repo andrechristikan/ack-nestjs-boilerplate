@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -29,9 +28,8 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { UserService } from '@modules/user/services/user.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -42,6 +40,7 @@ import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/works
 import type {
     IWorkspaceInviteInviter,
     IWorkspaceJoinRequestCreate,
+    IWorkspaceJoinRequestNotice,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
@@ -61,11 +60,10 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
@@ -81,24 +79,18 @@ export class WorkspaceJoinRequestService {
         )!;
     }
 
+    private buildJoinRequestReviewLink(joinRequestId: string): string {
+        return this.helperStringService.fillPattern(
+            this.joinRequestReviewLinkPattern,
+            { homeUrl: this.homeUrl, joinRequestId }
+        );
+    }
+
     async assertJoinRequestAllowed(): Promise<void> {
         await this.featureFlagService.validateFeatureFlagMetadata(
             EnumFeatureFlagKey.workspace,
             EnumFeatureFlagMetadataKey.joinRequestAllowed
         );
-    }
-
-    /** Null when the requester is no longer an active user. */
-    async getRequesterRecipient(
-        requesterId: string,
-        kind: EnumNotificationKind
-    ): Promise<INotificationRecipient | null> {
-        const user = await this.userService.getOneActive(requesterId);
-        if (user === null) {
-            return null;
-        }
-
-        return this.notificationService.getRecipient(user, kind);
     }
 
     async getJoinableWorkspace(
@@ -125,9 +117,15 @@ export class WorkspaceJoinRequestService {
         return workspace;
     }
 
+    /** Creates the pending request and adds one notification row per reviewer in one transaction, dispatched after the commit. */
     async createJoinRequest(
         userId: string,
-        create: IWorkspaceJoinRequestCreate
+        create: IWorkspaceJoinRequestCreate,
+        {
+            workspaceName,
+            requesterName,
+            reviewerIds,
+        }: IWorkspaceJoinRequestNotice
     ): Promise<WorkspaceJoinRequest> {
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceJoinRequestNoncePattern,
@@ -141,12 +139,38 @@ export class WorkspaceJoinRequestService {
         const expiredAt = this.helperDateService.forward(now, duration);
 
         try {
-            return await this.workspaceJoinRequestRepository.createPending({
-                workspaceId: create.workspaceId,
-                userId,
-                message: create.message,
-                expiredAt,
-                nonce,
+            return await this.outboxService.withTransaction(async tx => {
+                const joinRequest =
+                    await this.workspaceJoinRequestRepository.createPendingInTx(
+                        tx,
+                        {
+                            workspaceId: create.workspaceId,
+                            userId,
+                            message: create.message,
+                            expiredAt,
+                            nonce,
+                        }
+                    );
+                const joinRequestReviewLink = this.buildJoinRequestReviewLink(
+                    joinRequest.id
+                );
+                const effects = reviewerIds.map(reviewerId =>
+                    this.notificationService.notify(
+                        EnumNotificationKind.workspaceJoinRequest,
+                        {
+                            userId: reviewerId,
+                            proceedBy: userId,
+                            workspaceId: create.workspaceId,
+                            workspaceName,
+                            requesterName,
+                            joinRequestId: joinRequest.id,
+                            joinRequestReviewLink,
+                        }
+                    )
+                );
+                await this.outboxService.addManyInTx(tx, effects);
+
+                return joinRequest;
             });
         } catch (err: unknown) {
             const isDuplicate = this.databaseUtil.isUniqueCollision(
@@ -198,14 +222,16 @@ export class WorkspaceJoinRequestService {
         return joinRequest;
     }
 
+    /** Accepts the request, adds the member and the requester's notification row in one transaction, dispatched after the commit. */
     async acceptJoinRequest(
         joinRequest: WorkspaceJoinRequest,
-        reviewerId: string
+        reviewerId: string,
+        workspaceName: string
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
 
         try {
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 const accepted =
                     await this.workspaceJoinRequestRepository.acceptInTx(
                         tx,
@@ -224,6 +250,18 @@ export class WorkspaceJoinRequestService {
                     EnumWorkspaceMemberRole.member,
                     reviewerId
                 );
+
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.workspaceJoinAccepted,
+                    {
+                        userId: joinRequest.userId,
+                        proceedBy: reviewerId,
+                        workspaceId: joinRequest.workspaceId,
+                        workspaceName,
+                        joinRequestId: joinRequest.id,
+                    }
+                );
+                await this.outboxService.addInTx(tx, effect);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -247,21 +285,57 @@ export class WorkspaceJoinRequestService {
         }
     }
 
+    /** Rejects the request and adds the requester's notification row in one transaction, dispatched after the commit. */
     async rejectJoinRequest(
-        workspaceJoinRequestId: string,
+        joinRequest: WorkspaceJoinRequest,
         reviewerId: string,
+        workspaceName: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
         const reviewedAt = this.helperDateService.create();
-
-        const rejected = await this.workspaceJoinRequestRepository.reject(
-            workspaceJoinRequestId,
-            reviewerId,
-            rejectReasonCode,
-            reviewedAt
+        const rejectReasonLabel = this.messageService.setMessage(
+            `notification.rejectReason.${rejectReasonCode}`
         );
-        if (!rejected) {
-            throw new WorkspaceJoinRequestAlreadyProcessedException();
+
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                const rejected =
+                    await this.workspaceJoinRequestRepository.rejectInTx(
+                        tx,
+                        joinRequest.id,
+                        reviewerId,
+                        rejectReasonCode,
+                        reviewedAt
+                    );
+                if (!rejected) {
+                    throw new WorkspaceJoinRequestAlreadyProcessedException();
+                }
+
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.workspaceJoinRejected,
+                    {
+                        userId: joinRequest.userId,
+                        proceedBy: reviewerId,
+                        workspaceId: joinRequest.workspaceId,
+                        workspaceName,
+                        joinRequestId: joinRequest.id,
+                        rejectReasonCode,
+                        rejectReasonLabel,
+                    }
+                );
+                await this.outboxService.addInTx(tx, effect);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new WorkspaceJoinRequestAlreadyProcessedException();
+            }
+
+            throw new AppUnknownException(err);
         }
     }
 
@@ -298,13 +372,6 @@ export class WorkspaceJoinRequestService {
             tx,
             workspaceId,
             userId
-        );
-    }
-
-    buildJoinRequestReviewLink(joinRequestId: string): string {
-        return this.helperStringService.fillPattern(
-            this.joinRequestReviewLinkPattern,
-            { homeUrl: this.homeUrl, joinRequestId }
         );
     }
 

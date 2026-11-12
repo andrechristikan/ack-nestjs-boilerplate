@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -11,8 +10,9 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -42,13 +42,12 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationService: NotificationService,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
@@ -70,6 +69,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
     private async createAdminUsers(
         inputs: IUserCreateWithWorkspaceInput[],
+        effects: IOutboxEffect[],
         timeoutInMs: number
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
@@ -78,7 +78,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.databaseService.withTransaction(
+                return await this.outboxService.withTransaction(
                     async tx => {
                         const users =
                             await this.userRegistrationService.createInTx(
@@ -98,6 +98,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             tx,
                             termPolicyAcceptances
                         );
+                        await this.outboxService.addManyInTx(tx, effects);
 
                         return users;
                     },
@@ -146,8 +147,30 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                 actor.id,
                 role
             );
+        const effects: IOutboxEffect[] = [];
+        if (input.password) {
+            const passwordCreatedAt = this.helperDateService.formatToIso(
+                input.password.passwordCreated
+            );
+            const passwordExpiredAt = this.helperDateService.formatToIso(
+                input.password.passwordExpired
+            );
+            const welcome = this.notificationService.notify(
+                EnumNotificationKind.welcomeByAdmin,
+                {
+                    userId: input.userId,
+                    proceedBy: actor.id,
+                    password: passwordString,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                }
+            );
+            effects.push(welcome);
+        }
+
         const users = await this.createAdminUsers(
             [input],
+            effects,
             this.createTimeoutInMs
         );
         const created = users[0]!;
@@ -157,30 +180,6 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
             created
         );
         this.stageActivities(stages);
-
-        if (input.password) {
-            const passwordCreatedAt = this.helperDateService.formatToIso(
-                input.password.passwordCreated
-            );
-            const passwordExpiredAt = this.helperDateService.formatToIso(
-                input.password.passwordExpired
-            );
-            const recipient = this.notificationUtil.mapRecipient(
-                created,
-                EnumNotificationKind.welcomeByAdmin,
-                [],
-                []
-            );
-            await this.notificationQueue.sendWelcomeByAdmin(
-                recipient,
-                {
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-                actor.id
-            );
-        }
 
         return { data: { id: created.id } };
     }

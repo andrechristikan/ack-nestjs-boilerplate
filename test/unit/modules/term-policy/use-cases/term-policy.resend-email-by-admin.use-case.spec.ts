@@ -11,7 +11,14 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
@@ -23,8 +30,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -63,6 +71,23 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         workspaceId: null,
     };
 
+    const resendEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.resendPublishTermPolicy,
+        data: {
+            proceedBy: 'user-1',
+            data: {
+                termPolicyId: 'term-policy-1',
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+                recipientCutoffAt: publishedAt.toISOString(),
+                resendNonce: 'nonce-1',
+            },
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'resendPublishTermPolicy-term-policy-1-nonce-1',
+    };
+
     let useCase: TermPolicyResendEmailByAdminUseCase;
 
     beforeEach(async () => {
@@ -74,6 +99,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         );
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.prepare.mockReturnValue(preparedActivityLog);
+        notificationService.resendPublishTermPolicyEffect.mockReturnValue(
+            resendEffect
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -81,7 +109,8 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 { provide: TermPolicyService, useValue: termPolicyService },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: NotificationService, useValue: notificationService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -90,16 +119,14 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('enqueues the resend for a published policy, then stages the activity log once', async () => {
+        it('adds the resend row for a published policy, then stages the activity log once', async () => {
             const calls: string[] = [];
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
             );
-            notificationQueue.sendResendPublishTermPolicy.mockImplementation(
-                async () => {
-                    calls.push('enqueue');
-                }
-            );
+            outboxService.add.mockImplementation(async () => {
+                calls.push('add');
+            });
             activityLogService.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
@@ -107,9 +134,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             const result = await useCase.execute('term-policy-1', 'user-1');
 
             expect(result).toEqual({});
-            expect(calls).toEqual(['enqueue', 'stage']);
+            expect(calls).toEqual(['add', 'stage']);
             expect(
-                notificationQueue.sendResendPublishTermPolicy
+                notificationService.resendPublishTermPolicyEffect
             ).toHaveBeenCalledWith(
                 {
                     termPolicyId: 'term-policy-1',
@@ -119,6 +146,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 },
                 'user-1'
             );
+            expect(outboxService.add).toHaveBeenCalledWith(resendEffect);
             expect(activityLogService.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminTermPolicyResendEmail,
                 metadata,
@@ -129,14 +157,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             ]);
         });
 
-        it('lets an enqueue failure propagate unchanged and stages nothing', async () => {
+        it('lets a failed insert propagate unchanged and stages nothing', async () => {
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
             );
-            const cause = new Error('redis down');
-            notificationQueue.sendResendPublishTermPolicy.mockRejectedValue(
-                cause
-            );
+            const cause = new Error('database down');
+            outboxService.add.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute('term-policy-1', 'user-1')
@@ -144,14 +170,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('rethrows an AppBaseException raised by the enqueue unchanged without staging', async () => {
+        it('rethrows an AppBaseException raised by the insert unchanged without staging', async () => {
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
             );
             const error = new TermPolicyNotFoundException();
-            notificationQueue.sendResendPublishTermPolicy.mockRejectedValue(
-                error
-            );
+            outboxService.add.mockRejectedValue(error);
 
             await expect(
                 useCase.execute('term-policy-1', 'user-1')
@@ -159,16 +183,14 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('enqueues nothing when the term policy is not published', async () => {
+        it('adds nothing when the term policy is not published', async () => {
             const error = new TermPolicyNotFoundException();
             termPolicyService.getPublishedByAdmin.mockRejectedValue(error);
 
             await expect(
                 useCase.execute('term-policy-1', 'user-1')
             ).rejects.toBe(error);
-            expect(
-                notificationQueue.sendResendPublishTermPolicy
-            ).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

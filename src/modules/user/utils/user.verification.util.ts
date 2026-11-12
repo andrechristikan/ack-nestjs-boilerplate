@@ -2,7 +2,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumVerificationType } from '@generated/prisma-client/client';
-import type { INotificationVerificationEmailPayload } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
 import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { Injectable } from '@nestjs/common';
@@ -90,14 +90,17 @@ export class UserVerificationUtil {
         };
     }
 
-    mapEmailPayload(
+    mapEmailContext(
+        userId: string,
         verification: IUserVerificationEmailCreate
-    ): INotificationVerificationEmailPayload {
+    ): INotificationVerificationLinkContext {
         const expiredAt = this.helperDateService.formatToIso(
             verification.expiredAt
         );
 
         return {
+            userId,
+            proceedBy: userId,
             link: verification.link,
             expiredAt,
             expiredInMinutes: verification.expiredInMinutes,

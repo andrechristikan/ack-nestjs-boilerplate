@@ -72,7 +72,7 @@ describe('QueueProcessorBase', () => {
 
             expect(result).toEqual({ message: 'done' });
             expect(outboxService.load).toHaveBeenCalledWith(outboxId);
-            expect(handle).toHaveBeenCalledWith(job, rowData);
+            expect(handle).toHaveBeenCalledWith(job, rowData, outboxId);
             expect(outboxService.complete).toHaveBeenCalledWith(outboxId, 2);
         });
 
@@ -210,7 +210,7 @@ describe('QueueProcessorBase', () => {
 
             await processor.process(job);
 
-            expect(handle).toHaveBeenCalledWith(job, rowData);
+            expect(handle).toHaveBeenCalledWith(job, rowData, null);
             expect(outboxService.load).not.toHaveBeenCalled();
             expect(outboxService.complete).not.toHaveBeenCalled();
             expect(outboxService.fail).not.toHaveBeenCalled();

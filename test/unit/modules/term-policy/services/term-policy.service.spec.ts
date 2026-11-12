@@ -21,12 +21,18 @@ import { DatabaseUnavailableException } from '@common/database/exceptions/databa
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
@@ -66,6 +72,10 @@ describe('TermPolicyService', () => {
     const helperArrayService: MockProxy<HelperArrayService> =
         mock<HelperArrayService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -149,6 +159,8 @@ describe('TermPolicyService', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: NotificationService, useValue: notificationService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
             ],
@@ -831,7 +843,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
                 module: 'termPolicy',
@@ -878,7 +890,7 @@ describe('TermPolicyService', () => {
                     version: 3,
                 });
 
-                await service.publishByAdmin('term-policy-1');
+                await service.publishByAdmin('term-policy-1', 'admin-1');
 
                 expect(
                     termPolicyRepository.archivePublishedByTypeInTx
@@ -894,7 +906,7 @@ describe('TermPolicyService', () => {
                 );
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toMatchObject({
                     constructor: TermPolicyStatusInvalidException,
                     module: 'termPolicy',
@@ -909,7 +921,7 @@ describe('TermPolicyService', () => {
                 );
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toMatchObject({
                     constructor: TermPolicyStatusInvalidException,
                     module: 'termPolicy',
@@ -931,7 +943,7 @@ describe('TermPolicyService', () => {
                 });
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toMatchObject({
                     constructor: TermPolicyStatusInvalidException,
                     statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
@@ -944,7 +956,7 @@ describe('TermPolicyService', () => {
                 termPolicyRepository.publishInTx.mockResolvedValue(false);
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toMatchObject({
                     constructor: TermPolicyStatusInvalidException,
                     module: 'termPolicy',
@@ -969,7 +981,7 @@ describe('TermPolicyService', () => {
                 });
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toMatchObject({
                     constructor: AppUnknownException,
                     module: 'app',
@@ -984,7 +996,7 @@ describe('TermPolicyService', () => {
                 ).toHaveBeenCalled();
             });
 
-            it('adds the content copy row keyed by the term policy on the publish tx after the guards', async () => {
+            it('adds the content copy row and the publish row on one publish tx after the guards, and dispatches once', async () => {
                 const copyContentEffect: IOutboxEffect = {
                     queue: EnumTermPolicyQueue.termPolicy,
                     name: EnumTermPolicyProcess.copyContent,
@@ -996,11 +1008,33 @@ describe('TermPolicyService', () => {
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'copyContent-term-policy-1',
                 };
+                const publishEffect: IOutboxEffect = {
+                    queue: EnumNotificationQueue.notification,
+                    name: EnumNotificationProcess.publishTermPolicy,
+                    data: {
+                        proceedBy: 'admin-1',
+                        data: {
+                            termPolicyId: 'term-policy-1',
+                            type: EnumTermPolicyType.privacy,
+                            version: 1,
+                            recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                            resendNonce: null,
+                        },
+                    },
+                    priority: EnumQueuePriority.medium,
+                    idempotencyKey: 'publishTermPolicy-term-policy-1',
+                };
                 helperStringService.fillPattern.mockReturnValue(
                     'copyContent-term-policy-1'
                 );
+                helperDateService.formatToIso.mockReturnValue(
+                    '2026-01-01T00:00:00.000Z'
+                );
+                notificationService.publishTermPolicyEffect.mockReturnValue(
+                    publishEffect
+                );
 
-                await service.publishByAdmin('term-policy-1');
+                await service.publishByAdmin('term-policy-1', 'admin-1');
 
                 expect(configGet).toHaveBeenCalledWith(
                     'termPolicy.idempotencyKey.copyContentPattern'
@@ -1012,12 +1046,27 @@ describe('TermPolicyService', () => {
                         termPolicyId: 'term-policy-1',
                     }
                 );
-                expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-                expect(outboxService.addInTx).toHaveBeenCalledWith(
-                    tx,
-                    copyContentEffect
+                expect(helperDateService.formatToIso).toHaveBeenCalledWith(
+                    timestamp
                 );
-                expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                expect(
+                    notificationService.publishTermPolicyEffect
+                ).toHaveBeenCalledWith(
+                    {
+                        termPolicyId: 'term-policy-1',
+                        type: EnumTermPolicyType.privacy,
+                        version: 1,
+                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                        resendNonce: null,
+                    },
+                    'admin-1'
+                );
+                expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+                expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                    copyContentEffect,
+                    publishEffect,
+                ]);
+                expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
                     termPolicyRepository.existsNewerPublishedInTx
                 );
             });
@@ -1028,13 +1077,16 @@ describe('TermPolicyService', () => {
                 );
 
                 await expect(
-                    service.publishByAdmin('term-policy-1')
+                    service.publishByAdmin('term-policy-1', 'admin-1')
                 ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
-                expect(outboxService.addInTx).not.toHaveBeenCalled();
+                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             });
 
             it('publishes the public keys, archives the earlier published versions, and returns the row', async () => {
-                const result = await service.publishByAdmin('term-policy-1');
+                const result = await service.publishByAdmin(
+                    'term-policy-1',
+                    'admin-1'
+                );
 
                 expect(result).toEqual(publishedTermPolicy);
                 expect(
@@ -1058,7 +1110,7 @@ describe('TermPolicyService', () => {
             });
 
             it('calls no S3 copy while publishing', async () => {
-                await service.publishByAdmin('term-policy-1');
+                await service.publishByAdmin('term-policy-1', 'admin-1');
 
                 expect(awsS3Service.copyItems).not.toHaveBeenCalled();
                 expect(awsS3Service.copyItem).not.toHaveBeenCalled();
@@ -1072,7 +1124,7 @@ describe('TermPolicyService', () => {
             );
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentInvalidException,
                 module: 'termPolicy',
@@ -1092,7 +1144,7 @@ describe('TermPolicyService', () => {
             termPolicyUtil.toContents.mockReturnValue([]);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentEmptyException,
                 module: 'termPolicy',
@@ -1110,7 +1162,7 @@ describe('TermPolicyService', () => {
             awsS3Service.isInitialized.mockReturnValue(false);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: AwsS3NotConfiguredException,
                 module: 'aws',
@@ -1144,7 +1196,7 @@ describe('TermPolicyService', () => {
             );
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyStatusInvalidException,
                 module: 'termPolicy',
@@ -1172,7 +1224,7 @@ describe('TermPolicyService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -1196,7 +1248,7 @@ describe('TermPolicyService', () => {
             );
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -1218,7 +1270,7 @@ describe('TermPolicyService', () => {
             termPolicyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
                 module: 'termPolicy',
@@ -1241,7 +1293,7 @@ describe('TermPolicyService', () => {
                 throw error;
             });
 
-            const promise = service.publishByAdmin('term-policy-1');
+            const promise = service.publishByAdmin('term-policy-1', 'admin-1');
 
             await expect(promise).rejects.toBe(error);
             await expect(promise).rejects.toMatchObject({
@@ -1266,7 +1318,7 @@ describe('TermPolicyService', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
 
             await expect(
-                service.publishByAdmin('term-policy-1')
+                service.publishByAdmin('term-policy-1', 'admin-1')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 module: 'app',

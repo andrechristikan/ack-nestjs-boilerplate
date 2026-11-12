@@ -118,47 +118,47 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         );
     }
 
-    async createPending({
-        workspaceId,
-        userId,
-        message,
-        expiredAt,
-        nonce,
-    }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest> {
+    async createPendingInTx(
+        tx: IDatabaseTransactionClient,
+        {
+            workspaceId,
+            userId,
+            message,
+            expiredAt,
+            nonce,
+        }: IWorkspaceJoinRequestCreateData
+    ): Promise<WorkspaceJoinRequest> {
         const now = this.helperDateService.create();
-
-        return this.databaseService.withTransaction(async tx => {
-            const stale = await tx.workspaceJoinRequest.findFirst({
+        const stale = await tx.workspaceJoinRequest.findFirst({
+            where: {
+                nonce,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+                expiredAt: { lte: now },
+            },
+            select: { id: true },
+        });
+        if (stale) {
+            const staleNonce = this.helperHashService.sha256Hash(stale.id);
+            await tx.workspaceJoinRequest.updateMany({
                 where: {
-                    nonce,
+                    id: stale.id,
                     status: EnumWorkspaceJoinRequestStatus.pending,
-                    expiredAt: { lte: now },
                 },
-                select: { id: true },
-            });
-            if (stale) {
-                const staleNonce = this.helperHashService.sha256Hash(stale.id);
-                await tx.workspaceJoinRequest.updateMany({
-                    where: {
-                        id: stale.id,
-                        status: EnumWorkspaceJoinRequestStatus.pending,
-                    },
-                    data: {
-                        status: EnumWorkspaceJoinRequestStatus.expired,
-                        nonce: staleNonce,
-                    },
-                });
-            }
-
-            return tx.workspaceJoinRequest.create({
                 data: {
-                    workspaceId,
-                    userId,
-                    message,
-                    expiredAt,
-                    nonce,
+                    status: EnumWorkspaceJoinRequestStatus.expired,
+                    nonce: staleNonce,
                 },
             });
+        }
+
+        return tx.workspaceJoinRequest.create({
+            data: {
+                workspaceId,
+                userId,
+                message,
+                expiredAt,
+                nonce,
+            },
         });
     }
 
@@ -186,28 +186,28 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         return count > 0;
     }
 
-    async reject(
+    async rejectInTx(
+        tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
     ): Promise<boolean> {
         const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
-        const { count } =
-            await this.databaseService.client.workspaceJoinRequest.updateMany({
-                where: {
-                    id: workspaceJoinRequestId,
-                    status: EnumWorkspaceJoinRequestStatus.pending,
-                    expiredAt: { gt: reviewedAt },
-                },
-                data: {
-                    status: EnumWorkspaceJoinRequestStatus.rejected,
-                    nonce,
-                    rejectReasonCode,
-                    reviewedByUserId: reviewerId,
-                    reviewedAt,
-                },
-            });
+        const { count } = await tx.workspaceJoinRequest.updateMany({
+            where: {
+                id: workspaceJoinRequestId,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+                expiredAt: { gt: reviewedAt },
+            },
+            data: {
+                status: EnumWorkspaceJoinRequestStatus.rejected,
+                nonce,
+                rejectReasonCode,
+                reviewedByUserId: reviewerId,
+                reviewedAt,
+            },
+        });
 
         return count > 0;
     }

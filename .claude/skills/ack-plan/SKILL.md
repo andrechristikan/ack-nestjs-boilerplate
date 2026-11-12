@@ -1,7 +1,7 @@
 ---
 name: ack-plan
 description: >-
-    Breaks an approved spec into local tickets, sets the model and effort each ticket is built at, writes the plan index a person reads, has a fresh reviewer confirm the tickets are executable, and waits for the owner's approval. Use with a spec path under .scratch/. Not for settling what to build (ack-design) or building (ack-build).
+    Breaks an approved spec into local tickets, sets the level each ticket is built and reviewed at, writes the plan index a person reads, has a fresh reviewer confirm the tickets are executable, and waits for the owner's approval. Use with a spec path under .scratch/. Not for settling what to build (ack-design) or building (ack-build).
 blurb: 'tickets, the plan index, cold read, approval'
 disable-model-invocation: true
 argument-hint: '<a .scratch/ spec path>'
@@ -13,7 +13,7 @@ argument-hint: '<a .scratch/ spec path>'
 
 Input: $ARGUMENTS
 
-The session writes the tickets and the plan index. One agent reads: `reviewer`, cold. Write nothing under `src/`, `test/`, or `prisma/`. Where a copied skill and a rule or this file differ, the rule and this file win.
+The session writes the tickets and the plan index. One agent reads: `reviewer`, cold. One agent may edit them: `advisor`, as the last cold-read attempt. Write nothing under `src/`, `test/`, or `prisma/`. Where a copied skill and a rule or this file differ, the rule and this file win.
 
 ## Start
 
@@ -34,7 +34,7 @@ Follow `.claude/skills/to-tickets/SKILL.md`, with these departures:
 
 ## 2. Level per ticket
 
-Each ticket is built by `coder` and judged by `reviewer` at a model and an effort.
+Each ticket is built by `coder`, on sonnet at an effort, and judged by `reviewer` at a model and an effort.
 
 1. For each ticket, run:
 
@@ -45,14 +45,15 @@ JSON
 ```
 
 2. A `<jev_level>` block that names agents gives their model and effort. Use it.
-3. A block that says `off`, `unavailable`, or `malformed input` gives nothing. Use this table:
+3. A block that says `off`, `unavailable`, or `malformed input` gives nothing. Use the first row of this table that fits:
 
 | The ticket | coder | reviewer |
 | --- | --- | --- |
-| stays inside one module, no schema, no flow change | sonnet, medium | sonnet, high |
-| crosses modules, or touches the schema, a transaction, concurrency, or security | opus, high | opus, high |
+| touches the schema, a transaction, concurrency, or security | sonnet, high | opus, high |
+| crosses modules | sonnet, medium | opus, high |
+| any other | sonnet, medium | sonnet, high |
 
-No ticket runs above opus, high, or below the `model` and `effort` in the agent's frontmatter.
+`coder` builds every ticket on sonnet. No ticket runs above opus, high, or below the `model` and `effort` in the agent's frontmatter.
 
 ## 3. Plan index
 
@@ -67,17 +68,29 @@ Write `.scratch/<feature>/plan.md`. It is an index a person reads to see the ord
 
 ## 4. Cold read
 
+**Three attempts are a ceiling, not a quota.** An attempt that leaves no question and no mismatch ends the cold read, the first included. Another runs only when the reader did not understand the spec and the tickets.
+
 1. Dispatch `reviewer` with `Depth: plan`, the spec path, the plan path, and the tickets folder. Paste nothing else from this session.
 2. Compare its one-line restatement of each ticket with what the ticket means. A mismatch is a ticket defect, on `READY` too.
 3. Fix the ticket files for every question and every mismatch. An answer only the owner has goes to the owner with `AskUserQuestion` and joins the spec's `## Owner decisions` verbatim.
-4. Dispatch a new `reviewer` on the fixed files. It has no memory of the round before.
-5. After three rounds, show the owner what is still open.
+4. After a fix, dispatch a new `reviewer` on the fixed files. It has no memory of the round before.
+5. A second `reviewer` that still has a question or a mismatch: the third attempt is `advisor`, dispatched once with the Agent call's `model` set to `fable`. Write nothing until it hands back, then read again each file it edited.
+
+```
+Agent: advisor
+Spec: <the spec path>
+Plan: <the plan path>
+Tickets: <the tickets folder>
+Open: <each question and mismatch of both rounds, with the fix tried>
+```
+
+6. Record under `## Cold read` what `advisor` edited and what it left open. No reader runs after it.
 
 ## 5. Approval
 
-- Present the plan path, what the cold read changed, and each decision made beyond the spec, with `AskUserQuestion`.
+- Present the plan path, what the cold read changed, what `advisor` left open, and each decision made beyond the spec, with `AskUserQuestion`.
 - On the yes, set the first line to `**Approved:** yes`.
-- A change request revises the tickets, runs one more cold read, and asks again.
+- A change request revises the tickets, then one `reviewer` reads them cold. Ask again with whatever it leaves open; `advisor` is not dispatched a second time.
 
 ## Hand back
 

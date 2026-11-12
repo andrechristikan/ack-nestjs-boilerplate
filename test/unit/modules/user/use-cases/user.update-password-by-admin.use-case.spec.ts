@@ -21,8 +21,13 @@ import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activi
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -31,7 +36,6 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
 
 describe('UserUpdatePasswordByAdminUseCase', () => {
@@ -46,8 +50,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -118,9 +120,22 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: user.id,
+    const snapshot: INotificationSnapshot = {
+        username: 'lindenFrost',
+        encryptedEmail: 'cipher(linden@example.com)',
+        encryptedTokens: ['cipher(token-one)'],
+    };
+    const notifyEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.temporaryPasswordByAdmin,
+            context: { userId: 'user-linden', proceedBy: 'admin-linden' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
@@ -135,13 +150,14 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         vi.resetAllMocks();
         activityLogService.prepare.mockReturnValue(activityLog);
         helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-01T00:00:00.000Z'
-        );
+        helperDateService.formatToIso
+            .mockReturnValueOnce('2026-01-01T00:00:00.000Z')
+            .mockReturnValueOnce('2026-06-01T00:00:00.000Z');
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.getRecipient.mockResolvedValue(recipient);
+        notificationService.getSnapshot.mockResolvedValue(snapshot);
+        notificationService.notify.mockReturnValue(notifyEffect);
         userUtil.requiresTwoFactorVerification.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -160,7 +176,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -208,6 +223,11 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     calls.push('markUnusedResetsUsed');
                 }
             );
+            notificationService.getSnapshot.mockImplementation(async () => {
+                calls.push('snapshot');
+
+                return snapshot;
+            });
             sessionService.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -215,6 +235,11 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     return revoked;
                 }
             );
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addEffect');
+
+                return 'outbox-id';
+            });
 
             await expect(
                 useCase.execute('user-linden', admin)
@@ -231,10 +256,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.temporaryPasswordByAdmin
-            );
+            expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -262,22 +284,27 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             expect(calls).toEqual([
                 'begin',
                 'updatePassword',
+                'snapshot',
                 'createHistory',
                 'markUnusedResetsUsed',
                 'revokeSessions',
+                'addEffect',
                 'commit',
             ]);
-            expect(
-                notificationQueue.sendTemporaryPasswordByAdmin
-            ).toHaveBeenCalledWith(
-                recipient,
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.temporaryPasswordByAdmin,
                 {
+                    userId: 'user-linden',
+                    proceedBy: 'admin-linden',
                     password: 'temp-password',
-                    passwordCreatedAt: '2026-03-01T00:00:00.000Z',
-                    passwordExpiredAt: '2026-03-01T00:00:00.000Z',
-                },
-                'admin-linden',
-                'history-linden'
+                    passwordCreatedAt: '2026-01-01T00:00:00.000Z',
+                    passwordExpiredAt: '2026-06-01T00:00:00.000Z',
+                    snapshot,
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
             );
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminUserUpdatePassword,
@@ -295,6 +322,32 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             ]);
         });
 
+        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
+            let snapshotStarted = false;
+            let startedWhenFirstSettles = false;
+            notificationService.getSnapshot.mockImplementation(async () => {
+                snapshotStarted = true;
+
+                return snapshot;
+            });
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            userService.updatePasswordInTx.mockImplementation(async () => {
+                await Promise.resolve();
+                startedWhenFirstSettles = snapshotStarted;
+
+                return updatedRow;
+            });
+
+            await useCase.execute('user-linden', admin);
+
+            expect(startedWhenFirstSettles).toBe(true);
+            expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
+                sessionService.revokeActiveByUserInTx
+            );
+        });
+
         it('stops at the rank gate before the blocked gate', async () => {
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw new Error('rank');
@@ -307,15 +360,18 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('writes nothing when the recipient read rejects', async () => {
-            notificationService.getRecipient.mockRejectedValue(
+        it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
+            notificationService.getSnapshot.mockRejectedValue(
                 new Error('read')
             );
 
             await expect(useCase.execute('user-linden', admin)).rejects.toThrow(
                 'read'
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                sessionService.revokeActiveByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
@@ -326,9 +382,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             await expect(useCase.execute('user-linden', admin)).rejects.toBe(
                 cause
             );
-            expect(
-                notificationQueue.sendTemporaryPasswordByAdmin
-            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
     });

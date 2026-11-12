@@ -8,6 +8,7 @@ paths:
     - 'src/modules/policy/**'
     - 'src/modules/term-policy/**'
     - 'src/modules/activity-log/**'
+    - 'src/modules/notification/**'
     - 'src/common/request/**'
     - 'src/common/pagination/**'
     - 'src/common/helper/**'
@@ -24,6 +25,7 @@ A credential: a password hash or generated password; a 2FA secret, pending secre
 
 - Never in a log line, an error message, `JSON.stringify`, a URL path, activity metadata, a Sentry attribute, or `request.<field>`. Redaction (`logging.md`) is only a safety net.
 - A plaintext credential enters a database row, cache entry, or job payload only sealed: a value only compared (backup code, token, API key secret) as its SHA-256 hash, a value read back (2FA secret, queued password or link) encrypted. In memory it rides plain; on the wire, only what the response schema declares.
+- A notification recipient's email and device tokens in `Outbox.data`, a `snapshot` included, are encrypted against the recipient's user id (`notification.md`).
 
 ## Cryptography
 

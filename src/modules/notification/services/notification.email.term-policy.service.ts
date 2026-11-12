@@ -4,7 +4,7 @@ import type { BulkEmailDestinationStatus } from '@aws-sdk/client-ses';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
+import { EnumNotificationEmailProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type {
     INotificationEmailPublishTermPolicyResult,
@@ -154,7 +154,7 @@ export class NotificationEmailTermPolicyService {
         let statuses: BulkEmailDestinationStatus[];
         try {
             const result = await this.awsSESService.sendBulk({
-                templateName: EnumNotificationProcess.publishTermPolicy,
+                templateName: EnumNotificationEmailProcess.publishTermPolicy,
                 recipients: claimedUserIds.map(userId =>
                     destinations.get(userId)!
                 ),

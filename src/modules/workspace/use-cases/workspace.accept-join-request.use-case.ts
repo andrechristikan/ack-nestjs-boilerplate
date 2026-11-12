@@ -6,8 +6,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -19,8 +17,7 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     /** Temporary: recordEffect inside the transaction (phase 3D). */
@@ -75,26 +72,13 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
             joinRequest
         );
 
-        const recipient =
-            await this.workspaceJoinRequestService.getRequesterRecipient(
-                joinRequest.userId,
-                EnumNotificationKind.workspaceJoinAccepted
-            );
         await this.workspaceJoinRequestService.acceptJoinRequest(
             joinRequest,
-            reviewerId
+            reviewerId,
+            workspace.name
         );
 
         this.activityLogService.stagePrepared(activityLogs);
-
-        if (recipient) {
-            await this.notificationQueue.sendWorkspaceJoinAccepted(
-                recipient,
-                { workspaceId: workspace.id, workspaceName: workspace.name },
-                reviewerId,
-                joinRequest.id
-            );
-        }
 
         return {};
     }

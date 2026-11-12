@@ -254,91 +254,90 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         );
     }
 
-    async createPending({
-        workspaceInviteId,
-        workspaceId,
-        email,
-        workspaceRole,
-        projectId,
-        projectRole,
-        hashedToken,
-        reference,
-        expiredAt,
-        invitedByUserId,
-        nonce,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
+    async createPendingInTx(
+        tx: IDatabaseTransactionClient,
+        {
+            workspaceInviteId,
+            workspaceId,
+            email,
+            workspaceRole,
+            projectId,
+            projectRole,
+            hashedToken,
+            reference,
+            expiredAt,
+            invitedByUserId,
+            nonce,
+        }: IWorkspaceInviteCreateData
+    ): Promise<WorkspaceInvite> {
         const now = this.helperDateService.create();
-
-        return this.databaseService.withTransaction(async tx => {
-            const stale = await tx.workspaceInvite.findFirst({
+        const stale = await tx.workspaceInvite.findFirst({
+            where: {
+                nonce,
+                status: EnumWorkspaceInviteStatus.pending,
+                expiredAt: { lte: now },
+            },
+            select: { id: true },
+        });
+        if (stale) {
+            const staleNonce = this.helperHashService.sha256Hash(stale.id);
+            await tx.workspaceInvite.updateMany({
                 where: {
-                    nonce,
+                    id: stale.id,
                     status: EnumWorkspaceInviteStatus.pending,
-                    expiredAt: { lte: now },
                 },
-                select: { id: true },
-            });
-            if (stale) {
-                const staleNonce = this.helperHashService.sha256Hash(stale.id);
-                await tx.workspaceInvite.updateMany({
-                    where: {
-                        id: stale.id,
-                        status: EnumWorkspaceInviteStatus.pending,
-                    },
-                    data: {
-                        status: EnumWorkspaceInviteStatus.expired,
-                        nonce: staleNonce,
-                    },
-                });
-            }
-
-            return tx.workspaceInvite.create({
                 data: {
-                    id: workspaceInviteId,
-                    workspaceId,
-                    email,
-                    workspaceRole,
-                    projectId,
-                    projectRole,
-                    token: hashedToken,
-                    reference,
-                    expiredAt,
-                    invitedByUserId,
-                    nonce,
+                    status: EnumWorkspaceInviteStatus.expired,
+                    nonce: staleNonce,
                 },
             });
+        }
+
+        return tx.workspaceInvite.create({
+            data: {
+                id: workspaceInviteId,
+                workspaceId,
+                email,
+                workspaceRole,
+                projectId,
+                projectRole,
+                token: hashedToken,
+                reference,
+                expiredAt,
+                invitedByUserId,
+                nonce,
+            },
         });
     }
 
-    async rotateForResend(
+    async rotateForResendInTx(
+        tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
         hashedToken: string,
         reference: string,
         expiredAt: Date,
         resentAt: Date
     ): Promise<WorkspaceInvite | null> {
-        return this.databaseService.withTransaction(async tx => {
-            const { count } = await tx.workspaceInvite.updateMany({
-                where: {
-                    id: workspaceInviteId,
-                    status: EnumWorkspaceInviteStatus.pending,
-                    expiredAt: {
-                        gt: resentAt,
-                    },
+        const { count } = await tx.workspaceInvite.updateMany({
+            where: {
+                id: workspaceInviteId,
+                status: EnumWorkspaceInviteStatus.pending,
+                expiredAt: {
+                    gt: resentAt,
                 },
-                data: {
-                    token: hashedToken,
-                    reference,
-                    expiredAt,
-                },
-            });
-            if (count === 0) {
-                return null;
-            }
+            },
+            data: {
+                token: hashedToken,
+                reference,
+                expiredAt,
+            },
+        });
+        if (count === 0) {
+            return null;
+        }
 
-            return tx.workspaceInvite.findUnique({
-                where: { id: workspaceInviteId },
-            });
+        return tx.workspaceInvite.findUnique({
+            where: { id: workspaceInviteId },
         });
     }
 

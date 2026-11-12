@@ -19,6 +19,7 @@
             "Agent(writer)",
             "Agent(tester)",
             "Agent(debugger)",
+            "Agent(advisor)",
             "Bash"
         ],
         "ask": [

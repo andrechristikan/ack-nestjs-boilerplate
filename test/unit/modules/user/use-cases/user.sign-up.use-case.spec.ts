@@ -6,7 +6,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
@@ -33,13 +33,15 @@ import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type {
-    INotificationRecipient,
-    INotificationVerificationEmailPayload,
-} from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -71,7 +73,6 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
@@ -84,10 +85,8 @@ describe('UserSignUpUseCase', () => {
         mock<UserVerificationUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -101,7 +100,7 @@ describe('UserSignUpUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let useCase: UserSignUpUseCase;
 
@@ -119,9 +118,25 @@ describe('UserSignUpUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-bramble',
+    const welcomeEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.welcome,
+            context: { userId: 'user-bramble', proceedBy: 'user-bramble' },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'welcome-user-bramble',
+    };
+    const verificationEffect: IOutboxEffect = {
+        ...welcomeEffect,
+        data: {
+            ...welcomeEffect.data,
+            kind: EnumNotificationKind.verificationEmail,
+        },
+        idempotencyKey: 'verificationEmail-VRF-bramble',
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -260,7 +275,9 @@ describe('UserSignUpUseCase', () => {
         hashedToken: 'hashed-token',
         link: 'https://example.com/verify?token=raw-token',
     };
-    const welcomePayload: INotificationVerificationEmailPayload = {
+    const verificationContext: INotificationVerificationLinkContext = {
+        userId: 'user-bramble',
+        proceedBy: 'user-bramble',
         link: 'https://example.com/verify?token=raw-token',
         expiredAt: '2026-03-05T07:00:00.000+07:00',
         expiredInMinutes: 15,
@@ -312,11 +329,15 @@ describe('UserSignUpUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        databaseService.withTransaction.mockImplementation(
+        outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogService.prepare.mockReturnValue(activityLog);
-        notificationUtil.mapRecipient.mockReturnValue(recipient);
+        notificationService.notify.mockImplementation(kind =>
+            kind === EnumNotificationKind.welcome
+                ? welcomeEffect
+                : verificationEffect
+        );
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
             acceptanceEntry,
@@ -350,15 +371,14 @@ describe('UserSignUpUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: NotificationUtil, useValue: notificationUtil },
+                { provide: NotificationService, useValue: notificationService },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
                 {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
-                { provide: DatabaseService, useValue: databaseService },
+                { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: ConfigService,
@@ -403,12 +423,12 @@ describe('UserSignUpUseCase', () => {
             userService.existsByEmail.mockResolvedValue(false);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
-            userVerificationUtil.mapEmailPayload.mockReturnValue(
-                welcomePayload
+            userVerificationUtil.mapEmailContext.mockReturnValue(
+                verificationContext
             );
         });
 
-        it('commits the new user on one transaction, stages the created rows, sends the welcome, and returns an empty envelope', async () => {
+        it('commits the new user on one transaction, stages the created rows, adds the welcome and verification effects on the same tx, and returns an empty envelope', async () => {
             await expect(useCase.execute(dto)).resolves.toEqual({});
 
             expect(workspaceInviteService.getSignUpInvite).toHaveBeenCalledWith(
@@ -426,8 +446,8 @@ describe('UserSignUpUseCase', () => {
                 signUpInput,
                 { roleId: 'role-bramble', workspaceContext: personalContext }
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -440,33 +460,33 @@ describe('UserSignUpUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
-            expect(notificationUtil.mapRecipient).toHaveBeenCalledWith(
-                committedUser,
-                EnumNotificationKind.welcome,
-                [],
-                []
-            );
-            expect(userVerificationUtil.mapEmailPayload).toHaveBeenCalledWith(
+            expect(userVerificationUtil.mapEmailContext).toHaveBeenCalledWith(
+                'user-bramble',
                 emailVerification
             );
-            expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
-                recipient,
-                welcomePayload
+            expect(notificationService.notify).toHaveBeenCalledTimes(2);
+            expect(notificationService.notify).toHaveBeenNthCalledWith(
+                1,
+                EnumNotificationKind.welcome,
+                { userId: 'user-bramble', proceedBy: 'user-bramble' }
             );
+            expect(notificationService.notify).toHaveBeenNthCalledWith(
+                2,
+                EnumNotificationKind.verificationEmail,
+                verificationContext
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                welcomeEffect,
+                verificationEffect,
+            ]);
         });
 
-        it('stages the created rows before the welcome enqueue', async () => {
-            const callOrder: string[] = [];
-            activityLogService.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-            notificationQueue.sendWelcome.mockImplementation(async () => {
-                callOrder.push('sendWelcome');
-            });
-
+        it('adds the effects after the last write and before the commit returns', async () => {
             await useCase.execute(dto);
 
-            expect(callOrder).toEqual(['stagePrepared', 'sendWelcome']);
+            expect(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
+            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
         it('forwards the name and reads the invite before the role when a token is present', async () => {
@@ -572,7 +592,7 @@ describe('UserSignUpUseCase', () => {
                 messagePath: 'country.error.notFound',
             });
             expect(userService.assertEmailAvailable).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers the email gate before the username gate and opens no transaction', async () => {
@@ -590,7 +610,7 @@ describe('UserSignUpUseCase', () => {
             });
             expect(userService.assertEmailAvailable).toHaveBeenCalledWith(true);
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the username gate rejects', async () => {
@@ -610,18 +630,18 @@ describe('UserSignUpUseCase', () => {
             expect(userService.assertUsernameAvailable).toHaveBeenCalledWith(
                 clearUsername
             );
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('stages and enqueues nothing when the commit throws', async () => {
+        it('stages nothing and adds no effect outside the transaction when the commit throws', async () => {
             const failure = new UserEmailExistException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            outboxService.withTransaction.mockRejectedValue(failure);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
             await expect(useCase.execute(dto)).rejects.toBe(failure);
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(notificationQueue.sendWelcome).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -635,7 +655,10 @@ describe('UserSignUpUseCase', () => {
             };
             workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
 
-            const created = await useCase['createSignUpUser'](inviteInput);
+            const created = await useCase['createSignUpUser'](
+                inviteInput,
+                emailVerification
+            );
 
             expect(created).toEqual(committedUser);
             expect(
@@ -684,8 +707,8 @@ describe('UserSignUpUseCase', () => {
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -693,7 +716,7 @@ describe('UserSignUpUseCase', () => {
 
         it("runs createInTx on each attempt's tx after a slug collision", async () => {
             const retryTx = {} as IDatabaseTransactionClient;
-            databaseService.withTransaction
+            outboxService.withTransaction
                 .mockImplementationOnce(async fn => {
                     await fn(tx);
                     throw new Error('slug collision');
@@ -701,7 +724,7 @@ describe('UserSignUpUseCase', () => {
                 .mockImplementationOnce(async fn => fn(retryTx) as never);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            await useCase['createSignUpUser'](input);
+            await useCase['createSignUpUser'](input, emailVerification);
 
             expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
                 1,
@@ -716,7 +739,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('asserts the published term policy before createInTx and accepts it last', async () => {
-            await useCase['createSignUpUser'](input);
+            await useCase['createSignUpUser'](input, emailVerification);
 
             expect(
                 termPolicyAcceptanceService.assertRequiredPublishedInTx
@@ -729,14 +752,17 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('creates the project membership only when the invite carries a project and role', async () => {
-            await useCase['createSignUpUser']({
-                ...inviteInput,
-                workspaceContext: {
-                    ...inviteContext,
-                    projectId: null,
-                    projectMemberRole: null,
+            await useCase['createSignUpUser'](
+                {
+                    ...inviteInput,
+                    workspaceContext: {
+                        ...inviteContext,
+                        projectId: null,
+                        projectMemberRole: null,
+                    },
                 },
-            });
+                emailVerification
+            );
 
             expect(
                 workspaceInviteService.acceptOnSignUpInTx
@@ -745,7 +771,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('accepts no invite for a personal input', async () => {
-            await useCase['createSignUpUser'](input);
+            await useCase['createSignUpUser'](input, emailVerification);
 
             expect(
                 workspaceInviteService.acceptOnSignUpInTx
@@ -763,23 +789,26 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
-            await expect(useCase['createSignUpUser'](input)).rejects.toBe(
-                failure
-            );
+            await expect(
+                useCase['createSignUpUser'](input, emailVerification)
+            ).rejects.toBe(failure);
             expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
             const collision = new Error('slug collision');
-            databaseService.withTransaction
+            outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            const created = await useCase['createSignUpUser'](input);
+            const created = await useCase['createSignUpUser'](
+                input,
+                emailVerification
+            );
 
             expect(created).toEqual(committedUser);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
             expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
                 [input],
                 1
@@ -791,32 +820,32 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            databaseService.withTransaction.mockRejectedValue(
+            outboxService.withTransaction.mockRejectedValue(
                 new Error('slug collision')
             );
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                useCase['createSignUpUser'](input)
+                useCase['createSignUpUser'](input, emailVerification)
             ).rejects.toMatchObject({
                 module: 'database',
                 statusCode:
                     EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
                 messagePath: 'database.error.uniqueValueGenerationFailed',
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('throws the exception the create util maps a non-slug collision to', async () => {
             const otherError = new Error('duplicate email');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             const mapped = new UserEmailExistException();
             userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
-            await expect(useCase['createSignUpUser'](input)).rejects.toBe(
-                mapped
-            );
+            await expect(
+                useCase['createSignUpUser'](input, emailVerification)
+            ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
                 otherError
             );
@@ -824,12 +853,12 @@ describe('UserSignUpUseCase', () => {
 
         it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
             const otherError = new Error('unexpected');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+            outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
-                useCase['createSignUpUser'](input)
+                useCase['createSignUpUser'](input, emailVerification)
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,

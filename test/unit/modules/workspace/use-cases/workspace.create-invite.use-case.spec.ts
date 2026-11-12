@@ -21,12 +21,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type {
-    INotificationRecipient,
-    INotificationWorkspaceInvitePushPayload,
-} from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
@@ -35,10 +29,11 @@ import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
-import type { IWorkspaceInviteTokenData } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import type {
+    IWorkspaceInviteNotice,
+    IWorkspaceInviteTokenData,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
 
 describe('WorkspaceCreateInviteUseCase', () => {
@@ -48,11 +43,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
-        mock<NotificationEmailQueue>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -140,17 +130,10 @@ describe('WorkspaceCreateInviteUseCase', () => {
             'https://app.example.com/workspace/invites?inviteToken=token-value',
         signUpLink: 'https://app.example.com/sign-up/token-value',
     };
-    const payload: INotificationWorkspaceInvitePushPayload = {
-        workspaceId: 'workspace-1',
+    const notice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
         inviterName: 'Jane Doe',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
-        reference: 'WIN-abc123',
-        expiredAt: '2026-02-01T00:00:00.000Z',
-    };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-2',
+        inviteeUserId: null,
     };
     const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.workspaceInviteCreated,
@@ -175,12 +158,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: NotificationEmailQueue,
-                    useValue: notificationEmailQueue,
-                },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
             ],
         }).compile();
 
@@ -195,17 +172,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
         beforeEach(() => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
             workspaceInviteService.getInviterName.mockResolvedValue('Jane Doe');
-            workspaceUtil.mapInviteNotificationPayload.mockReturnValue(payload);
             workspaceInviteService.createInvite.mockResolvedValue({
                 invite,
                 tokenData,
             });
-            workspaceInviteService.getInviteeRecipient.mockImplementation(
-                async user => (user ? recipient : null)
-            );
         });
 
-        it('checks, reads the inviter and invitee, writes, stages, and emails an unregistered invitee in order', async () => {
+        it('checks, reads the inviter, writes with the notice for an invitee with no account, then stages in order', async () => {
             const callOrder: string[] = [];
             userService.getOneActiveByEmail.mockImplementation(async () => {
                 callOrder.push('lookup');
@@ -235,11 +208,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
             activityLogService.stagePrepared.mockImplementation(() => {
                 callOrder.push('stage');
             });
-            notificationEmailQueue.sendWorkspaceInviteUnregistered.mockImplementation(
-                async () => {
-                    callOrder.push('email');
-                }
-            );
 
             const result = await useCase.execute(workspace, 'user-1', body);
 
@@ -251,7 +219,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(callOrder.indexOf('inviterName')).toBeGreaterThan(
                 callOrder.indexOf('assertCreatable')
             );
-            expect(callOrder.slice(-3)).toEqual(['create', 'stage', 'email']);
+            expect(callOrder.slice(-2)).toEqual(['create', 'stage']);
             expect(
                 projectService.getActiveByIdAndWorkspace
             ).not.toHaveBeenCalled();
@@ -280,7 +248,8 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     projectId: null,
                     projectRole: null,
                     expiryDuration: null,
-                }
+                },
+                notice
             );
             expect(activityLogService.prepare).toHaveBeenCalledTimes(1);
             expect(activityLogService.prepare).toHaveBeenCalledWith({
@@ -293,31 +262,19 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 stagedActivityLog,
             ]);
-            expect(
-                workspaceInviteService.getInviteeRecipient
-            ).toHaveBeenCalledWith(null);
-            expect(
-                workspaceUtil.mapInviteNotificationPayload
-            ).toHaveBeenCalledWith(workspace, invite, 'Jane Doe');
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith('invitee@example.com', {
-                ...payload,
-                inviteAcceptLink: tokenData.signUpLink,
-            });
-            expect(
-                notificationQueue.sendWorkspaceInvite
-            ).not.toHaveBeenCalled();
         });
 
-        it('stages two rows and notifies the in-app recipient when the existing user differs from the actor', async () => {
+        it('passes the invitee user id and stages two rows when the existing user differs from the actor', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
             await useCase.execute(workspace, 'user-1', body);
 
-            expect(
-                workspaceInviteService.getInviteeRecipient
-            ).toHaveBeenCalledWith(existingUser);
+            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+                'workspace-1',
+                'user-1',
+                expect.objectContaining({ email: 'invitee@example.com' }),
+                { ...notice, inviteeUserId: 'user-2' }
+            );
             expect(activityLogService.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 userId: 'user-1',
@@ -339,14 +296,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 stagedActivityLog,
                 stagedActivityLog,
             ]);
-            expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledWith(
-                recipient,
-                { ...payload, inviteAcceptLink: tokenData.claimLink },
-                'user-1'
-            );
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
         });
 
         it('stages a single row when the existing user is the actor', async () => {
@@ -391,7 +340,8 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
                 'workspace-1',
                 'user-1',
-                expect.objectContaining({ expiryDuration: 14 })
+                expect.objectContaining({ expiryDuration: 14 }),
+                notice
             );
         });
 
@@ -468,29 +418,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
             ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
-        });
-
-        it('emails the token data the domain stored', async () => {
-            const storedTokenData: IWorkspaceInviteTokenData = {
-                ...tokenData,
-                signUpLink: 'https://app.example.com/sign-up/retried-token',
-            };
-            workspaceInviteService.createInvite.mockResolvedValue({
-                invite,
-                tokenData: storedTokenData,
-            });
-
-            await useCase.execute(workspace, 'user-1', body);
-
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).toHaveBeenCalledWith('invitee@example.com', {
-                ...payload,
-                inviteAcceptLink: storedTokenData.signUpLink,
-            });
         });
 
         it('creates nothing and stages nothing when the inviter name read rejects', async () => {
@@ -504,21 +431,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('creates nothing and stages nothing when the invitee recipient read rejects', async () => {
-            const failure = new Error('read-failed');
-            userService.getOneActiveByEmail.mockResolvedValue(existingUser);
-            workspaceInviteService.getInviteeRecipient.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                useCase.execute(workspace, 'user-1', body)
-            ).rejects.toBe(failure);
-            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('stages nothing and notifies nobody when the write rejects', async () => {
+        it('stages nothing when the write rejects', async () => {
             workspaceInviteService.createInvite.mockRejectedValue(
                 new WorkspaceInviteDuplicateException()
             );
@@ -527,9 +440,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 useCase.execute(workspace, 'user-1', body)
             ).rejects.toBeInstanceOf(WorkspaceInviteDuplicateException);
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationEmailQueue.sendWorkspaceInviteUnregistered
-            ).not.toHaveBeenCalled();
         });
     });
 });

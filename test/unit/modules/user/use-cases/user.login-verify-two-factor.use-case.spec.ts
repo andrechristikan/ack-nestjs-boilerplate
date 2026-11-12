@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -30,10 +29,6 @@ import type {
     IAuthTwoFactorChallengeCache,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -45,7 +40,6 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
 import { UserLoginVerifyTwoFactorUseCase } from '@modules/user/use-cases/user.login-verify-two-factor.use-case';
 
@@ -53,10 +47,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const authTwoFactorService: MockProxy<AuthTwoFactorService> =
@@ -89,18 +79,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             },
         ],
     };
-    const requestLog: IRequestLog = {
-        userAgent: {
-            ua: 'ua',
-            browser: null,
-            cpu: null,
-            device: null,
-            engine: null,
-            os: null,
-        },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
         roleType: EnumRoleType.user,
@@ -120,10 +98,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         userId: null,
         createdBy: null,
         workspaceId: null,
-    };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: 'user-bramble',
     };
     const twoFactor: TwoFactor = {
         id: 'two-factor-bramble',
@@ -196,8 +170,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         tokens,
         sessionId: 'session-bramble',
         jti: 'jti-bramble',
-        requestLog,
-        isNewDevice: true,
         revokeStages: [],
     };
     const challenge: IAuthTwoFactorChallengeCache = {
@@ -215,16 +187,12 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         vi.resetAllMocks();
 
         helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
         activityLogService.prepare.mockReturnValue(activityLog);
         userUtil.resolveLoginActivityLogAction.mockReturnValue(
             EnumActivityLogAction.userLoginCredential
         );
         userUtil.isUnverified.mockReturnValue(false);
         userUtil.isTwoFactorEnabled.mockReturnValue(false);
-        notificationService.getRecipient.mockResolvedValue(recipient);
         userAuthService.createTokenAndSession.mockResolvedValue(session);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -235,7 +203,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                     provide: UserTwoFactorService,
                     useValue: userTwoFactorService,
                 },
-                { provide: NotificationService, useValue: notificationService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: SessionService, useValue: sessionService },
                 {
@@ -243,7 +210,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                     useValue: authTwoFactorService,
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -572,16 +538,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             loginAt,
         ] as const;
 
-        it('reads the recipient before createTokenAndSession', async () => {
+        it('starts the session through createTokenAndSession', async () => {
             await useCase['startSession'](...startArgs);
 
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                baseUser,
-                EnumNotificationKind.newDeviceLogin
-            );
-            expect(notificationService.getRecipient).toHaveBeenCalledBefore(
-                userAuthService.createTokenAndSession
-            );
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
                 baseUser,
                 deviceIdentity,
@@ -602,31 +561,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
                 userAuthService.createTokenAndSession
             );
-        });
-
-        it('sends the new-device notification only for a new device', async () => {
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
-                recipient,
-                {
-                    requestLog,
-                    loginFrom: EnumUserLoginFrom.website,
-                    loginWith: EnumUserLoginWith.credential,
-                    loginAt: '2026-03-05T00:00:00.000Z',
-                },
-                'session-bramble'
-            );
-
-            notificationQueue.sendNewDeviceLogin.mockClear();
-            userAuthService.createTokenAndSession.mockResolvedValue({
-                ...session,
-                isNewDevice: false,
-            });
-
-            await useCase['startSession'](...startArgs);
-
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
         });
 
         it('stages the revoke rows after setting the login only when revokeStages is not empty', async () => {
@@ -681,21 +615,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
 
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
-            expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-        });
-
-        it('fails before the service call when the recipient read rejects', async () => {
-            const failure = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(failure);
-
-            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
-                failure
-            );
-
-            expect(
-                userAuthService.createTokenAndSession
-            ).not.toHaveBeenCalled();
         });
     });
 });

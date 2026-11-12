@@ -13,23 +13,13 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
-import type { ITermPolicyRef } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('TermPolicyUserAcceptUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
 
@@ -93,8 +83,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
                     useValue: termPolicyAcceptanceService,
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
-                { provide: NotificationQueue, useValue: notificationQueue },
             ],
         }).compile();
 
@@ -102,15 +90,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
     });
 
     describe('execute', () => {
-        const recipient: INotificationRecipient = {
-            ...TestRecipient,
-            userId: 'user-1',
-        };
-        const accepted: ITermPolicyRef = {
-            id: 'term-policy-1',
-            type: EnumTermPolicyType.privacy,
-            version: 1,
-        };
         const preparedActivityLog: IActivityLogStaged = {
             action: EnumActivityLogAction.userAcceptTermPolicy,
             metadata: {},
@@ -121,41 +100,25 @@ describe('TermPolicyUserAcceptUseCase', () => {
 
         beforeEach(() => {
             activityLogService.prepare.mockReturnValue(preparedActivityLog);
-            notificationService.getRecipient.mockResolvedValue(recipient);
-            notificationQueue.sendUserAcceptTermPolicy.mockResolvedValue();
         });
 
-        it('reads the recipient, accepts, stages the activity log, then queues the notification', async () => {
+        it('accepts, then stages the activity log', async () => {
             const calls: string[] = [];
-            notificationService.getRecipient.mockImplementation(async () => {
-                calls.push('recipient');
-                return recipient;
-            });
             termPolicyAcceptanceService.userAccept.mockImplementation(
                 async () => {
                     calls.push('accept');
-                    return accepted;
                 }
             );
             activityLogService.stagePrepared.mockImplementation(() => {
                 calls.push('stage');
             });
-            notificationQueue.sendUserAcceptTermPolicy.mockImplementation(
-                async () => {
-                    calls.push('enqueue');
-                }
-            );
 
             const result = await useCase.execute(user, {
                 type: EnumTermPolicyType.privacy,
             });
 
             expect(result).toEqual({});
-            expect(calls).toEqual(['recipient', 'accept', 'stage', 'enqueue']);
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.userAcceptTermPolicy
-            );
+            expect(calls).toEqual(['accept', 'stage']);
             expect(termPolicyAcceptanceService.userAccept).toHaveBeenCalledWith(
                 'user-1',
                 EnumTermPolicyType.privacy
@@ -166,34 +129,9 @@ describe('TermPolicyUserAcceptUseCase', () => {
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 preparedActivityLog,
             ]);
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).toHaveBeenCalledWith(recipient, {
-                termPolicyId: 'term-policy-1',
-                type: EnumTermPolicyType.privacy,
-                version: 1,
-            });
         });
 
-        it('accepts nothing when the recipient read rejects', async () => {
-            const error = new Error('recipient-unavailable');
-            notificationService.getRecipient.mockRejectedValue(error);
-
-            const promise = useCase.execute(user, {
-                type: EnumTermPolicyType.privacy,
-            });
-
-            await expect(promise).rejects.toBe(error);
-            expect(
-                termPolicyAcceptanceService.userAccept
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).not.toHaveBeenCalled();
-        });
-
-        it('stages and queues nothing when the domain rejects', async () => {
+        it('stages nothing when the domain rejects', async () => {
             const error = new Error('already accepted');
             termPolicyAcceptanceService.userAccept.mockRejectedValue(error);
 
@@ -203,9 +141,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
 
             await expect(promise).rejects.toBe(error);
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
-            expect(
-                notificationQueue.sendUserAcceptTermPolicy
-            ).not.toHaveBeenCalled();
         });
     });
 });

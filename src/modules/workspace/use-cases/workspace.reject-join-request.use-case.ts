@@ -6,8 +6,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { Injectable } from '@nestjs/common';
@@ -20,8 +18,7 @@ export class WorkspaceRejectJoinRequestUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     /** Temporary: recordEffect inside the transaction (phase 3D). */
@@ -77,31 +74,14 @@ export class WorkspaceRejectJoinRequestUseCase implements IAppUseCase<
             joinRequest
         );
 
-        const recipient =
-            await this.workspaceJoinRequestService.getRequesterRecipient(
-                joinRequest.userId,
-                EnumNotificationKind.workspaceJoinRejected
-            );
         await this.workspaceJoinRequestService.rejectJoinRequest(
-            joinRequest.id,
+            joinRequest,
             reviewerId,
+            workspace.name,
             rejectReasonCode
         );
 
         this.activityLogService.stagePrepared(activityLogs);
-
-        if (recipient) {
-            await this.notificationQueue.sendWorkspaceJoinRejected(
-                recipient,
-                {
-                    workspaceId: workspace.id,
-                    workspaceName: workspace.name,
-                    rejectReasonCode,
-                },
-                reviewerId,
-                joinRequest.id
-            );
-        }
 
         return {};
     }

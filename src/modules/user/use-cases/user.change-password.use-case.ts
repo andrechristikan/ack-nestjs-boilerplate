@@ -8,7 +8,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -40,7 +39,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService
     ) {}
@@ -109,13 +107,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             backupCode: backupCode ?? null,
             method: method ?? null,
         });
-        const [password, recipient] = await Promise.all([
-            this.authPasswordUtil.createPassword(newPassword),
-            this.notificationService.getRecipient(
-                user,
-                EnumNotificationKind.changePassword
-            ),
-        ]);
+        const password =
+            await this.authPasswordUtil.createPassword(newPassword);
         if (twoFactorVerified) {
             const verifyTwoFactorActivityLog = this.activityLogService.prepare({
                 action: EnumActivityLogAction.userVerifyTwoFactor,
@@ -125,49 +118,45 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             activityLogs.push(verifyTwoFactorActivityLog);
         }
 
-        const passwordHistoryId = await this.outboxService.withTransaction(
-            async tx => {
-                await this.userService.updatePasswordInTx(
+        await this.outboxService.withTransaction(async tx => {
+            await this.userService.updatePasswordInTx(
+                tx,
+                user.id,
+                password,
+                user.id
+            );
+            await this.passwordHistoryService.createInTx(
+                tx,
+                user.id,
+                password.passwordHash,
+                EnumPasswordHistoryType.profile,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                user.id
+            );
+            await this.userPasswordService.markUnusedResetsUsedInTx(
+                tx,
+                user.id
+            );
+            await this.sessionService.revokeActiveByUserInTx(
+                tx,
+                user.id,
+                user.id,
+                password.passwordCreated
+            );
+            if (twoFactorVerified) {
+                await this.userTwoFactorService.recordVerificationInTx(
                     tx,
-                    user.id,
-                    password,
-                    user.id
+                    user,
+                    twoFactorVerified
                 );
-                const passwordHistory =
-                    await this.passwordHistoryService.createInTx(
-                        tx,
-                        user.id,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.profile,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        user.id
-                    );
-                await this.userPasswordService.markUnusedResetsUsedInTx(
-                    tx,
-                    user.id
-                );
-                await this.sessionService.revokeActiveByUserInTx(
-                    tx,
-                    user.id,
-                    user.id,
-                    password.passwordCreated
-                );
-                if (twoFactorVerified) {
-                    await this.userTwoFactorService.recordVerificationInTx(
-                        tx,
-                        user,
-                        twoFactorVerified
-                    );
-                }
-
-                return passwordHistory.id;
             }
-        );
-        await this.notificationQueue.sendChangePassword(
-            recipient,
-            passwordHistoryId
-        );
+            const effect = this.notificationService.notify(
+                EnumNotificationKind.changePassword,
+                { userId: user.id, proceedBy: user.id }
+            );
+            await this.outboxService.addInTx(tx, effect);
+        });
 
         this.activityLogService.stagePrepared(activityLogs);
 

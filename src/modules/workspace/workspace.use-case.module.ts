@@ -1,4 +1,3 @@
-import { NotificationModule } from '@modules/notification/notification.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
@@ -97,6 +96,6 @@ import { Module } from '@nestjs/common';
         WorkspaceProcessExpireStaleInvitesUseCase,
         WorkspaceProcessExpireStaleJoinRequestsUseCase,
     ],
-    imports: [ProjectModule, UserModule, WorkspaceModule, NotificationModule],
+    imports: [ProjectModule, UserModule, WorkspaceModule],
 })
 export class WorkspaceUseCaseModule {}

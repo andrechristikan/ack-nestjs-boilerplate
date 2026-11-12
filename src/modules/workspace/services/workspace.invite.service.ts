@@ -18,7 +18,6 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Project,
-    User,
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
@@ -29,7 +28,8 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
@@ -46,6 +46,7 @@ import type {
     IWorkspaceInviteInviter,
     IWorkspaceInviteIssued,
     IWorkspaceInviteList,
+    IWorkspaceInviteNotice,
     IWorkspaceInvitePreviewSummary,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -75,6 +76,7 @@ export class WorkspaceInviteService {
         private readonly notificationService: NotificationService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly helperStringService: HelperStringService,
@@ -146,6 +148,39 @@ export class WorkspaceInviteService {
         };
     }
 
+    private inviteEffect(
+        invite: WorkspaceInvite,
+        { claimLink, signUpLink }: IWorkspaceInviteTokenData,
+        actorId: string,
+        { workspaceName, inviterName, inviteeUserId }: IWorkspaceInviteNotice
+    ): IOutboxEffect {
+        const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
+        const fields = {
+            workspaceId: invite.workspaceId,
+            workspaceName,
+            inviterName,
+            reference: invite.reference,
+            workspaceMemberRole: invite.workspaceRole,
+            expiredAt,
+        };
+        if (inviteeUserId === null) {
+            return this.notificationService.notifyUnregisteredInvite(
+                invite.email,
+                { ...fields, inviteAcceptLink: signUpLink }
+            );
+        }
+
+        return this.notificationService.notify(
+            EnumNotificationKind.workspaceInvite,
+            {
+                userId: inviteeUserId,
+                proceedBy: actorId,
+                ...fields,
+                inviteAcceptLink: claimLink,
+            }
+        );
+    }
+
     private isInviteEmailMatch(inviteEmail: string, email: string): boolean {
         return inviteEmail.toLowerCase() === email.toLowerCase();
     }
@@ -172,20 +207,6 @@ export class WorkspaceInviteService {
         const inviter = await this.userService.getNameById(actorId);
 
         return this.resolveInviterName(inviter, workspace);
-    }
-
-    /** Null when the invitee has no account. */
-    async getInviteeRecipient(
-        existingUser: User | null
-    ): Promise<INotificationRecipient | null> {
-        if (!existingUser) {
-            return null;
-        }
-
-        return this.notificationService.getRecipient(
-            existingUser,
-            EnumNotificationKind.workspaceInvite
-        );
     }
 
     /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token. */
@@ -333,10 +354,12 @@ export class WorkspaceInviteService {
         }
     }
 
+    /** Creates the pending invite and adds its notification row in one transaction per attempt, dispatched after the commit. */
     async createInvite(
         workspaceId: string,
         actorId: string,
-        create: IWorkspaceInviteCreate
+        create: IWorkspaceInviteCreate,
+        notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
         const workspaceInviteId = this.databaseUtil.createId();
         const noncePattern = this.helperStringService.fillPattern(
@@ -349,20 +372,36 @@ export class WorkspaceInviteService {
             const tokenData = this.createInviteTokenData(create.expiryDuration);
 
             try {
-                const invite =
-                    await this.workspaceInviteRepository.createPending({
-                        workspaceInviteId,
-                        workspaceId,
-                        email: create.email,
-                        workspaceRole: create.workspaceRole,
-                        projectId: create.projectId,
-                        projectRole: create.projectRole,
-                        hashedToken: tokenData.hashedToken,
-                        reference: tokenData.reference,
-                        expiredAt: tokenData.expiredAt,
-                        invitedByUserId: actorId,
-                        nonce,
-                    });
+                const invite = await this.outboxService.withTransaction(
+                    async tx => {
+                        const created =
+                            await this.workspaceInviteRepository.createPendingInTx(
+                                tx,
+                                {
+                                    workspaceInviteId,
+                                    workspaceId,
+                                    email: create.email,
+                                    workspaceRole: create.workspaceRole,
+                                    projectId: create.projectId,
+                                    projectRole: create.projectRole,
+                                    hashedToken: tokenData.hashedToken,
+                                    reference: tokenData.reference,
+                                    expiredAt: tokenData.expiredAt,
+                                    invitedByUserId: actorId,
+                                    nonce,
+                                }
+                            );
+                        const effect = this.inviteEffect(
+                            created,
+                            tokenData,
+                            actorId,
+                            notice
+                        );
+                        await this.outboxService.addInTx(tx, effect);
+
+                        return created;
+                    }
+                );
 
                 return { invite, tokenData };
             } catch (err: unknown) {
@@ -440,9 +479,12 @@ export class WorkspaceInviteService {
         return existing;
     }
 
+    /** Rotates the invite token and adds its notification row in one transaction per attempt, dispatched after the commit. */
     async resendInvite(
         workspaceInviteId: string,
-        expiryDuration: EnumWorkspaceInviteExpiry | null
+        expiryDuration: EnumWorkspaceInviteExpiry | null,
+        actorId: string,
+        notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
         const resentAt = this.helperDateService.create();
 
@@ -450,17 +492,32 @@ export class WorkspaceInviteService {
             const tokenData = this.createInviteTokenData(expiryDuration);
 
             try {
-                const invite =
-                    await this.workspaceInviteRepository.rotateForResend(
-                        workspaceInviteId,
-                        tokenData.hashedToken,
-                        tokenData.reference,
-                        tokenData.expiredAt,
-                        resentAt
-                    );
-                if (!invite) {
-                    throw new WorkspaceInviteAlreadyProcessedException();
-                }
+                const invite = await this.outboxService.withTransaction(
+                    async tx => {
+                        const rotated =
+                            await this.workspaceInviteRepository.rotateForResendInTx(
+                                tx,
+                                workspaceInviteId,
+                                tokenData.hashedToken,
+                                tokenData.reference,
+                                tokenData.expiredAt,
+                                resentAt
+                            );
+                        if (!rotated) {
+                            throw new WorkspaceInviteAlreadyProcessedException();
+                        }
+
+                        const effect = this.inviteEffect(
+                            rotated,
+                            tokenData,
+                            actorId,
+                            notice
+                        );
+                        await this.outboxService.addInTx(tx, effect);
+
+                        return rotated;
+                    }
+                );
 
                 return { invite, tokenData };
             } catch (err: unknown) {

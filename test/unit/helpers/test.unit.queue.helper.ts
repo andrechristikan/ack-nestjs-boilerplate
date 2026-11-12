@@ -6,13 +6,6 @@ import type { SentryService } from '@common/sentry/services/sentry.service';
 import type { OutboxService } from '@modules/outbox/services/outbox.service';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 
-export function buildQueueJob<T, R, N extends string>(data: T): Job<T, R, N> {
-    return {
-        data,
-        updateData: vi.fn().mockResolvedValue(null),
-    } as unknown as Job<T, R, N>;
-}
-
 export function buildProcessorJob(overrides: Partial<Job>): Job {
     return {
         id: 'job-1',

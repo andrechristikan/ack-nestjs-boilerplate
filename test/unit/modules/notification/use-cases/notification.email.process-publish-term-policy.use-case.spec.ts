@@ -3,15 +3,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { NotificationEmailTermPolicyService } from '@modules/notification/services/notification.email.term-policy.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailBulkQueuePayload,
     INotificationEmailPublishTermPolicyResult,
     INotificationPublishTermPolicyPayload,
     INotificationTermPolicyBatchRecipientEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
-import { buildQueueJob } from '@test/unit/helpers/test.unit.queue.helper';
 import { NotificationEmailProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.email.process-publish-term-policy.use-case';
 
 describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
@@ -57,13 +54,14 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
             notificationEmailTermPolicyService.processPublishTermPolicy.mockResolvedValue(
                 publishResponse
             );
-            const job = buildQueueJob<
-                INotificationEmailBulkQueuePayload<typeof data>,
-                IQueueResponse,
-                EnumNotificationProcess
-            >({ data, batchId: 'batch-id', proceedBy: 'admin-id', recipients });
+            const payload: INotificationEmailBulkQueuePayload<typeof data> = {
+                data,
+                batchId: 'batch-id',
+                proceedBy: 'admin-id',
+                recipients,
+            };
 
-            const result = await useCase.execute(job);
+            const result = await useCase.execute(payload);
 
             expect(
                 notificationEmailTermPolicyService.processPublishTermPolicy

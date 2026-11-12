@@ -46,7 +46,7 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted
 ## 4. Fix
 
 1. Show the owner the pin with `AskUserQuestion` and wait for the yes.
-2. Dispatch `coder` at opus, high:
+2. Dispatch `coder` on sonnet, at the effort `bash .claude/hooks/jev.sh level` gives the pin (`.claude/skills/ack-plan/SKILL.md`, Level per ticket) and at medium when its block names no agent:
 
 ```
 Agent: coder

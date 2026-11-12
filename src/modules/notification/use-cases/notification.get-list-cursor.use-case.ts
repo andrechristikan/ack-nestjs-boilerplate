@@ -50,6 +50,7 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
         const translated = data.map(notification => {
             const metadataProperties =
                 this.notificationService.toMessageProperties(
+                    notification.title,
                     notification.metadata
                 );
             const properties =

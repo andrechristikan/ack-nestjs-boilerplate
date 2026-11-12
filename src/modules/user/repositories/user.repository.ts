@@ -150,17 +150,6 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findManyActiveByIds(ids: string[]): Promise<IUserRecipient[]> {
-        return this.databaseService.client.user.findMany({
-            where: {
-                id: { in: ids },
-                deletedAt: null,
-                status: EnumUserStatus.active,
-            },
-            select: UserRecipientSelect,
-        });
-    }
-
     async findOneActiveByEmail(email: string): Promise<User | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null, status: EnumUserStatus.active },

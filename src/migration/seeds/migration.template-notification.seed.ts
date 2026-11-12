@@ -1,11 +1,8 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { NotificationTemplateAccountService } from '@modules/notification/services/notification.template.account.service';
-import { NotificationTemplateSecurityService } from '@modules/notification/services/notification.template.security.service';
-import { NotificationTemplateTermPolicyService } from '@modules/notification/services/notification.template.term-policy.service';
-import { NotificationTemplateWorkspaceService } from '@modules/notification/services/notification.template.workspace.service';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
@@ -24,10 +21,7 @@ export class MigrationTemplateEmailNotificationSeed
     );
 
     constructor(
-        private readonly notificationTemplateAccountService: NotificationTemplateAccountService,
-        private readonly notificationTemplateSecurityService: NotificationTemplateSecurityService,
-        private readonly notificationTemplateTermPolicyService: NotificationTemplateTermPolicyService,
-        private readonly notificationTemplateWorkspaceService: NotificationTemplateWorkspaceService,
+        private readonly notificationTemplateService: NotificationTemplateService,
         private readonly awsSESService: AwsSESService
     ) {
         super();
@@ -64,56 +58,56 @@ export class MigrationTemplateEmailNotificationSeed
             workspaceJoinAcceptedEmail,
             workspaceJoinRejectedEmail,
         ] = await Promise.all([
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.changePassword
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.changePassword
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.welcomeSocial
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcomeSocial
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.welcomeByAdmin
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcomeByAdmin
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.verifiedEmail
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verifiedEmail
             ),
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.forgotPassword
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.forgotPassword
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.verifiedMobileNumber
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verifiedMobileNumber
             ),
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.temporaryPasswordByAdmin
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.temporaryPasswordByAdmin
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.verificationEmail
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verificationEmail
             ),
-            this.notificationTemplateAccountService.emailGet(
-                EnumNotificationProcess.welcome
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcome
             ),
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.resetTwoFactorByAdmin
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.resetTwoFactorByAdmin
             ),
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.newDeviceLogin
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.newDeviceLogin
             ),
-            this.notificationTemplateTermPolicyService.emailGet(
-                EnumNotificationProcess.publishTermPolicy
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.publishTermPolicy
             ),
-            this.notificationTemplateSecurityService.emailGet(
-                EnumNotificationProcess.resetPassword
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.resetPassword
             ),
-            this.notificationTemplateWorkspaceService.emailGet(
-                EnumNotificationProcess.workspaceInvite
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceInvite
             ),
-            this.notificationTemplateWorkspaceService.emailGet(
-                EnumNotificationProcess.workspaceJoinRequest
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinRequest
             ),
-            this.notificationTemplateWorkspaceService.emailGet(
-                EnumNotificationProcess.workspaceJoinAccepted
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinAccepted
             ),
-            this.notificationTemplateWorkspaceService.emailGet(
-                EnumNotificationProcess.workspaceJoinRejected
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinRejected
             ),
         ]);
 
@@ -123,8 +117,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Change Password Email template missing, importing...'
             );
             const changePasswordEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.changePassword
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.changePassword
                 );
             promises.push(changePasswordEmailImport);
         }
@@ -134,8 +128,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Welcome Social Email template missing, importing...'
             );
             const welcomeSocialEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.welcomeSocial
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcomeSocial
                 );
             promises.push(welcomeSocialEmailImport);
         }
@@ -145,8 +139,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Welcome By Admin Email template missing, importing...'
             );
             const welcomeByAdminEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.welcomeByAdmin
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcomeByAdmin
                 );
             promises.push(welcomeByAdminEmailImport);
         }
@@ -156,8 +150,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Email Verified Email template missing, importing...'
             );
             const emailVerifiedEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.verifiedEmail
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verifiedEmail
                 );
             promises.push(emailVerifiedEmailImport);
         }
@@ -167,8 +161,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Forgot Password Email template missing, importing...'
             );
             const forgotPasswordEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.forgotPassword
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.forgotPassword
                 );
             promises.push(forgotPasswordEmailImport);
         }
@@ -178,8 +172,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Mobile Number Verified Email template missing, importing...'
             );
             const mobileNumberVerifiedEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.verifiedMobileNumber
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verifiedMobileNumber
                 );
             promises.push(mobileNumberVerifiedEmailImport);
         }
@@ -189,8 +183,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Temporary Password Email template missing, importing...'
             );
             const tempPasswordEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.temporaryPasswordByAdmin
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.temporaryPasswordByAdmin
                 );
             promises.push(tempPasswordEmailImport);
         }
@@ -200,8 +194,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Verification Email template missing, importing...'
             );
             const verificationEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.verificationEmail
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verificationEmail
                 );
             promises.push(verificationEmailImport);
         }
@@ -209,8 +203,8 @@ export class MigrationTemplateEmailNotificationSeed
         if (!welcomeEmail) {
             this.logger.log('Welcome Email template missing, importing...');
             const welcomeEmailImport =
-                this.notificationTemplateAccountService.emailImport(
-                    EnumNotificationProcess.welcome
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcome
                 );
             promises.push(welcomeEmailImport);
         }
@@ -220,8 +214,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Reset Two Factor By Admin Email template missing, importing...'
             );
             const resetTwoFactorByAdminEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.resetTwoFactorByAdmin
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.resetTwoFactorByAdmin
                 );
             promises.push(resetTwoFactorByAdminEmailImport);
         }
@@ -231,8 +225,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'New Device Login Email template missing, importing...'
             );
             const newDeviceLoginEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.newDeviceLogin
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.newDeviceLogin
                 );
             promises.push(newDeviceLoginEmailImport);
         }
@@ -242,8 +236,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Publish Term Policy Email template missing, importing...'
             );
             const publishTermPolicyEmailImport =
-                this.notificationTemplateTermPolicyService.emailImport(
-                    EnumNotificationProcess.publishTermPolicy
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.publishTermPolicy
                 );
             promises.push(publishTermPolicyEmailImport);
         }
@@ -253,8 +247,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Reset Password Email template missing, importing...'
             );
             const resetPasswordEmailImport =
-                this.notificationTemplateSecurityService.emailImport(
-                    EnumNotificationProcess.resetPassword
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.resetPassword
                 );
             promises.push(resetPasswordEmailImport);
         }
@@ -264,8 +258,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Invite Email template missing, importing...'
             );
             const workspaceInviteEmailImport =
-                this.notificationTemplateWorkspaceService.emailImport(
-                    EnumNotificationProcess.workspaceInvite
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceInvite
                 );
             promises.push(workspaceInviteEmailImport);
         }
@@ -275,8 +269,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Request Email template missing, importing...'
             );
             const workspaceJoinRequestEmailImport =
-                this.notificationTemplateWorkspaceService.emailImport(
-                    EnumNotificationProcess.workspaceJoinRequest
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinRequest
                 );
             promises.push(workspaceJoinRequestEmailImport);
         }
@@ -286,8 +280,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Accepted Email template missing, importing...'
             );
             const workspaceJoinAcceptedEmailImport =
-                this.notificationTemplateWorkspaceService.emailImport(
-                    EnumNotificationProcess.workspaceJoinAccepted
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinAccepted
                 );
             promises.push(workspaceJoinAcceptedEmailImport);
         }
@@ -297,8 +291,8 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Rejected Email template missing, importing...'
             );
             const workspaceJoinRejectedEmailImport =
-                this.notificationTemplateWorkspaceService.emailImport(
-                    EnumNotificationProcess.workspaceJoinRejected
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinRejected
                 );
             promises.push(workspaceJoinRejectedEmailImport);
         }
@@ -324,56 +318,56 @@ export class MigrationTemplateEmailNotificationSeed
 
         try {
             await Promise.all([
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.changePassword
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.changePassword
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.welcomeSocial
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcomeSocial
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.welcomeByAdmin
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcomeByAdmin
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.verifiedEmail
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verifiedEmail
                 ),
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.forgotPassword
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.forgotPassword
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.verifiedMobileNumber
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verifiedMobileNumber
                 ),
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.temporaryPasswordByAdmin
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.temporaryPasswordByAdmin
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.verificationEmail
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verificationEmail
                 ),
-                this.notificationTemplateAccountService.emailDelete(
-                    EnumNotificationProcess.welcome
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcome
                 ),
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.resetTwoFactorByAdmin
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.resetTwoFactorByAdmin
                 ),
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.newDeviceLogin
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.newDeviceLogin
                 ),
-                this.notificationTemplateTermPolicyService.emailDelete(
-                    EnumNotificationProcess.publishTermPolicy
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.publishTermPolicy
                 ),
-                this.notificationTemplateSecurityService.emailDelete(
-                    EnumNotificationProcess.resetPassword
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.resetPassword
                 ),
-                this.notificationTemplateWorkspaceService.emailDelete(
-                    EnumNotificationProcess.workspaceInvite
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceInvite
                 ),
-                this.notificationTemplateWorkspaceService.emailDelete(
-                    EnumNotificationProcess.workspaceJoinRequest
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinRequest
                 ),
-                this.notificationTemplateWorkspaceService.emailDelete(
-                    EnumNotificationProcess.workspaceJoinAccepted
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinAccepted
                 ),
-                this.notificationTemplateWorkspaceService.emailDelete(
-                    EnumNotificationProcess.workspaceJoinRejected
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinRejected
                 ),
             ]);
         } catch (error: unknown) {

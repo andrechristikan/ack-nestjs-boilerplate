@@ -31,8 +31,13 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import {
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -49,7 +54,6 @@ import type {
     IUserTwoFactorAttempt,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
-import { TestRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
 
 describe('UserResetPasswordUseCase', () => {
@@ -67,8 +71,6 @@ describe('UserResetPasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationQueue: MockProxy<NotificationQueue> =
-        mock<NotificationQueue>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -133,9 +135,26 @@ describe('UserResetPasswordUseCase', () => {
         createdBy: null,
         workspaceId: null,
     };
-    const recipient: INotificationRecipient = {
-        ...TestRecipient,
-        userId: user.id,
+    const snapshot: INotificationSnapshot = {
+        username: 'lindenFrost',
+        encryptedEmail: 'cipher(linden@example.com)',
+        encryptedTokens: ['cipher(token-one)'],
+    };
+    const notifyEffect: IOutboxEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.resetPassword,
+            context: {
+                userId: 'user-linden',
+                proceedBy: 'user-linden',
+                snapshot,
+            },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: null,
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
@@ -186,7 +205,8 @@ describe('UserResetPasswordUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.getRecipient.mockResolvedValue(recipient);
+        notificationService.getSnapshot.mockResolvedValue(snapshot);
+        notificationService.notify.mockReturnValue(notifyEffect);
         userTwoFactorService.countAttempt.mockResolvedValue(twoFactorAttempt);
         userTwoFactorService.getProvidedMethod.mockReturnValue(
             EnumAuthTwoFactorMethod.code
@@ -214,7 +234,6 @@ describe('UserResetPasswordUseCase', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -273,6 +292,16 @@ describe('UserResetPasswordUseCase', () => {
                     calls.push('markUnusedResetsUsed');
                 }
             );
+            notificationService.getSnapshot.mockImplementation(async () => {
+                calls.push('snapshot');
+
+                return snapshot;
+            });
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addEffect');
+
+                return 'outbox-id';
+            });
             sessionService.revokeActiveByUserInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -302,9 +331,18 @@ describe('UserResetPasswordUseCase', () => {
                 userId: 'user-linden',
                 createdBy: 'user-linden',
             });
-            expect(notificationService.getRecipient).toHaveBeenCalledWith(
-                user,
-                EnumNotificationKind.resetPassword
+            expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.resetPassword,
+                {
+                    userId: 'user-linden',
+                    proceedBy: 'user-linden',
+                    snapshot,
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
             );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -340,20 +378,44 @@ describe('UserResetPasswordUseCase', () => {
             ).not.toHaveBeenCalled();
             expect(calls).toEqual([
                 'begin',
+                'snapshot',
                 'updatePassword',
                 'createHistory',
                 'markResetUsed',
                 'markUnusedResetsUsed',
                 'revokeSessions',
+                'addEffect',
                 'commit',
             ]);
-            expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
-                recipient,
-                'forgot-linden'
-            );
             expect(activityLogService.stagePrepared).toHaveBeenCalledWith([
                 activityLog,
             ]);
+        });
+
+        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
+            let snapshotStarted = false;
+            let startedWhenFirstSettles = false;
+            notificationService.getSnapshot.mockImplementation(async () => {
+                snapshotStarted = true;
+
+                return snapshot;
+            });
+            outboxService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+            userService.updatePasswordInTx.mockImplementation(async () => {
+                await Promise.resolve();
+                startedWhenFirstSettles = snapshotStarted;
+
+                return updatedRow;
+            });
+
+            await useCase.execute(dto);
+
+            expect(startedWhenFirstSettles).toBe(true);
+            expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
+                sessionService.revokeActiveByUserInTx
+            );
         });
 
         it('verifies two-factor of the reset user, records it on the transaction, and stages the verify row when two-factor is enabled', async () => {
@@ -516,13 +578,17 @@ describe('UserResetPasswordUseCase', () => {
             expect(userTwoFactorService.verify).not.toHaveBeenCalled();
         });
 
-        it('writes nothing when the recipient read rejects', async () => {
-            notificationService.getRecipient.mockRejectedValue(
-                new Error('read')
-            );
+        it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
+            const cause = new Error('read');
+            notificationService.getSnapshot.mockRejectedValue(cause);
 
-            await expect(useCase.execute(dto)).rejects.toThrow('read');
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            await expect(useCase.execute(dto)).rejects.toMatchObject({
+                rawError: cause,
+            });
+            expect(
+                sessionService.revokeActiveByUserInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows a typed exception the transaction raises', async () => {
@@ -546,7 +612,6 @@ describe('UserResetPasswordUseCase', () => {
                 messagePath: 'user.error.verificationTokenInvalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-            expect(notificationQueue.sendResetPassword).not.toHaveBeenCalled();
             expect(activityLogService.stagePrepared).not.toHaveBeenCalled();
         });
 

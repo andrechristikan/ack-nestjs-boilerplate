@@ -1,4 +1,3 @@
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IActivityLogStageInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
@@ -13,7 +12,5 @@ export interface IUserLoginSession {
     tokens: IAuthToken;
     sessionId: string;
     jti: string;
-    requestLog: IRequestLog;
-    isNewDevice: boolean;
     revokeStages: IActivityLogStageInput<EnumActivityLogAction>[];
 }

@@ -8,6 +8,7 @@ import {
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
@@ -20,16 +21,24 @@ describe('NotificationUtil', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const loginAtIso = '2026-03-01T00:05:00.000Z';
+    const loginAtRfc2822 = 'Sun, 01 Mar 2026 00:05:00 +0000';
+    const loginAtDate = new Date(loginAtIso);
     let util: NotificationUtil;
 
     beforeEach(() => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockReturnValue('secret-key');
+        helperDateService.createFromIso.mockReturnValue(loginAtDate);
+        helperDateService.formatToRFC2822.mockReturnValue(loginAtRfc2822);
         util = new NotificationUtil(
             configService,
             helperEncryptionService,
-            messageService
+            messageService,
+            helperDateService
         );
     });
 
@@ -85,51 +94,6 @@ describe('NotificationUtil', () => {
         });
     });
 
-    describe('toStepResponse', () => {
-        it('shapes the success response with the completed steps', () => {
-            expect(
-                util.toStepResponse({
-                    message: 'done',
-                    completedSteps: [EnumNotificationStep.createNotification],
-                    failedSteps: [],
-                })
-            ).toEqual({
-                message: 'done',
-                completedSteps: [EnumNotificationStep.createNotification],
-            });
-        });
-    });
-
-    describe('foldStepOutcomes', () => {
-        it('splits fulfilled steps from rejected ones by position', () => {
-            const rawError = new Error('down');
-            const folded = util.foldStepOutcomes(
-                [EnumNotificationStep.sendEmail, EnumNotificationStep.sendPush],
-                [
-                    { status: 'fulfilled', value: undefined },
-                    { status: 'rejected', reason: rawError },
-                ]
-            );
-
-            expect(folded).toEqual({
-                completedSteps: [EnumNotificationStep.sendEmail],
-                failedSteps: [
-                    {
-                        step: EnumNotificationStep.sendPush,
-                        rawError,
-                    },
-                ],
-            });
-        });
-
-        it('returns both lists empty for no outcome', () => {
-            expect(util.foldStepOutcomes([], [])).toEqual({
-                completedSteps: [],
-                failedSteps: [],
-            });
-        });
-    });
-
     describe('decryptPayload', () => {
         it('decrypts with the encryption secret and the notification purpose bound to the context', () => {
             helperEncryptionService.aes256Decrypt.mockReturnValue('plain');
@@ -141,6 +105,153 @@ describe('NotificationUtil', () => {
                 'notification.payload',
                 'user-id'
             );
+        });
+    });
+
+    describe('encryptPayload', () => {
+        it('encrypts the value under the notification purpose with the given context', () => {
+            helperEncryptionService.aes256Encrypt.mockReturnValue('cipher');
+
+            const result = util.encryptPayload('plain', 'user-id');
+
+            expect(result).toBe('cipher');
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                'plain',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+        });
+    });
+
+    describe('toSealedField', () => {
+        it('returns the encrypted field name', () => {
+            expect(util.toSealedField('link')).toBe('encryptedLink');
+        });
+    });
+
+    describe('openContext', () => {
+        it('decrypts each secret of the kind back into its plain field', () => {
+            helperEncryptionService.aes256Decrypt.mockReturnValue('plain-link');
+
+            const result = util.openContext(
+                EnumNotificationKind.workspaceInvite,
+                {
+                    reference: 'WI-ref',
+                    encryptedInviteAcceptLink: 'cipher-link',
+                },
+                'user-id'
+            );
+
+            expect(result).toEqual({
+                reference: 'WI-ref',
+                inviteAcceptLink: 'plain-link',
+            });
+            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
+                'cipher-link',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+        });
+    });
+
+    describe('toMetadata', () => {
+        it('returns the metadata the contract row builds for the kind', () => {
+            const result = util.toMetadata(
+                EnumNotificationKind.workspaceInvite,
+                {
+                    workspaceId: 'workspace-id',
+                    workspaceName: 'Acme',
+                    inviterName: 'Alice',
+                    encryptedLink: 'cipher-link',
+                },
+                'invitee'
+            );
+
+            expect(result).toEqual({
+                username: 'invitee',
+                workspaceId: 'workspace-id',
+                workspaceName: 'Acme',
+                inviterName: 'Alice',
+            });
+        });
+
+        it('keeps a date field as the ISO string the context holds', () => {
+            const result = util.toMetadata(
+                EnumNotificationKind.newDeviceLogin,
+                { loginAt: loginAtIso, loginFrom: 'web' },
+                'ana'
+            );
+
+            expect(result.loginAt).toBe(loginAtIso);
+            expect(helperDateService.formatToRFC2822).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('toTemplateData', () => {
+        it('returns the context values the contract row lists, plus the username', () => {
+            const result = util.toTemplateData(
+                EnumNotificationKind.workspaceJoinAccepted,
+                { workspaceId: 'workspace-id', workspaceName: 'Acme' },
+                'user'
+            );
+
+            expect(result).toEqual({ username: 'user', workspaceName: 'Acme' });
+        });
+
+        it('formats each date field of the kind to RFC 2822', () => {
+            const result = util.toTemplateData(
+                EnumNotificationKind.newDeviceLogin,
+                { loginFrom: 'web', loginAt: loginAtIso },
+                'ana'
+            );
+
+            expect(result.loginAt).toBe(loginAtRfc2822);
+            expect(result.loginFrom).toBe('web');
+            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
+                loginAtIso
+            );
+            expect(helperDateService.formatToRFC2822).toHaveBeenCalledWith(
+                loginAtDate
+            );
+        });
+    });
+
+    describe('toDisplayProperties', () => {
+        it('formats the date fields of the kind and keeps every other value', () => {
+            const result = util.toDisplayProperties(
+                EnumNotificationKind.newDeviceLogin,
+                { username: 'ana', loginAt: loginAtIso, loginFrom: 'web' }
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                loginAt: loginAtRfc2822,
+                loginFrom: 'web',
+            });
+        });
+
+        it('skips a date field the properties do not hold', () => {
+            const result = util.toDisplayProperties(
+                EnumNotificationKind.workspaceInvite,
+                { username: 'ana', workspaceName: 'Acme' }
+            );
+
+            expect(result).toEqual({ username: 'ana', workspaceName: 'Acme' });
+            expect(helperDateService.createFromIso).not.toHaveBeenCalled();
+        });
+
+        it('returns the properties as they are for a kind with no date field', () => {
+            const properties = { username: 'ana', version: 3 };
+
+            const result = util.toDisplayProperties(
+                EnumNotificationKind.publishTermPolicy,
+                properties
+            );
+
+            expect(result).toEqual(properties);
+            expect(helperDateService.formatToRFC2822).not.toHaveBeenCalled();
         });
     });
 
@@ -253,113 +364,41 @@ describe('NotificationUtil', () => {
         });
     });
 
-    describe('toNoChannelResult', () => {
-        it('names the process in the message and keeps the completed steps with no failure', () => {
-            const result = util.toNoChannelResult(
-                EnumNotificationProcess.welcomeByAdmin,
-                [EnumNotificationStep.createNotification]
-            );
-
-            expect(result).toEqual({
-                message: 'notification.queue.error.noChannel',
-                completedSteps: [EnumNotificationStep.createNotification],
-                failedSteps: [],
-            });
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.queue.error.noChannel',
-                {
-                    properties: {
-                        process: EnumNotificationProcess.welcomeByAdmin,
-                    },
-                }
-            );
-        });
-    });
-
-    describe('mapRecipient', () => {
-        const user = {
-            id: 'user-id',
-            email: 'nadia@example.com',
-            username: 'nadia',
-        };
-
-        it('snapshots the identity, the distinct non-null tokens, and the kind channels left by the settings', () => {
-            const result = util.mapRecipient(
-                user,
-                EnumNotificationKind.workspaceInvite,
-                ['t1', null, 't1', 't2'],
-                [
-                    {
-                        type: EnumNotificationType.userActivity,
-                        channel: EnumNotificationChannel.email,
-                        isActive: false,
-                    },
-                ]
-            );
-
-            expect(result).toMatchObject({
-                userId: 'user-id',
-                email: 'nadia@example.com',
-                username: 'nadia',
-                notificationTokens: ['t1', 't2'],
-            });
-            expect(result.channels).not.toContain(
-                EnumNotificationChannel.email
-            );
-            expect(result.channels).toContain(EnumNotificationChannel.push);
-        });
-
-        it('gives every kind channel for a user with no token and no setting', () => {
-            expect(
-                util.mapRecipient(user, EnumNotificationKind.welcome, [], [])
-            ).toStrictEqual({
-                userId: 'user-id',
-                email: 'nadia@example.com',
-                username: 'nadia',
-                notificationTokens: [],
-                channels: util['resolveChannels'](
-                    EnumNotificationKind.welcome,
-                    []
-                ),
-            });
-        });
-    });
-
     describe('toTemplateLabel', () => {
         it.each([
-            [EnumNotificationProcess.welcome, 'welcome'],
-            [EnumNotificationProcess.welcomeSocial, 'welcome social'],
-            [EnumNotificationProcess.welcomeByAdmin, 'welcome by admin'],
-            [EnumNotificationProcess.verificationEmail, 'verification email'],
-            [EnumNotificationProcess.verifiedEmail, 'verified email'],
+            [EnumNotificationKind.welcome, 'welcome'],
+            [EnumNotificationKind.welcomeSocial, 'welcome social'],
+            [EnumNotificationKind.welcomeByAdmin, 'welcome by admin'],
+            [EnumNotificationKind.verificationEmail, 'verification email'],
+            [EnumNotificationKind.verifiedEmail, 'verified email'],
             [
-                EnumNotificationProcess.verifiedMobileNumber,
+                EnumNotificationKind.verifiedMobileNumber,
                 'verified mobile number',
             ],
-            [EnumNotificationProcess.changePassword, 'change password'],
+            [EnumNotificationKind.changePassword, 'change password'],
             [
-                EnumNotificationProcess.temporaryPasswordByAdmin,
+                EnumNotificationKind.temporaryPasswordByAdmin,
                 'temporary password by admin',
             ],
-            [EnumNotificationProcess.resetPassword, 'reset password'],
-            [EnumNotificationProcess.forgotPassword, 'forgot password'],
+            [EnumNotificationKind.resetPassword, 'reset password'],
+            [EnumNotificationKind.forgotPassword, 'forgot password'],
             [
-                EnumNotificationProcess.resetTwoFactorByAdmin,
+                EnumNotificationKind.resetTwoFactorByAdmin,
                 'reset two factor by admin',
             ],
-            [EnumNotificationProcess.newDeviceLogin, 'new device login'],
+            [EnumNotificationKind.newDeviceLogin, 'new device login'],
             [EnumNotificationProcess.publishTermPolicy, 'publish term policy'],
-            [EnumNotificationProcess.workspaceInvite, 'workspace invite'],
+            [EnumNotificationKind.workspaceInvite, 'workspace invite'],
             [
-                EnumNotificationProcess.workspaceJoinRequest,
+                EnumNotificationKind.workspaceJoinRequest,
                 'workspace join request',
             ],
             [
-                EnumNotificationProcess.workspaceJoinAccepted,
+                EnumNotificationKind.workspaceJoinAccepted,
                 'workspace join accepted',
             ],
             [
-                EnumNotificationProcess.workspaceJoinRejected,
+                EnumNotificationKind.workspaceJoinRejected,
                 'workspace join rejected',
             ],
         ])('returns the lowercase words of %s', (process, label) => {
@@ -434,6 +473,14 @@ describe('NotificationUtil', () => {
                     [userActivityEmailOff]
                 )
             ).toContain(EnumNotificationChannel.email);
+        });
+
+        it.each([
+            EnumNotificationKind.temporaryPasswordByAdmin,
+            EnumNotificationKind.resetPassword,
+            EnumNotificationKind.resetTwoFactorByAdmin,
+        ])('lists %s as mandatory so no setting reaches it', kind => {
+            expect(NotificationKindContract[kind].isMandatory).toBe(true);
         });
 
         it('ignores settings for a non-configurable type', () => {

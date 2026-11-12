@@ -25,20 +25,24 @@ export interface IWorkspaceJoinRequestRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
-    createPending({
-        workspaceId,
-        userId,
-        message,
-        expiredAt,
-        nonce,
-    }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest>;
+    createPendingInTx(
+        tx: IDatabaseTransactionClient,
+        {
+            workspaceId,
+            userId,
+            message,
+            expiredAt,
+            nonce,
+        }: IWorkspaceJoinRequestCreateData
+    ): Promise<WorkspaceJoinRequest>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
     ): Promise<boolean>;
-    reject(
+    rejectInTx(
+        tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,

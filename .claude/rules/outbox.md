@@ -35,5 +35,5 @@ A side effect of a write is an `Outbox` row written in the write's transaction. 
 
 ## Processing
 
-- `QueueProcessorBase.process` loads the row of a job whose data holds an `outboxId` and passes `row.data` to `handle(job, data)`. A job scheduler tick carries no `outboxId`, has no row, and passes `job.data`.
+- `QueueProcessorBase.process` loads the row of a job whose data holds an `outboxId` and passes `row.data` and the id to `handle(job, data, outboxId)`. A job scheduler tick carries no `outboxId`, has no row, and passes `job.data` and `null`. A use case that records step state takes `execute(outboxId, data)`.
 - The base stamps the row `completed` with its attempts on return, and `failed` with the message on the last attempt or an `UnrecoverableError`. A retrying job stays `enqueued`. A stamp that fails logs one `warn` and leaves the job's outcome as it is; the row stays `enqueued` for the reconcile.

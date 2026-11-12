@@ -36,6 +36,15 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
+import { RequestContextService } from '@common/request/services/request.context.service';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
@@ -71,6 +80,10 @@ describe('UserAuthService', () => {
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
+    const requestContextService: MockProxy<RequestContextService> =
+        mock<RequestContextService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
@@ -153,6 +166,14 @@ describe('UserAuthService', () => {
                 { provide: AuthUtil, useValue: authUtil },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: OutboxService, useValue: outboxService },
+                {
+                    provide: NotificationService,
+                    useValue: notificationService,
+                },
+                {
+                    provide: RequestContextService,
+                    useValue: requestContextService,
+                },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -650,12 +671,17 @@ describe('UserAuthService', () => {
         const loginAt = new Date('2026-03-01T00:05:00.000Z');
         const requestLog: IRequestLog = {
             userAgent: {
-                ua: 'ua',
-                browser: null,
+                ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5)',
+                browser: {
+                    name: 'Chrome',
+                    version: '126.0',
+                    major: '126',
+                    type: null,
+                },
                 cpu: null,
-                device: null,
+                device: { type: 'mobile', vendor: 'Apple', model: 'iPhone' },
                 engine: null,
-                os: null,
+                os: { name: 'iOS', version: '17.5' },
             },
             ipAddress: '127.0.0.1',
             geoLocation: null,
@@ -731,9 +757,35 @@ describe('UserAuthService', () => {
             sessionCount: 1,
         };
 
+        const newDeviceEffect: IOutboxEffect = {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.notify,
+            data: {
+                kind: EnumNotificationKind.newDeviceLogin,
+                context: {
+                    userId: 'user-halcyon',
+                    proceedBy: 'user-halcyon',
+                },
+                recipient: null,
+                notificationId: null,
+            },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
+
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
+            );
+            notificationService.notify.mockReturnValue(newDeviceEffect);
+            requestContextService.resolveDevice.mockReturnValue(
+                'Linux Desktop'
+            );
+            requestContextService.resolveCity.mockReturnValue(
+                'Unknown Location'
+            );
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-03-01T00:05:00.000Z'
             );
             helperDateService.create.mockReturnValue(now);
             helperDateService.forward.mockImplementation(date => date);
@@ -789,12 +841,136 @@ describe('UserAuthService', () => {
             );
         });
 
+        it('adds the newDeviceLogin effect on the transaction after the writes when the device is new', async () => {
+            await service.createTokenAndSession(
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(requestContextService.resolveDevice).toHaveBeenCalledWith(
+                requestLog.userAgent
+            );
+            expect(requestContextService.resolveCity).toHaveBeenCalledWith(
+                null
+            );
+            expect(helperDateService.formatToIso).toHaveBeenCalledWith(loginAt);
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.newDeviceLogin,
+                {
+                    userId: 'user-halcyon',
+                    proceedBy: 'user-halcyon',
+                    loginFrom: EnumUserLoginFrom.website,
+                    loginWith: EnumUserLoginWith.credential,
+                    loginAt: '2026-03-01T00:05:00.000Z',
+                    device: 'Linux Desktop',
+                    city: 'Unknown Location',
+                    browser: 'Chrome 126.0',
+                    deviceDetail: 'Apple iPhone (mobile)',
+                    os: 'iOS 17.5',
+                    ipAddress: '127.0.0.1',
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                newDeviceEffect
+            );
+            expect(userService.updateLoginInTx).toHaveBeenCalledBefore(
+                outboxService.addInTx
+            );
+        });
+
+        it('sends empty display parts and address when the request log has none', async () => {
+            sessionService.getRequestLog.mockReturnValue({
+                ...requestLog,
+                userAgent: {
+                    ...requestLog.userAgent,
+                    browser: null,
+                    device: null,
+                    os: null,
+                },
+                ipAddress: null,
+            });
+
+            await service.createTokenAndSession(
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.newDeviceLogin,
+                expect.objectContaining({
+                    browser: ' ',
+                    deviceDetail: '  ()',
+                    os: ' ',
+                    ipAddress: '',
+                })
+            );
+        });
+
+        it('sends empty parts inside a parsed user agent that lacks some fields', async () => {
+            sessionService.getRequestLog.mockReturnValue({
+                ...requestLog,
+                userAgent: {
+                    ...requestLog.userAgent,
+                    browser: {
+                        name: null,
+                        version: null,
+                        major: null,
+                        type: null,
+                    },
+                    device: { type: null, vendor: null, model: null },
+                    os: { name: null, version: null },
+                },
+            });
+
+            await service.createTokenAndSession(
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.newDeviceLogin,
+                expect.objectContaining({
+                    browser: ' ',
+                    deviceDetail: '  ()',
+                    os: ' ',
+                })
+            );
+        });
+
+        it('adds no effect when the device is known', async () => {
+            deviceService.upsertForLoginInTx.mockResolvedValue({
+                ...upsert,
+                isNewDevice: false,
+            });
+
+            await service.createTokenAndSession(
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
         it("revokes the user's earlier sessions on the device only when the device is not new", async () => {
             sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 revokedRef
             );
 
-            const fresh = await service.createTokenAndSession(
+            await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -805,14 +981,13 @@ describe('UserAuthService', () => {
             expect(
                 sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
-            expect(fresh.isNewDevice).toBe(true);
 
             deviceService.upsertForLoginInTx.mockResolvedValue({
                 ...upsert,
                 isNewDevice: false,
             });
 
-            const repeat = await service.createTokenAndSession(
+            await service.createTokenAndSession(
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -829,7 +1004,6 @@ describe('UserAuthService', () => {
                 'user-halcyon',
                 now
             );
-            expect(repeat.isNewDevice).toBe(false);
         });
 
         it("revokes other users' sessions only when other ownerships exist", async () => {
@@ -919,8 +1093,6 @@ describe('UserAuthService', () => {
                 tokens,
                 sessionId: 'session-halcyon',
                 jti: 'jti-halcyon',
-                requestLog,
-                isNewDevice: true,
                 revokeStages: [],
             });
         });

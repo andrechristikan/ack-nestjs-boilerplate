@@ -6,10 +6,9 @@ export interface IConfigNotification {
         cleanupStaleTokensCron: string;
         staleTokenThresholdInMs: number;
     };
-    jobId: {
+    idempotencyKey: {
         userPattern: string;
         referencePattern: string;
-        eventPattern: string;
         joinRequestPattern: string;
         termPolicyBatchPattern: string;
         termPolicyBatchResendPattern: string;
@@ -25,10 +24,9 @@ export default registerAs('notification', (): IConfigNotification => ({
         cleanupStaleTokensCron: '0 0 * * *',
         staleTokenThresholdInMs: ms('30d'),
     },
-    jobId: {
+    idempotencyKey: {
         userPattern: '{process}-{userId}',
         referencePattern: '{process}-{reference}',
-        eventPattern: '{process}-{eventId}',
         joinRequestPattern: '{process}-{joinRequestId}-{userId}',
         termPolicyBatchPattern: '{process}-{termPolicyId}-{batchId}',
         termPolicyBatchResendPattern:

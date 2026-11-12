@@ -1,43 +1,43 @@
 import { Test } from '@nestjs/testing';
-import {
-    buildTermPolicyMarker,
-    buildTermPolicyRecipient,
-} from '@test/unit/helpers/test.unit.notification-term-policy.helper';
+import { buildTermPolicyMarker } from '@test/unit/helpers/test.unit.notification-term-policy.helper';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { Notification } from '@generated/prisma-client/client';
-import {
-    EnumNotificationChannel,
-    EnumNotificationPriority,
-    EnumNotificationType,
-    EnumTermPolicyType,
-} from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import {
+    EnumNotificationEmailProcess,
     EnumNotificationKind,
-    EnumNotificationStep,
+    EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationTermPolicyPage } from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { MessageService } from '@common/message/services/message.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { TestEncryptedRecipient } from '@test/unit/helpers/test.unit.notification-push.helper';
-import { MessageService } from '@common/message/services/message.service';
 
 describe('NotificationTermPolicyService', () => {
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
-        mock<NotificationEmailQueue>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const tx = {} as IDatabaseTransactionClient;
     let service: NotificationTermPolicyService;
 
     const data = {
@@ -51,22 +51,6 @@ describe('NotificationTermPolicyService', () => {
     const u2 = { id: 'u2', email: 'u2@example.com', username: 'name-u2' };
     const u3 = { id: 'u3', email: 'u3@example.com', username: 'name-u3' };
     const u4 = { id: 'u4', email: 'u4@example.com', username: 'name-u4' };
-    const notification: Notification = {
-        id: 'notification-id',
-        userId: 'user-1',
-        type: EnumNotificationType.transactional,
-        priority: EnumNotificationPriority.normal,
-        title: 'Term policy published',
-        body: 'A term policy was published',
-        metadata: null,
-        isRead: false,
-        readAt: null,
-        createdAt: new Date('2024-01-01T00:00:00.000Z'),
-        createdBy: 'admin-id',
-        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-
     const publishChannels = [
         ...NotificationKindContract.publishTermPolicy.pendingChannels,
         ...NotificationKindContract.publishTermPolicy.deliveredChannels,
@@ -74,15 +58,24 @@ describe('NotificationTermPolicyService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        messageService.setMessage.mockImplementation((path: string) => path);
+        helperEncryptionService.aes256Encrypt.mockImplementation(
+            (value: string) => `enc-${value}`
+        );
+        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, number> = { 'email.batchSize': 3 };
+            const values: Record<string, number | string> = {
+                'email.batchSize': 3,
+                'app.encryptionSecretKey': 'encryption-secret',
+                'notification.idempotencyKey.termPolicyBatchPattern':
+                    '{process}-{termPolicyId}-{batchId}',
+                'notification.idempotencyKey.termPolicyBatchResendPattern':
+                    '{process}-{termPolicyId}-{batchId}-{resendNonce}',
+            };
 
             return values[key];
         });
         const module = await Test.createTestingModule({
             providers: [
-                { provide: MessageService, useValue: messageService },
                 {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
@@ -93,12 +86,12 @@ describe('NotificationTermPolicyService', () => {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
                 },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
-                {
-                    provide: NotificationEmailQueue,
-                    useValue: notificationEmailQueue,
-                },
+                { provide: MessageService, useValue: messageService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: HelperStringService, useValue: helperStringService },
             ],
         }).compile();
         service = module.get(NotificationTermPolicyService);
@@ -209,32 +202,23 @@ describe('NotificationTermPolicyService', () => {
     });
 
     describe('sendFreshBatch', () => {
-        it('creates the rows of the fresh users, then enqueues their batch at the given index', async () => {
-            const calls: string[] = [];
-            notificationRepository.createTermPolicyRecipients.mockImplementation(
-                async () => {
-                    calls.push('create');
-                }
-            );
-            notificationEmailQueue.sendPublishTermPolicyBatch.mockImplementation(
-                async () => {
-                    calls.push('send');
-                }
-            );
+        it('creates the rows of the fresh users and adds their batch row on one tx, dispatching once', async () => {
             databaseUtil.createId
                 .mockReturnValueOnce('batch-1')
                 .mockReturnValueOnce('n-1')
                 .mockReturnValueOnce('n-2');
-            const batches = await service.sendFreshBatch(
-                'admin-id',
-                data,
-                [u1, u2],
-                4
-            );
+            helperStringService.fillPattern.mockReturnValue('batch-key');
 
+            const batches = await service.sendFreshBatch('admin-id', data, [
+                u1,
+                u2,
+            ]);
+
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                notificationRepository.createTermPolicyRecipients
+                notificationRepository.createTermPolicyRecipientsInTx
             ).toHaveBeenCalledWith(
+                tx,
                 'admin-id',
                 data.termPolicyId,
                 'batch-1',
@@ -271,55 +255,98 @@ describe('NotificationTermPolicyService', () => {
                     { userId: 'u2', notificationId: 'n-2' },
                 ]
             );
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(data, 'batch-1', 'admin-id', 4, [
-                buildTermPolicyRecipient(u1, 'n-1'),
-                buildTermPolicyRecipient(u2, 'n-2'),
-            ]);
-            expect(calls).toEqual(['create', 'send']);
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{termPolicyId}-{batchId}',
+                {
+                    process: EnumNotificationEmailProcess.publishTermPolicy,
+                    termPolicyId: data.termPolicyId,
+                    batchId: 'batch-1',
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
+                queue: EnumNotificationQueue.notificationEmail,
+                name: EnumNotificationEmailProcess.publishTermPolicy,
+                data: {
+                    data,
+                    batchId: 'batch-1',
+                    proceedBy: 'admin-id',
+                    recipients: [
+                        {
+                            userId: 'u1',
+                            notificationId: 'n-1',
+                            encryptedEmail: 'enc-u1@example.com',
+                            username: 'name-u1',
+                        },
+                        {
+                            userId: 'u2',
+                            notificationId: 'n-2',
+                            encryptedEmail: 'enc-u2@example.com',
+                            username: 'name-u2',
+                        },
+                    ],
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'batch-key',
+            });
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                notificationRepository.createTermPolicyRecipientsInTx
+            );
             expect(batches).toBe(1);
         });
 
-        it('passes the resend nonce in data to the fresh batch', async () => {
+        it('encrypts each address against its user id', async () => {
+            databaseUtil.createId
+                .mockReturnValueOnce('batch-1')
+                .mockReturnValueOnce('n-1');
+
+            await service.sendFreshBatch('admin-id', data, [u1]);
+
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                'u1@example.com',
+                'encryption-secret',
+                NotificationPayloadEncryptionPurpose,
+                'u1'
+            );
+        });
+
+        it('keys the fresh batch with the resend pattern and the nonce when the data carries one', async () => {
             const resendData = { ...data, resendNonce: 'nonce-1' };
             databaseUtil.createId
                 .mockReturnValueOnce('batch-1')
                 .mockReturnValueOnce('n-2');
 
-            await service.sendFreshBatch('admin-id', resendData, [u2], 1);
+            await service.sendFreshBatch('admin-id', resendData, [u2]);
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(
-                resendData,
-                'batch-1',
-                'admin-id',
-                1,
-                expect.anything()
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{termPolicyId}-{batchId}-{resendNonce}',
+                {
+                    process: EnumNotificationEmailProcess.publishTermPolicy,
+                    termPolicyId: data.termPolicyId,
+                    batchId: 'batch-1',
+                    resendNonce: 'nonce-1',
+                }
             );
         });
 
-        it('writes and enqueues nothing for no fresh user', async () => {
-            const batches = await service.sendFreshBatch(
-                'admin-id',
-                data,
-                [],
-                0
-            );
+        it('opens no transaction for no fresh user', async () => {
+            const batches = await service.sendFreshBatch('admin-id', data, []);
 
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
-                notificationRepository.createTermPolicyRecipients
-            ).not.toHaveBeenCalled();
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
+                notificationRepository.createTermPolicyRecipientsInTx
             ).not.toHaveBeenCalled();
             expect(batches).toBe(0);
         });
     });
 
     describe('sendPendingBatches', () => {
-        it('re-adds each pending batch with recipients from its markers, the page users, and the off-page users', async () => {
+        beforeEach(() => {
+            helperStringService.fillPattern.mockImplementation(
+                (_pattern, values) => `key-${values.batchId}`
+            );
+        });
+
+        it('re-adds each pending batch in one add with recipients from its markers, the page users, and the off-page users', async () => {
             const batches = await service.sendPendingBatches(
                 'admin-id',
                 data,
@@ -336,28 +363,56 @@ describe('NotificationTermPolicyService', () => {
                     ],
                     offPageUserIds: ['u4'],
                 },
-                [u4],
-                2
+                [u4]
             );
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledTimes(2);
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(data, 'B1', 'admin-id', 2, [
-                buildTermPolicyRecipient(u1, 'n-u1'),
-            ]);
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(data, 'B2', 'admin-id', 3, [
-                buildTermPolicyRecipient(u2, 'n-u2'),
-                buildTermPolicyRecipient(u4, 'n-u4'),
+            expect(outboxService.addMany).toHaveBeenCalledTimes(1);
+            expect(outboxService.addMany).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    queue: EnumNotificationQueue.notificationEmail,
+                    name: EnumNotificationEmailProcess.publishTermPolicy,
+                    idempotencyKey: 'key-B1',
+                    data: {
+                        data,
+                        batchId: 'B1',
+                        proceedBy: 'admin-id',
+                        recipients: [
+                            {
+                                userId: 'u1',
+                                notificationId: 'n-u1',
+                                encryptedEmail: 'enc-u1@example.com',
+                                username: 'name-u1',
+                            },
+                        ],
+                    },
+                }),
+                expect.objectContaining({
+                    idempotencyKey: 'key-B2',
+                    data: {
+                        data,
+                        batchId: 'B2',
+                        proceedBy: 'admin-id',
+                        recipients: [
+                            {
+                                userId: 'u2',
+                                notificationId: 'n-u2',
+                                encryptedEmail: 'enc-u2@example.com',
+                                username: 'name-u2',
+                            },
+                            {
+                                userId: 'u4',
+                                notificationId: 'n-u4',
+                                encryptedEmail: 'enc-u4@example.com',
+                                username: 'name-u4',
+                            },
+                        ],
+                    },
+                }),
             ]);
             expect(batches).toBe(2);
         });
 
-        it('passes the resend nonce in data to a pending batch', async () => {
+        it('keys a pending batch with the resend pattern and the nonce when the data carries one', async () => {
             const resendData = { ...data, resendNonce: 'nonce-1' };
 
             await service.sendPendingBatches(
@@ -368,22 +423,21 @@ describe('NotificationTermPolicyService', () => {
                     sendableMarkers: [buildTermPolicyMarker('u1', 'B1')],
                     offPageUserIds: [],
                 },
-                [],
-                0
+                []
             );
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(
-                resendData,
-                'B1',
-                'admin-id',
-                0,
-                expect.anything()
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{termPolicyId}-{batchId}-{resendNonce}',
+                {
+                    process: EnumNotificationEmailProcess.publishTermPolicy,
+                    termPolicyId: data.termPolicyId,
+                    batchId: 'B1',
+                    resendNonce: 'nonce-1',
+                }
             );
         });
 
-        it('omits a pending marker whose user no longer resolves, enqueuing the batch with the rest', async () => {
+        it('omits a pending marker whose user no longer resolves, adding the batch with the rest', async () => {
             await service.sendPendingBatches(
                 'admin-id',
                 data,
@@ -395,21 +449,19 @@ describe('NotificationTermPolicyService', () => {
                     ],
                     offPageUserIds: ['deleted-user'],
                 },
-                [],
-                0
+                []
             );
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, [
-                buildTermPolicyRecipient(u1, 'n-u1'),
+            expect(outboxService.addMany).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        recipients: [expect.objectContaining({ userId: 'u1' })],
+                    }),
+                }),
             ]);
         });
 
-        it('enqueues a pending batch with no recipients when none of its markers resolves a user', async () => {
+        it('adds a pending batch with no recipients when none of its markers resolves a user', async () => {
             const batches = await service.sendPendingBatches(
                 'admin-id',
                 data,
@@ -420,170 +472,28 @@ describe('NotificationTermPolicyService', () => {
                     ],
                     offPageUserIds: ['deleted-user'],
                 },
-                [],
-                0
+                []
             );
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).toHaveBeenCalledWith(data, 'B', 'admin-id', 0, []);
+            expect(outboxService.addMany).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    data: expect.objectContaining({ recipients: [] }),
+                }),
+            ]);
             expect(batches).toBe(1);
         });
 
-        it('enqueues nothing for a page with no pending batch', async () => {
+        it('adds nothing for a page with no pending batch', async () => {
             const batches = await service.sendPendingBatches(
                 'admin-id',
                 data,
                 { ...emptyPage, users: [u1, u2] },
                 { sendableMarkers: [], offPageUserIds: [] },
-                [],
-                0
+                []
             );
 
-            expect(
-                notificationEmailQueue.sendPublishTermPolicyBatch
-            ).not.toHaveBeenCalled();
+            expect(outboxService.addMany).not.toHaveBeenCalled();
             expect(batches).toBe(0);
-        });
-    });
-
-    describe('processUserAcceptTermPolicy', () => {
-        const acceptData = { ...data, termPolicyId: 'term-policy-id' };
-        const recipient = TestEncryptedRecipient;
-
-        it('creates the row with the job notification id and the snapshot channels, and reports the step completed', async () => {
-            notificationRepository.createMany.mockResolvedValue([notification]);
-
-            const result = await service.processUserAcceptTermPolicy(
-                'user-id',
-                recipient,
-                acceptData,
-                'n-1',
-                []
-            );
-
-            expect(notificationRepository.createMany).toHaveBeenCalledWith([
-                {
-                    kind: EnumNotificationKind.userAcceptTermPolicy,
-                    payload: {
-                        id: 'n-1',
-                        userId: 'user-id',
-                        metadata: {
-                            username: recipient.username,
-                            type: acceptData.type,
-                            version: acceptData.version,
-                        },
-                        createdBy: 'user-id',
-                        channels: recipient.channels,
-                    },
-                },
-            ]);
-            expect(result).toEqual({
-                message: 'notification.queue.userAcceptTermPolicy',
-                completedSteps: [EnumNotificationStep.createNotification],
-                failedSteps: [],
-            });
-        });
-
-        it('declares the in-app channel as delivered at creation, with no pending delivery, for the accept kind', () => {
-            expect(
-                NotificationKindContract.userAcceptTermPolicy.pendingChannels
-            ).toEqual([]);
-            expect(
-                NotificationKindContract.userAcceptTermPolicy.deliveredChannels
-            ).toEqual([
-                EnumNotificationChannel.silent,
-                EnumNotificationChannel.inApp,
-            ]);
-        });
-
-        it('creates no row and reports no failure when no channel is enabled', async () => {
-            const result = await service.processUserAcceptTermPolicy(
-                'user-id',
-                { ...recipient, channels: [] },
-                acceptData,
-                'n-1',
-                []
-            );
-
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-            expect(result).toEqual({
-                message: 'notification.queue.error.noChannel',
-                completedSteps: [],
-                failedSteps: [],
-            });
-        });
-
-        it('makes the same decisions on a second pass over the same job', async () => {
-            const createManyCalls: unknown[] = [];
-            notificationRepository.createMany.mockImplementation(
-                async entries => {
-                    createManyCalls.push(entries);
-
-                    return [notification];
-                }
-            );
-
-            const first = await service.processUserAcceptTermPolicy(
-                'user-id',
-                recipient,
-                acceptData,
-                'n-1',
-                []
-            );
-            const second = await service.processUserAcceptTermPolicy(
-                'user-id',
-                recipient,
-                acceptData,
-                'n-1',
-                []
-            );
-
-            expect(createManyCalls).toHaveLength(2);
-            expect(createManyCalls[1]).toEqual(createManyCalls[0]);
-            expect(second).toEqual(first);
-        });
-
-        it('skips the create on a retry', async () => {
-            const result = await service.processUserAcceptTermPolicy(
-                'user-id',
-                recipient,
-                acceptData,
-                'n-1',
-                [EnumNotificationStep.createNotification]
-            );
-
-            expect(notificationRepository.createMany).not.toHaveBeenCalled();
-            expect(result).toEqual({
-                message: 'notification.queue.userAcceptTermPolicy',
-                completedSteps: [EnumNotificationStep.createNotification],
-                failedSteps: [],
-            });
-        });
-
-        it('names the create step when the rows cannot be written', async () => {
-            notificationRepository.createMany.mockRejectedValue(
-                new Error('mongo')
-            );
-
-            const result = await service.processUserAcceptTermPolicy(
-                'user-id',
-                recipient,
-                acceptData,
-                'n-1',
-                []
-            );
-
-            expect(result).toEqual({
-                message: 'notification.queue.error.failed',
-                completedSteps: [],
-                failedSteps: [
-                    {
-                        step: EnumNotificationStep.createNotification,
-                        rawError: new Error('mongo'),
-                    },
-                ],
-            });
         });
     });
 

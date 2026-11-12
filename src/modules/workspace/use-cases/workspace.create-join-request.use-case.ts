@@ -2,10 +2,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
@@ -22,28 +18,8 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly userService: UserService,
-        private readonly notificationService: NotificationService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationQueue: NotificationQueue
+        private readonly activityLogService: ActivityLogService
     ) {}
-
-    private async getReviewerRecipients(
-        workspaceId: string
-    ): Promise<INotificationRecipient[]> {
-        const reviewerIds =
-            await this.workspaceMemberService.getReviewerUserIds(workspaceId);
-        const reviewers =
-            await this.userService.getManyActiveByIds(reviewerIds);
-
-        return Promise.all(
-            reviewers.map(reviewer =>
-                this.notificationService.getRecipient(
-                    reviewer,
-                    EnumNotificationKind.workspaceJoinRequest
-                )
-            )
-        );
-    }
 
     async execute(
         userId: string,
@@ -66,40 +42,20 @@ export class WorkspaceCreateJoinRequestUseCase implements IAppUseCase<
             }),
         ];
 
-        const [requester, reviewerRecipients] = await Promise.all([
+        const [requester, reviewerIds] = await Promise.all([
             this.userService.getNameById(userId),
-            this.getReviewerRecipients(workspace.id),
+            this.workspaceMemberService.getReviewerUserIds(workspace.id),
         ]);
+        const requesterName =
+            this.workspaceJoinRequestService.resolveRequesterName(requester);
         const joinRequest =
-            await this.workspaceJoinRequestService.createJoinRequest(userId, {
-                workspaceId,
-                message: message ?? null,
-            });
+            await this.workspaceJoinRequestService.createJoinRequest(
+                userId,
+                { workspaceId, message: message ?? null },
+                { workspaceName: workspace.name, requesterName, reviewerIds }
+            );
 
         this.activityLogService.stagePrepared(activityLogs);
-
-        if (reviewerRecipients.length > 0) {
-            const joinRequestReviewLink =
-                this.workspaceJoinRequestService.buildJoinRequestReviewLink(
-                    joinRequest.id
-                );
-            const requesterName =
-                this.workspaceJoinRequestService.resolveRequesterName(
-                    requester
-                );
-
-            await this.notificationQueue.sendWorkspaceJoinRequestBulk(
-                reviewerRecipients,
-                {
-                    workspaceId: workspace.id,
-                    workspaceName: workspace.name,
-                    requesterName,
-                    joinRequestId: joinRequest.id,
-                    joinRequestReviewLink,
-                },
-                userId
-            );
-        }
 
         return { data: joinRequest };
     }

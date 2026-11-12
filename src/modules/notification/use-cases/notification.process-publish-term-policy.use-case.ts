@@ -1,5 +1,4 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationBulkQueuePayload,
     INotificationPublishTermPolicyPayload,
@@ -9,20 +8,13 @@ import type {
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
-import { Job } from 'bullmq';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { MessageService } from '@common/message/services/message.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class NotificationProcessPublishTermPolicyUseCase implements IAppUseCase<
-    [
-        Job<
-            INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
-            unknown,
-            EnumNotificationProcess
-        >,
-    ],
+    [INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>],
     IQueueResponse
 > {
     constructor(
@@ -36,8 +28,7 @@ export class NotificationProcessPublishTermPolicyUseCase implements IAppUseCase<
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload,
         page: INotificationTermPolicyPage,
-        createdBefore: Date,
-        index: number
+        createdBefore: Date
     ): Promise<number> {
         if (page.pendingBatchIds.length === 0) {
             return 0;
@@ -60,18 +51,14 @@ export class NotificationProcessPublishTermPolicyUseCase implements IAppUseCase<
             data,
             page,
             pending,
-            offPageUsers,
-            index
+            offPageUsers
         );
     }
 
     async execute({
-        data: { data, proceedBy },
-    }: Job<
-        INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
+        data,
+        proceedBy,
+    }: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>): Promise<IQueueResponse> {
         const createdBefore = this.helperDateService.createFromIso(
             data.recipientCutoffAt
         );
@@ -103,14 +90,12 @@ export class NotificationProcessPublishTermPolicyUseCase implements IAppUseCase<
                     proceedBy,
                     data,
                     page,
-                    createdBefore,
-                    index
+                    createdBefore
                 ),
                 this.notificationTermPolicyService.sendFreshBatch(
                     proceedBy,
                     data,
-                    page.freshUsers,
-                    index + page.pendingBatchIds.length
+                    page.freshUsers
                 ),
             ]);
 

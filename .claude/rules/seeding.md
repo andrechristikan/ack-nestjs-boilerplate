@@ -33,7 +33,7 @@ src/migration/
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
-- A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplate*Service`). A seed injects no feature repository.
+- A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplateService`). A seed injects no feature repository.
 - A seed may inject any module's util, pure by `layering.md`, and any cache, and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and stages no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.

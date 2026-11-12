@@ -175,10 +175,6 @@ export class UserService {
         return this.userRepository.findOneActiveById(userId);
     }
 
-    async getManyActiveByIds(userIds: string[]): Promise<IUserRecipient[]> {
-        return this.userRepository.findManyActiveByIds(userIds);
-    }
-
     async getOneActiveByEmail(email: string): Promise<User | null> {
         return this.userRepository.findOneActiveByEmail(email);
     }

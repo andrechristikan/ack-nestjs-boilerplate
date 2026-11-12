@@ -49,7 +49,6 @@ export interface IUserRepository {
     ): Promise<IUserRecipient[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
-    findManyActiveByIds(ids: string[]): Promise<IUserRecipient[]>;
     findOneActiveByEmail(email: string): Promise<User | null>;
     findNameById(userId: string): Promise<IWorkspaceInviteInviter | null>;
     findEmailByIdInTx(

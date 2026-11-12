@@ -5,24 +5,10 @@ import {
 } from '@common/firebase/constants/firebase.constant';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenEncryptedPayload,
-    INotificationPushQueuePayload,
-    INotificationTemporaryPasswordPushPayload,
-    INotificationWorkspaceInvitePushPayload,
-    INotificationWorkspaceJoinAcceptedPayload,
-    INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPushPayload,
+    INotificationPushSendPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationPushProcessNewDeviceLoginUseCase } from '@modules/notification/use-cases/notification.push.process-new-device-login.use-case';
-import { NotificationPushProcessResetTwoFactorByAdminUseCase } from '@modules/notification/use-cases/notification.push.process-reset-two-factor-by-admin.use-case';
-import { NotificationPushProcessTemporaryPasswordByAdminUseCase } from '@modules/notification/use-cases/notification.push.process-temporary-password-by-admin.use-case';
-import { NotificationPushProcessResetPasswordUseCase } from '@modules/notification/use-cases/notification.push.process-reset-password.use-case';
-import { NotificationPushProcessForgotPasswordUseCase } from '@modules/notification/use-cases/notification.push.process-forgot-password.use-case';
-import { NotificationPushProcessWorkspaceInviteUseCase } from '@modules/notification/use-cases/notification.push.process-workspace-invite.use-case';
-import { NotificationPushProcessWorkspaceJoinRequestUseCase } from '@modules/notification/use-cases/notification.push.process-workspace-join-request.use-case';
-import { NotificationPushProcessWorkspaceJoinAcceptedUseCase } from '@modules/notification/use-cases/notification.push.process-workspace-join-accepted.use-case';
-import { NotificationPushProcessWorkspaceJoinRejectedUseCase } from '@modules/notification/use-cases/notification.push.process-workspace-join-rejected.use-case';
+import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
 import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
@@ -49,15 +35,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
         protected readonly outboxService: OutboxService,
-        private readonly notificationPushProcessNewDeviceLoginUseCase: NotificationPushProcessNewDeviceLoginUseCase,
-        private readonly notificationPushProcessResetTwoFactorByAdminUseCase: NotificationPushProcessResetTwoFactorByAdminUseCase,
-        private readonly notificationPushProcessTemporaryPasswordByAdminUseCase: NotificationPushProcessTemporaryPasswordByAdminUseCase,
-        private readonly notificationPushProcessResetPasswordUseCase: NotificationPushProcessResetPasswordUseCase,
-        private readonly notificationPushProcessForgotPasswordUseCase: NotificationPushProcessForgotPasswordUseCase,
-        private readonly notificationPushProcessWorkspaceInviteUseCase: NotificationPushProcessWorkspaceInviteUseCase,
-        private readonly notificationPushProcessWorkspaceJoinRequestUseCase: NotificationPushProcessWorkspaceJoinRequestUseCase,
-        private readonly notificationPushProcessWorkspaceJoinAcceptedUseCase: NotificationPushProcessWorkspaceJoinAcceptedUseCase,
-        private readonly notificationPushProcessWorkspaceJoinRejectedUseCase: NotificationPushProcessWorkspaceJoinRejectedUseCase,
+        private readonly notificationPushProcessSendUseCase: NotificationPushProcessSendUseCase,
         private readonly notificationPushProcessCleanupTokensUseCase: NotificationPushProcessCleanupTokensUseCase,
         private readonly notificationPushProcessCleanupStaleTokensUseCase: NotificationPushProcessCleanupStaleTokensUseCase
     ) {
@@ -65,89 +43,28 @@ export class NotificationPushProcessor extends QueueProcessorBase {
     }
 
     protected async handle(
-        job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
+        job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>,
+        data: unknown,
+        outboxId: string | null
     ): Promise<IQueueResponse> {
         try {
             switch (job.name) {
-                case EnumNotificationPushProcess.newDeviceLogin:
-                    return await this.notificationPushProcessNewDeviceLoginUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationNewDeviceLoginPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
+                case EnumNotificationPushProcess.send: {
+                    if (outboxId === null) {
+                        const message = this.messageService.setMessage(
+                            'notification.queue.error.outboxIdMissing'
+                        );
+                        throw new UnrecoverableError(message);
+                    }
+
+                    return await this.notificationPushProcessSendUseCase.execute(
+                        outboxId,
+                        data as INotificationPushSendPayload
                     );
-                case EnumNotificationPushProcess.resetTwoFactorByAdmin:
-                    return await this.notificationPushProcessResetTwoFactorByAdminUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.temporaryPasswordByAdmin:
-                    return await this.notificationPushProcessTemporaryPasswordByAdminUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationTemporaryPasswordPushPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.resetPassword:
-                    return await this.notificationPushProcessResetPasswordUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.forgotPassword:
-                    return await this.notificationPushProcessForgotPasswordUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.workspaceInvite:
-                    return await this.notificationPushProcessWorkspaceInviteUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceInvitePushPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.workspaceJoinRequest:
-                    return await this.notificationPushProcessWorkspaceJoinRequestUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPushPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.workspaceJoinAccepted:
-                    return await this.notificationPushProcessWorkspaceJoinAcceptedUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
-                case EnumNotificationPushProcess.workspaceJoinRejected:
-                    return await this.notificationPushProcessWorkspaceJoinRejectedUseCase.execute(
-                        job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
-                    );
+                }
                 case EnumNotificationPushProcess.cleanupTokens:
                     return await this.notificationPushProcessCleanupTokensUseCase.execute(
-                        job as Job<
-                            INotificationPushCleanupTokenEncryptedPayload,
-                            IQueueResponse,
-                            EnumNotificationPushProcess
-                        >
+                        data as INotificationPushCleanupTokenEncryptedPayload
                     );
                 case EnumNotificationPushProcess.cleanupStaleTokens:
                     return await this.notificationPushProcessCleanupStaleTokensUseCase.execute();

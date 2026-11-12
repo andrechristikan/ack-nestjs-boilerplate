@@ -41,6 +41,11 @@ A string with placeholders is a `{token}` pattern (`naming.md`): one token is `S
 - A literal a third-party contract defines keeps that contract's type: BullMQ `backoff.type: 'exponential'` and the `'failed'` worker event, redis `'PX'`, `'XX'`, `'OK'`, Prisma log levels, `PromiseSettledResult.status`. So does the key list of a utility type under `interfaces/` (`Pick<ApiKey, 'id' | 'name'>`).
 - A log context line is a literal English sentence (`this.logger.error(error, 'Queue job failed')`, `logging.md`). Queue text that leaves through `IQueueResponse`, `QueueException`, or a side-effect description is i18n (`queue.md`, Messages).
 
+## Dates
+
+- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`).
+- RFC 2822 (`HelperDateService.formatToRFC2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Clock and persistence: `database.md`, Dates.
+
 ## Types and comments
 
 Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`QueueBase.addSideEffect`). Three exceptions: `DatabaseService.withTransaction`, the kit adapter over Prisma's callback-taking `$transaction`; `OutboxService.withTransaction`, which wraps it (`outbox.md`); and `CacheService.readThrough`, the kit read-through over the cache client (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.

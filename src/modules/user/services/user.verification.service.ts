@@ -1,19 +1,18 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { User, Verification } from '@generated/prisma-client/client';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type {
-    IUserVerificationEmailCreate,
-    IUserVerificationEmailTarget,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationEmailTarget } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
@@ -26,7 +25,8 @@ export class UserVerificationService {
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService,
+        private readonly notificationService: NotificationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
@@ -57,10 +57,11 @@ export class UserVerificationService {
         return { verification, user };
     }
 
+    /** Marks the verification used and the user verified, and adds the verifiedEmail effect in the same transaction, dispatched after the commit. */
     async verifyEmail(verification: Verification): Promise<void> {
         try {
             const verifiedAt = this.helperDateService.create();
-            await this.databaseService.withTransaction(async tx => {
+            await this.outboxService.withTransaction(async tx => {
                 const isMarkedUsed =
                     await this.userVerificationRepository.markUsedInTx(
                         tx,
@@ -75,6 +76,15 @@ export class UserVerificationService {
                     verification.userId,
                     verifiedAt
                 );
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.verifiedEmail,
+                    {
+                        userId: verification.userId,
+                        proceedBy: verification.userId,
+                        reference: verification.reference,
+                    }
+                );
+                await this.outboxService.addInTx(tx, effect);
             });
 
             return;
@@ -133,22 +143,29 @@ export class UserVerificationService {
         return this.userRepository.markVerifiedBySocial(userId, verifiedAt);
     }
 
-    /** Creates an email verification for the user, replacing its active one, and returns it with the raw token and link. */
-    async createEmail(
-        userId: string,
-        email: string
-    ): Promise<IUserVerificationEmailCreate> {
+    /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect in the same transaction, dispatched after the commit. */
+    async sendEmail(userId: string, email: string): Promise<void> {
         const verification = this.userVerificationUtil.createEmail();
         const today = this.helperDateService.create();
 
-        await this.userVerificationRepository.createReplacingActive(
-            userId,
-            email,
-            verification,
-            today
-        );
-
-        return verification;
+        await this.outboxService.withTransaction(async tx => {
+            await this.userVerificationRepository.createReplacingActiveInTx(
+                tx,
+                userId,
+                email,
+                verification,
+                today
+            );
+            const context = this.userVerificationUtil.mapEmailContext(
+                userId,
+                verification
+            );
+            const effect = this.notificationService.notify(
+                EnumNotificationKind.verificationEmail,
+                context
+            );
+            await this.outboxService.addInTx(tx, effect);
+        });
     }
 
     async createInTx(

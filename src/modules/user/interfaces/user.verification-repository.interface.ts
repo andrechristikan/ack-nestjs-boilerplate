@@ -29,7 +29,8 @@ export interface IUserVerificationRepository {
         }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification>;
-    createReplacingActive(
+    createReplacingActiveInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         userEmail: string,
         {
