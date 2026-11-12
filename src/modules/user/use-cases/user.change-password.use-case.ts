@@ -1,3 +1,7 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -6,6 +10,7 @@ import {
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -35,7 +40,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly outboxService: OutboxService
+        private readonly outboxService: OutboxService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async execute(
@@ -75,60 +81,76 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
 
-        await this.outboxService.withTransaction(async tx => {
-            await this.userService.updatePasswordInTx(
-                tx,
-                user.id,
-                password,
-                user.id
-            );
-            await this.passwordHistoryService.createInTx(
-                tx,
-                user.id,
-                password.passwordHash,
-                EnumPasswordHistoryType.profile,
-                password.passwordPeriodExpired,
-                password.passwordCreated,
-                user.id
-            );
-            await this.userPasswordService.markUnusedResetsUsedInTx(
-                tx,
-                user.id
-            );
-            await this.sessionService.revokeActiveByUserInTx(
-                tx,
-                user.id,
-                user.id,
-                password.passwordCreated
-            );
-            const entries = [
-                this.activityLogService.recordEffect(
-                    { action: EnumActivityLogAction.userChangePassword },
-                    context
-                ),
-            ];
-            if (twoFactorVerified) {
-                await this.userTwoFactorService.recordVerificationInTx(
+        try {
+            await this.outboxService.withTransaction(async tx => {
+                await this.userService.updatePasswordInTx(
                     tx,
-                    user,
-                    twoFactorVerified
+                    user.id,
+                    password,
+                    user.id
                 );
-                const verifyEntry = this.activityLogService.recordEffect(
-                    {
-                        action: EnumActivityLogAction.userVerifyTwoFactor,
-                        userId: user.id,
-                        createdBy: user.id,
-                    },
-                    context
+                await this.passwordHistoryService.createInTx(
+                    tx,
+                    user.id,
+                    password.passwordHash,
+                    EnumPasswordHistoryType.profile,
+                    password.passwordPeriodExpired,
+                    password.passwordCreated,
+                    user.id
                 );
-                entries.push(verifyEntry);
+                await this.userPasswordService.markUnusedResetsUsedInTx(
+                    tx,
+                    user.id
+                );
+                await this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    user.id,
+                    user.id,
+                    password.passwordCreated
+                );
+                const entries = [
+                    this.activityLogService.recordEffect(
+                        { action: EnumActivityLogAction.userChangePassword },
+                        context
+                    ),
+                ];
+                if (twoFactorVerified) {
+                    await this.userTwoFactorService.recordVerificationInTx(
+                        tx,
+                        user,
+                        twoFactorVerified
+                    );
+                    const verifyEntry = this.activityLogService.recordEffect(
+                        {
+                            action: EnumActivityLogAction.userVerifyTwoFactor,
+                            userId: user.id,
+                            createdBy: user.id,
+                        },
+                        context
+                    );
+                    entries.push(verifyEntry);
+                }
+                const effect = this.notificationService.notify(
+                    EnumNotificationKind.changePassword,
+                    { userId: user.id, proceedBy: user.id }
+                );
+                await this.outboxService.addManyInTx(tx, [...entries, effect]);
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
             }
-            const effect = this.notificationService.notify(
-                EnumNotificationKind.changePassword,
-                { userId: user.id, proceedBy: user.id }
-            );
-            await this.outboxService.addManyInTx(tx, [...entries, effect]);
-        });
+
+            const mapped = this.databaseUtil.toException(err);
+            if (
+                twoFactorVerified &&
+                mapped instanceof DatabaseWriteConflictException
+            ) {
+                throw new AuthTwoFactorInvalidException();
+            }
+
+            throw new AppUnknownException(err);
+        }
 
         return {};
     }

@@ -17,6 +17,9 @@ import type {
     TwoFactor,
     User,
 } from '@generated/prisma-client/client';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -74,6 +77,7 @@ describe('UserChangePasswordUseCase', () => {
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const context = buildRequestContext('user-linden');
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
@@ -222,6 +226,7 @@ describe('UserChangePasswordUseCase', () => {
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         useCase = module.get(UserChangePasswordUseCase);
@@ -643,11 +648,61 @@ describe('UserChangePasswordUseCase', () => {
         it('adds no effect when the transaction fails', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(user, dto, context)).rejects.toBe(
-                cause
+            await expect(useCase.execute(user, dto, context)).rejects.toThrow(
+                AppUnknownException
             );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException when a verified two-factor loses a write conflict', async () => {
+            const cause = new Error('write conflict');
+            userTwoFactorService.verifyIfRequired.mockResolvedValue(
+                twoFactorVerified
+            );
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(
+                    twoFactorUser,
+                    {
+                        ...dto,
+                        backupCode: 'backup',
+                        method: EnumAuthTwoFactorMethod.backupCodes,
+                    },
+                    context
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(cause);
+        });
+
+        it('throws AppUnknownException on a write conflict without two-factor', async () => {
+            const cause = new Error('write conflict');
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(useCase.execute(user, dto, context)).rejects.toThrow(
+                AppUnknownException
+            );
+        });
+
+        it('rethrows a typed exception from the transaction as is', async () => {
+            const failure = new UserPasswordNotMatchException();
+            outboxService.withTransaction.mockRejectedValue(failure);
+
+            await expect(useCase.execute(user, dto, context)).rejects.toBe(
+                failure
+            );
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
     });
 });
