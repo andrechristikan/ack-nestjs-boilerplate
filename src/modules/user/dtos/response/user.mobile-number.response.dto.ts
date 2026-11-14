@@ -22,14 +22,11 @@ export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
                 max: 11,
             })}`,
         }),
-    phoneCode: z
-        .string()
-        .min(1)
-        .max(6)
-        .meta({
-            description: 'Country calling code of the mobile number',
-            example: faker.location.countryCode('alpha-2'),
-        }),
+    phoneCode: z.string().min(1).max(6).meta({
+        description:
+            'Country calling code of the mobile number, E.164 form with a leading +',
+        example: '+62',
+    }),
     country: CountryResponseSchema.meta({
         description: 'Country of the mobile number',
     }),

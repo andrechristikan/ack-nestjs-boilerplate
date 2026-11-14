@@ -6,7 +6,7 @@ const CountryData = [
         name: 'Indonesia',
         alpha2Code: 'ID',
         alpha3Code: 'IDN',
-        phoneCode: ['62'],
+        phoneCode: ['+62'],
         continent: 'Asia',
         timezone: 'Asia/Jakarta',
     },

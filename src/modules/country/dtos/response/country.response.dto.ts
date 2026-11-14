@@ -29,8 +29,8 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
             example: faker.location.countryCode('alpha-3'),
         }),
     phoneCode: z.array(z.string()).meta({
-        description: 'Country phone code',
-        example: [faker.helpers.arrayElement(['62', '65'])],
+        description: 'Country phone codes in E.164 form, with a leading +',
+        example: [faker.helpers.arrayElement(['+62', '+65'])],
     }),
     continent: z.string().meta({
         description: 'Continent the country belongs to',

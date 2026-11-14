@@ -4,7 +4,7 @@ describe('UserUpdateMobileNumberRequestSchema', () => {
     const payload = {
         countryId: '507f1f77bcf86cd799439012',
         number: '81234567890',
-        phoneCode: '62',
+        phoneCode: '+62',
     };
 
     it('parses a payload into exactly the declared fields', () => {

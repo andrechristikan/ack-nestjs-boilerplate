@@ -7,7 +7,7 @@ describe('CountryRequestSchema', () => {
         timezone: 'Asia/Jakarta',
         alpha2Code: 'id',
         alpha3Code: 'idn',
-        phoneCode: ['62'],
+        phoneCode: ['+62'],
     };
 
     it('parses a payload and upper-cases the ISO codes', () => {
@@ -35,6 +35,12 @@ describe('CountryRequestSchema', () => {
     it('rejects an alpha3Code that is not exactly three characters', () => {
         expect(() =>
             CountryRequestSchema.parse({ ...payload, alpha3Code: 'id' })
+        ).toThrow();
+    });
+
+    it('rejects a phoneCode without a leading +', () => {
+        expect(() =>
+            CountryRequestSchema.parse({ ...payload, phoneCode: ['62'] })
         ).toThrow();
     });
 

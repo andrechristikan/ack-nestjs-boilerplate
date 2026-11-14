@@ -16,7 +16,7 @@ describe('UserMobileNumberHttpService', () => {
     const dto: UserAddMobileNumberRequestDto = {
         countryId: 'country-swift',
         number: '81234567890',
-        phoneCode: '62',
+        phoneCode: '+62',
     };
     const mobileNumber: IUserMobileNumber = {
         id: 'mobile-swift',
@@ -35,7 +35,7 @@ describe('UserMobileNumberHttpService', () => {
             name: 'Swift Coast',
             alpha2Code: 'SW',
             alpha3Code: 'SWL',
-            phoneCode: ['62'],
+            phoneCode: ['+62'],
             continent: 'Asia',
             timezone: 'UTC',
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
