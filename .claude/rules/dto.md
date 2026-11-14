@@ -2,6 +2,7 @@
 paths:
     - '**/dtos/**'
     - '**/*.dto.ts'
+    - 'src/modules/**/controllers/**'
     - 'src/common/request/**'
     - 'src/common/response/**'
 ---

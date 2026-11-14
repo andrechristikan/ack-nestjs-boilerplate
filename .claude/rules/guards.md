@@ -1,6 +1,7 @@
 ---
 paths:
     - '**/guards/**'
+    - '**/middlewares/**'
     - '**/decorators/**'
     - 'src/modules/**/controllers/**'
 ---

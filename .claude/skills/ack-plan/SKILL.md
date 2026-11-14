@@ -1,7 +1,7 @@
 ---
 name: ack-plan
 description: >-
-    Breaks an approved spec into local tickets, sets the level each ticket is built and reviewed at, writes the plan index a person reads, has a fresh reviewer confirm the tickets are executable, and waits for the owner's approval. Use with a spec path under .scratch/. Not for settling what to build (ack-design) or building (ack-build).
+    Breaks an approved spec into local tickets, sets the effort each ticket is built at, lists the harness changes the build waits for, writes the plan index a person reads, has a fresh reviewer confirm the tickets are executable, and waits for the owner's approval. Use with a spec path under .scratch/. Not for settling what to build (ack-design) or building (ack-build).
 blurb: 'tickets, the plan index, cold read, approval'
 disable-model-invocation: true
 argument-hint: '<a .scratch/ spec path>'
@@ -31,10 +31,11 @@ Follow `.claude/skills/to-tickets/SKILL.md`, with these departures:
 - Each ticket also carries `**Seam:**`, from the spec's Testing Decisions, and `**First failing spec:**`, the behaviour its first unit spec asserts.
 - A ticket that adds a module, a status code, a queue, a seed, or a notification carries `**Procedure:**` with its `.claude/skills/ack-build/references/add-<topic>.md`.
 - Every acceptance criterion states an observable result a unit spec, a gate command, or a request against the booted app proves.
+- Run `bash .claude/hooks/rules.sh` over the `src/` paths the tickets touch and read each rule it prints. A ticket step a rule forbids is rewritten, or the rule joins `## Harness changes`.
 
 ## 2. Level per ticket
 
-Each ticket is built by `coder`, on sonnet at an effort, and judged by `reviewer` at a model and an effort.
+`coder` builds every ticket on sonnet; the level is its effort.
 
 1. For each ticket, run:
 
@@ -44,25 +45,25 @@ bash .claude/hooks/jev.sh level <<'JSON'
 JSON
 ```
 
-2. A `<jev_level>` block that names agents gives their model and effort. Use it.
-3. A block that says `off`, `unavailable`, or `malformed input` gives nothing. Use the first row of this table that fits:
+2. A `<jev_level>` block that names `coder` gives its effort. Use it.
+3. A block that says `off`, `unavailable`, or `malformed input` gives nothing. Use this table:
 
-| The ticket | coder | reviewer |
-| --- | --- | --- |
-| touches the schema, a transaction, concurrency, or security | sonnet, high | opus, high |
-| crosses modules | sonnet, medium | opus, high |
-| any other | sonnet, medium | sonnet, high |
+| The ticket                                                  | coder          |
+| ----------------------------------------------------------- | -------------- |
+| touches the schema, a transaction, concurrency, or security | sonnet, high   |
+| any other                                                   | sonnet, medium |
 
-`coder` builds every ticket on sonnet. No ticket runs above opus, high, or below the `model` and `effort` in the agent's frontmatter.
+No ticket runs below the `effort` in `coder`'s frontmatter.
 
 ## 3. Plan index
 
-Write `.scratch/<feature>/plan.md`. It is an index a person reads to see the order, who builds what at which level, and what is done. Ticket detail stays in the ticket files.
+Write `.scratch/<feature>/plan.md`. It is an index a person reads to see the order, the effort each ticket is built at, and what is done. Ticket detail stays in the ticket files.
 
 - `**Approved:** no` as the first line.
 - `**Spec:**` the spec path.
 - `**Decisions to honour:**` the decision records the spec names.
-- One table, a row per ticket: `#`, `Ticket`, `Blocked by`, `Seam`, `Coder`, `Reviewer`, `Status`, `Evidence`. `Status` starts as `ready`.
+- One table, a row per ticket: `#`, `Ticket`, `Blocked by`, `Seam`, `Coder`, `Status`, `Evidence`. `Status` starts as `ready`.
+- `## Harness changes`: the spec's lines and any step 1 added, each `- [ ] <rule change or decision record>`, or `none`.
 - `## Cold read`: each round, and what it changed.
 - `## Owner commands`: empty until the build fills it.
 
@@ -95,9 +96,10 @@ Open: <each question and mismatch of both rounds, with the fix tried>
 ## Hand back
 
 - The plan path and the ticket count.
-- The level each ticket runs at, and whether Jev or the table gave it.
+- The effort each ticket runs at, and whether Jev or the table gave it.
+- The plan's `## Harness changes`.
 - What the cold read changed.
 
 ## Next
 
-A fresh session, then `/ack-build .scratch/<feature>/plan.md`.
+A fresh session, then `/ack-harness .scratch/<feature>/plan.md` when `## Harness changes` holds an item, otherwise `/ack-build .scratch/<feature>/plan.md`.

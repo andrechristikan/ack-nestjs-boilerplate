@@ -37,7 +37,7 @@ scripts/                generate-secret.ts, generate-package.ts
 ci/                     dockerfile.production, docker-compose.production.yml (production); mongo/, vault/, jwks-server/ (both compose files)
 dockerfile              development image, the compose apis service
 keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
-generated/              swagger, vault init, sweep log, PR text under docs/, gitignored
+generated/              swagger, vault init, sweep log, gitignored
 ```
 
 Propose no option a record rejects unless the owner reopens it: @docs/decisions/README.md
@@ -48,7 +48,7 @@ Feature modules share one shape: `Controller → Use case → Service → Reposi
 
 ## Discipline
 
-Every change follows `.claude/rules/discipline.md`: ask before guessing, minimum code, only the lines the request needs, a check that proves it.
+Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.claude/rules/discipline.md` binds every change: ask before guessing, minimum code, only the lines the request needs, a check that proves it.
 
 ## Commands
 
@@ -56,7 +56,7 @@ Every change follows `.claude/rules/discipline.md`: ask before guessing, minimum
 - `pnpm generate`: `db:generate` (`prisma generate`) then `generate:package`. Run after a fresh checkout and after a `package.json` version bump. `db:generate`, `db:format` and `prisma validate` touch files only.
 - `pnpm typecheck` · `pnpm test` (unit) · `pnpm test <path-filter>` · `pnpm test:cov` (unit coverage)
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell`
-- `docker-compose up -d`: MongoDB replica set, Redis, BullBoard, JWKS server. `docker-compose --profile vault up -d` adds Vault, `--profile apis` the app container. Ports are in `docker-compose.yml`.
+- `pnpm compose:dev` (`compose:dev:down`): MongoDB, Redis, BullBoard, JWKS server; `COMPOSE_PROFILES=vault` adds Vault, `apis` the app container. `pnpm compose:prod` for production. Ports are in `docker-compose.yml`.
 
 ## Prisma schema
 

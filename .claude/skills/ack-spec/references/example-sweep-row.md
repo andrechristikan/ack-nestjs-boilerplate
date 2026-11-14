@@ -4,7 +4,7 @@ Every path, line, and name in this example exists in the checkout. Example value
 
 ## Two open rows
 
-Each row sits under its heading in `generated/docs/report-src-sweep.md`, in the row shape `sweep-log.md` gives: the `file:line`, then one sentence stating what the code does, no proposal. The other three headings stay as they are.
+Each row sits under its heading in `generated/report-src-sweep.md`, in the row shape `sweep-log.md` gives: the `file:line`, then one sentence stating what the code does, no proposal. The other three headings stay as they are.
 
 - The `CHANGE` row is a decision the owner has not made: a status code.
 - The `DELETE` row is a line no input can reach.

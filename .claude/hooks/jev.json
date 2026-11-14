@@ -3,7 +3,6 @@
     "timeout_seconds": 1,
     "max": { "model": "opus", "effort": "high" },
     "thresholds": {
-        "noul_yes": 0.7,
         "effort_high": 1.8
     },
     "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
@@ -16,10 +15,6 @@
                 "A change inside one feature module, with its tests",
                 "Data-model, transaction, concurrency, or security work"
             ]
-        },
-        "spans_modules": {
-            "type": "noul",
-            "instructions": "Do `request` and the files in `location` involve more than one feature area of the application, such as authentication and workspaces together?"
         }
     }
 }

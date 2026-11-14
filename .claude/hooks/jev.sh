@@ -1,20 +1,31 @@
 #!/usr/bin/env bash
-# Jev, TypeSafe's decision model, for ack-plan. Run by the session from ack-plan's level step, never as a hook. Calls Jev
-# only when TYPESAFE_API_KEY is set and JEV_ROUTER_DISABLED is not 1; otherwise it prints an off block and ack-plan uses
-# its own table.
-#   level     one ticket, JSON on stdin {"request","location"}: prints a <jev_level> block with the effort coder runs
-#             that ticket at and the model and effort reviewer runs it at.
-# Questions, thresholds, and the ceiling (max) live in jev.json; each agent's floor is the model: and effort: of its
-# .claude/agents/<name>.md frontmatter. coder keeps its floor model and rises in effort only; reviewer rises on both.
+# Jev, TypeSafe's decision model, for the coder effort. Run by the session in two places, never as a hook: ack-plan's
+# level step (one ticket) and ack-review's fix list (one finding). TYPESAFE_API_KEY and JEV_ROUTER_DISABLED come from
+# the environment, else from the root .env.harness (NAME=value lines, the owner's, gitignored). Calls Jev only when the
+# key is set and JEV_ROUTER_DISABLED is not 1; otherwise it prints an off block and the caller uses the ack-plan table.
+#   level     one ticket or finding, JSON on stdin {"request","location"}: prints a <jev_level> block with the effort
+#             coder runs it at.
+# The question, its threshold, and the ceiling (max) live in jev.json; coder's floor is the model: and effort: of
+# .claude/agents/coder.md. coder keeps its floor model and rises in effort only.
 set -uo pipefail
 
 mode="${1:-}"
 payload="$(cat)"
+
+root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+harness_env="$root/.env.harness"
+from_harness() {
+    [ -f "$harness_env" ] || return 0
+    sed -n "s/^$1=//p" "$harness_env" | tail -n 1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+}
+: "${TYPESAFE_API_KEY:=$(from_harness TYPESAFE_API_KEY)}"
+: "${JEV_ROUTER_DISABLED:=$(from_harness JEV_ROUTER_DISABLED)}"
+export TYPESAFE_API_KEY
+
 state=on
 [ -n "${TYPESAFE_API_KEY:-}" ] || state=no-key
 [ "${JEV_ROUTER_DISABLED:-0}" = "1" ] && state=disabled
 
-root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 config="$root/.claude/hooks/jev.json"
 [ -f "$config" ] || exit 0
 
@@ -25,7 +36,7 @@ cfg = json.load(open(os.environ["JEV_CONFIG"]))
 t = cfg["thresholds"]
 raw = os.environ.get("JEV_PAYLOAD") or ""
 debug = os.environ.get("JEV_ROUTER_DEBUG") == "1"
-fallback = "ack-plan uses its table"
+fallback = "use the ack-plan table"
 
 MODELS = ["haiku", "sonnet", "opus"]
 EFFORTS = ["low", "medium", "high"]
@@ -105,11 +116,8 @@ def level():
         return block(f"unavailable ({a}); {fallback}")
 
     effort = a["effort"]["score"]
-    spans = a["spans_modules"]["noul"]
     hard = effort >= t["effort_high"]
-    # a ticket that crosses feature areas raises the reviewer alone, as the table in ack-plan gives
-    wide = hard or spans >= t["noul_yes"]
-    block(f"{at('coder', False, hard)}, {at('reviewer', wide, wide)}.", f"Signals: effort={effort:.1f}, spans_modules={spans:.2f}.")
+    block(f"{at('coder', False, hard)}.", f"Signals: effort={effort:.1f}.")
 
 
 {"level": level}.get(os.environ["JEV_MODE"], lambda: None)()

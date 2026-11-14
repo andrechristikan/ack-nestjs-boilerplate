@@ -4,7 +4,7 @@ description: >-
     Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision records in docs/decisions/, and docs/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
 blurb: '.claude, AGENTS.md, copilot digest, decision records'
 disable-model-invocation: true
-argument-hint: '<the change: files, what changes, expected outcome> | diagnose [session id | last]'
+argument-hint: '<the change: files, what changes, expected outcome> | <a .scratch/ plan or requirement path> | diagnose [session id | last]'
 ---
 
 !`git status --short` !`git diff --name-only HEAD`
@@ -18,6 +18,8 @@ The session settles the requirement with the owner, writes the files itself, and
 ## 1. Settle
 
 - Ask with `AskUserQuestion` what changes, which files, what stays out, and the expected outcome, until nothing material is open. Do not re-ask what the owner named. The settled requirement takes the shape of `references/example-requirement.md`.
+- A `.scratch/<feature>/plan.md`: the requirement is the `- [ ]` lines of its `## Harness changes`. Tick each one `- [x]` as step 3 passes for it.
+- A requirement settled for a later run is written to `.scratch/requirements/harness-<slug>.md`; given that path, ask only what its `## Open` holds.
 - Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: a line Claude would follow without being told, or could find by reading the code, is not added. Prefer deleting a line to adding one.
 - A fact that has to hold every time is a hook or a `deny` entry, not a sentence.
 
@@ -33,7 +35,7 @@ With `diagnose`:
 - A skill, an agent, or a rule: follow `.claude/skills/writing-for-agents/SKILL.md`. Where it and `.claude/rules/authoring.md` differ, the rule wins.
 - A decision record: the shape in `.claude/rules/authoring.md`, Decision records, each claim taken from a source the owner names, and one index line in `docs/decisions/README.md`.
 - A change to the flow, a skill, an agent, or the copied-skill set updates `docs/ai-harness.md` in the same run.
-- A `src/` defect found on the way is one row in `generated/docs/report-src-sweep.md`, not a fix.
+- A `src/` defect found on the way is one row in `generated/report-src-sweep.md`, not a fix.
 
 The copied skills (the folders `skills-lock.json` names) are never edited. Adapt one in the `ack-*` skill or the agent that follows it. Update them with `pnpm skills:update`, then re-read each `ack-*` departure against the new text.
 
@@ -62,4 +64,4 @@ bash .claude/hooks/check.sh
 
 ## Next
 
-`/ack-debug` with the symptom for a recorded `src/` finding.
+After a plan's `## Harness changes`: `/ack-build <the plan path>`, or `/ack-review <the plan path>` when a review added the line. `/ack-debug` with the symptom for a recorded `src/` finding.

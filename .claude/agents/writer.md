@@ -1,7 +1,7 @@
 ---
 name: writer
 description: >-
-    Writes reader-facing prose against the code on disk: docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/ markdown except copilot-instructions.md, stale-fact repairs in .github/ YAML, and PR, PR comment, and version text under generated/docs/. Reports a conflict and does not resolve it. Use when a doc or a PR text is wanted. Not for .claude/**, AGENTS.md, the Copilot digest, decision records, or docs/ai-harness.md (ack-harness), or for code or a workflow a change moves (coder).
+    Writes reader-facing prose against the code on disk: docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/ markdown except copilot-instructions.md, stale-fact repairs in .github/ YAML, and PR, PR comment, and version text under .scratch/pr/. Reports a conflict and does not resolve it. Use when a doc or a PR text is wanted. Not for .claude/**, AGENTS.md, the Copilot digest, decision records, or docs/ai-harness.md (ack-harness), or for code or a workflow a change moves (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
 effort: medium

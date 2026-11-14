@@ -21,8 +21,8 @@ done
 
 echo '{}' | bash .claude/hooks/roster.sh | jq -e '.systemMessage | contains("/ack-design")' >/dev/null 2>&1 \
     || bad ".claude/hooks/roster.sh: no roster with /ack-design"
-printf '{"request":"x","location":"src/modules/user"}' | env -u TYPESAFE_API_KEY bash .claude/hooks/jev.sh level | grep -q '^off ' \
-    || bad ".claude/hooks/jev.sh: level without a key does not print an off block"
+printf '{"request":"x","location":"src/modules/user"}' | env JEV_ROUTER_DISABLED=1 bash .claude/hooks/jev.sh level | grep -q '^off ' \
+    || bad ".claude/hooks/jev.sh: level with JEV_ROUTER_DISABLED=1 does not print an off block"
 
 python3 - <<'PY' || fail=1
 import glob, json, os, re, sys

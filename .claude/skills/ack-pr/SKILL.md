@@ -15,10 +15,10 @@ Input: $ARGUMENTS
 
 The session assigns one `writer` dispatch and runs the `gh pr` commands on the owner's word (`references/gh.md`). Four modes:
 
-- `description` writes `generated/docs/pr-<slug>.md`.
+- `description` writes `.scratch/pr/pr-<slug>.md`.
 - `create` writes it and opens the PR.
 - `comment` writes a PR comment or a review reply.
-- `version` writes `generated/docs/version-<slug>.md`.
+- `version` writes `.scratch/pr/version-<slug>.md`.
 
 This skill fetches from `origin` and moves a local compare ref; every other skill keeps git read-only. Run it once the branch or release set is settled, and run nothing after it. Every Agent call runs in the foreground.
 
@@ -45,8 +45,8 @@ Agent: writer
 Mode: description | create | comment | version
 Compare: <local ref, or from..to range>
 Title: <branch name, PR number and thread, or version label>
-Output: generated/docs/pr-<slug>.md | generated/docs/version-<slug>.md |
-  generated/docs/pr-comment-<slug>.md
+Output: .scratch/pr/pr-<slug>.md | .scratch/pr/version-<slug>.md |
+  .scratch/pr/pr-comment-<slug>.md
 Shape: description and create fill .github/pull_request_template.md, same headings and
   checkbox labels, paste-ready (.claude/skills/ack-pr/references/example-pr-description.md);
   version is lean release notes; comment answers the thread in the same voice.
@@ -71,7 +71,7 @@ Before any `gh` command, read the document once against the diff at `Compare`. A
 
 ## Boundaries
 
-- The session writes no file; `writer` writes the document under `generated/docs/`.
+- The session writes no file; `writer` writes the document under `.scratch/pr/`.
 - No merge, no `gh` write without the owner's word, no review verdict on the owner's behalf.
 - Git runs the fetch and the local `ack-pr/*` refs of step 3 and the push of step 6, nothing else.
 

@@ -16,6 +16,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 ## 1. Read first
 
 - Read the code the request touches and the module closest to it in shape.
+- Run `bash .claude/hooks/rules.sh` over the `src/` paths in scope and read each rule it prints.
 - Name the records in `docs/decisions/README.md` that touch the scope before offering any option. Offer no option a record rejects.
 - Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: challenge each part of the request the need does not justify, before any design.
 
@@ -55,18 +56,18 @@ Follow `.claude/skills/to-spec/SKILL.md`, with these departures:
 - Add `## Decisions to honour` (each binding decision record, by number and title) and `## Owner decisions` (every owner answer, verbatim, one per line) before `## Implementation Decisions`.
 - `## Testing Decisions` lists each agreed seam and the behaviours asserted at it.
 - Name every class, method, DTO field, status code, message key, and config key the change introduces.
+- `## Harness changes` lists each rule the design needs changed or added and each decision-record candidate (an architecture choice closed with a named alternative rejected), one per line, or `none`.
 - No compatibility, backfill, or migration section (`AGENTS.md`).
 
 ## 5. Approval
 
-- Ask the owner to approve the spec with `AskUserQuestion`. A change request revises the file and asks again.
-- When the design closes an architecture choice and rejects a named alternative, say it is a decision-record candidate and name `/ack-harness`.
+Ask the owner to approve the spec with `AskUserQuestion`. A change request revises the file and asks again.
 
 ## Hand back
 
 - The spec path.
 - The assumptions made for the owner.
-- The decision-record candidate, when there is one.
+- The spec's `## Harness changes` lines.
 
 ## Next
 

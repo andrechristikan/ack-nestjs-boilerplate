@@ -1,5 +1,5 @@
 # Dependencies & build output (reinstalled / regenerated inside the image)
-# generated/ also holds agent reports under generated/docs/ — not needed in the image
+# generated/ also holds the sweep log and the owner's notes, not needed in the image
 node_modules/
 dist/
 generated/
@@ -87,6 +87,8 @@ tmp/
 
 # AI Tools
 .claude/
+.agents/
+.mcp.json
 .scratch/
 skills-lock.json
 .cursor/

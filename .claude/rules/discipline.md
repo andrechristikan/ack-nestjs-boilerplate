@@ -38,5 +38,5 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 ## Enforcement
 
 - `bash .claude/hooks/rules.sh` prints this rule for every path, so a dispatch's `Rules to read:`, pasted from that output, carries it.
-- `reviewer` reports a breach as a finding at `task` and `feature`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.
+- `reviewer` reports a breach as a finding at `task` and `review`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.
 - The `Stop` hook runs `pnpm typecheck` and the unit suite after any `src/` or `test/` change.

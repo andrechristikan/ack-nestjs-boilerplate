@@ -1,10 +1,13 @@
 ---
 paths:
     - '**/exceptions/**'
+    - '**/guards/**'
     - '**/*.status-code.enum.ts'
     - 'src/app/**'
     - 'src/modules/*/services/**'
     - 'src/modules/*/use-cases/**'
+    - 'test/unit/modules/*/services/**'
+    - 'test/unit/modules/*/use-cases/**'
     - 'src/common/firebase/**'
     - 'src/common/database/utils/**'
     - 'src/common/redis/**'

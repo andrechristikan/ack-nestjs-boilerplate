@@ -17,7 +17,7 @@ Zero commits ahead and an empty `git diff ack-pr/base-<base>` mean the branch ha
 
 The dispatch names `ack-pr/base-<base>`. `writer` diffs with no second ref and no `..`: `git diff ack-pr/base-<base>` includes uncommitted and staged work, which `ack-pr/base-<base>..HEAD` omits.
 
-Slug: the branch name with a leading `feat/`, `fix/`, `chore/`, or similar prefix removed, filesystem-safe. Output `generated/docs/pr-<slug>.md`.
+Slug: the branch name with a leading `feat/`, `fix/`, `chore/`, or similar prefix removed, filesystem-safe. Output `.scratch/pr/pr-<slug>.md`.
 
 ## Mode `comment`
 
@@ -28,7 +28,7 @@ gh pr view <number> --comments
 gh api repos/{owner}/{repo}/pulls/<number>/comments
 ```
 
-Output `generated/docs/pr-comment-<slug>.md`, slug from the PR number and the thread.
+Output `.scratch/pr/pr-comment-<slug>.md`, slug from the PR number and the thread.
 
 ## Mode `version`
 
@@ -42,7 +42,7 @@ git rev-list --count <from>..<to>
 
 Zero means nothing to publish: say so and stop. The dispatch names both ends. Uncommitted work is out of scope for `version` unless the owner said the tip is `HEAD` on the current checkout.
 
-Slug: the tag without its `v`, filesystem-safe (`1.2.0`). Output `generated/docs/version-<slug>.md`.
+Slug: the tag without its `v`, filesystem-safe (`1.2.0`). Output `.scratch/pr/version-<slug>.md`.
 
 ## What stays out of the document
 

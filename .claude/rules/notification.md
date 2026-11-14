@@ -3,6 +3,8 @@ paths:
     - 'src/modules/notification/**'
     - 'src/modules/*/services/**'
     - 'src/modules/*/use-cases/**'
+    - 'test/unit/modules/*/services/**'
+    - 'test/unit/modules/*/use-cases/**'
 ---
 
 # Notifications

@@ -12,11 +12,11 @@ paths:
 ## Development
 
 - `docker-compose.yml` is development. Every image takes `latest` except `jwks-server` on `nginx:alpine`, because `nginx:latest` lacks the healthcheck's `wget`. The root `dockerfile` builds `apis`.
-- Profiles gate `apis` and `vault` (`vault`, `vault-bootstrap`); a bare `docker-compose up -d` starts Mongo, Redis, BullBoard, and the JWKS server.
+- Profiles gate `apis` and `vault` (`vault`, `vault-bootstrap`); `pnpm compose:dev` starts Mongo, Redis, BullBoard, and the JWKS server.
 - No service sets `init: true`.
 - `apis` sets `NODE_OPTIONS: --max-old-space-size=2048` and a `4G` memory limit, so `start:dev` runs `typecheck:watch` beside the SWC watcher and logs `Found 0 errors`: `tsc` here runs out of a 1 GB heap.
 - `apis` bind-mounts `./src` and `./prisma`: `src/` recompiles in the container. `typecheck:watch` checks `tsconfig.build.json`, `src/` only; `test/` stays out of the image (`.dockerignore`); the host's `pnpm typecheck` covers it and `scripts/`, which the production `pnpm generate` needs. A change outside the mounts (`package.json`, the lockfile, `pnpm-workspace.yaml`, `.swcrc`, `nest-cli.json`, `tsconfig*.json`) needs `--build` (Boot, step 3).
-- The host generates everything `apis` runs. The `client` generator in `prisma/schema.prisma` sets `binaryTargets` (`native` plus both Alpine OpenSSL 3 targets), so the host's `pnpm generate` writes darwin and Alpine engines into `src/generated`, inside the `./src` bind. After a schema edit run `pnpm db:generate`, then `docker-compose restart apis`.
+- The host generates everything `apis` runs. The `client` generator in `prisma/schema.prisma` sets `binaryTargets` (`native` plus both Alpine OpenSSL 3 targets), so the host's `pnpm generate` writes darwin and Alpine engines into `src/generated`, inside the `./src` bind. After a schema edit run `pnpm db:generate`, then `docker compose --env-file .env.docker restart apis`.
 - Inside `apis` the app reaches Mongo, Redis, and the JWKS server through `host.docker.internal`, so the owner's `.env` URLs name that host. No agent reads `.env`; a logged connection failure goes to the owner.
 
 ## Boot
@@ -25,25 +25,25 @@ Every agent boot runs the app in the `apis` container, never on the host. Each s
 
 1. `docker ps --format '{{.Names}} {{.Ports}}'` lists the running compose services (`mongo`, `redis`, `jwks-server`, `redis-bullboard`, `apis`). A failing `docker ps` means an unreachable daemon: NOT RUN, output quoted.
 2. Port: when `ack-nestjs-boilerplate-apis-1` runs, `<port>` is the host port it publishes. Otherwise run `lsof -nP -iTCP:3000 -sTCP:LISTEN`: empty, `<port>` is 3000; held, take a free OS port: `node -e 'const s=require("net").createServer().listen(0,()=>{console.log(s.address().port);s.close()})'`.
-3. `date -u +%Y-%m-%dT%H:%M:%SZ; DOCKER_APIS_PORT=<port> docker-compose --profile apis up -d --force-recreate apis; echo "exit=$?"`, adding `--build` only when a file outside the mounts changed (Development). The printed time is `<start>`. Compose builds a missing image and starts missing dependencies, so the `apis` log holds this boot's `App Name:`. A nonzero exit is a failed boot; quote its output.
-4. Proof: `timeout 60 sh -c 'until docker-compose logs --since <start> apis | grep -q "App Name:"; do sleep 2; done'; echo "exit=$?"; docker-compose logs --since <start> apis | grep -n 'App Name:'`. Quote the `App Name:` block from `src/main.ts`. Exit 124 is a failed boot; quote that log's decisive lines.
+3. `date -u +%Y-%m-%dT%H:%M:%SZ; COMPOSE_PROFILES=apis DOCKER_APIS_PORT=<port> pnpm compose:dev --force-recreate apis; echo "exit=$?"`, adding `--build` only when a file outside the mounts changed (Development). The printed time is `<start>`. Compose builds a missing image and starts missing dependencies, so the `apis` log holds this boot's `App Name:`. A nonzero exit is a failed boot; quote its output.
+4. Proof: `timeout 60 sh -c 'until docker compose --env-file .env.docker logs --since <start> apis | grep -q "App Name:"; do sleep 2; done'; echo "exit=$?"; docker compose --env-file .env.docker logs --since <start> apis | grep -n 'App Name:'`. Quote the `App Name:` block from `src/main.ts`. Exit 124 is a failed boot; quote that log's decisive lines.
 5. A route call curls `http://localhost:<port>/<route>`.
 
-The containers stay up for the next boot; a boot never runs `docker-compose down`. The proof does not wait on `typecheck:watch`: run `pnpm typecheck` beside the boot.
+The containers stay up for the next boot; a boot never runs `pnpm compose:dev:down`. The proof does not wait on `typecheck:watch`: run `pnpm typecheck` beside the boot.
 
 ## Production
 
-- `ci/docker-compose.production.yml` runs the development services, `vault` and `vault-bootstrap` under the `vault` profile, with `apis` built from `ci/dockerfile.production`. Run it from the root: `docker compose --env-file .env -f ci/docker-compose.production.yml up -d`.
+- `ci/docker-compose.production.yml` runs the development services, `vault` and `vault-bootstrap` under the `vault` profile, with `apis` built from `ci/dockerfile.production`. Run it with `pnpm compose:prod`.
 - It publishes only `apis` and `redis-bullboard`, the latter bound to `127.0.0.1` behind a login; ports are in the file.
 - `ci/dockerfile.production` builds in a `builder` stage (`pnpm generate` once, then `pnpm build`, whose closing `pnpm typecheck` is the only type check) and starts from a `main` stage holding production dependencies only, as a non-root user, with the exec-form `CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]`: `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck.
 - A schema or dependency change ships only in a rebuilt image.
-- Before the first `up` of either compose file the owner generates `keys/` and `.env` (`pnpm generate:secret`, `scripts/generate-secret.ts`), pushes the schema, and runs the seeds (`AGENTS.md`).
+- Before the first `up` of either compose file the owner generates `keys/` and `.env` (`pnpm generate:secret`), writes `.env.docker` (production: its five credentials), pushes the schema, and runs the seeds (`AGENTS.md`).
 
 ## Credentials and variables
 
-- Auth is opt-in in both compose files. Mongo turns on `--keyFile` and `--auth` and creates the root user only when `DOCKER_MONGO_ROOT_PASSWORD` is set; Redis, run as user `redis`, takes `--requirepass` and BullBoard authenticates to it only when `DOCKER_REDIS_PASSWORD` is set. BullBoard's own login falls back to the compose defaults.
-- With `DOCKER_MONGO_ROOT_PASSWORD` set, `DATABASE_URL` carries `<DOCKER_MONGO_ROOT_USERNAME>:<password>@` and `authSource=admin`: the root user lives in `admin`, and without it Prisma fails with `SCRAM failure: Authentication failed`. With `DOCKER_REDIS_PASSWORD` set, `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` carry `redis://:<password>@`. `.env.example` shows both variants commented.
-- Every `DOCKER_` key is empty in `.env.example`, set in the owner's `.env`; each compose file reads it as `${DOCKER_X:-default}`, so production without `--env-file` takes the fallbacks. Any other key follows `config.md`.
+- Auth is opt-in in development. Mongo turns on `--keyFile` and `--auth` and creates the root user only when `DOCKER_MONGO_ROOT_PASSWORD` is set; Redis, run as user `redis`, takes `--requirepass` and BullBoard authenticates to it only when `DOCKER_REDIS_PASSWORD` is set.
+- With `DOCKER_MONGO_ROOT_PASSWORD` set, `DATABASE_URL` carries `<DOCKER_MONGO_ROOT_USERNAME>:<password>@` and `authSource=admin`: the root user lives in `admin`, and without it Prisma fails with `SCRAM failure: Authentication failed`. With `DOCKER_REDIS_PASSWORD` set, `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` carry `redis://:<password>@`.
+- Every `DOCKER_` key lives in the owner's `.env.docker`, each optional in development, which every Compose command passes as `--env-file` (`compose:dev`, `compose:dev:down`, `compose:prod`, and `compose:prod:down` carry it); development reads each as `${DOCKER_X:-default}`, production its five credentials as `${DOCKER_X:?message}` with no default.
 
 ## Volumes
 

@@ -2,7 +2,7 @@
 dist/
 node_modules/
 .warmup/
-# Prisma client, swagger, vault init, and agent reports under generated/docs/
+# Prisma client, swagger, vault init, the sweep log, and the owner's notes
 generated/
 swagger.json
 /src/metadata.ts

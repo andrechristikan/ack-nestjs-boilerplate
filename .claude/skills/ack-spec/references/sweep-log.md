@@ -2,7 +2,7 @@
 
 ## The sweep log
 
-`generated/docs/report-src-sweep.md` records a `src/` defect that is not repaired in the run that found it: a flow change, a decision the owner has not made, a line no input can reach. It is gitignored and holds open defects only.
+`generated/report-src-sweep.md` records a `src/` defect that is not repaired in the run that found it: a flow change, a decision the owner has not made, a line no input can reach. It is gitignored and holds open defects only.
 
 Create the file with this header and these five headings when it is missing:
 

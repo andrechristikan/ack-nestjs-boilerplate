@@ -23,6 +23,7 @@ logs/
 # Third-party skills copied by the skills CLI (skills-lock.json): never reformatted
 .claude/skills/*/
 !.claude/skills/ack-*/
+.agents/
 
 # Secrets & keys
 keys/

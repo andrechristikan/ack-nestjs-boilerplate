@@ -3,6 +3,8 @@ paths:
     - 'src/modules/activity-log/**'
     - 'src/modules/*/services/**'
     - 'src/modules/*/use-cases/**'
+    - 'test/unit/modules/*/services/**'
+    - 'test/unit/modules/*/use-cases/**'
     - 'src/languages/*/activityLog.json'
 ---
 

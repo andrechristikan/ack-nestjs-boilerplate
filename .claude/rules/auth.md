@@ -7,6 +7,9 @@ paths:
     - 'src/modules/role/**'
     - 'src/modules/policy/**'
     - 'src/modules/term-policy/**'
+    - 'src/modules/api-key/**'
+    - 'src/modules/workspace/**'
+    - 'src/modules/project/**'
 ---
 
 # Authentication and authorization

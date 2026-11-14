@@ -4,27 +4,23 @@
 
 ## Claude-specific
 
-Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and hooks. `/plan` and Shift+Tab enter plan mode; its files land in `.scratch/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
+`.claude/settings.json` sets `acceptEdits`; a user-level `auto` replaces it. `ask`, `deny`, and both guards hold in either mode. `/plan` and Shift+Tab enter plan mode; its files land in `.scratch/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
 
 ### Skills
 
-The owner types every `/ack-*` skill: each carries `disable-model-invocation: true`. No agent invokes one, and no skill starts another: each ends with a Next line naming the command the owner types. A feature runs through three, each in a fresh session:
+The owner types every `/ack-*` skill: each carries `disable-model-invocation: true`. No agent invokes one, and no skill starts another: each ends with a Next line naming the command the owner types. A feature runs the first seven in order, each in a fresh session; the owner commits before `/ack-pr`:
 
 | Skill | Runs in | Does |
 | --- | --- | --- |
 | `/ack-design` | session | question rounds with the owner, the test seams, the spec |
-| `/ack-plan` | session, `reviewer`, `advisor` | tickets, the plan index, a cold read, the owner's approval |
-| `/ack-build` | session, `coder`, `reviewer` | every ticket test-first, gates, review |
-
-The rest stand alone, when the owner calls one:
-
-| Skill | Runs in | Does |
-| --- | --- | --- |
-| `/ack-debug` | session, `debugger`, `coder`, `reviewer` | a symptom to its root cause, then the fix |
-| `/ack-spec` | fork, as `tester` | unit specs for code that exists; the code wins |
+| `/ack-plan` | session, `reviewer`, `advisor` | tickets, the plan index, harness changes, a cold read, the owner's approval |
+| `/ack-harness` | session | `.claude/**`, `AGENTS.md`, the Copilot digest, decision records |
+| `/ack-build` | session, `coder` | every ticket test-first, gates |
+| `/ack-review` | session, `reviewer`, `coder` | `review.md` against the spec, the rules, and the flow; findings settled with the owner, then fixed |
 | `/ack-doc` | session, `writer` | docs against the code; the code wins |
 | `/ack-pr` | session, `writer` | a pull request, its description, comments, version notes |
-| `/ack-harness` | session | `.claude/**`, `AGENTS.md`, the Copilot digest, decision records |
+| `/ack-debug` | session, `debugger`, `coder`, `reviewer` | a symptom to its root cause, then the fix |
+| `/ack-spec` | fork, as `tester` | unit specs for code that exists; the code wins |
 
 - A request for a feature or a cross-module change that arrives without a skill: name `/ack-design` and wait. A question, a lookup, or an edit inside one file needs none.
 - A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
@@ -41,19 +37,21 @@ The other folders under `.claude/skills/` are third-party skills copied by the `
 
 ### Work artifacts
 
-`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case:
+`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case, `pr` and `requirements` reserved:
 
 - `.scratch/<feature>/spec.md`: the spec, from `/ack-design`.
 - `.scratch/<feature>/issues/<NN>-<slug>.md`: one ticket per file, from `/ack-plan`. `**Status:**` is `ready-for-agent`, then `done`.
-- `.scratch/<feature>/plan.md`: the index a person reads: approval, ticket order, the level each ticket runs at, status, evidence.
+- `.scratch/<feature>/plan.md`: the index a person reads: approval, ticket order, the effort each ticket runs at, harness changes, status, evidence.
+- `.scratch/<feature>/review.md`: from `/ack-review`.
+- `.scratch/requirements/`: a requirement settled for a later `/ack-harness` or `/ack-doc`. `.scratch/pr/`: PR, comment, and version text.
 
-A platform issue is created only when the owner asks; `gh issue create` is an `ask`. `generated/docs/` holds the sweep log and PR, comment, and version text, never a spec, a plan, or an agent report.
+A platform issue is created only when the owner asks; `gh issue create` is an `ask`. The sweep log is `generated/report-src-sweep.md`.
 
 ### Levels
 
-- `/ack-plan` sets each ticket's level: the `coder` effort, always on sonnet, and the `reviewer` model and effort. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
-- Without `TYPESAFE_API_KEY`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; `/ack-plan` then uses its own table.
-- No agent runs below its frontmatter `model` and `effort`; `reviewer` stops at opus, high (`max` in `.claude/hooks/jev.json`).
+- `coder` runs on sonnet at an effort set per ticket by `/ack-plan` and per fix by `/ack-review`. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
+- Without `TYPESAFE_API_KEY` in `.env.harness`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; the `/ack-plan` table then gives the effort.
+- No agent runs below its frontmatter `model` and `effort`; `/ack-review` dispatches `reviewer` at opus, high.
 - Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
 
 ### Agents
@@ -61,7 +59,7 @@ A platform issue is created only when the owner asks; `gh issue create` is an `a
 Skills dispatch the agents in `.claude/agents/`:
 
 - `coder`: builds one ticket or one pin in `src/`, test-first, seeds and the run surface included.
-- `reviewer`: judges a plan, a feature, a pin, or the harness; reports, does not fix.
+- `reviewer`: judges a plan, a pin, or the harness; writes a feature's `review.md`; fixes nothing.
 - `advisor`: the last cold-read attempt of `/ack-plan`; edits the spec, plan, and tickets.
 - `debugger`: reproduces a symptom, finds its root cause, reports a pin.
 - `tester`: writes or repairs unit specs under `test/unit/` for code that exists.
@@ -79,8 +77,8 @@ The session locates code with the built-in `Explore` agent. An agent missing som
 - `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so `.github/workflows/test-integration.yml` and `test-e2e.yml` fail calling those scripts.
 - A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - A booted request sends `x-api-key: local_<key>:<secret>`: the seed prefixes the `migration.api-key.data.ts` key with the environment (`ApiKeyCredentialUtil.createKey`). A notification proof passes once the SES or FCM call is made; a sandbox `MessageRejected` for an unverified address is no finding.
-- Claude worktrees live under `.claude/worktrees/` (gitignored). A recursive grep from the root is denied unless it excludes `.claude` (`guard-bash.sh`).
-- The root `.env`, `keys/`, `generated/vault/`, and `.claude/settings.local.json` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker-compose exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env`.
+- Claude worktrees live under `.claude/worktrees/` (gitignored).
+- The root `.env`, `.env.harness`, and `.env.docker`, `keys/`, and `generated/vault/` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker compose --env-file .env.docker exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env` or `.env.docker`.
 
 ### Etiquette
 
@@ -95,4 +93,4 @@ The session locates code with the built-in `Explore` agent. An agent missing som
 
 ### Rules
 
-Rules load by path from `.claude/rules/`; the five unscoped ones bind every file: `layering.md`, `cross-module.md`, `null-safety.md`, `naming.md`, `discipline.md`. `authoring.md` binds every prose tree. `bash .claude/hooks/rules.sh <path>...` prints the rule files binding those paths.
+Rules load by path from `.claude/rules/`; the five unscoped ones bind every file: `layering.md`, `cross-module.md`, `null-safety.md`, `naming.md`, `discipline.md`. `authoring.md` binds every prose tree.

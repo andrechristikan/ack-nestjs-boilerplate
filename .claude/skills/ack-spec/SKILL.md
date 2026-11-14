@@ -60,7 +60,7 @@ pnpm test:cov <scope>
 
 ## 5. Sweep log
 
-`generated/docs/report-src-sweep.md` holds open defects only.
+`generated/report-src-sweep.md` holds open defects only.
 
 - Append one row per defect or unreachable line, under its heading (`references/example-sweep-row.md`).
 - At the end of the run, re-read every row against `src/` and delete each row whose defect is gone (`references/sweep-log.md`).

@@ -1,8 +1,8 @@
 ---
 name: ack-build
 description: >-
-    Builds every ticket of an approved plan, one ticket per coder dispatch and test-first, and does not stop until the feature is done: gates, review, hand-back. Use with a plan path under .scratch/, also to resume a build. Not for a plan the owner has not approved (ack-plan) or a bug whose cause is unknown (ack-debug).
-blurb: 'build every ticket test-first, gates, review'
+    Builds every ticket of an approved plan, one ticket per coder dispatch and test-first, and does not stop until every ticket is done and the gates are green. Use with a plan path under .scratch/, also to resume a build. Not for a plan the owner has not approved (ack-plan) or a bug whose cause is unknown (ack-debug).
+blurb: 'build every ticket test-first, gates'
 disable-model-invocation: true
 argument-hint: '<a .scratch/ plan path>'
 ---
@@ -13,11 +13,12 @@ argument-hint: '<a .scratch/ plan path>'
 
 Input: $ARGUMENTS
 
-The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `reviewer` judges the feature, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Every Agent call runs in the foreground; wait for each hand-back and read it before the next step.
+The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Every Agent call runs in the foreground; wait for each hand-back and read it before the next step.
 
 ## Start
 
 - A `plan.md` whose first line is not `**Approved:** yes`: stop and name `/ack-plan`.
+- A `- [ ]` line under the plan's `## Harness changes`: stop and name `/ack-harness <the plan path>`.
 - Tickets already `done`: name the first ticket that is not, and continue from it.
 
 ## 1. Build
@@ -48,7 +49,7 @@ Stop before the last ticket only when:
 
 - The spec is wrong or ambiguous in a way that changes behaviour.
 - The work reaches a module or a dependency no ticket names.
-- A rule has to change first: name `/ack-harness`.
+- A rule has to change first: a plan defect, since `## Harness changes` missed it. Add the line there and name `/ack-harness <the plan path>`.
 
 ## 2. Prove
 
@@ -57,24 +58,15 @@ Stop before the last ticket only when:
 3. Name the spec or the command that proves each acceptance criterion of each ticket. A criterion without proof goes back to step 1.
 4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/rules/docker.md`, Boot, gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
 
-## 3. Review
-
-1. Dispatch `reviewer` with `Depth: feature`, the spec path, the plan path, the changed paths (`git diff --name-only HEAD` plus `git ls-files --others --exclude-standard`), the `rules.sh` output over them, and the gate output from step 2.
-2. Open the file behind each finding. Confirm it or reject it with a reason.
-3. Each confirmed Critical or Important finding goes to one `coder` dispatch as a pin, failing spec first. A Minor finding is parked in the hand-back.
-4. Dispatch one more `reviewer`, over the fixed findings only. A Critical or Important finding still open goes to the owner.
-
 ## Hand back
 
 - The acceptance criteria as a table: ticket, criterion, proof, status.
 - Each deviation from the spec, with its reason.
 - Each decision and assumption made during the build.
-- The reviewer's findings: confirmed and fixed, rejected with the reason, parked.
 - The plan's `## Owner commands`.
-- The `docs/` pages the change makes stale, as a list: name `/ack-doc`.
-- A new command, path pattern, or convention the harness does not describe, or a decision-record candidate: name `/ack-harness`.
-- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`. Wait for the owner.
+- The `docs/` pages the change makes stale, as a list for `/ack-doc`.
+- A new command, path pattern, or convention the harness does not describe: name `/ack-harness`.
 
 ## Next
 
-`/ack-pr` once the work is committed.
+A fresh session, then `/ack-review .scratch/<feature>/plan.md`.
