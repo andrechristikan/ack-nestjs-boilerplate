@@ -9,6 +9,7 @@ export interface IConfigQueue {
         removeOnFailAgeInSeconds: number;
         emailBackoffDelayInMs: number;
         pushBackoffDelayInMs: number;
+        smsBackoffDelayInMs: number;
         notificationBackoffDelayInMs: number;
         workspaceBackoffDelayInMs: number;
     };
@@ -22,6 +23,7 @@ export default registerAs('queue', (): IConfigQueue => ({
         removeOnFailAgeInSeconds: ms('14d') / 1000,
         emailBackoffDelayInMs: ms('10s'),
         pushBackoffDelayInMs: ms('5s'),
+        smsBackoffDelayInMs: ms('10s'),
         notificationBackoffDelayInMs: ms('3s'),
         workspaceBackoffDelayInMs: ms('10s'),
     },

@@ -42,6 +42,15 @@ export enum EnumNotificationPushProcess {
 }
 
 /**
+ * Job names on the notification sms queue, one per security alert kind.
+ * @public
+ */
+export enum EnumNotificationSmsProcess {
+    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    newDeviceLogin = 'newDeviceLogin',
+}
+
+/**
  * Kinds of stored notification, each with its own type and channels.
  * @public
  */

@@ -78,6 +78,14 @@
             "body": "Hi {username}, your request to join the workspace {workspaceName} has been rejected. Reason: {rejectReasonLabel}."
         }
     },
+    "sms": {
+        "temporaryPasswordByAdmin": "Security alert: an administrator set a temporary password on your account. If you did not expect this, contact support.",
+        "changePassword": "Security alert: your account password was changed. If this was not you, reset your password now.",
+        "forgotPassword": "Security alert: a password reset was requested for your account. If this was not you, ignore the email and secure your account.",
+        "resetPassword": "Security alert: your account password was reset. If this was not you, contact support now.",
+        "resetTwoFactorByAdmin": "Security alert: an administrator reset two-factor authentication on your account. If you did not expect this, contact support.",
+        "newDeviceLogin": "Security alert: a new device signed in to your account. If this was not you, change your password now."
+    },
     "rejectReason": {
         "notAFit": "Not a good fit",
         "incompleteProfile": "Incomplete profile",

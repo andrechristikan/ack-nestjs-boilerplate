@@ -1,3 +1,4 @@
+import type { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumNotificationChannel,
@@ -232,4 +233,11 @@ export interface INotificationEmailSendUnregisteredPayload {
 export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
     send: INotificationEmailSendUnregisteredPayload;
     data?: T;
+}
+
+export interface INotificationSendSmsPayload {
+    userId: string;
+    notificationId: string;
+    kind: EnumNotificationSmsProcess;
+    phoneNumber: string;
 }

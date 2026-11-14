@@ -943,6 +943,7 @@ enum EnumNotificationType {
 enum EnumNotificationChannel {
   push
   email
+  sms
   inApp
   silent
 }

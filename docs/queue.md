@@ -501,3 +501,7 @@ redis-bullboard:
 [ref-doc-environment]: environment.md
 [ref-doc-notification]: notification.md
 [ref-doc-installation]: installation.md
+
+## SMS notifications
+
+`NotificationSecurityDomain` loads the active profile and creates `resetTwoFactorByAdmin` and `newDeviceLogin` SMS security-alert jobs alongside the email and push work. A missing profile fails the workflow. The SMS queue processes jobs through AWS SNS, with one job per verified mobile number. Users without a verified mobile number skip SMS enqueueing; the SMS processor only delivers already-enqueued jobs and defensively skips jobs with no recipient.
