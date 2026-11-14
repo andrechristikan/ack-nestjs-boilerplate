@@ -25,7 +25,7 @@ import type {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

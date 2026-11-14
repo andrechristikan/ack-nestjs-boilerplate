@@ -19,7 +19,7 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';

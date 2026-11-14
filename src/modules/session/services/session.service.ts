@@ -46,8 +46,9 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
@@ -66,7 +67,7 @@ export class SessionService {
     private purgeLoginsEffect(
         userId: string,
         sessions: ISessionRef[]
-    ): IOutboxEffect {
+    ): ISessionPurgeLoginsEffect {
         return {
             queue: EnumSessionQueue.session,
             name: EnumSessionProcess.purgeLogins,

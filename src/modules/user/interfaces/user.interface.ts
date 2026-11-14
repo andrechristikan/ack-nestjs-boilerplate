@@ -1,3 +1,8 @@
+import type {
+    EnumUserProcess,
+    EnumUserQueue,
+} from '@modules/user/enums/user.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
@@ -410,4 +415,22 @@ export interface IUserCreateContracts {
     signUp: IUserCreateContract;
     social: IUserCreateContract;
     admin: IUserCreateContract;
+}
+
+export interface IUserLockoutEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.lockout;
+    data: IUserLockoutPayload;
+}
+
+export interface IUserDeletePhotoEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.deletePhoto;
+    data: IUserDeletePhotoPayload;
+}
+
+export interface IUserImportByAdminEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.importByAdmin;
+    data: IUserImportByAdminPayload;
 }

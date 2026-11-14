@@ -4,7 +4,7 @@ import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interf
 import { ActivityLogProcessCreateManyUseCase } from '@modules/activity-log/use-cases/activity-log.process-create-many.use-case';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';

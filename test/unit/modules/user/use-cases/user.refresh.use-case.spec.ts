@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -23,8 +24,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
@@ -76,7 +76,7 @@ describe('UserRefreshUseCase', () => {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
     };
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },

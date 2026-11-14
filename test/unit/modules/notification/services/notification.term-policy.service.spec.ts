@@ -15,7 +15,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationTermPolicyPage } from '@modules/notification/interfaces/notification.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { MessageService } from '@common/message/services/message.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';

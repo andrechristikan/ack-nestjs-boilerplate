@@ -10,7 +10,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';

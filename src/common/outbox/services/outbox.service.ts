@@ -19,10 +19,10 @@ import type {
     IOutboxEffect,
     IOutboxJobPayload,
     IOutboxReconcileResult,
-} from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxDispatchWarnKey } from '@modules/outbox/constants/outbox.constant';
-import { OutboxTransactionMissingException } from '@modules/outbox/exceptions/outbox.transaction-missing.exception';
-import { OutboxRepository } from '@modules/outbox/repositories/outbox.repository';
+} from '@common/outbox/interfaces/outbox.interface';
+import { OutboxDispatchWarnKey } from '@common/outbox/constants/outbox.constant';
+import { OutboxTransactionMissingException } from '@common/outbox/exceptions/outbox.transaction-missing.exception';
+import { OutboxRepository } from '@common/outbox/repositories/outbox.repository';
 
 @Injectable()
 export class OutboxService implements OnApplicationBootstrap {

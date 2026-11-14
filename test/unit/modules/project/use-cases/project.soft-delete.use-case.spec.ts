@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -10,8 +11,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -38,8 +38,8 @@ describe('ProjectSoftDeleteUseCase', () => {
         mock<WorkspaceInviteService>();
 
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
-    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
+    const firstEntry = buildActivityLogCreateManyEffect('first-entry');
+    const secondEntry = buildActivityLogCreateManyEffect('second-entry');
 
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 

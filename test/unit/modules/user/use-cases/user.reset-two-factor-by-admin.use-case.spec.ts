@@ -1,3 +1,5 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -10,7 +12,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -21,7 +23,6 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -121,14 +122,14 @@ describe('UserResetTwoFactorByAdminUseCase', () => {
         },
         twoFactor,
     };
-    const adminEntry = { queue: 'admin-entry' } as unknown as IOutboxEffect;
-    const targetEntry = { queue: 'target-entry' } as unknown as IOutboxEffect;
+    const adminEntry = buildActivityLogCreateManyEffect('admin-entry');
+    const targetEntry = buildActivityLogCreateManyEffect('target-entry');
     const snapshot: INotificationSnapshot = {
         username: 'martenFrost',
         encryptedEmail: 'cipher(marten@example.com)',
         encryptedTokens: ['cipher(token-one)'],
     };
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

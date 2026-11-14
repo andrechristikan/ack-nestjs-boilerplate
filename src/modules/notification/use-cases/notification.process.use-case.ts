@@ -9,7 +9,7 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 

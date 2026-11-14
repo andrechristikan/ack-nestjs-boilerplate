@@ -14,7 +14,7 @@ import type { INotificationEmailSendPayload } from '@modules/notification/interf
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
 import { NotificationEmailProcessSendUseCase } from '@modules/notification/use-cases/notification.email.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationEmailProcessSendUseCase', () => {

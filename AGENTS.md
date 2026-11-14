@@ -20,7 +20,7 @@ src/migration.ts        nest-commander entrypoint, runs seeders
 src/instrument.ts       Sentry init and event scrubbing
 src/swagger.ts          OpenAPI document builder
 src/app/                app.module and the APP_FILTER chain
-src/common/             shared module: database, cache, redis, pagination, request, response, logger, message, helper, file, doc, aws, firebase, sentry, queue
+src/common/             shared module: database, cache, redis, pagination, request, response, logger, message, helper, file, doc, aws, firebase, sentry, queue, outbox
 src/configs/            registerAs config files and the index barrel
 src/generated/          prisma-client/ and package/, gitignored, from pnpm generate
 src/languages/          nestjs-i18n JSON, one file per module prefix

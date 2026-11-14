@@ -30,6 +30,7 @@ import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.in
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
+    IUserLockoutEffect,
     IUserTwoFactorChecked,
     IUserTwoFactorLoginSetup,
     IUserTwoFactorSetupSecret,
@@ -42,8 +43,7 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
@@ -174,7 +174,7 @@ export class UserTwoFactorService {
         ];
     }
 
-    lockoutEffect(userId: string): IOutboxEffect {
+    lockoutEffect(userId: string): IUserLockoutEffect {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.lockout,

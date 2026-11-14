@@ -27,7 +27,7 @@ import type {
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IUserImportByAdminEffect } from '@modules/user/interfaces/user.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
@@ -527,7 +527,7 @@ export class UserService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         rows: IUserImport[]
-    ): IOutboxEffect {
+    ): IUserImportByAdminEffect {
         const activityLog = this.activityLogUtil.toPayload(
             requestContext,
             apiKeyContext,

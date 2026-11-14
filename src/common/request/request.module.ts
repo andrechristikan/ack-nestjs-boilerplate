@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
@@ -9,27 +9,26 @@ import { RequestMiddlewareModule } from '@common/request/request.middleware.modu
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
+import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
+import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
 import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
+/** Shared module: RequestStoreService, RequestContextService, RequestUtil, RequestThrottleService, and RequestThrottleStorageService for every guard, interceptor, service, and use case reading request state and for the ThrottlerModule storage, RequestThrottleUserGuard for the RequestThrottle decorator. */
+@Global()
 @Module({})
 export class RequestModule {
     static forRoot(): DynamicModule {
         return {
             module: RequestModule,
-            global: true,
             controllers: [],
-            exports: [
-                RequestStoreService,
-                RequestContextService,
-                RequestUtil,
-                RequestThrottleService,
-            ],
             providers: [
                 RequestStoreService,
                 RequestContextService,
                 RequestUtil,
                 RequestThrottleService,
+                RequestThrottleStorageService,
+                RequestThrottleUserGuard,
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,
@@ -43,6 +42,14 @@ export class RequestModule {
                             ) => new RequestValidationException(issues),
                         }),
                 },
+            ],
+            exports: [
+                RequestStoreService,
+                RequestContextService,
+                RequestUtil,
+                RequestThrottleService,
+                RequestThrottleStorageService,
+                RequestThrottleUserGuard,
             ],
             imports: [
                 ClsModule.forRoot({

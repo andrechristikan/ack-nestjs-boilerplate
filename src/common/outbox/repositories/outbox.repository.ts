@@ -4,7 +4,7 @@ import type { Outbox, Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type { IOutboxRepository } from '@modules/outbox/interfaces/outbox.repository.interface';
+import type { IOutboxRepository } from '@common/outbox/interfaces/outbox.repository.interface';
 
 @Injectable()
 export class OutboxRepository implements IOutboxRepository {

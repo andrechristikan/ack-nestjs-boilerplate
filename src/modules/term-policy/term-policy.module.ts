@@ -14,38 +14,44 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 
 /** Shared module: TermPolicyAcceptanceService for the term-policy guard and the user use cases, TermPolicyAcceptanceAnalyticService for the analytic services, TermPolicyUtil for the term-policy seed. */
 @Global()
-@Module({
-    controllers: [],
-    providers: [
-        TermPolicyRepository,
-        TermPolicyAnalyticRepository,
-        TermPolicyAcceptanceAnalyticRepository,
-        TermPolicyService,
-        TermPolicyContentService,
-        TermPolicyAcceptanceService,
-        TermPolicyUtil,
-        TermPolicyAnalyticService,
-        TermPolicyAcceptanceAnalyticService,
-    ],
-    exports: [
-        TermPolicyService,
-        TermPolicyContentService,
-        TermPolicyAcceptanceService,
-        TermPolicyUtil,
-        TermPolicyAnalyticService,
-        TermPolicyAcceptanceAnalyticService,
-    ],
-    imports: [
-        ActivityLogModule,
-        AwsModule,
-        NotificationModule,
-        BullModule.registerQueueAsync({
-            name: EnumTermPolicyQueue.termPolicy,
-            useClass: TermPolicyQueueFactory,
-        }),
-    ],
-})
-export class TermPolicyModule {}
+@Module({})
+export class TermPolicyModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: TermPolicyModule,
+            controllers: [],
+            providers: [
+                TermPolicyRepository,
+                TermPolicyAnalyticRepository,
+                TermPolicyAcceptanceAnalyticRepository,
+                TermPolicyService,
+                TermPolicyContentService,
+                TermPolicyAcceptanceService,
+                TermPolicyUtil,
+                TermPolicyAnalyticService,
+                TermPolicyAcceptanceAnalyticService,
+            ],
+            exports: [
+                TermPolicyService,
+                TermPolicyContentService,
+                TermPolicyAcceptanceService,
+                TermPolicyUtil,
+                TermPolicyAnalyticService,
+                TermPolicyAcceptanceAnalyticService,
+            ],
+            imports: [
+                ActivityLogModule,
+                AwsModule,
+                NotificationModule,
+                BullModule.registerQueueAsync({
+                    name: EnumTermPolicyQueue.termPolicy,
+                    useClass: TermPolicyQueueFactory,
+                }),
+            ],
+        };
+    }
+}

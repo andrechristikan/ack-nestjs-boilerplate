@@ -9,7 +9,7 @@ The request kit imported the user row and the JWT payload type, and kit files im
 
 ## Decision
 
-`src/common/` and `src/app/` import nothing from `src/modules/`, a type included; Prisma generated types and enums are allowed. `common.module.ts` and `app.module.ts` wire global modules, and the three outbox callers stay until the outbox moves into the kit. `src/configs/`, `src/*.ts`, `src/router/`, and `src/modules/` import anything.
+`src/common/` and `src/app/` import nothing from `src/modules/`, a type included; Prisma generated types and enums are allowed. `common.module.ts` and `app.module.ts` wire global modules. `src/configs/`, `src/*.ts`, `src/router/`, and `src/modules/` import anything.
 
 ## Considered options
 
@@ -23,3 +23,4 @@ The request kit imported the user row and the JWT payload type, and kit files im
 - Lint `featureImportPattern` (`ts/common`) holds it.
 - `RequestWorkspaceMiddleware` moves into the workspace module.
 - `.claude/rules/layering.md` carries it.
+- Outbox clause removed by 0053: the three outbox callers' exception ended when the outbox moved into the kit.

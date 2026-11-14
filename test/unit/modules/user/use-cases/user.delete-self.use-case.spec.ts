@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -14,7 +15,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -23,7 +24,6 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -193,7 +193,7 @@ describe('UserDeleteSelfUseCase', () => {
     describe('execute', () => {
         const dto: UserDeleteSelfRequestDto = { password: 'plain-password' };
 
-        const entryEffect: IOutboxEffect = {
+        const entryEffect: IActivityLogCreateManyEffect = {
             queue: EnumActivityLogQueue.activityLog,
             name: EnumActivityLogProcess.createMany,
             data: { rows: [] },

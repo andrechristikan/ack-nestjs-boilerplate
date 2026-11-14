@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -13,8 +14,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -556,7 +556,7 @@ describe('DeviceService', () => {
         };
         const apiKeyContext = buildApiKeyContext();
         const authContext = buildAuthJwtAccessContext('user-1');
-        const entry: IOutboxEffect = {
+        const entry: IActivityLogCreateManyEffect = {
             queue: EnumActivityLogQueue.activityLog,
             name: EnumActivityLogProcess.createMany,
             data: { rows: [] },

@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,7 +23,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -39,7 +41,6 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -142,18 +143,18 @@ describe('UserChangePasswordUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const changeEntry: IOutboxEffect = {
+    const changeEntry: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: 'change',
     };
-    const verifyEntry: IOutboxEffect = {
+    const verifyEntry: IActivityLogCreateManyEffect = {
         ...changeEntry,
         idempotencyKey: 'verify',
     };
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

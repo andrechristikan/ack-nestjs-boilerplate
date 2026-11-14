@@ -1,6 +1,6 @@
 # 0043. The outbox is a feature module with its own queue
 
-- Status: accepted
+- Status: superseded by 0053
 - Date: 2026-11-11
 
 ## Context

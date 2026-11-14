@@ -1,3 +1,4 @@
+import type { INotificationPushCleanupTokensEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +22,7 @@ import { NotificationPushDeliveryService } from '@modules/notification/services/
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('NotificationPushProcessSendUseCase', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -62,7 +62,7 @@ describe('NotificationPushProcessSendUseCase', () => {
         encryptedFailureTokens: null,
     };
 
-    const cleanupEffect: IOutboxEffect = {
+    const cleanupEffect: INotificationPushCleanupTokensEffect = {
         queue: EnumNotificationQueue.notificationPush,
         name: EnumNotificationPushProcess.cleanupTokens,
         data: {

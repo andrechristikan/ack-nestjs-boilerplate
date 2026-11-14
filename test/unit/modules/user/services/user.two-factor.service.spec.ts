@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -46,8 +47,8 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -78,7 +79,7 @@ describe('UserTwoFactorService', () => {
         buildUser('user-quartz', 'user-quartz@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
@@ -450,11 +451,11 @@ describe('UserTwoFactorService', () => {
                 priority: EnumQueuePriority.high,
                 idempotencyKey: null,
             };
-            const revokeAllEntry: IOutboxEffect = {
+            const revokeAllEntry: IActivityLogCreateManyEffect = {
                 ...entryEffect,
                 idempotencyKey: 'revoke-all',
             };
-            const reachMaxEntry: IOutboxEffect = {
+            const reachMaxEntry: IActivityLogCreateManyEffect = {
                 ...entryEffect,
                 idempotencyKey: 'reach-max',
             };

@@ -35,11 +35,11 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IUserDeletePhotoEffect } from '@modules/user/interfaces/user.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
@@ -85,7 +85,10 @@ export class UserProfileService {
         return size <= this.photoMaxSizeInBytes;
     }
 
-    private deletePhotoEffect(userId: string, photo: UserPhoto): IOutboxEffect {
+    private deletePhotoEffect(
+        userId: string,
+        photo: UserPhoto
+    ): IUserDeletePhotoEffect {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.deletePhoto,

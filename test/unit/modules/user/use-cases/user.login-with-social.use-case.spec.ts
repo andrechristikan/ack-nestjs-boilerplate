@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -6,8 +8,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -161,14 +162,14 @@ describe('UserLoginWithSocialUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthSocialContext('bramble@example.com');
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const welcomeSocialEffect: IOutboxEffect = {
+    const welcomeSocialEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

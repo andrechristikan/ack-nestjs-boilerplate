@@ -1,4 +1,9 @@
 import type {
+    EnumSessionProcess,
+    EnumSessionQueue,
+} from '@modules/session/enums/session.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import type {
     GeoLocation,
     Prisma,
     Session,
@@ -48,4 +53,10 @@ export interface ISessionAnalyticSession {
 export interface ISessionAnalyticUserCount {
     userId: string;
     count: number;
+}
+
+export interface ISessionPurgeLoginsEffect extends IOutboxEffect {
+    queue: EnumSessionQueue.session;
+    name: EnumSessionProcess.purgeLogins;
+    data: ISessionPurgeLoginsPayload;
 }

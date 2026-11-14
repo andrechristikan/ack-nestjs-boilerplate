@@ -1,10 +1,10 @@
+import type { IUserImportByAdminEffect } from '@modules/user/interfaces/user.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
@@ -39,7 +39,7 @@ describe('UserImportByAdminUseCase', () => {
         buildUser('admin-bramble', 'admin-bramble@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const importEffect: IOutboxEffect = {
+    const importEffect: IUserImportByAdminEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.importByAdmin,
         data: {

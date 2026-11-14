@@ -1,3 +1,5 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -14,7 +16,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
@@ -25,7 +27,6 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -122,14 +123,14 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const adminEntry = { queue: 'admin-entry' } as unknown as IOutboxEffect;
-    const targetEntry = { queue: 'target-entry' } as unknown as IOutboxEffect;
+    const adminEntry = buildActivityLogCreateManyEffect('admin-entry');
+    const targetEntry = buildActivityLogCreateManyEffect('target-entry');
     const snapshot: INotificationSnapshot = {
         username: 'lindenFrost',
         encryptedEmail: 'cipher(linden@example.com)',
         encryptedTokens: ['cipher(token-one)'],
     };
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

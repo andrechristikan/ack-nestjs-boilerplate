@@ -1,13 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { RoleService } from '@modules/role/services/role.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';

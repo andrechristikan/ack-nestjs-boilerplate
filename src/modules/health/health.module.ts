@@ -1,4 +1,5 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { FirebaseModule } from '@common/firebase/firebase.module';
 import { EnumHealthQueue } from '@modules/health/enums/health.enum';
 import { HealthQueueFactory } from '@modules/health/factories/health.queue.factory';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
@@ -39,6 +40,7 @@ import { TerminusModule } from '@nestjs/terminus';
     exports: [HealthService, HealthUtil],
     imports: [
         AwsModule,
+        FirebaseModule,
         BullModule.registerQueueAsync({
             name: EnumHealthQueue.health,
             useClass: HealthQueueFactory,

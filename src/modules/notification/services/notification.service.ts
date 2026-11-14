@@ -29,9 +29,18 @@ import {
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import type {
+    INotificationEmailSendEffect,
+    INotificationEmailSendUnregisteredEffect,
+    INotificationNotifyEffect,
+    INotificationPublishTermPolicyEffect,
+    INotificationPushCleanupTokensEffect,
+    INotificationPushSendEffect,
+    INotificationResendPublishTermPolicyEffect,
+} from '@modules/notification/interfaces/notification.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ConfigService } from '@nestjs/config';
@@ -161,7 +170,7 @@ export class NotificationService {
         notificationId: string,
         context: INotificationSealedData,
         { userId, username, encryptedEmail }: INotificationRecipientRecord
-    ): IOutboxEffect {
+    ): INotificationEmailSendEffect {
         const { queuePriority } = NotificationKindContract[kind];
         const idempotencyKey = this.toStepKey(
             notificationId,
@@ -190,7 +199,7 @@ export class NotificationService {
         notificationId: string,
         context: INotificationSealedData,
         { userId, username, encryptedTokens }: INotificationRecipientRecord
-    ): IOutboxEffect {
+    ): INotificationPushSendEffect {
         const { queuePriority } = NotificationKindContract[kind];
         const idempotencyKey = this.toStepKey(
             notificationId,
@@ -281,7 +290,7 @@ export class NotificationService {
     notify<K extends EnumNotificationKind>(
         kind: K,
         context: INotificationContextMap[K]
-    ): IOutboxEffect {
+    ): INotificationNotifyEffect {
         const { userId, proceedBy } = context;
         const { secrets, keyPattern, queuePriority } =
             NotificationKindContract[kind];
@@ -313,7 +322,7 @@ export class NotificationService {
     notifyUnregisteredInvite(
         email: string,
         payload: INotificationWorkspaceInviteFields
-    ): IOutboxEffect {
+    ): INotificationEmailSendUnregisteredEffect {
         const { reference } = payload;
         const { secrets, queuePriority } =
             NotificationKindContract[EnumNotificationKind.workspaceInvite];
@@ -422,7 +431,7 @@ export class NotificationService {
     publishTermPolicyEffect(
         payload: INotificationPublishTermPolicyPayload,
         proceedBy: string
-    ): IOutboxEffect {
+    ): INotificationPublishTermPolicyEffect {
         const idempotencyKey = this.helperStringService.fillPattern(
             this.keyPatterns[
                 EnumNotificationKeyPattern.termPolicyPublishPattern
@@ -446,7 +455,7 @@ export class NotificationService {
     resendPublishTermPolicyEffect(
         payload: INotificationPublishTermPolicyInput,
         proceedBy: string
-    ): IOutboxEffect {
+    ): INotificationResendPublishTermPolicyEffect {
         const resendNonce = this.databaseUtil.createId();
         const idempotencyKey = this.helperStringService.fillPattern(
             this.termPolicyResendPattern,
@@ -469,7 +478,7 @@ export class NotificationService {
     cleanupTokensEffect(
         userId: string,
         encryptedFailureTokens: string[]
-    ): IOutboxEffect {
+    ): INotificationPushCleanupTokensEffect {
         return {
             queue: EnumNotificationQueue.notificationPush,
             name: EnumNotificationPushProcess.cleanupTokens,

@@ -1,3 +1,5 @@
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +12,10 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
@@ -31,8 +37,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
@@ -103,7 +108,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         },
     ];
     const payload: IUserImportByAdminPayload = { rows, activityLog };
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {
@@ -115,12 +120,19 @@ describe('UserProcessImportByAdminUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: 'entry',
     };
-    const welcomeEffect: IOutboxEffect = {
+    const activityEffect: IActivityLogCreateManyEffect = {
+        queue: EnumActivityLogQueue.activityLog,
+        name: EnumActivityLogProcess.createMany,
+        data: { rows: [] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: 'activity',
+    };
+    const welcomeEffect: INotificationNotifyEffect = {
         ...entryEffect,
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'welcome',
     };
-    const resultEffect: IOutboxEffect = {
+    const resultEffect: INotificationNotifyEffect = {
         ...entryEffect,
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'result',
@@ -239,7 +251,9 @@ describe('UserProcessImportByAdminUseCase', () => {
             '2026-03-05T07:00:00.000+07:00'
         );
         messageService.setMessage.mockImplementation((path: string) => path);
-        activityLogService.recordEffectFromPayload.mockReturnValue(entryEffect);
+        activityLogService.recordEffectFromPayload.mockReturnValue(
+            activityEffect
+        );
         notificationService.notify.mockImplementation(kind =>
             kind === EnumNotificationKind.userImportResult
                 ? resultEffect
@@ -335,7 +349,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             ).toHaveBeenCalledWith(activityLog, stageInput);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                entryEffect,
+                activityEffect,
                 welcomeEffect,
                 resultEffect,
             ]);

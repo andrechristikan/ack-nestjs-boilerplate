@@ -1,6 +1,6 @@
 # 0010. Feature dependency order
 
-- Status: accepted
+- Status: superseded by 0055
 - Date: 2026-11-07
 
 ## Context

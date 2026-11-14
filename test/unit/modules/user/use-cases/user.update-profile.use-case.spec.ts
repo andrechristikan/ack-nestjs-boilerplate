@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -10,8 +11,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserUpdateProfileUseCase } from '@modules/user/use-cases/user.update-profile.use-case';
@@ -37,7 +37,7 @@ describe('UserUpdateProfileUseCase', () => {
         buildUser('user-sable', 'user-sable@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('activityLog');
 
     let useCase: UserUpdateProfileUseCase;
 

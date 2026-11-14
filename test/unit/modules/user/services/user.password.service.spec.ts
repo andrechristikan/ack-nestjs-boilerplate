@@ -1,3 +1,7 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IUserLockoutEffect } from '@modules/user/interfaces/user.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -47,8 +51,11 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -92,7 +99,7 @@ describe('UserPasswordService', () => {
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const lockoutEffect: IOutboxEffect = {
+    const lockoutEffect: IUserLockoutEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.lockout,
         data: { userId: 'user-hollow' },
@@ -437,12 +444,19 @@ describe('UserPasswordService', () => {
         });
 
         it('adds the lockout row and both entries built from the passed context on the counting tx when the budget is spent', async () => {
-            const revokeAllEntry: IOutboxEffect = {
-                ...lockoutEffect,
+            const entryEffect: IActivityLogCreateManyEffect = {
+                queue: EnumActivityLogQueue.activityLog,
+                name: EnumActivityLogProcess.createMany,
+                data: { rows: [] },
+                priority: EnumQueuePriority.low,
+                idempotencyKey: null,
+            };
+            const revokeAllEntry: IActivityLogCreateManyEffect = {
+                ...entryEffect,
                 idempotencyKey: 'revoke-all',
             };
-            const reachMaxEntry: IOutboxEffect = {
-                ...lockoutEffect,
+            const reachMaxEntry: IActivityLogCreateManyEffect = {
+                ...entryEffect,
                 idempotencyKey: 'reach-max',
             };
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
@@ -636,7 +650,7 @@ describe('UserPasswordService', () => {
     });
 
     describe('createForgotPassword', () => {
-        const forgotEffect: IOutboxEffect = {
+        const forgotEffect: INotificationNotifyEffect = {
             queue: EnumNotificationQueue.notification,
             name: EnumNotificationProcess.notify,
             data: {
@@ -649,9 +663,7 @@ describe('UserPasswordService', () => {
             idempotencyKey: 'forgotPassword-FGT-hollow',
         };
 
-        const forgotEntry = {
-            queue: 'activityLog',
-        } as unknown as IOutboxEffect;
+        const forgotEntry = buildActivityLogCreateManyEffect('activityLog');
 
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(

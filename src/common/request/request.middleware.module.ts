@@ -15,7 +15,6 @@ import { RequestResponseTimeMiddleware } from '@common/request/middlewares/reque
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
-import { RequestThrottleModule } from '@common/request/request.throttle.module';
 import { RequestThrottleDefaultGuard } from '@common/request/guards/request.throttle-default.guard';
 import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 
@@ -34,7 +33,7 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
     exports: [],
     imports: [
         ThrottlerModule.forRootAsync({
-            imports: [ConfigModule, RequestThrottleModule],
+            imports: [ConfigModule],
             inject: [ConfigService, RequestThrottleStorageService],
             useFactory: (
                 config: ConfigService,

@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -22,8 +23,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
@@ -56,8 +56,8 @@ describe('ProjectMemberService', () => {
         buildUser('507f1f77bcf86cd799439033', 'jane@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
-    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
+    const firstEntry = buildActivityLogCreateManyEffect('first-entry');
+    const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     let service: ProjectMemberService;
 
     const baseProject: Project = {

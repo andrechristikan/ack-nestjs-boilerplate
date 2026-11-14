@@ -1,3 +1,4 @@
+import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -35,8 +36,7 @@ import type {
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('FeatureFlagService', () => {
     const featureFlagRepository: MockProxy<FeatureFlagRepository> =
@@ -57,7 +57,7 @@ describe('FeatureFlagService', () => {
         'FeatureFlag:loginWithGoogle',
         'FeatureFlag:Lease:loginWithGoogle',
     ];
-    const cacheEffect: IOutboxEffect = {
+    const cacheEffect: ICacheInvalidateEffect = {
         queue: EnumCacheQueue.cache,
         name: EnumCacheProcess.invalidate,
         data: { keys },

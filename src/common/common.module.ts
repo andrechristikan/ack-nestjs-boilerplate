@@ -14,9 +14,8 @@ import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
 import { QueueModule } from '@common/queue/queue.module';
-import { OutboxModule } from '@modules/outbox/outbox.module';
+import { OutboxModule } from '@common/outbox/outbox.module';
 import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
-import { FirebaseModule } from '@common/firebase/firebase.module';
 import { SessionModule } from '@modules/session/session.module';
 import { PolicyModule } from '@modules/policy/policy.module';
 import { RoleModule } from '@modules/role/role.module';
@@ -50,16 +49,15 @@ import { AppEnvSchema } from '@app/dtos/app.env.dto';
         HelperModule.forRoot(),
         PaginationModule.forRoot(),
         FileModule.forRoot(),
-        FirebaseModule.forRoot(),
 
-        ApiKeyModule,
-        AuthModule,
-        FeatureFlagModule,
-        RoleModule,
-        PolicyModule,
-        TermPolicyModule,
-        SessionModule,
-        OutboxModule,
+        ApiKeyModule.forRoot(),
+        AuthModule.forRoot(),
+        FeatureFlagModule.forRoot(),
+        RoleModule.forRoot(),
+        PolicyModule.forRoot(),
+        TermPolicyModule.forRoot(),
+        SessionModule.forRoot(),
+        OutboxModule.forRoot(),
     ],
 })
 export class CommonModule {}

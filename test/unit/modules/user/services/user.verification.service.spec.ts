@@ -1,3 +1,5 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -29,8 +31,7 @@ import {
     buildApiKeyContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -54,7 +55,7 @@ describe('UserVerificationService', () => {
         mock<ActivityLogService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('activityLog');
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -132,7 +133,7 @@ describe('UserVerificationService', () => {
         createdBy: null,
     };
 
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

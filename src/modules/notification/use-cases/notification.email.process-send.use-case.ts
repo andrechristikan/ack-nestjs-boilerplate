@@ -6,7 +6,7 @@ import { EnumNotificationStep } from '@modules/notification/enums/notification.e
 import type { INotificationEmailSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

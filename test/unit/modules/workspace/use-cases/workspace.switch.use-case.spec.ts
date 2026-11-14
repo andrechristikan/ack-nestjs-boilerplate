@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -12,8 +13,7 @@ import type {
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
@@ -39,7 +39,7 @@ describe('WorkspaceSwitchUseCase', () => {
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
-    const entry = { queue: 'entry' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('entry');
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),

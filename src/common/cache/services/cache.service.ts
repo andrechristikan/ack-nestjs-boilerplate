@@ -8,11 +8,11 @@ import {
     EnumCacheQueue,
 } from '@common/cache/enums/cache.enum';
 import type {
+    ICacheInvalidateEffect,
     ICacheLease,
     ICacheReadThroughOptions,
 } from '@common/cache/interfaces/cache.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -179,7 +179,7 @@ export class CacheService {
     }
 
     /** The outbox effect that deletes the keys through the cache queue. */
-    invalidateEffect(keys: string[]): IOutboxEffect {
+    invalidateEffect(keys: string[]): ICacheInvalidateEffect {
         return {
             queue: EnumCacheQueue.cache,
             name: EnumCacheProcess.invalidate,

@@ -2,7 +2,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyService } from '@modules/policy/services/policy.service';

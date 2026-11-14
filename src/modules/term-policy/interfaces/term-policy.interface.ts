@@ -1,3 +1,8 @@
+import type {
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
@@ -81,3 +86,15 @@ export type ITermPolicyActivityLogSubject = Pick<
     TermPolicy,
     'id' | 'type' | 'version'
 >;
+
+export interface ITermPolicyDeleteContentEffect extends IOutboxEffect {
+    queue: EnumTermPolicyQueue.termPolicy;
+    name: EnumTermPolicyProcess.deleteContent;
+    data: ITermPolicyDeleteContentPayload;
+}
+
+export interface ITermPolicyCopyContentEffect extends IOutboxEffect {
+    queue: EnumTermPolicyQueue.termPolicy;
+    name: EnumTermPolicyProcess.copyContent;
+    data: ITermPolicyCopyContentPayload;
+}

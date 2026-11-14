@@ -37,7 +37,7 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 

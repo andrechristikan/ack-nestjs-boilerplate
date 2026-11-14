@@ -1,8 +1,7 @@
 import { CacheProcessor } from '@common/cache/processors/cache.processor';
 import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use-case.module';
 import { ActivityLogProcessor } from '@modules/activity-log/processors/activity-log.processor';
-import { OutboxUseCaseModule } from '@modules/outbox/outbox.use-case.module';
-import { OutboxProcessor } from '@modules/outbox/processors/outbox.processor';
+import { OutboxProcessor } from '@common/outbox/processors/outbox.processor';
 import { NotificationUseCaseModule } from '@modules/notification/notification.use-case.module';
 import { NotificationEmailProcessor } from '@modules/notification/processors/notification.email.processor';
 import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
@@ -35,7 +34,6 @@ import { Module } from '@nestjs/common';
     imports: [
         ActivityLogUseCaseModule,
         NotificationUseCaseModule,
-        OutboxUseCaseModule,
         SessionUseCaseModule,
         TermPolicyUseCaseModule,
         UserUseCaseModule,

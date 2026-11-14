@@ -9,45 +9,56 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 
 /** Shared module: AuthService for the JWT and social guards; AuthJwtService and AuthTwoFactorService for the user module and use cases; AuthUtil for the user module; AuthPasswordUtil for the user and password-history modules and the user seed; AuthTwoFactorUtil for the user module. */
 @Global()
-@Module({
-    controllers: [],
-    providers: [
-        AuthJwtAccessStrategy,
-        AuthJwtRefreshStrategy,
-        AuthService,
-        AuthJwtService,
-        AuthPasswordUtil,
-        AuthSocialService,
-        AuthTwoFactorService,
-        AuthCache,
-        AuthUtil,
-        AuthTwoFactorUtil,
-    ],
-    exports: [
-        AuthService,
-        AuthJwtService,
-        AuthPasswordUtil,
-        AuthTwoFactorService,
-        AuthTwoFactorUtil,
-        AuthUtil,
-    ],
-    imports: [
-        JwtModule.registerAsync({
-            inject: [ConfigService],
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService): JwtModuleOptions => ({
-                signOptions: {
-                    audience: configService.get<string>('auth.jwt.audience'),
-                    issuer: configService.get<string>('auth.jwt.issuer'),
-                },
-            }),
-        }),
-    ],
-})
-export class AuthModule {}
+@Module({})
+export class AuthModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: AuthModule,
+            controllers: [],
+            providers: [
+                AuthJwtAccessStrategy,
+                AuthJwtRefreshStrategy,
+                AuthService,
+                AuthJwtService,
+                AuthPasswordUtil,
+                AuthSocialService,
+                AuthTwoFactorService,
+                AuthCache,
+                AuthUtil,
+                AuthTwoFactorUtil,
+            ],
+            exports: [
+                AuthService,
+                AuthJwtService,
+                AuthPasswordUtil,
+                AuthTwoFactorService,
+                AuthTwoFactorUtil,
+                AuthUtil,
+            ],
+            imports: [
+                JwtModule.registerAsync({
+                    inject: [ConfigService],
+                    imports: [ConfigModule],
+                    useFactory: (
+                        configService: ConfigService
+                    ): JwtModuleOptions => ({
+                        signOptions: {
+                            audience:
+                                configService.get<string>('auth.jwt.audience'),
+                            issuer: configService.get<string>(
+                                'auth.jwt.issuer'
+                            ),
+                        },
+                    }),
+                }),
+            ],
+        };
+    }
+}

@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { EnumOutboxStatusCodeError } from '@modules/outbox/enums/outbox.status-code.enum';
+import { EnumOutboxStatusCodeError } from '@common/outbox/enums/outbox.status-code.enum';
 
 /** @public */
 export class OutboxTransactionMissingException extends AppBaseException {

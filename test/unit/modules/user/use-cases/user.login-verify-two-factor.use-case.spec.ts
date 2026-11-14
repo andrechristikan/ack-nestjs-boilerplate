@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -24,8 +25,7 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -87,7 +87,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         platform: EnumDevicePlatform.web,
         notificationToken: null,
     };
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },

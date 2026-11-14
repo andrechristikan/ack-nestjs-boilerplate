@@ -8,7 +8,7 @@ import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumOutboxProcess,
     EnumOutboxQueue,
-} from '@modules/outbox/enums/outbox.enum';
+} from '@common/outbox/enums/outbox.enum';
 
 @Injectable()
 export class OutboxQueue extends QueueBase implements OnModuleInit {

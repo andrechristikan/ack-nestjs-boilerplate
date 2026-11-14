@@ -11,7 +11,7 @@ import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 @QueueProcessor(EnumCacheQueue.cache)
 export class CacheProcessor extends QueueProcessorBase {

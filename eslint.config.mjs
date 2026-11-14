@@ -519,14 +519,6 @@ const layerPolicies = [
             'A processor calls the use cases of its own feature only, never a util, a cache, a queue class, or a module file.',
     },
     {
-        from: { element: { type: 'processor' } },
-        allow: {
-            dependency: {
-                source: '@modules/outbox/services/outbox.service',
-            },
-        },
-    },
-    {
         from: { file: { categories: ['module', 'use-case-module'] } },
         disallow: { to: { file: { categories: ['use-case-module'] } } },
         message:
@@ -650,13 +642,7 @@ export default [
     {
         name: 'ts/common',
         files: ['src/common/**/*.ts', 'src/app/**/*.ts'],
-        ignores: [
-            'src/app/app.module.ts',
-            'src/common/common.module.ts',
-            'src/common/cache/processors/cache.processor.ts',
-            'src/common/cache/services/cache.service.ts',
-            'src/common/queue/bases/queue.processor.base.ts',
-        ],
+        ignores: ['src/app/app.module.ts', 'src/common/common.module.ts'],
         rules: {
             'no-restricted-imports': [
                 'error',

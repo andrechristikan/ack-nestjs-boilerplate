@@ -1,3 +1,4 @@
+import { FirebaseModule } from '@common/firebase/firebase.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
@@ -48,6 +49,6 @@ import { Module } from '@nestjs/common';
         NotificationEmailProcessSendUnregisteredUseCase,
         NotificationPushProcessSendUseCase,
     ],
-    imports: [DeviceModule, UserModule, NotificationModule],
+    imports: [DeviceModule, UserModule, NotificationModule, FirebaseModule],
 })
 export class NotificationUseCaseModule {}

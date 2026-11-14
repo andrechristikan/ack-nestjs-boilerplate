@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -43,7 +45,7 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { RequestContextService } from '@common/request/services/request.context.service';
@@ -53,7 +55,6 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type {
     IRequestContext,
@@ -103,7 +104,7 @@ describe('UserAuthService', () => {
     const apiKeyContext = buildApiKeyContext();
     const userRequestContext = buildRequestContext();
     const userApiKeyContext = buildApiKeyContext();
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
@@ -904,7 +905,7 @@ describe('UserAuthService', () => {
             sessionCount: 1,
         };
 
-        const newDeviceEffect: IOutboxEffect = {
+        const newDeviceEffect: INotificationNotifyEffect = {
             queue: EnumNotificationQueue.notification,
             name: EnumNotificationProcess.notify,
             data: {

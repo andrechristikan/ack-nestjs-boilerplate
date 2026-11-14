@@ -1,8 +1,8 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -57,7 +57,7 @@ import type {
     INotificationWorkspaceInviteContext,
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ConfigService } from '@nestjs/config';
 import {
     buildApiKeyContext,
@@ -979,7 +979,7 @@ describe('NotificationService', () => {
         };
         const apiKeyContext = buildApiKeyContext();
         const authContext = buildAuthJwtAccessContext('user-id');
-        const entryEffect: IOutboxEffect = {
+        const entryEffect: IActivityLogCreateManyEffect = {
             queue: EnumActivityLogQueue.activityLog,
             name: EnumActivityLogProcess.createMany,
             data: { rows: [] },

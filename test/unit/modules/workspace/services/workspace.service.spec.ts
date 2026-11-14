@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -18,8 +19,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Prisma, Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
@@ -63,7 +63,7 @@ describe('WorkspaceService', () => {
         buildUser('user-1', 'jane@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entry = { queue: 'entry' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('entry');
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();

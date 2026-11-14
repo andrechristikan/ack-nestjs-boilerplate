@@ -1,3 +1,10 @@
+import type {
+    EnumNotificationEmailProcess,
+    EnumNotificationProcess,
+    EnumNotificationPushProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import {
     EnumNotificationChannel,
     EnumNotificationPriority,
@@ -374,3 +381,51 @@ export type INotificationTemplateEmail = {
     subject: string;
     htmlBody: string;
 };
+
+export interface INotificationNotifyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.notify;
+    data: INotificationNotifyPayload;
+}
+
+export interface INotificationPublishTermPolicyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.publishTermPolicy;
+    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+export interface INotificationResendPublishTermPolicyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.resendPublishTermPolicy;
+    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+export interface INotificationEmailPublishTermPolicyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.publishTermPolicy;
+    data: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+}
+
+export interface INotificationEmailSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.send;
+    data: INotificationEmailSendPayload;
+}
+
+export interface INotificationEmailSendUnregisteredEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.sendUnregistered;
+    data: INotificationEmailSendUnregisteredPayload;
+}
+
+export interface INotificationPushSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.send;
+    data: INotificationPushSendPayload;
+}
+
+export interface INotificationPushCleanupTokensEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.cleanupTokens;
+    data: INotificationPushCleanupTokenEncryptedPayload;
+}

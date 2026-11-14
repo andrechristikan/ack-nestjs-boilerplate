@@ -10,7 +10,7 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     buildProcessorJob,
     buildQueueProcessor,

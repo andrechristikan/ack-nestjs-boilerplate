@@ -1,3 +1,5 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -41,8 +43,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -151,7 +152,7 @@ describe('WorkspaceJoinRequestService', () => {
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {
@@ -171,8 +172,8 @@ describe('WorkspaceJoinRequestService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const authContextOfUser2 = { ...authContext, userId: 'user-2' };
-    const firstEntry = { queue: 'requester-entry' } as unknown as IOutboxEffect;
-    const secondEntry = { queue: 'reviewer-entry' } as unknown as IOutboxEffect;
+    const firstEntry = buildActivityLogCreateManyEffect('requester-entry');
+    const secondEntry = buildActivityLogCreateManyEffect('reviewer-entry');
 
     let service: WorkspaceJoinRequestService;
 
@@ -382,7 +383,7 @@ describe('WorkspaceJoinRequestService', () => {
         });
 
         it('adds one notify effect per reviewer on the tx of the write and reads no recipient', async () => {
-            const effects: IOutboxEffect[] = [
+            const effects: INotificationNotifyEffect[] = [
                 { ...notifyEffect, idempotencyKey: 'key-1' },
                 { ...notifyEffect, idempotencyKey: 'key-2' },
             ];
@@ -649,7 +650,7 @@ describe('WorkspaceJoinRequestService', () => {
     describe('acceptJoinRequest', () => {
         it('accepts the request, creates the member, and adds the notify effect on one transaction', async () => {
             const calls: string[] = [];
-            const effect: IOutboxEffect = {
+            const effect: INotificationNotifyEffect = {
                 ...notifyEffect,
                 idempotencyKey: 'workspaceJoinAccepted-join-request-1-user-2',
             };
@@ -871,7 +872,7 @@ describe('WorkspaceJoinRequestService', () => {
     describe('rejectJoinRequest', () => {
         it('rejects the request and adds the notify effect with the reason label on one transaction', async () => {
             const calls: string[] = [];
-            const effect: IOutboxEffect = {
+            const effect: INotificationNotifyEffect = {
                 ...notifyEffect,
                 idempotencyKey: 'workspaceJoinRejected-join-request-1-user-2',
             };

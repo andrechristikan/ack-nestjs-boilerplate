@@ -45,7 +45,7 @@ Copy the shape, not the names:
 
 - Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
 - Processor: the processor into `providers` and the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
-- A `@Global()` module: `src/common/common.module.ts` `imports`, only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/layering.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
+- A `@Global()` module: `@Global()` plus a no-argument `forRoot()`, imported as `<Module>.forRoot()` by `src/common/common.module.ts` only, and only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/layering.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
 
 ## 7. Messages
 

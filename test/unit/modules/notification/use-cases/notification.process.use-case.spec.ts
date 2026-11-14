@@ -26,7 +26,7 @@ import type {
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationProcessUseCase } from '@modules/notification/use-cases/notification.process.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 
 describe('NotificationProcessUseCase', () => {

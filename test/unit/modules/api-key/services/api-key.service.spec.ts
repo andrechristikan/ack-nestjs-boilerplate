@@ -1,3 +1,4 @@
+import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -31,8 +32,7 @@ import type {
     IApiKeyCreate,
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 
 describe('ApiKeyService', () => {
@@ -71,7 +71,7 @@ describe('ApiKeyService', () => {
     };
 
     const keys = ['ApiKey:local_abc123', 'ApiKey:Lease:local_abc123'];
-    const cacheEffect: IOutboxEffect = {
+    const cacheEffect: ICacheInvalidateEffect = {
         queue: EnumCacheQueue.cache,
         name: EnumCacheProcess.invalidate,
         data: { keys },

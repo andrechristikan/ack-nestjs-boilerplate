@@ -3,7 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { OutboxQueueFactory } from '@modules/outbox/factories/outbox.queue.factory';
+import { OutboxQueueFactory } from '@common/outbox/factories/outbox.queue.factory';
 
 describe('OutboxQueueFactory', () => {
     const configGet = vi.fn<(key: string) => unknown>();

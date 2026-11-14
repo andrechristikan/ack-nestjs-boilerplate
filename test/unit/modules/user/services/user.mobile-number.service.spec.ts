@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -15,8 +16,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -38,7 +38,7 @@ describe('UserMobileNumberService', () => {
         buildUser('user-marlin', 'user-marlin@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('activityLog');
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let service: UserMobileNumberService;

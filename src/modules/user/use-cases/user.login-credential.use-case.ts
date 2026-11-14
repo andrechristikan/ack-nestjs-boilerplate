@@ -10,7 +10,7 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';

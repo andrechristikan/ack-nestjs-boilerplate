@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -22,8 +23,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
@@ -56,7 +56,7 @@ describe('ProjectService', () => {
         buildUser('user-1', 'jane@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entry = { queue: 'entry' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('entry');
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
     const configGet = vi.fn<(key: string) => unknown>();

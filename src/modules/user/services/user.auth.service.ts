@@ -1,7 +1,7 @@
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationUserAgentDisplay } from '@modules/notification/interfaces/notification.interface';

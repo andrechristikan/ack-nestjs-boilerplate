@@ -15,8 +15,8 @@ BullMQ runs on two clients `RedisModule.forRoot()` owns on `redis.queue.url` (`c
 ## Where things live
 
 - `src/common/queue/`, the kit, holds `QueueModule.forRoot()` (`queue.module.ts`), whose one `BullModule.forRootAsync`, no config key, carries the producer client, `prefix`, and the shared `defaultJobOptions`; `@QueueProcessor()`; `QueueWorkerFactory` (`factories/queue.worker.factory.ts`); `QueueBase`, `QueueProcessorBase`, and `QueueWorkerBase` (`bases/`); `QueueException`, `IQueueResponse`; `EnumQueuePriority` and `EnumQueueJobState` (`enums/queue.enum.ts`); it registers no queue.
-- The owning feature names each queue in `Enum<Module>Queue` (`<module>.enum.ts`, its value the Redis queue name) and registers them in `<module>.module.ts`: `imports: [BullModule.registerQueueAsync({ name: Enum<Module>Queue.<member>, useClass: <Module>[<Concern>]QueueFactory })]`, one call per module, run once however many modules import it. A queue registered in the kit or a direct `BullModule.registerQueue` is the defect, the cache kit's `cache` queue aside (`cache.md`).
-- Each queue has its own factory, `src/modules/<module>/factories/<module>[.<concern>].queue.factory.ts`, no shared base, returning `defaultJobOptions` alone, from `queue.job.*`: `attempts`, `keepLogs`, `removeOnCompleteAgeInSeconds`, `removeOnFailAgeInSeconds`, and its own `<name>BackoffDelayInMs` (exponential `backoff`).
+- The owning feature names each queue in `Enum<Module>Queue` (`<module>.enum.ts`, its value the Redis queue name) and registers them in `<module>.module.ts`: `imports: [BullModule.registerQueueAsync({ name: Enum<Module>Queue.<member>, useClass: <Module>[<Concern>]QueueFactory })]`, one call per module, run once however many modules import it. A queue registered in the kit or a direct `BullModule.registerQueue` is the defect, the cache kit's `cache` and the outbox kit's `outbox` queues aside (`cache.md`, `outbox.md`).
+- Each queue has its own factory, `factories/<module>[.<concern>].queue.factory.ts` in the owning module, no shared base, returning `defaultJobOptions` alone, from `queue.job.*`: `attempts`, `keepLogs`, `removeOnCompleteAgeInSeconds`, `removeOnFailAgeInSeconds`, and its own `<name>BackoffDelayInMs` (exponential `backoff`).
 - `queues/<module>[.<concern>].queue.ts` exists only for a queue that schedules a recurring job: one class, extending `QueueBase`. `@InjectQueue`, the BullMQ `Queue` type, and `upsertJobScheduler` appear under `src/modules/` only there and in `HealthQueueIndicator`, which checks health's own queue (`EnumHealthQueue.health`) has a ready client; no job enters it. `OutboxService` reaches every queue through `ModuleRef.get(getQueueToken(...))` for `addBulk` and `getJob`.
 
 ## Enqueuing
@@ -34,7 +34,7 @@ BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until
 
 Paths, the `[<channel>.]` segment, and language: `i18n.md`.
 
-- `IQueueResponse.message` is `setMessage('<module>.queue.[<channel>.]<process>', { properties })`, built by the use case the processor calls.
+- `IQueueResponse.message` is `setMessage('<module>.queue.[<channel>.]<process>', { properties })`, built by the use case the processor calls, or by a kit processor itself.
 - A `QueueException` message is built by its thrower: `exceptions.md`, Messages.
 
 ## Processors

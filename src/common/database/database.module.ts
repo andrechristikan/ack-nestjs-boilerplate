@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
@@ -7,12 +7,14 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
+/** Shared module: DatabaseService for every repository's statements and `withTransaction`, DatabaseUtil and DatabaseExtensionFactory for every repository and service. */
+@Global()
 @Module({})
 export class DatabaseModule {
     static forRoot(): DynamicModule {
         return {
             module: DatabaseModule,
-            global: true,
+            controllers: [],
             providers: [
                 DatabaseExtensionFactory,
                 DatabaseClientFactory,
@@ -28,7 +30,6 @@ export class DatabaseModule {
             ],
             exports: [DatabaseService, DatabaseUtil, DatabaseExtensionFactory],
             imports: [],
-            controllers: [],
         };
     }
 }

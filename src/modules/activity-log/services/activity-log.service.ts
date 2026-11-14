@@ -27,11 +27,11 @@ import type {
     IActivityLogActionContract,
     IActivityLogContextPayload,
     IActivityLogCreate,
+    IActivityLogCreateManyEffect,
     IActivityLogInput,
     IActivityLogMetadata,
     IActivityLogMetadataParseResult,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { Injectable } from '@nestjs/common';
@@ -215,7 +215,7 @@ export class ActivityLogService {
         authContext: IAuthJwtAccessContext | null,
         workspaceContext: IWorkspaceContext | null,
         input: IActivityLogInput<EnumActivityLogAction>
-    ): IOutboxEffect {
+    ): IActivityLogCreateManyEffect {
         const payload = this.activityLogUtil.toPayload(
             requestContext,
             apiKeyContext,
@@ -229,7 +229,7 @@ export class ActivityLogService {
     recordEffectFromPayload(
         payload: IActivityLogContextPayload,
         input: IActivityLogInput<EnumActivityLogAction>
-    ): IOutboxEffect {
+    ): IActivityLogCreateManyEffect {
         const contract = this.getContract(input.action);
         const isUserIdValid = this.isTargetOnlyFieldValid(
             contract.user,

@@ -8,8 +8,8 @@ import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
-import type { IOutboxJobPayload } from '@modules/outbox/interfaces/outbox.interface';
-import type { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxJobPayload } from '@common/outbox/interfaces/outbox.interface';
+import type { OutboxService } from '@common/outbox/services/outbox.service';
 
 export abstract class QueueProcessorBase extends WorkerHost {
     private readonly logger = new Logger(QueueProcessorBase.name);

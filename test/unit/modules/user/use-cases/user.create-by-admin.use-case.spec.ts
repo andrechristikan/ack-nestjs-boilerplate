@@ -1,3 +1,5 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +28,6 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -48,7 +49,7 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
@@ -94,10 +95,8 @@ describe('UserCreateByAdminUseCase', () => {
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const activityEntry = {
-        queue: 'activity-entry',
-    } as unknown as IOutboxEffect;
-    const welcomeEffect: IOutboxEffect = {
+    const activityEntry = buildActivityLogCreateManyEffect('activity-entry');
+    const welcomeEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

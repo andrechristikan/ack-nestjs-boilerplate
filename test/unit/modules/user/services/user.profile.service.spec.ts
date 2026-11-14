@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -37,8 +38,8 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     buildUser,
@@ -66,7 +67,7 @@ describe('UserProfileService', () => {
         buildUser('user-persimmon', 'user-persimmon@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
+    const entry = buildActivityLogCreateManyEffect('activityLog');
     const configGet = vi.fn<(key: string) => number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],

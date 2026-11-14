@@ -9,8 +9,8 @@ import { CacheService } from '@common/cache/services/cache.service';
 import {
     EnumOutboxProcess,
     EnumOutboxQueue,
-} from '@modules/outbox/enums/outbox.enum';
-import { OutboxQueue } from '@modules/outbox/queues/outbox.queue';
+} from '@common/outbox/enums/outbox.enum';
+import { OutboxQueue } from '@common/outbox/queues/outbox.queue';
 
 describe('OutboxQueue', () => {
     const configGet = vi.fn<(key: string) => unknown>();

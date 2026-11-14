@@ -1,3 +1,8 @@
+import type {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { ActivityLog, Prisma } from '@generated/prisma-client/client';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -103,3 +108,9 @@ export type IActivityLogActionContracts = Record<
     EnumActivityLogAction,
     IActivityLogActionContract
 >;
+
+export interface IActivityLogCreateManyEffect extends IOutboxEffect {
+    queue: EnumActivityLogQueue.activityLog;
+    name: EnumActivityLogProcess.createMany;
+    data: IActivityLogCreateManyPayload;
+}

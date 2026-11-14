@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -11,11 +12,10 @@ import {
 } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -147,7 +147,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     _authContext,
                     _workspaceContext,
                     input
-                ) => ({ queue: input.action }) as unknown as IOutboxEffect
+                ) => buildActivityLogCreateManyEffect(input.action)
             );
             userService.getOneWithRole.mockResolvedValue({
                 ...baseUser,
@@ -282,10 +282,18 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                { queue: EnumActivityLogAction.adminSessionRevokeAll },
-                { queue: EnumActivityLogAction.userRevokeAllSessionsByAdmin },
-                { queue: EnumActivityLogAction.adminUserUpdateStatus },
-                { queue: EnumActivityLogAction.userBlocked },
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.adminSessionRevokeAll
+                ),
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.userRevokeAllSessionsByAdmin
+                ),
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.adminUserUpdateStatus
+                ),
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.userBlocked
+                ),
             ]);
         });
 
@@ -355,8 +363,12 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                { queue: EnumActivityLogAction.adminUserUpdateStatus },
-                { queue: EnumActivityLogAction.userUpdateStatus },
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.adminUserUpdateStatus
+                ),
+                buildActivityLogCreateManyEffect(
+                    EnumActivityLogAction.userUpdateStatus
+                ),
             ]);
         });
 

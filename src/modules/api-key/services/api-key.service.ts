@@ -30,7 +30,7 @@ import type {
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

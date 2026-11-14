@@ -9,9 +9,8 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import {
     EnumOutboxProcess,
     EnumOutboxQueue,
-} from '@modules/outbox/enums/outbox.enum';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import { OutboxProcessSweepUseCase } from '@modules/outbox/use-cases/outbox.process-sweep.use-case';
+} from '@common/outbox/enums/outbox.enum';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 @QueueProcessor(EnumOutboxQueue.outbox)
 export class OutboxProcessor extends QueueProcessorBase {
@@ -19,8 +18,7 @@ export class OutboxProcessor extends QueueProcessorBase {
         protected readonly sentryService: SentryService,
         protected readonly messageService: MessageService,
         protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService,
-        private readonly outboxProcessSweepUseCase: OutboxProcessSweepUseCase
+        protected readonly outboxService: OutboxService
     ) {
         super(sentryService, messageService, cacheService, outboxService);
     }
@@ -29,8 +27,15 @@ export class OutboxProcessor extends QueueProcessorBase {
         job: Job<unknown, IQueueResponse, EnumOutboxProcess>
     ): Promise<IQueueResponse> {
         switch (job.name) {
-            case EnumOutboxProcess.sweep:
-                return await this.outboxProcessSweepUseCase.execute();
+            case EnumOutboxProcess.sweep: {
+                const count = await this.outboxService.sweep();
+                const message = this.messageService.setMessage(
+                    'outbox.queue.sweep',
+                    { properties: { count } }
+                );
+
+                return { message, count };
+            }
             default: {
                 const message = this.messageService.setMessage(
                     'outbox.queue.error.unknownProcess',

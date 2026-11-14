@@ -14,7 +14,7 @@ import type {
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';

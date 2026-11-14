@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -14,8 +15,7 @@ import {
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
     buildRequestContext,
@@ -110,7 +110,7 @@ describe('RoleCreateByAdminUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(actorUser);
     const authContext = buildAuthJwtAccessContext(actorUser.id);
-    const effect: IOutboxEffect = {
+    const effect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },

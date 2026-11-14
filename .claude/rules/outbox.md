@@ -1,6 +1,6 @@
 ---
 paths:
-    - 'src/modules/outbox/**'
+    - 'src/common/outbox/**'
     - 'src/common/queue/**'
     - 'src/modules/*/services/**'
     - 'src/modules/*/use-cases/**'
@@ -11,12 +11,12 @@ paths:
 
 A side effect of a write is an `Outbox` row written in the write's transaction. After the commit the row is dispatched to its BullMQ queue. The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted.
 
-`src/modules/outbox/` is the lowest feature module (`layering.md`, Dependency order). `OutboxModule` is `@Global()` and registers its own queue, `EnumOutboxQueue.outbox`; `OutboxProcessor` awaits `OutboxProcessSweepUseCase`, which `OutboxUseCaseModule` provides. Its config is `outbox.*` (`src/configs/outbox.config.ts`); its backoff is `queue.job.outboxBackoffDelayInMs`.
+`src/common/outbox/` is a kit module beside the queue kit; `OutboxRepository` is the kit's one repository, over an infrastructure model. `OutboxModule` registers its own queue, `EnumOutboxQueue.outbox`; `OutboxProcessor` awaits `OutboxService.sweep()`. Its config is `outbox.*` (`src/configs/outbox.config.ts`); its backoff is `queue.job.outboxBackoffDelayInMs`.
 
 ## Effects
 
-- An effect is an `IOutboxEffect`: a union over `(queue, name)` to `data`, each member carrying `priority` (`EnumQueuePriority`) and `idempotencyKey` (`string | null`). The union sits in the outbox module's interface file; a new job adds its member there, the `data` type imported from its feature's payload interface with `import type`.
-- The module owning the job builds the effect in a service method `<action>Effect` returning `IOutboxEffect` (`SessionService.purgeLoginsEffect`). No call site writes an effect literal. A service adds the effects its own module's or a lower module's builder returns (`layering.md`, Dependency order).
+- An effect is an `IOutboxEffect`, the kit base in `src/common/outbox/interfaces/outbox.interface.ts`: `queue`, `name`, `data`, `priority` (`EnumQueuePriority`), and `idempotencyKey` (`string | null`), with no union. A new job declares its member `I<Module><Action>Effect extends IOutboxEffect` in its owner's interface file, with literal `queue` and `name` and its payload as `data` (`ISessionPurgeLoginsEffect`).
+- The module owning the job builds the effect in a service method `<action>Effect` returning its member (`SessionService.purgeLoginsEffect`). A method forwarding another builder's effect, an `IOutboxEffect[]` return or local, a parameter, and every `OutboxService` method take the base. No call site writes an effect literal. A service adds the effects its own module's or a lower module's builder returns (`layering.md`, Dependency order).
 - `idempotencyKey` is also the BullMQ `jobId`, unique per `(queue, name, idempotencyKey)` (`@@unique`); a business pattern carries the process, because the `jobId` space is per queue. It is filled from a `<namespace>.idempotencyKey.<name>Pattern` config key only when a duplicate the normal flow produces collapses into one job; any other effect passes `null`, and the row id becomes its key.
 
 ## Writing and dispatch

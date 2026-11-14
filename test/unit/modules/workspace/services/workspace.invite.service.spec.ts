@@ -1,3 +1,8 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import type {
+    INotificationEmailSendUnregisteredEffect,
+    INotificationNotifyEffect,
+} from '@modules/notification/interfaces/notification.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -42,8 +47,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { UserService } from '@modules/user/services/user.service';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -201,7 +205,7 @@ describe('WorkspaceInviteService', () => {
         inviteeUserId: 'user-2',
     };
 
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {
@@ -214,7 +218,7 @@ describe('WorkspaceInviteService', () => {
         idempotencyKey: 'workspaceInvite-WIN-abc123',
     };
 
-    const unregisteredEffect: IOutboxEffect = {
+    const unregisteredEffect: INotificationEmailSendUnregisteredEffect = {
         queue: EnumNotificationQueue.notificationEmail,
         name: EnumNotificationEmailProcess.sendUnregistered,
         data: {
@@ -233,8 +237,8 @@ describe('WorkspaceInviteService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const authContextOfUser2 = { ...authContext, userId: 'user-2' };
-    const actorEntry = { queue: 'actor-entry' } as unknown as IOutboxEffect;
-    const inviteeEntry = { queue: 'invitee-entry' } as unknown as IOutboxEffect;
+    const actorEntry = buildActivityLogCreateManyEffect('actor-entry');
+    const inviteeEntry = buildActivityLogCreateManyEffect('invitee-entry');
 
     let service: WorkspaceInviteService;
 

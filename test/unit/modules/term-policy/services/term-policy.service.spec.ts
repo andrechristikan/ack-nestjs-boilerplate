@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -32,8 +34,8 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumNotificationProcess,
     EnumNotificationQueue,
@@ -115,7 +117,7 @@ describe('TermPolicyService', () => {
     };
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-1');
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
@@ -1302,7 +1304,7 @@ describe('TermPolicyService', () => {
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'copyContent-term-policy-1',
                 };
-                const publishEffect: IOutboxEffect = {
+                const publishEffect: INotificationPublishTermPolicyEffect = {
                     queue: EnumNotificationQueue.notification,
                     name: EnumNotificationProcess.publishTermPolicy,
                     data: {

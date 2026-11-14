@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -19,8 +20,7 @@ import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     buildUser,
     buildRequestContext,
@@ -62,7 +62,7 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
         buildUser('user-actor', 'actor@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const effect: IOutboxEffect = {
+    const effect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },

@@ -17,10 +17,9 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
@@ -38,8 +37,10 @@ import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/requ
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
+    ITermPolicyCopyContentEffect,
     ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
+    ITermPolicyDeleteContentEffect,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -78,7 +79,7 @@ export class TermPolicyService {
         )!;
     }
 
-    private deleteContentEffect(path: string): IOutboxEffect {
+    private deleteContentEffect(path: string): ITermPolicyDeleteContentEffect {
         return {
             queue: EnumTermPolicyQueue.termPolicy,
             name: EnumTermPolicyProcess.deleteContent,
@@ -90,7 +91,7 @@ export class TermPolicyService {
 
     private copyContentEffect(
         payload: ITermPolicyCopyContentPayload
-    ): IOutboxEffect {
+    ): ITermPolicyCopyContentEffect {
         const idempotencyKey = this.helperStringService.fillPattern(
             this.copyContentIdempotencyKeyPattern,
             {

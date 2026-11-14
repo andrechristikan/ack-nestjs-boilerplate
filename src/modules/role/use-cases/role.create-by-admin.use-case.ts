@@ -3,7 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';

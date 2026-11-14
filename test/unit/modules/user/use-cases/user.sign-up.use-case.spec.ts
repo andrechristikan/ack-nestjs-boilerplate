@@ -1,3 +1,5 @@
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -6,7 +8,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
@@ -40,7 +42,6 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -116,10 +117,8 @@ describe('UserSignUpUseCase', () => {
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const activityEntry = {
-        queue: 'activity-entry',
-    } as unknown as IOutboxEffect;
-    const welcomeEffect: IOutboxEffect = {
+    const activityEntry = buildActivityLogCreateManyEffect('activity-entry');
+    const welcomeEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {
@@ -131,7 +130,7 @@ describe('UserSignUpUseCase', () => {
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'welcome-user-bramble',
     };
-    const verificationEffect: IOutboxEffect = {
+    const verificationEffect: INotificationNotifyEffect = {
         ...welcomeEffect,
         data: {
             ...welcomeEffect.data,

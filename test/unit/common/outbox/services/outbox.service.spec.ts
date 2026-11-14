@@ -28,14 +28,14 @@ import {
     EnumQueueJobState,
     EnumQueuePriority,
 } from '@common/queue/enums/queue.enum';
-import { OutboxDispatchWarnKey } from '@modules/outbox/constants/outbox.constant';
-import { EnumOutboxStatusCodeError } from '@modules/outbox/enums/outbox.status-code.enum';
+import { OutboxDispatchWarnKey } from '@common/outbox/constants/outbox.constant';
+import { EnumOutboxStatusCodeError } from '@common/outbox/enums/outbox.status-code.enum';
 import type {
     IOutboxEffect,
     IOutboxJobPayload,
-} from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxRepository } from '@modules/outbox/repositories/outbox.repository';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+} from '@common/outbox/interfaces/outbox.interface';
+import { OutboxRepository } from '@common/outbox/repositories/outbox.repository';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('OutboxService', () => {
     const outboxRepository: MockProxy<OutboxRepository> =

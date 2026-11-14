@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationResendPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -26,8 +28,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -73,7 +74,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         termPolicyVersion: 1,
         timestamp,
     };
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
@@ -87,7 +88,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
-    const resendEffect: IOutboxEffect = {
+    const resendEffect: INotificationResendPublishTermPolicyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.resendPublishTermPolicy,
         data: {

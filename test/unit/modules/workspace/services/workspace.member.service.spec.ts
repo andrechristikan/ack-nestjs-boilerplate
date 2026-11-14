@@ -1,3 +1,4 @@
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -23,8 +24,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
@@ -62,8 +62,8 @@ describe('WorkspaceMemberService', () => {
         buildUser('user-1', 'jane@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
-    const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
-    const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
+    const firstEntry = buildActivityLogCreateManyEffect('first-entry');
+    const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {

@@ -10,32 +10,38 @@ import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 
 /** Shared module: SessionService for the JWT access strategy, the user module, and the user and device use cases; SessionUtil for the user module and use cases; SessionAnalyticService for the analytic services. */
 @Global()
-@Module({
-    controllers: [],
-    providers: [
-        SessionRepository,
-        SessionAnalyticRepository,
-        SessionService,
-        SessionCache,
-        SessionUtil,
-        SessionAnalyticService,
-    ],
-    exports: [
-        SessionService,
-        SessionCache,
-        SessionUtil,
-        SessionAnalyticService,
-    ],
-    imports: [
-        ActivityLogModule,
-        DeviceModule,
-        BullModule.registerQueueAsync({
-            name: EnumSessionQueue.session,
-            useClass: SessionQueueFactory,
-        }),
-    ],
-})
-export class SessionModule {}
+@Module({})
+export class SessionModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: SessionModule,
+            controllers: [],
+            providers: [
+                SessionRepository,
+                SessionAnalyticRepository,
+                SessionService,
+                SessionCache,
+                SessionUtil,
+                SessionAnalyticService,
+            ],
+            exports: [
+                SessionService,
+                SessionCache,
+                SessionUtil,
+                SessionAnalyticService,
+            ],
+            imports: [
+                ActivityLogModule,
+                DeviceModule,
+                BullModule.registerQueueAsync({
+                    name: EnumSessionQueue.session,
+                    useClass: SessionQueueFactory,
+                }),
+            ],
+        };
+    }
+}

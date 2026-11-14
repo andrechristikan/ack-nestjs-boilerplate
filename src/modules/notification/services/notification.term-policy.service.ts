@@ -19,8 +19,8 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { INotificationEmailPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -74,7 +74,7 @@ export class NotificationTermPolicyService {
         batchId: string,
         proceedBy: string,
         recipients: INotificationTermPolicyBatchRecipient[]
-    ): IOutboxEffect {
+    ): INotificationEmailPublishTermPolicyEffect {
         const { resendNonce } = data;
         const pattern =
             resendNonce === null ? this.batchPattern : this.batchResendPattern;

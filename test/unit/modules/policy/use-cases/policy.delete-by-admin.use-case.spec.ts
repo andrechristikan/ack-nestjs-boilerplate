@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -13,8 +14,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -123,7 +123,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(actor);
     const authContext = buildAuthJwtAccessContext(actor.id);
-    const effect: IOutboxEffect = {
+    const effect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },

@@ -1,7 +1,7 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
 import { UserImportService } from '@modules/user/services/user.import.service';

@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -20,7 +22,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -39,7 +41,6 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -134,14 +135,14 @@ describe('UserResetPasswordUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const resetEntry: IOutboxEffect = {
+    const resetEntry: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: 'reset',
     };
-    const verifyEntry: IOutboxEffect = {
+    const verifyEntry: IActivityLogCreateManyEffect = {
         ...resetEntry,
         idempotencyKey: 'verify',
     };
@@ -150,7 +151,7 @@ describe('UserResetPasswordUseCase', () => {
         encryptedEmail: 'cipher(linden@example.com)',
         encryptedTokens: ['cipher(token-one)'],
     };
-    const notifyEffect: IOutboxEffect = {
+    const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {

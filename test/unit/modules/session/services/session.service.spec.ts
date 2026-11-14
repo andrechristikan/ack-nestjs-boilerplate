@@ -1,3 +1,4 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -49,8 +50,8 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -76,14 +77,14 @@ describe('SessionService', () => {
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-1');
     const userAuthContext = buildAuthJwtAccessContext('user-1');
-    const actorEffect: IOutboxEffect = {
+    const actorEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: 'actor',
     };
-    const targetEffect: IOutboxEffect = {
+    const targetEffect: IActivityLogCreateManyEffect = {
         ...actorEffect,
         idempotencyKey: 'target',
     };

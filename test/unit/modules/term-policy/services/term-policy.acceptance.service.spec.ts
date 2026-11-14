@@ -1,3 +1,5 @@
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -21,10 +23,13 @@ import {
     EnumTermPolicyType,
     Prisma,
 } from '@generated/prisma-client/client';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcess,
+    EnumNotificationQueue,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@modules/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
@@ -66,12 +71,31 @@ describe('TermPolicyAcceptanceService', () => {
     };
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('user-1');
-    const entryEffect: IOutboxEffect = {
+    const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: 'entry',
+    };
+
+    const notifyEffect: INotificationNotifyEffect = {
+        queue: EnumNotificationQueue.notification,
+        name: EnumNotificationProcess.notify,
+        data: {
+            kind: EnumNotificationKind.userAcceptTermPolicy,
+            context: {
+                userId: 'user-1',
+                proceedBy: 'user-1',
+                termPolicyId: 'term-policy-1',
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+            },
+            recipient: null,
+            notificationId: null,
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'notify',
     };
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
@@ -502,7 +526,10 @@ describe('TermPolicyAcceptanceService', () => {
         });
 
         it('accepts the latest published policy re-read inside the transaction and adds the notification row on the same tx', async () => {
-            const effect = { idempotencyKey: 'effect-key' } as IOutboxEffect;
+            const effect: INotificationNotifyEffect = {
+                ...notifyEffect,
+                idempotencyKey: 'effect-key',
+            };
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
@@ -548,10 +575,7 @@ describe('TermPolicyAcceptanceService', () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
-            notificationService.notify.mockReturnValue({
-                ...entryEffect,
-                idempotencyKey: 'notify',
-            });
+            notificationService.notify.mockReturnValue(notifyEffect);
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)

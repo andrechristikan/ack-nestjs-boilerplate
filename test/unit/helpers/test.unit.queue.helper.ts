@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 import type { CacheService } from '@common/cache/services/cache.service';
 import type { MessageService } from '@common/message/services/message.service';
 import type { SentryService } from '@common/sentry/services/sentry.service';
-import type { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { OutboxService } from '@common/outbox/services/outbox.service';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 
 export function buildProcessorJob(overrides: Partial<Job>): Job {
