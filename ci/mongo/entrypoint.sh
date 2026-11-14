@@ -24,7 +24,7 @@ if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -d "$KEYFILE" ]; then
 fi
 
 if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -f "$KEYFILE" ]; then
-  : "${MONGO_INITDB_ROOT_USERNAME:?entrypoint: MONGO_INITDB_ROOT_USERNAME is empty; set DOCKER_MONGO_ROOT_USERNAME in .env}"
+  : "${MONGO_INITDB_ROOT_USERNAME:?entrypoint: MONGO_INITDB_ROOT_USERNAME is empty; set DOCKER_MONGO_ROOT_USERNAME in .env.docker}"
   # The mounted keyfile is read-only and owned by the host user; mongod needs its own copy, owned by mongodb, mode 400.
   install -o mongodb -g mongodb -m 400 "$KEYFILE" "$RUNTIME_KEYFILE"
   MONGOD_ARGS+=(--keyFile "$RUNTIME_KEYFILE" --auth)

@@ -1,7 +1,6 @@
-# Run from the repository root: docker compose --env-file .env -f ci/docker-compose.production.yml up -d
-# The DOCKER_* variables are read from that file; without --env-file their defaults apply.
-# Mongo and Redis authentication turn on only when DOCKER_MONGO_ROOT_PASSWORD and DOCKER_REDIS_PASSWORD are set;
-# with them empty both start plain.
+# Run from the repository root: pnpm compose:prod
+# (docker compose --env-file .env.docker -f ci/docker-compose.production.yml up -d)
+# The DOCKER_* variables are read from .env.docker. The five credentials are required: with one empty, every command stops and names it.
 name: ack-nestjs-boilerplate-production
 
 services:
@@ -90,8 +89,8 @@ services:
         image: mongo:9.0.2
         environment:
             HOME: /tmp
-            MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
-            MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:-}
+            MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:?set DOCKER_MONGO_ROOT_USERNAME in .env.docker}
+            MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:?set DOCKER_MONGO_ROOT_PASSWORD in .env.docker}
             RS_HOST: mongo:27017
         volumes:
             - type: volume
@@ -127,7 +126,7 @@ services:
     redis:
         image: redis:8.8.3-alpine
         environment:
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
         user: redis
         command:
             [
@@ -157,11 +156,11 @@ services:
         environment:
             REDIS_HOST: redis
             REDIS_PORT: '6379'
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
             BULL_PREFIX: Queue
             REDIS_DB: '1'
-            USER_LOGIN: ${DOCKER_BULLBOARD_USER:-admin}
-            USER_PASSWORD: ${DOCKER_BULLBOARD_PASSWORD:-admin123}
+            USER_LOGIN: ${DOCKER_BULLBOARD_USER:?set DOCKER_BULLBOARD_USER in .env.docker}
+            USER_PASSWORD: ${DOCKER_BULLBOARD_PASSWORD:?set DOCKER_BULLBOARD_PASSWORD in .env.docker}
         ports:
             - '127.0.0.1:3010:3000'
         restart: unless-stopped

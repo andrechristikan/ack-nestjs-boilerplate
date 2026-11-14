@@ -23,7 +23,7 @@ trap 'rm -f "$TMP"' EXIT
 # bootstrap already minted to /vault/init/<env>.approle (role_id on line 1,
 # secret_id on line 2). The scoped token reads ONLY this env's path by policy.
 # node on the host flattens .data.data, no jq needed.
-docker compose --profile vault exec -T vault sh -c '
+docker compose --env-file .env.docker --profile vault exec -T vault sh -c '
   set -eu
   export VAULT_ADDR="$1"
   RID=$(sed -n 1p "/vault/init/$2.approle")

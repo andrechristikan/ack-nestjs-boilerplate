@@ -133,14 +133,14 @@
         {
             "label": "Docker Compose Up",
             "type": "shell",
-            "command": "docker-compose up -d",
+            "command": "pnpm compose:dev",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Docker Compose Down",
             "type": "shell",
-            "command": "docker-compose down",
+            "command": "pnpm compose:dev:down",
             "group": "none",
             "problemMatcher": []
         },

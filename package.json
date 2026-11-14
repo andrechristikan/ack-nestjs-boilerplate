@@ -49,7 +49,11 @@
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
         "db:format": "prisma format",
-        "vault:pull": "sh ci/vault/pull.sh"
+        "vault:pull": "sh ci/vault/pull.sh",
+        "compose:dev": "docker compose --env-file .env.docker up -d",
+        "compose:dev:down": "docker compose --env-file .env.docker down",
+        "compose:prod": "docker compose --env-file .env.docker -f ci/docker-compose.production.yml up -d",
+        "compose:prod:down": "docker compose --env-file .env.docker -f ci/docker-compose.production.yml down"
     },
     "dependencies": {
         "@2toad/profanity": "^3.3.0",

@@ -27,7 +27,6 @@ services:
               read_only: true
               bind:
                   create_host_path: false
-        restart: on-failure
         networks:
             - app-network
         extra_hosts:
