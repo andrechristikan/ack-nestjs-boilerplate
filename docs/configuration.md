@@ -1066,3 +1066,4 @@ cache: {
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md
 [ref-doc-cache]: cache.md
+SNS configuration uses `aws.sns.iam.key`, `aws.sns.iam.secret`, `aws.sns.region`, `aws.sns.senderId`, and `aws.sns.maxAttempts`. The SMS queue uses `queue.job.smsBackoffDelayInMs`.

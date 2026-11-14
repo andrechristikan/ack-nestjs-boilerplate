@@ -91,6 +91,10 @@ export const LoggerSensitiveFields: string[] = [
     'encryptedInviteAcceptLink',
     'encryptedJoinRequestReviewLink',
     'link',
+    'iamKey',
+    'iamSecret',
+    'phoneNumber',
+    'phoneNumbers',
 ];
 
 /**
