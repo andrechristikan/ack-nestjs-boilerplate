@@ -1,5 +1,5 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -7,10 +7,17 @@ import type { UserImportResponseDto } from '@modules/user/dtos/response/user.imp
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserImportByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, UserImportRequestDto[]],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        UserImportRequestDto[],
+    ],
     IResponseReturn<UserImportResponseDto>
 > {
     constructor(
@@ -20,7 +27,9 @@ export class UserImportByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<UserImportResponseDto>> {
         const rows = data.map(({ email, name, username }) => ({
@@ -39,7 +48,9 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         this.userImportService.assertImportByAdminRows(rows, usernameChecks);
 
         const effect = this.userService.importByAdminEffect(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
+            authContext,
             rows
         );
         const outboxId = await this.outboxService.add(effect);

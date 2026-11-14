@@ -112,10 +112,6 @@ export class LoggerUtil {
         );
     }
 
-    private serializeUser(request: IRequestApp): string | null {
-        return request.user?.userId ?? null;
-    }
-
     private maskUrl(url: string): string {
         try {
             const parsed = new URL(url);
@@ -151,7 +147,6 @@ export class LoggerUtil {
             referer = this.maskUrl(request.headers.referer);
         }
         const clientIp = this.extractClientIP(request);
-        const user = this.serializeUser(request);
         const query = this.redactValue(request.query);
         const params = this.serializeParams(request.params);
         const headers = this.redactValue(request.headers);
@@ -163,7 +158,6 @@ export class LoggerUtil {
             contentType: request.headers?.['content-type'],
             referer,
             ip: clientIp,
-            user,
             query,
             params,
             headers,

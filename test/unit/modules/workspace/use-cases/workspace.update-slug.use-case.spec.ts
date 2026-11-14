@@ -8,9 +8,13 @@ import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/requ
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUpdateSlugUseCase } from '@modules/workspace/use-cases/workspace.update-slug.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateSlugUseCase', () => {
@@ -29,8 +33,13 @@ describe('WorkspaceUpdateSlugUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('user-1')
     );
@@ -55,11 +64,19 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             const body: WorkspaceUpdateSlugRequestDto = { slug: 'new-slug' };
             workspaceService.updateWorkspaceSlug.mockResolvedValue(workspace);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.updateWorkspaceSlug).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 'new-slug'
             );
@@ -71,9 +88,15 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, {
-                    slug: 'new-slug',
-                })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    {
+                        slug: 'new-slug',
+                    }
+                )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
         });
     });

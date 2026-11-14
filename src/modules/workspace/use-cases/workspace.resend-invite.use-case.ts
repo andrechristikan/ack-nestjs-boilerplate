@@ -1,4 +1,4 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
@@ -6,10 +6,20 @@ import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/re
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceResendInviteUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, string, WorkspaceInviteResendRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        string,
+        WorkspaceInviteResendRequestDto,
+    ],
     IResponseReturn<WorkspaceInvite>
 > {
     constructor(
@@ -18,30 +28,35 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const existing = await this.workspaceInviteService.getResendableById(
             workspaceInviteId,
-            context.workspace.id
+            workspaceContext.workspace.id
         );
 
         const [inviterName, existingUser] = await Promise.all([
             this.workspaceInviteService.getInviterName(
-                context.workspace,
-                context.user.id
+                workspaceContext.workspace,
+                authContext.userId
             ),
             this.userService.getOneActiveByEmail(existing.email),
         ]);
 
         const { invite } = await this.workspaceInviteService.resendInvite(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
+            authContext,
             workspaceInviteId,
             expiryDuration ?? null,
             {
-                workspaceName: context.workspace.name,
+                workspaceName: workspaceContext.workspace.name,
                 inviterName,
                 inviteeUserId: existingUser?.id ?? null,
             }

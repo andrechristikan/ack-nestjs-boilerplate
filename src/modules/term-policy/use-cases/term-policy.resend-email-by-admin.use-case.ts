@@ -1,4 +1,4 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -9,10 +9,12 @@ import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string],
+    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, string],
     IResponseReturn<void>
 > {
     constructor(
@@ -25,7 +27,9 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         const termPolicy =
@@ -41,7 +45,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
                 version: termPolicy.version,
                 recipientCutoffAt,
             },
-            context.user.id
+            authContext.userId
         );
 
         const timestamp = this.helperDateService.create();
@@ -49,10 +53,16 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             termPolicy,
             timestamp
         );
-        const entry = this.activityLogService.recordEffect(context.snapshot, {
-            action: EnumActivityLogAction.adminTermPolicyResendEmail,
-            metadata,
-        });
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminTermPolicyResendEmail,
+                metadata,
+            }
+        );
         await this.outboxService.addMany([resend, entry]);
 
         return {};

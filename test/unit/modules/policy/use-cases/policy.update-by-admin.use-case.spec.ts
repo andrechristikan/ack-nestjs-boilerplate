@@ -20,7 +20,12 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -115,7 +120,10 @@ describe('PolicyUpdateByAdminUseCase', () => {
         role: { ...baseUser.role, id: 'role-actor' },
     };
 
-    const context = buildRequestContextUser(actor);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(actor);
+    const authContext = buildAuthJwtAccessContext(actor.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -159,7 +167,10 @@ describe('PolicyUpdateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockRejectedValue(failure);
 
             const promise = useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
                 'role-1',
                 'policy-1',
                 body
@@ -178,7 +189,10 @@ describe('PolicyUpdateByAdminUseCase', () => {
             policyService.updateByAdminInTx.mockResolvedValue(policy);
 
             const result = await useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
                 'role-1',
                 'policy-1',
                 body
@@ -197,13 +211,24 @@ describe('PolicyUpdateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.updateByAdminInTx.mockResolvedValue(policy);
 
-            await useCase.execute(context, 'role-1', 'policy-1', body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1',
+                body
+            );
 
             expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 policy
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyUpdate,
                     metadata: policyMetadata,
@@ -218,7 +243,15 @@ describe('PolicyUpdateByAdminUseCase', () => {
             policyService.updateByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1',
+                    body
+                )
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -232,7 +265,15 @@ describe('PolicyUpdateByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1',
+                    body
+                )
             ).rejects.toBeInstanceOf(PolicyNotFoundException);
         });
 
@@ -243,7 +284,15 @@ describe('PolicyUpdateByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1',
+                    body
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

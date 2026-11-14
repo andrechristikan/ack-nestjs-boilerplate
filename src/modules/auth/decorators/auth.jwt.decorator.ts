@@ -1,11 +1,20 @@
-import { UseGuards, applyDecorators } from '@nestjs/common';
-import type { ExecutionContext } from '@nestjs/common';
-import { createParamDecorator } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
+    UseGuards,
+    applyDecorators,
+    createParamDecorator,
+} from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { ClsServiceManager } from 'nestjs-cls';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtRefreshContext,
+} from '@modules/auth/interfaces/auth.interface';
+import {
+    AuthJwtAccessContextStoreKey,
     AuthJwtAccessDocSecurityName,
     AuthJwtAccessProtectedDocErrors,
+    AuthJwtRefreshContextStoreKey,
     AuthJwtRefreshDocSecurityName,
     AuthJwtRefreshProtectedDocErrors,
 } from '@modules/auth/constants/auth.constant';
@@ -14,13 +23,36 @@ import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.gua
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 
 /** @public */
-export const AuthJwtToken = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string | null => {
-        const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
-        const { authorization } = headers;
-        const authorizations: string[] = authorization?.split(' ') ?? [];
+export const AuthJwtAccessContext = createParamDecorator(
+    (): IAuthJwtAccessContext => {
+        const authContext =
+            ClsServiceManager.getClsService().get<IAuthJwtAccessContext | null>(
+                AuthJwtAccessContextStoreKey
+            ) ?? null;
+        if (authContext === null) {
+            throw new RequestContextMissingException(
+                AuthJwtAccessContextStoreKey
+            );
+        }
 
-        return authorizations[1] ?? null;
+        return authContext;
+    }
+);
+
+/** @public */
+export const AuthJwtRefreshContext = createParamDecorator(
+    (): IAuthJwtRefreshContext => {
+        const authContext =
+            ClsServiceManager.getClsService().get<IAuthJwtRefreshContext | null>(
+                AuthJwtRefreshContextStoreKey
+            ) ?? null;
+        if (authContext === null) {
+            throw new RequestContextMissingException(
+                AuthJwtRefreshContextStoreKey
+            );
+        }
+
+        return authContext;
     }
 );
 

@@ -16,8 +16,9 @@ import type { ISessionList } from '@modules/session/interfaces/session.interface
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('SessionGetListCursorUseCase', () => {
@@ -26,9 +27,10 @@ describe('SessionGetListCursorUseCase', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const context = buildRequestContextUser(
+    const userContext = buildUserContext(
         buildUser('user-1', 'user@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: SessionGetListCursorUseCase;
 
     beforeEach(async () => {
@@ -68,7 +70,7 @@ describe('SessionGetListCursorUseCase', () => {
             };
             sessionService.getListCursor.mockResolvedValue(paginationResult);
 
-            const result = await useCase.execute(context, query);
+            const result = await useCase.execute(authContext, query);
 
             expect(result).toEqual({
                 data: [],
@@ -85,7 +87,7 @@ describe('SessionGetListCursorUseCase', () => {
                 storePatch
             );
             expect(sessionService.getListCursor).toHaveBeenCalledWith(
-                context.user.id,
+                authContext.userId,
                 params
             );
         });

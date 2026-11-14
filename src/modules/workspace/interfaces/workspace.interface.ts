@@ -4,12 +4,22 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
+    Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
+
+export interface IWorkspaceContext {
+    workspaceId: string;
+    workspace: Workspace;
+    workspaceMember: WorkspaceMember;
+}
+
+export type IWorkspaceContextPatch = IRequestStorePatch<IWorkspaceContext>;
 
 export interface IWorkspaceMember extends WorkspaceMember {
     user: IUserRef;

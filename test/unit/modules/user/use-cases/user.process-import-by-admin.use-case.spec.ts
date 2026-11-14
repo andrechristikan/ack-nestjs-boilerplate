@@ -56,10 +56,8 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import {
-    buildRequestContextUser,
-    buildUser,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { buildRequestLog } from '@test/unit/helpers/test.unit.request.helper';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 
 describe('UserProcessImportByAdminUseCase', () => {
     const userImportService: MockProxy<UserImportService> =
@@ -91,9 +89,12 @@ describe('UserProcessImportByAdminUseCase', () => {
         'user.default.country': 'ID',
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const context = buildRequestContextUser(
-        buildUser('admin-bramble', 'admin@example.com')
-    ).snapshot;
+    const activityLog: IActivityLogActorPayload = {
+        apiKeyId: 'api-key-1',
+        actorUserId: 'admin-bramble',
+        workspaceId: null,
+        requestLog: buildRequestLog(),
+    };
     const rows: IUserImport[] = [
         {
             username: 'bramble2fox',
@@ -101,7 +102,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             name: null,
         },
     ];
-    const payload: IUserImportByAdminPayload = { rows, context };
+    const payload: IUserImportByAdminPayload = { rows, activityLog };
     const entryEffect: IOutboxEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
@@ -238,7 +239,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             '2026-03-05T07:00:00.000+07:00'
         );
         messageService.setMessage.mockImplementation((path: string) => path);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogService.recordEffectFromPayload.mockReturnValue(entryEffect);
         notificationService.notify.mockImplementation(kind =>
             kind === EnumNotificationKind.userImportResult
                 ? resultEffect
@@ -329,10 +330,9 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(
                 userImportService.buildImportByAdminStages
             ).toHaveBeenCalledWith([input], [committedUser]);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
-                stageInput
-            );
+            expect(
+                activityLogService.recordEffectFromPayload
+            ).toHaveBeenCalledWith(activityLog, stageInput);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entryEffect,
@@ -376,20 +376,19 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
         });
 
-        it('acts for the payload actor and records the payload context', async () => {
+        it('acts for the payload actor and records the payload activity log', async () => {
             const response = await useCase.execute('outbox-bramble', payload);
 
             expect(response.created).toBe(1);
             expect(userImportService.prepareImportByAdmin).toHaveBeenCalledWith(
                 rows,
-                payload.context.actorUserId,
+                payload.activityLog.actorUserId,
                 role,
                 'country-bramble'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                payload.context,
-                stageInput
-            );
+            expect(
+                activityLogService.recordEffectFromPayload
+            ).toHaveBeenCalledWith(payload.activityLog, stageInput);
         });
 
         it('throws RoleNotFoundException before preparing when the default role is missing', async () => {

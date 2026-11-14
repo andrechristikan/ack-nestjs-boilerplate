@@ -1,16 +1,14 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { PasswordHistorySharedListRequestDto } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { PasswordHistorySharedListRequestSchema } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import {
-    RequestContextCurrent,
-    RequestThrottle,
-} from '@common/request/decorators/request.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryGetListCursorUseCase } from '@modules/password-history/use-cases/password-history.get-list-cursor.use-case';
@@ -18,6 +16,7 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.shared.user.passwordHistory')
 @Controller({
@@ -40,11 +39,13 @@ export class PasswordHistorySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: PasswordHistorySharedListRequestSchema })
         query: PasswordHistorySharedListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.passwordHistoryGetListCursorUseCase.execute(context, query);
+        return this.passwordHistoryGetListCursorUseCase.execute(
+            authContext,
+            query
+        );
     }
 }

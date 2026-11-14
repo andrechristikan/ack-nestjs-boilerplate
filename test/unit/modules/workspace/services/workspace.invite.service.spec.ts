@@ -68,8 +68,11 @@ import type {
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceInviteService', () => {
@@ -223,10 +226,13 @@ describe('WorkspaceInviteService', () => {
     };
 
     const expiredAtIso = '2026-02-01T00:00:00.000Z';
-    const { snapshot } = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );
-    const snapshotOfUser2 = { ...snapshot, actorUserId: 'user-2' };
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const authContextOfUser2 = { ...authContext, userId: 'user-2' };
     const actorEntry = { queue: 'actor-entry' } as unknown as IOutboxEffect;
     const inviteeEntry = { queue: 'invitee-entry' } as unknown as IOutboxEffect;
 
@@ -794,7 +800,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             const result = await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 {
                     ...baseCreate,
@@ -842,7 +850,9 @@ describe('WorkspaceInviteService', () => {
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 registeredNotice
@@ -884,7 +894,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 unregisteredNotice
@@ -915,7 +927,9 @@ describe('WorkspaceInviteService', () => {
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 registeredNotice
@@ -923,7 +937,10 @@ describe('WorkspaceInviteService', () => {
 
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreated,
                     userId: 'user-1',
@@ -937,7 +954,10 @@ describe('WorkspaceInviteService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                     userId: 'user-2',
@@ -965,7 +985,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 unregisteredNotice
@@ -973,7 +995,10 @@ describe('WorkspaceInviteService', () => {
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreated,
                     userId: 'user-1',
@@ -994,7 +1019,9 @@ describe('WorkspaceInviteService', () => {
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
-                snapshotOfUser2,
+                requestContext,
+                apiKeyContext,
+                authContextOfUser2,
                 'workspace-1',
                 baseCreate,
                 registeredNotice
@@ -1016,7 +1043,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.createInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     baseCreate,
                     unregisteredNotice
@@ -1054,7 +1083,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             const result = await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 unregisteredNotice
@@ -1094,7 +1125,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             const result = await service.createInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 baseCreate,
                 unregisteredNotice
@@ -1116,7 +1149,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.createInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     baseCreate,
                     unregisteredNotice
@@ -1138,7 +1173,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.createInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     baseCreate,
                     unregisteredNotice
@@ -1158,7 +1195,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.createInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     baseCreate,
                     unregisteredNotice
@@ -1183,7 +1222,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.createInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     baseCreate,
                     unregisteredNotice
@@ -1347,7 +1388,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             const result = await service.resendInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 14,
                 unregisteredNotice
@@ -1378,7 +1421,9 @@ describe('WorkspaceInviteService', () => {
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.resendInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 null,
                 registeredNotice
@@ -1406,7 +1451,9 @@ describe('WorkspaceInviteService', () => {
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.resendInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 null,
                 registeredNotice
@@ -1414,7 +1461,10 @@ describe('WorkspaceInviteService', () => {
 
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteResent,
                     userId: 'user-1',
@@ -1428,7 +1478,10 @@ describe('WorkspaceInviteService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteResentByAdmin,
                     userId: 'user-2',
@@ -1452,7 +1505,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             await service.resendInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 null,
                 unregisteredNotice
@@ -1471,7 +1526,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.resendInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'invite-1',
                     null,
                     unregisteredNotice
@@ -1502,7 +1559,9 @@ describe('WorkspaceInviteService', () => {
             );
 
             const result = await service.resendInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 null,
                 unregisteredNotice
@@ -1535,7 +1594,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.resendInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'invite-1',
                     null,
                     unregisteredNotice
@@ -1560,7 +1621,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.resendInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'invite-1',
                     null,
                     unregisteredNotice
@@ -1581,7 +1644,9 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.resendInvite(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'invite-1',
                     null,
                     unregisteredNotice
@@ -1598,7 +1663,9 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
 
             await service.revokeInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 'workspace-1',
                 'user-2'
@@ -1610,7 +1677,10 @@ describe('WorkspaceInviteService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevoked,
                     userId: 'user-1',
@@ -1624,7 +1694,10 @@ describe('WorkspaceInviteService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     userId: 'user-2',
@@ -1643,7 +1716,9 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
 
             await service.revokeInvite(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 'workspace-1',
                 null
@@ -1651,7 +1726,10 @@ describe('WorkspaceInviteService', () => {
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevoked,
                     userId: 'user-1',
@@ -1669,7 +1747,14 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(false);
 
             await expect(
-                service.revokeInvite(snapshot, 'invite-1', 'workspace-1', null)
+                service.revokeInvite(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'invite-1',
+                    'workspace-1',
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -1687,7 +1772,14 @@ describe('WorkspaceInviteService', () => {
             );
 
             await expect(
-                service.revokeInvite(snapshot, 'invite-1', 'workspace-1', null)
+                service.revokeInvite(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'invite-1',
+                    'workspace-1',
+                    null
+                )
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
         });
 
@@ -1697,7 +1789,14 @@ describe('WorkspaceInviteService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.revokeInvite(snapshot, 'invite-1', 'workspace-1', null)
+                service.revokeInvite(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'invite-1',
+                    'workspace-1',
+                    null
+                )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });

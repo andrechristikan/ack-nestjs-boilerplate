@@ -8,7 +8,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import type { IRequestContextSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -39,6 +39,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Duration } from 'luxon';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserPasswordService {
@@ -161,7 +162,8 @@ export class UserPasswordService {
     }
 
     private async incrementPasswordAttempt(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         userId: string
     ): Promise<boolean> {
         if (!this.passwordAttemptEnabled) {
@@ -181,7 +183,13 @@ export class UserPasswordService {
                         this.userTwoFactorService.lockoutEffect(userId);
                     const stages = this.buildPasswordLockoutStages(userId);
                     const entries = stages.map(stage =>
-                        this.activityLogService.recordEffect(snapshot, stage)
+                        this.activityLogService.recordEffect(
+                            requestContext,
+                            apiKeyContext,
+                            null,
+                            null,
+                            stage
+                        )
                     );
                     await this.outboxService.addManyInTx(tx, [
                         lockout,
@@ -221,7 +229,8 @@ export class UserPasswordService {
 
     /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; null for a passwordless user, isAttemptCounted false on a spent budget; a write conflict throws UserPasswordAttemptMaxException. */
     async countPasswordAttempt(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser
     ): Promise<IUserCredentialAttempt | null> {
         const hasPassword = this.hasPassword(user);
@@ -230,7 +239,8 @@ export class UserPasswordService {
         }
 
         const isAttemptCounted = await this.incrementPasswordAttempt(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user.id
         );
 
@@ -279,7 +289,8 @@ export class UserPasswordService {
 
     /** Replaces the user's unused requests with the new one and adds the forgotPassword effect and the activity entry in the same transaction, dispatched after the commit. */
     async createForgotPassword(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         userId: string,
         email: string,
         forgot: IUserForgotPasswordCreate
@@ -304,11 +315,17 @@ export class UserPasswordService {
                     expiredInMinutes: forgot.expiredInMinutes,
                 }
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userForgotPassword,
-                userId,
-                createdBy: userId,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userForgotPassword,
+                    userId,
+                    createdBy: userId,
+                }
+            );
             await this.outboxService.addManyInTx(tx, [entry, effect]);
         });
     }

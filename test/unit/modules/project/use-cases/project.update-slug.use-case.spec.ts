@@ -7,10 +7,12 @@ import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateSlugUseCase } from '@modules/project/use-cases/project.update-slug.use-case';
 import {
-    buildRequestContextProject,
     buildUser,
-    buildWorkspace,
-    buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUpdateSlugUseCase', () => {
@@ -32,12 +34,13 @@ describe('ProjectUpdateSlugUseCase', () => {
         deletedBy: null,
     };
 
-    const context = buildRequestContextProject(
-        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        buildWorkspaceMember('507f1f77bcf86cd799439015'),
-        project
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -58,11 +61,19 @@ describe('ProjectUpdateSlugUseCase', () => {
             const updated = { ...project, slug: 'p-new-slug' };
             projectService.updateProjectSlug.mockResolvedValue(updated);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                projectContext,
+                body
+            );
 
             expect(result).toEqual({ data: updated });
             expect(projectService.updateProjectSlug).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 'p-new-slug'
             );
@@ -74,7 +85,13 @@ describe('ProjectUpdateSlugUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, { slug: 'p-new-slug' })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    { slug: 'p-new-slug' }
+                )
             ).rejects.toThrow('boom');
         });
     });

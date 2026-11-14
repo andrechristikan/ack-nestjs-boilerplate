@@ -42,7 +42,7 @@ describe('RequestRequestLogMiddleware', () => {
     });
 
     describe('use', () => {
-        it('builds and stores the request log once per request', () => {
+        it('builds the request log once and stores it in a context whose every other field is null', () => {
             const req = {} as unknown as IRequestApp;
             const requestLog: IRequestLog = {
                 userAgent: {

@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumTermPolicyStatus,
@@ -30,9 +33,12 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('admin-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: TermPolicyDeleteByAdminUseCase;
 
@@ -53,11 +59,18 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         it('deletes the term policy passing the request context and returns it', async () => {
             termPolicyService.deleteByAdmin.mockResolvedValue(termPolicy);
 
-            const result = await useCase.execute(context, 'term-policy-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1'
+            );
 
             expect(result).toEqual({ data: termPolicy });
             expect(termPolicyService.deleteByAdmin).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'term-policy-1'
             );
         });
@@ -67,7 +80,12 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
             termPolicyService.deleteByAdmin.mockRejectedValue(error);
 
             await expect(
-                useCase.execute(context, 'term-policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1'
+                )
             ).rejects.toBe(error);
         });
     });

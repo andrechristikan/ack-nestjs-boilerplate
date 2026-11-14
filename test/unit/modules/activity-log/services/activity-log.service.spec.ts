@@ -3,10 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type {
-    IRequestContextSnapshot,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -24,11 +21,17 @@ import { EnumActivityLogStatusCodeError } from '@modules/activity-log/enums/acti
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
 import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
 import type {
+    IActivityLogContextPayload,
     IActivityLogCreate,
     IActivityLogInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogService', () => {
     const activityLogRepository: MockProxy<ActivityLogRepository> =
@@ -87,9 +90,49 @@ describe('ActivityLogService', () => {
     });
 
     describe('recordEffect', () => {
-        const context: IRequestContextSnapshot = {
+        it('builds the payload from the four contexts and records the entry from it', () => {
+            const requestContext = buildRequestContext();
+            const apiKeyContext = buildApiKeyContext();
+            const authContext = buildAuthJwtAccessContext('actor-1');
+            const payload: IActivityLogContextPayload = {
+                apiKeyId: 'api-key-1',
+                actorUserId: 'actor-1',
+                workspaceId: null,
+                requestLog,
+            };
+            activityLogUtil.toPayload.mockReturnValue(payload);
+            activityLogUtil.getDescription.mockReturnValue('Description');
+            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
+            helperDateService.create.mockReturnValue(createdAt);
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-01-01T00:00:00.000Z'
+            );
+
+            const result = service.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                { action: EnumActivityLogAction.userUpdateProfile }
+            );
+
+            expect(activityLogUtil.toPayload).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null
+            );
+            expect(result.data).toMatchObject({
+                rows: [{ userId: 'actor-1', requestLog }],
+            });
+        });
+    });
+
+    describe('recordEffectFromPayload', () => {
+        const payload: IActivityLogContextPayload = {
             actorUserId: 'actor-1',
             workspaceId: 'workspace-1',
+            apiKeyId: 'api-key-1',
             requestLog,
         };
 
@@ -102,8 +145,8 @@ describe('ActivityLogService', () => {
             );
         });
 
-        it('returns the createMany effect holding one row built from the input and the context', () => {
-            const result = service.recordEffect(context, {
+        it('returns the createMany effect holding one row built from the input and the payload', () => {
+            const result = service.recordEffectFromPayload(payload, {
                 action: EnumActivityLogAction.userUpdateProfile,
                 metadata: {},
             });
@@ -135,7 +178,7 @@ describe('ActivityLogService', () => {
         });
 
         it('keeps the input user and createdBy for a target action', () => {
-            const result = service.recordEffect(context, {
+            const result = service.recordEffectFromPayload(payload, {
                 action: EnumActivityLogAction.userLoginCredential,
                 userId: 'user-1',
                 createdBy: 'creator-1',
@@ -149,7 +192,7 @@ describe('ActivityLogService', () => {
         it('throws when the action carries no contract', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(context, {
+                service.recordEffectFromPayload(payload, {
                     action: 'notAnAction' as EnumActivityLogAction,
                 });
             } catch (error) {
@@ -162,7 +205,7 @@ describe('ActivityLogService', () => {
         it('throws when a target action omits its user field', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(context, {
+                service.recordEffectFromPayload(payload, {
                     action: EnumActivityLogAction.userLoginCredential,
                     createdBy: 'creator-1',
                 });
@@ -176,7 +219,7 @@ describe('ActivityLogService', () => {
         it('throws when a workspace target action omits its workspaceId', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(context, {
+                service.recordEffectFromPayload(payload, {
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: 'user-1',
                     createdBy: 'creator-1',
@@ -188,11 +231,11 @@ describe('ActivityLogService', () => {
             expect(thrown).toMatchObject(contractInvalid);
         });
 
-        it('throws when a payload action has no actor in the context', () => {
+        it('throws when a payload action has no actor in the payload', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(
-                    { ...context, actorUserId: null },
+                service.recordEffectFromPayload(
+                    { ...payload, actorUserId: null },
                     { action: EnumActivityLogAction.userUpdateProfile }
                 );
             } catch (error) {
@@ -205,7 +248,7 @@ describe('ActivityLogService', () => {
         it('throws with the zod error as the raw error when metadata breaks the contract', () => {
             let thrown: unknown;
             try {
-                service.recordEffect(context, {
+                service.recordEffectFromPayload(payload, {
                     action: EnumActivityLogAction.userUpdateProfile,
                     metadata: { unexpected: 'value' },
                 });

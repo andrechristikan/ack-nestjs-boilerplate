@@ -15,8 +15,9 @@ import {
     TermPolicyAcceptanceSharedListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('TermPolicyGetListUserAcceptedUseCase', () => {
@@ -39,9 +40,10 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
         data: [] as ITermPolicyUserAcceptance[],
     };
 
-    const context = buildRequestContextUser(
+    const userContext = buildUserContext(
         buildUser('user-1', 'user@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: TermPolicyGetListUserAcceptedUseCase;
 
     beforeEach(async () => {
@@ -74,7 +76,7 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute(context, query);
+            const result = await useCase.execute(authContext, query);
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

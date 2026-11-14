@@ -3,17 +3,17 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
-    IRequestContextPublic,
-    IRequestContextSnapshot,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthSocialContext,
+    IAuthToken,
+} from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -45,12 +45,14 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserLoginWithSocialUseCase implements IAppUseCase<
     [
-        IRequestContextPublic,
-        string,
+        IRequestContext,
+        IApiKeyContext,
+        IAuthSocialContext,
         EnumUserLoginWith,
         UserCreateSocialRequestDto,
     ],
@@ -90,12 +92,13 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async signUpWithSocial(
-        snapshot: IRequestContextSnapshot,
-        email: string,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthSocialContext,
         loginWith: EnumUserLoginWith,
         loginSocial: IUserLoginSocial
     ): Promise<void> {
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = authContext.email.trim().toLowerCase();
         // Sequential by design: gate before the work it guards
         const isAllowed =
             await this.userRegistrationService.isSocialSignUpAllowed(
@@ -197,7 +200,10 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                         );
                         const entries = stages.map(stage =>
                             this.activityLogService.recordEffect(
-                                snapshot,
+                                requestContext,
+                                apiKeyContext,
+                                null,
+                                null,
                                 stage
                             )
                         );
@@ -232,7 +238,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async startSession(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -240,7 +247,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             device,
             loginFrom,
@@ -257,7 +265,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     private async resolveLoginOutcome(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -274,7 +283,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
             const tokens = await this.startSession(
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 user,
                 device,
                 loginFrom,
@@ -291,7 +301,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         }
 
         const twoFactor = await this.userAuthService.createTwoFactorChallenge(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             device,
             loginFrom,
@@ -307,8 +318,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     }
 
     async execute(
-        context: IRequestContextPublic,
-        email: string,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthSocialContext,
         loginWith: EnumUserLoginWith,
         {
             from,
@@ -333,17 +345,21 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             marketing,
         };
         await this.signUpWithSocial(
-            context.snapshot,
-            email,
+            requestContext,
+            apiKeyContext,
+            authContext,
             loginWith,
             loginSocial
         );
 
-        let user = await this.userAuthService.getOneForSocialLogin(email);
+        let user = await this.userAuthService.getOneForSocialLogin(
+            authContext.email
+        );
         const isUnverified = this.userUtil.isUnverified(user);
         if (isUnverified) {
             user = await this.userAuthService.verifyEmailBySocial(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 user
             );
         }
@@ -351,7 +367,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         // Sequential by design: write must not run if an earlier step throws
         const loginAt = this.helperDateService.create();
         const outcome = await this.resolveLoginOutcome(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             deviceIdentity,
             from,

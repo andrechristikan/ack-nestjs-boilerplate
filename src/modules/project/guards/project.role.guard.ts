@@ -1,11 +1,15 @@
-import {
-    RequestProjectStoreKey,
-    RequestWorkspaceMemberStoreKey,
-} from '@common/request/constants/request.constant';
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceContextPatch } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IProjectContext,
+    IProjectContextPatch,
+} from '@modules/project/interfaces/project.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
+import {
+    ProjectContextStoreKey,
+    ProjectRoleMetaKey,
+} from '@modules/project/constants/project.constant';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
@@ -28,24 +32,33 @@ export class ProjectRoleGuard implements CanActivate {
         );
         const allowedRoles = requiredRoles ?? [];
 
-        const project = this.requestStoreService.get<Project>(
-            RequestProjectStoreKey
-        );
-        if (!project) {
+        const projectContext =
+            this.requestStoreService.get<IProjectContextPatch>(
+                ProjectContextStoreKey
+            );
+        const project = projectContext?.project ?? null;
+        if (project === null) {
             throw new ProjectGuardMissingException();
         }
 
-        const workspaceMember = this.requestStoreService.get<WorkspaceMember>(
-            RequestWorkspaceMemberStoreKey
-        );
-        if (!workspaceMember) {
+        const workspaceContext =
+            this.requestStoreService.get<IWorkspaceContextPatch>(
+                WorkspaceContextStoreKey
+            );
+        const workspaceMember = workspaceContext?.workspaceMember ?? null;
+        if (workspaceMember === null) {
             throw new WorkspaceMemberGuardMissingException();
         }
 
-        await this.projectMemberService.validateProjectRoleGuard(
+        const member = await this.projectMemberService.validateProjectRoleGuard(
             project.id,
             workspaceMember,
             allowedRoles
+        );
+
+        this.requestStoreService.merge<IProjectContext>(
+            ProjectContextStoreKey,
+            { projectMember: member }
         );
 
         return true;

@@ -22,7 +22,13 @@ export const AuthSocialGoogleDocSecurityName = 'google';
 export const AuthSocialAppleDocSecurityName = 'apple';
 
 /** @public */
-export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
+export const AuthJwtAccessContextStoreKey = 'AuthJwtAccessContextStoreKey';
+
+/** @public */
+export const AuthJwtRefreshContextStoreKey = 'AuthJwtRefreshContextStoreKey';
+
+/** @public */
+export const AuthSocialContextStoreKey = 'AuthSocialContextStoreKey';
 
 /** @public */
 export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';

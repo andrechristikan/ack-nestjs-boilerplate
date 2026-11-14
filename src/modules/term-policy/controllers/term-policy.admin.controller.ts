@@ -1,4 +1,3 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -6,10 +5,10 @@ import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-pre
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -20,8 +19,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -65,6 +70,8 @@ import {
     EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.termPolicy')
 @Controller({
@@ -121,12 +128,18 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: TermPolicyCreateRequestSchema })
         body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyCreateByAdminUseCase.execute(context, body);
+        return this.termPolicyCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'delete a term or policy by ID' })
@@ -145,13 +158,16 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:termPolicyId')
     async delete(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
         return this.termPolicyDeleteByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId
         );
     }
@@ -199,15 +215,18 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Put('/content/:termPolicyId/update')
     async updateContent(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyUpdateContentByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId,
             body
         );
@@ -227,15 +246,18 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Put('/content/:termPolicyId/add')
     async addContent(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyAddContentByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId,
             body
         );
@@ -255,15 +277,18 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Delete('/content/:termPolicyId/remove')
     async removeContent(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyRemoveContentByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId,
             body
         );
@@ -310,13 +335,16 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Patch('/publish/:termPolicyId')
     async publish(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyPublishByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId
         );
     }
@@ -336,13 +364,16 @@ export class TermPolicyAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/resend/:termPolicyId/email')
     async resendEmail(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyResendEmailByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId
         );
     }

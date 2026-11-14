@@ -1,13 +1,11 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
-    RequestLanguageCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -18,8 +16,14 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import type { Notification } from '@generated/prisma-client/client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { NotificationUserSettingRequestSchema } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
@@ -42,6 +46,8 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.notification')
 @Controller({
@@ -68,16 +74,15 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: NotificationListRequestSchema })
-        query: NotificationListRequestDto,
-        @RequestLanguageCurrent() language: string | null
+        query: NotificationListRequestDto
     ): Promise<IResponsePaginationReturn<Notification>> {
         return this.notificationGetListCursorUseCase.execute(
-            context,
-            query,
-            language
+            requestContext,
+            authContext,
+            query
         );
     }
 
@@ -92,10 +97,9 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Get('/setting/list')
     async listUserSetting(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        return this.notificationGetListUserSettingUseCase.execute(context);
+        return this.notificationGetListUserSettingUseCase.execute(authContext);
     }
 
     @Doc({ summary: 'mark a notification as read' })
@@ -107,13 +111,12 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Patch('/update/:notificationId/read')
     async markAsRead(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
         return this.notificationMarkAsReadUseCase.execute(
-            context,
+            authContext,
             notificationId
         );
     }
@@ -127,10 +130,9 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Patch('/read-all')
     async markAllAsRead(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<void>> {
-        return this.notificationMarkAllAsReadUseCase.execute(context);
+        return this.notificationMarkAllAsReadUseCase.execute(authContext);
     }
 
     @Doc({ summary: 'update notification setting' })
@@ -142,11 +144,17 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Put('/setting/update')
     async updateUserSetting(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationUpdateUserSettingUseCase.execute(context, body);
+        return this.notificationUpdateUserSettingUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 }

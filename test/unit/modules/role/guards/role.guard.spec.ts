@@ -1,4 +1,4 @@
-import { RequestUserStoreKey } from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -22,6 +22,7 @@ import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface'
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('RoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
@@ -103,7 +104,7 @@ describe('RoleGuard', () => {
     describe('canActivate', () => {
         it('reads the required roles and stored user, delegates to the domain, and stores the resolved policies', async () => {
             reflector.get.mockReturnValue([EnumRoleType.user]);
-            requestStoreService.get.mockReturnValue(user);
+            requestStoreService.get.mockReturnValue(buildUserContext(user));
             roleService.validateRoleGuard.mockResolvedValue(policies);
 
             const result = await guard.canActivate(executionContext);
@@ -114,7 +115,7 @@ describe('RoleGuard', () => {
                 executionContext.getHandler()
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestUserStoreKey
+                UserContextStoreKey
             );
             expect(roleService.validateRoleGuard).toHaveBeenCalledWith(user, [
                 EnumRoleType.user,
@@ -127,7 +128,7 @@ describe('RoleGuard', () => {
 
         it('defaults required roles to an empty array when no metadata is set', async () => {
             reflector.get.mockReturnValue(undefined);
-            requestStoreService.get.mockReturnValue(user);
+            requestStoreService.get.mockReturnValue(buildUserContext(user));
             roleService.validateRoleGuard.mockResolvedValue([]);
 
             await guard.canActivate(executionContext);
@@ -138,7 +139,7 @@ describe('RoleGuard', () => {
             );
         });
 
-        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
             reflector.get.mockReturnValue([EnumRoleType.user]);
             requestStoreService.get.mockReturnValue(null);
 
@@ -160,7 +161,7 @@ describe('RoleGuard', () => {
 
         it('propagates a thrown exception from the domain', async () => {
             reflector.get.mockReturnValue([]);
-            requestStoreService.get.mockReturnValue(user);
+            requestStoreService.get.mockReturnValue(buildUserContext(user));
             const error = new Error('forbidden');
             roleService.validateRoleGuard.mockRejectedValue(error);
 

@@ -3,10 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
-    IRequestContextPublic,
-    IRequestContextSnapshot,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -26,10 +23,11 @@ import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/requ
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
-    [IRequestContextPublic, UserLoginVerifyTwoFactorRequestDto],
+    [IRequestContext, IApiKeyContext, UserLoginVerifyTwoFactorRequestDto],
     IResponseReturn<IAuthToken>
 > {
     constructor(
@@ -44,7 +42,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
     ) {}
 
     private async startSession(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -52,7 +51,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             device,
             loginFrom,
@@ -69,7 +69,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
     }
 
     async execute(
-        context: IRequestContextPublic,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         {
             challengeToken,
             code,
@@ -85,7 +86,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
         );
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.userTwoFactorService.assertAttemptCounted(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             user
         );
         const verified = await this.userTwoFactorService.verify(user, {
@@ -102,7 +104,10 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
                     verified
                 );
                 const entry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    null,
+                    null,
                     {
                         action: EnumActivityLogAction.userVerifyTwoFactor,
                         userId: user.id,
@@ -126,7 +131,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
 
         const loginAt = this.helperDateService.create();
         const tokens = await this.startSession(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             challenge.device,
             challenge.loginFrom,

@@ -7,9 +7,13 @@ import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUpdateIsPublicUseCase } from '@modules/workspace/use-cases/workspace.update-is-public.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateIsPublicUseCase', () => {
@@ -28,8 +32,13 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('user-1')
     );
@@ -56,12 +65,24 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
                 workspace
             );
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({ data: workspace });
             expect(
                 workspaceService.updateWorkspaceIsPublic
-            ).toHaveBeenCalledWith(context.snapshot, 'workspace-1', true);
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'workspace-1',
+                true
+            );
         });
     });
 });

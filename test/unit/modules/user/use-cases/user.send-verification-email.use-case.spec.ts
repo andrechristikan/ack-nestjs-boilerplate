@@ -13,12 +13,16 @@ import type { User } from '@generated/prisma-client/client';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserSendVerificationEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
 
     let useCase: UserSendVerificationEmailUseCase;
 
@@ -75,15 +79,20 @@ describe('UserSendVerificationEmailUseCase', () => {
             email: 'wren@example.com',
         };
 
-        it('sends the verification email through the service with the snapshot and answers empty', async () => {
-            const result = await useCase.execute(context, dto);
+        it('sends the verification email through the service with the context and answers empty', async () => {
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                dto
+            );
 
             expect(result).toEqual({});
             expect(
                 userVerificationService.getOneForResendByEmail
             ).toHaveBeenCalledWith('wren@example.com');
             expect(userVerificationService.sendEmail).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 'user-wren',
                 'wren@example.com'
             );
@@ -94,7 +103,9 @@ describe('UserSendVerificationEmailUseCase', () => {
                 null
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({});
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({});
 
             expect(userVerificationService.sendEmail).not.toHaveBeenCalled();
         });
@@ -104,9 +115,9 @@ describe('UserSendVerificationEmailUseCase', () => {
                 new Error('commit-failed')
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toThrow(
-                'commit-failed'
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toThrow('commit-failed');
         });
     });
 });

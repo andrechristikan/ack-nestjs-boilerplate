@@ -1,5 +1,4 @@
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
@@ -38,6 +37,7 @@ import type {
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserDeletedIdentity {
@@ -48,6 +48,10 @@ export interface IUserDeletedIdentity {
 export interface IUser extends User {
     role: IRoleWithPolicies;
     twoFactor: TwoFactor | null;
+}
+
+export interface IUserContext {
+    user: IUser;
 }
 
 export interface IUserTwoFactorEnabled extends IUser {
@@ -399,7 +403,7 @@ export interface IUserLockoutPayload {
 
 export interface IUserImportByAdminPayload {
     rows: IUserImport[];
-    context: IRequestContextUserSnapshot;
+    activityLog: IActivityLogActorPayload;
 }
 
 export interface IUserCreateContracts {

@@ -3,19 +3,17 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Response } from 'express';
-import {
-    RequestWorkspaceIdHeaderName,
-    RequestWorkspaceIdStoreKey,
-} from '@common/request/constants/request.constant';
+import { RequestWorkspaceIdHeaderName } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { RequestWorkspaceMiddleware } from '@common/request/middlewares/request.workspace.middleware';
+import { WorkspaceIdStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceIdMiddleware } from '@modules/workspace/middlewares/workspace.id.middleware';
 
-describe('RequestWorkspaceMiddleware', () => {
+describe('WorkspaceIdMiddleware', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    let middleware: RequestWorkspaceMiddleware;
+    let middleware: WorkspaceIdMiddleware;
     let res: Response;
     let next: NextFunction;
 
@@ -24,7 +22,7 @@ describe('RequestWorkspaceMiddleware', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                RequestWorkspaceMiddleware,
+                WorkspaceIdMiddleware,
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -32,7 +30,7 @@ describe('RequestWorkspaceMiddleware', () => {
             ],
         }).compile();
 
-        middleware = module.get(RequestWorkspaceMiddleware);
+        middleware = module.get(WorkspaceIdMiddleware);
 
         res = {} as Response;
         next = vi.fn();
@@ -47,7 +45,7 @@ describe('RequestWorkspaceMiddleware', () => {
             middleware.use(req, res, next);
 
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestWorkspaceIdStoreKey,
+                WorkspaceIdStoreKey,
                 'workspace-1'
             );
             expect(next).toHaveBeenCalledTimes(1);
@@ -59,7 +57,7 @@ describe('RequestWorkspaceMiddleware', () => {
             middleware.use(req, res, next);
 
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestWorkspaceIdStoreKey,
+                WorkspaceIdStoreKey,
                 null
             );
         });
@@ -72,7 +70,7 @@ describe('RequestWorkspaceMiddleware', () => {
             middleware.use(req, res, next);
 
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestWorkspaceIdStoreKey,
+                WorkspaceIdStoreKey,
                 null
             );
         });

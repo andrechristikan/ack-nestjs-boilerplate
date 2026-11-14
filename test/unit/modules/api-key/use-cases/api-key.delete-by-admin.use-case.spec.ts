@@ -25,8 +25,11 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyDeleteByAdminUseCase', () => {
@@ -57,9 +60,12 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-actor', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -98,7 +104,12 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
         it('deletes the api key on the outbox transaction and wraps the result', async () => {
             apiKeyService.deleteByAdminInTx.mockResolvedValue(apiKey);
 
-            const result = await useCase.execute(context, apiKey.id);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id
+            );
 
             expect(result).toEqual({ data: apiKey });
             expect(apiKeyService.deleteByAdminInTx).toHaveBeenCalledWith(
@@ -110,14 +121,22 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
         it('adds the delete activity entry from the deleted key and the passed context on the same tx', async () => {
             apiKeyService.deleteByAdminInTx.mockResolvedValue(apiKey);
 
-            await useCase.execute(context, apiKey.id);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id
+            );
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 apiKey,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDelete,
                     metadata,
@@ -130,9 +149,14 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             const failure = new ApiKeyNotFoundException();
             apiKeyService.deleteByAdminInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, apiKey.id)).rejects.toBe(
-                failure
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -145,7 +169,12 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, apiKey.id)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
             ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
         });
 
@@ -155,7 +184,12 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, apiKey.id)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

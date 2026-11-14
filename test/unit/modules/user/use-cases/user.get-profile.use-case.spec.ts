@@ -13,8 +13,9 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGetProfileUseCase', () => {
@@ -96,13 +97,14 @@ describe('UserGetProfileUseCase', () => {
     });
 
     describe('execute', () => {
-        const context = buildRequestContextUser(
+        const userContext = buildUserContext(
             buildUser('user-sable', 'sable@example.com')
         );
+        const authContext = buildAuthJwtAccessContext(userContext.user.id);
         it('wraps the profile in a response envelope', async () => {
             userProfileService.getProfile.mockResolvedValue(profile);
 
-            await expect(useCase.execute(context)).resolves.toEqual({
+            await expect(useCase.execute(authContext)).resolves.toEqual({
                 data: profile,
             });
         });

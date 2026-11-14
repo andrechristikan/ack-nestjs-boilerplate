@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -16,10 +16,19 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class WorkspaceClaimInviteUseCase implements IAppUseCase<
-    [IRequestContextUser, WorkspaceInviteClaimRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        WorkspaceInviteClaimRequestDto,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -34,13 +43,16 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         { inviteToken }: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
-        const userId = context.user.id;
+        const userId = authContext.userId;
         const invite = await this.workspaceInviteService.validateInviteForEmail(
             inviteToken,
-            context.user.email
+            userContext.user.email
         );
 
         const acceptedAt = this.helperDateService.create();
@@ -74,7 +86,10 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     );
                 }
                 const inviteeEntry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.workspaceInviteAccepted,
                         userId,
@@ -86,7 +101,10 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                 const entries = [inviteeEntry];
                 if (invite.invitedByUserId !== userId) {
                     const inviterEntry = this.activityLogService.recordEffect(
-                        context.snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                             userId: invite.invitedByUserId,

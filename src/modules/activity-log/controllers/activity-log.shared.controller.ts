@@ -1,15 +1,7 @@
-import type {
-    IRequestContextUser,
-    IRequestContextWorkspace,
-} from '@common/request/interfaces/request.interface';
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogSharedListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import {
-    RequestContextCurrent,
-    RequestThrottle,
-} from '@common/request/decorators/request.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
@@ -17,17 +9,23 @@ import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
 import { ActivityLogGetListCursorByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
+    WorkspaceContext,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @ApiTags('modules.shared.user.activityLog')
 @Controller({
@@ -51,13 +49,12 @@ export class ActivityLogSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async listSelf(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: ActivityLogSharedListRequestSchema })
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogGetListCursorByUserUseCase.execute(
-            context,
+            authContext,
             query
         );
     }
@@ -76,13 +73,14 @@ export class ActivityLogSharedController {
     @ApiKeyProtected()
     @Get('/workspace/list')
     async listSelfByWorkspace(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: ActivityLogSharedListRequestSchema })
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogGetListCursorByWorkspaceUseCase.execute(
-            context,
+            authContext,
+            workspaceContext,
             query
         );
     }

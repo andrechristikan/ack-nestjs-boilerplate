@@ -4,7 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -31,6 +31,8 @@ import { ProjectMemberRepository } from '@modules/project/repositories/project.m
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { Injectable } from '@nestjs/common';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class ProjectMemberService {
@@ -74,11 +76,11 @@ export class ProjectMemberService {
         projectId: string,
         workspaceMember: WorkspaceMember,
         allowedProjectRoles: EnumProjectMemberRole[]
-    ): Promise<void> {
+    ): Promise<ProjectMember | null> {
         const hasWorkspaceBypass =
             this.projectUtil.hasWorkspaceBypass(workspaceMember);
         if (hasWorkspaceBypass) {
-            return;
+            return null;
         }
 
         const member =
@@ -91,6 +93,16 @@ export class ProjectMemberService {
         } else if (!allowedProjectRoles.includes(member.role)) {
             throw new ProjectRoleForbiddenException();
         }
+
+        return member;
+    }
+
+    assertMember(member: ProjectMember | null): ProjectMember {
+        if (member === null) {
+            throw new ProjectMemberNotFoundException();
+        }
+
+        return member;
     }
 
     async getMembersList(
@@ -140,7 +152,9 @@ export class ProjectMemberService {
 
     /** Creates the member and adds the actor's and the assignee's activity entries in one transaction, dispatched after the commit. */
     async assignMember(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         actor: IProjectMemberActor,
         targetMember: WorkspaceMember | null,
@@ -162,7 +176,10 @@ export class ProjectMemberService {
                     actor.userId
                 );
                 const actorEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.projectMemberAssigned,
                         userId: actor.userId,
@@ -174,7 +191,10 @@ export class ProjectMemberService {
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
                     const assigneeEntry = this.activityLogService.recordEffect(
-                        snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                             userId: targetMember.userId,
@@ -208,7 +228,9 @@ export class ProjectMemberService {
 
     /** Swaps the role guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
     async updateMemberRole(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string,
@@ -239,7 +261,10 @@ export class ProjectMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.projectMemberRoleUpdated,
                         userId: actor.userId,
@@ -251,7 +276,10 @@ export class ProjectMemberService {
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
                     const targetEntry = this.activityLogService.recordEffect(
-                        snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                             userId: targetMember.userId,
@@ -280,7 +308,9 @@ export class ProjectMemberService {
 
     /** Removes the member guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
     async removeMember(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string
@@ -313,7 +343,10 @@ export class ProjectMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.projectMemberRemoved,
                         userId: actor.userId,
@@ -323,7 +356,10 @@ export class ProjectMemberService {
                     }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                         userId: targetMember.userId,
@@ -353,7 +389,9 @@ export class ProjectMemberService {
 
     /** Removes the member row and adds the member's activity entry in one transaction, dispatched after the commit. */
     async leaveProject(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         member: ProjectMember
     ): Promise<void> {
@@ -368,12 +406,18 @@ export class ProjectMemberService {
                     throw new ProjectMemberNotFoundException();
                 }
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.projectMemberLeft,
-                    userId: member.userId,
-                    createdBy: member.userId,
-                    workspaceId: project.workspaceId,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.projectMemberLeft,
+                        userId: member.userId,
+                        createdBy: member.userId,
+                        workspaceId: project.workspaceId,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

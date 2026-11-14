@@ -5,11 +5,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    ApiKeyStoreKey,
+    ApiKeyContextStoreKey,
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
+import { buildApiKeyContext } from '@test/unit/helpers/test.unit.request.helper';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
@@ -68,7 +69,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             reflector.getAllAndOverride.mockReturnValue([
                 EnumApiKeyType.default,
             ]);
-            requestStoreService.get.mockReturnValue(apiKey);
+            requestStoreService.get.mockReturnValue(buildApiKeyContext(apiKey));
             apiKeyService.validateXApiKeyTypeGuard.mockReturnValue(true);
 
             const result = await guard.canActivate(executionContext);
@@ -79,7 +80,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
                 [handler, controllerClass]
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                ApiKeyStoreKey
+                ApiKeyContextStoreKey
             );
             expect(apiKeyService.validateXApiKeyTypeGuard).toHaveBeenCalledWith(
                 apiKey,
@@ -87,7 +88,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             );
         });
 
-        it('throws ApiKeyGuardMissingException before the domain call when the api key store is empty', async () => {
+        it('throws ApiKeyGuardMissingException before the domain call when the store holds no api key context', async () => {
             reflector.getAllAndOverride.mockReturnValue([
                 EnumApiKeyType.default,
             ]);
@@ -112,7 +113,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
 
         it('propagates a thrown exception from the domain', async () => {
             reflector.getAllAndOverride.mockReturnValue([]);
-            requestStoreService.get.mockReturnValue(apiKey);
+            requestStoreService.get.mockReturnValue(buildApiKeyContext(apiKey));
             const error = new Error('predefined not found');
             apiKeyService.validateXApiKeyTypeGuard.mockImplementation(() => {
                 throw error;

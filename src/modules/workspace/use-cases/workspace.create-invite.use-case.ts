@@ -1,17 +1,28 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import type { IWorkspaceInviteCreate } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceContext,
+    IWorkspaceInviteCreate,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class WorkspaceCreateInviteUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, WorkspaceInviteCreateRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        WorkspaceInviteCreateRequestDto,
+    ],
     IResponseReturn<WorkspaceInvite>
 > {
     constructor(
@@ -21,7 +32,10 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext,
         {
             email,
             workspaceRole,
@@ -44,7 +58,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         if (create.projectId !== null) {
             projectLookup = this.projectService.getActiveByIdAndWorkspace(
                 create.projectId,
-                context.workspace.id
+                workspaceContext.workspace.id
             );
         }
 
@@ -55,21 +69,23 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         this.workspaceInviteService.assertCreatable(create, project);
         if (existingUser) {
             await this.workspaceInviteService.assertInviteeNotMember(
-                context.workspace.id,
+                workspaceContext.workspace.id,
                 existingUser.id
             );
         }
 
         const inviterName = await this.workspaceInviteService.getInviterName(
-            context.workspace,
-            context.user.id
+            workspaceContext.workspace,
+            authContext.userId
         );
         const { invite } = await this.workspaceInviteService.createInvite(
-            context.snapshot,
-            context.workspace.id,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext.workspace.id,
             create,
             {
-                workspaceName: context.workspace.name,
+                workspaceName: workspaceContext.workspace.name,
                 inviterName,
                 inviteeUserId: existingUser?.id ?? null,
             }

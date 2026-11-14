@@ -9,7 +9,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
@@ -26,6 +26,8 @@ import { ProjectRepository } from '@modules/project/repositories/project.reposit
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class ProjectService {
@@ -115,11 +117,13 @@ export class ProjectService {
 
     /** Creates the project and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
     async createProject(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const actorId = snapshot.actorUserId;
+        const actorId = authContext.userId;
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
@@ -132,7 +136,10 @@ export class ProjectService {
                         slug
                     );
                     const entry = this.activityLogService.recordEffect(
-                        snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.projectCreated,
                             userId: actorId,
@@ -164,7 +171,9 @@ export class ProjectService {
 
     /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateProject(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         update: IProjectUpdate
     ): Promise<Project> {
@@ -174,12 +183,18 @@ export class ProjectService {
                 project.id,
                 update
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.projectUpdated,
-                userId: snapshot.actorUserId,
-                createdBy: snapshot.actorUserId,
-                workspaceId: project.workspaceId,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.projectUpdated,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                    workspaceId: project.workspaceId,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
 
             return updated;
@@ -188,7 +203,9 @@ export class ProjectService {
 
     /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateProjectSlug(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         project: Project,
         slug: string
     ): Promise<Project> {
@@ -204,12 +221,18 @@ export class ProjectService {
                     project.id,
                     slug
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.projectUpdated,
-                    userId: snapshot.actorUserId,
-                    createdBy: snapshot.actorUserId,
-                    workspaceId: project.workspaceId,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.projectUpdated,
+                        userId: authContext.userId,
+                        createdBy: authContext.userId,
+                        workspaceId: project.workspaceId,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return updated;

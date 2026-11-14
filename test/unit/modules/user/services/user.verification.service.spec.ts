@@ -24,7 +24,10 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -49,7 +52,8 @@ describe('UserVerificationService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const requestContext = buildRequestContext(null);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
     const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
@@ -270,7 +274,11 @@ describe('UserVerificationService', () => {
 
     describe('verifyEmail', () => {
         it('marks the verification and the user verified and adds the verifiedEmail effect in one transaction', async () => {
-            await service.verifyEmail(requestContext, verification);
+            await service.verifyEmail(
+                requestContext,
+                apiKeyContext,
+                verification
+            );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationService.notify).toHaveBeenCalledWith(
@@ -283,6 +291,9 @@ describe('UserVerificationService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: 'user-flint',
@@ -310,7 +321,11 @@ describe('UserVerificationService', () => {
         it('throws UserTokenInvalidException when the token was already used', async () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
 
-            const call = service.verifyEmail(requestContext, verification);
+            const call = service.verifyEmail(
+                requestContext,
+                apiKeyContext,
+                verification
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -328,7 +343,11 @@ describe('UserVerificationService', () => {
                 new DatabaseWriteConflictException()
             );
 
-            const call = service.verifyEmail(requestContext, verification);
+            const call = service.verifyEmail(
+                requestContext,
+                apiKeyContext,
+                verification
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -341,7 +360,11 @@ describe('UserVerificationService', () => {
             const error = new UserNotFoundException();
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(requestContext, verification);
+            const call = service.verifyEmail(
+                requestContext,
+                apiKeyContext,
+                verification
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -355,7 +378,11 @@ describe('UserVerificationService', () => {
             const error = new Error('boom');
             outboxService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = service.verifyEmail(requestContext, verification);
+            const call = service.verifyEmail(
+                requestContext,
+                apiKeyContext,
+                verification
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -523,6 +550,7 @@ describe('UserVerificationService', () => {
 
             await service.sendEmail(
                 requestContext,
+                apiKeyContext,
                 'user-flint',
                 'flint@example.com'
             );
@@ -555,6 +583,9 @@ describe('UserVerificationService', () => {
             ).toHaveBeenCalledBefore(outboxService.addInTx);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: 'user-flint',
@@ -573,6 +604,7 @@ describe('UserVerificationService', () => {
             await expect(
                 service.sendEmail(
                     requestContext,
+                    apiKeyContext,
                     'user-flint',
                     'flint@example.com'
                 )

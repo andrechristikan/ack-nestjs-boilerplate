@@ -1,4 +1,3 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -11,14 +10,17 @@ import {
     WorkspaceMemberUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceContext,
+    IWorkspaceMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetMembersListUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, WorkspaceMemberListRequestDto],
+    [IWorkspaceContext, WorkspaceMemberListRequestDto],
     IResponsePaginationReturn<IWorkspaceMember>
 > {
     constructor(
@@ -29,7 +31,7 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        workspaceContext: IWorkspaceContext,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } =
@@ -55,7 +57,7 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceMemberService.getMembersList(
-                context.workspace.id,
+                workspaceContext.workspace.id,
                 params,
                 role?.where
             );

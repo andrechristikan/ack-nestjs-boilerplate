@@ -1,5 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -13,10 +13,19 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        string,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -32,15 +41,20 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
-        const user = context.user;
-        this.userService.assertNotSelf(userId, user.id);
+        this.userService.assertNotSelf(userId, authContext.userId);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const target = await this.userService.getOneWithRole(userId);
-        this.roleService.assertActorOutranks(user.role.type, target.role.type);
+        this.roleService.assertActorOutranks(
+            userContext.user.role.type,
+            target.role.type
+        );
         this.userService.assertUnblocked(target);
 
         this.userTwoFactorService.assertEnabled(target);
@@ -54,32 +68,38 @@ export class UserResetTwoFactorByAdminUseCase implements IAppUseCase<
             await this.sessionService.revokeActiveByUserInTx(
                 tx,
                 userId,
-                user.id,
+                authContext.userId,
                 now
             );
             const effect = this.notificationService.notify(
                 EnumNotificationKind.resetTwoFactorByAdmin,
-                { userId, proceedBy: user.id, snapshot }
+                { userId, proceedBy: authContext.userId, snapshot }
             );
             const actorMetadata =
                 this.userUtil.mapActivityLogActorMetadata(target);
             const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
                 target,
-                user.id
+                authContext.userId
             );
             const actorEntry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
                     metadata: actorMetadata,
                 }
             );
             const targetEntry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                     userId,
-                    createdBy: user.id,
+                    createdBy: authContext.userId,
                     metadata: targetMetadata,
                 }
             );

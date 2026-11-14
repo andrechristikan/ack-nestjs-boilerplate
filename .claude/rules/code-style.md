@@ -29,6 +29,10 @@ A string with placeholders is a `{token}` pattern (`naming.md`): one token is `S
 - A field assigned in the constructor is `private readonly`; one another class reads is a `readonly` field, never a parameter property (`DatabaseService.client`).
 - The one mutable field is a third-party client an `onModuleInit` adapter creates: `AwsS3Service.s3Client`, `AwsSESService.sesClient`, `FirebaseService.app`, `FirebaseService.messaging`; and the static `QueueWorkerBase.connection`, which `QueueWorkerFactory` sets.
 
+## Functions and parameters
+
+No module-level function in `src/` but an exported one and `bootstrap()`: its body lives in the method that uses it; parameters run `tx`, then the contexts in the `http.md` order, then the rest (`eslint.md`, Move to ESLint).
+
 ## Utility types
 
 - `Omit`, `Pick`, `Partial`, `Required`, `Readonly`, `Extract`, `Exclude`, `NonNullable`, `ReturnType`, `Parameters`, and `Record<Enum, T>` appear only in a declaration under `interfaces/`: a named `I*` type or a member of an `I*` interface.

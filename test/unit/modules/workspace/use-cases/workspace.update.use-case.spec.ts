@@ -9,9 +9,13 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { WorkspaceUpdateUseCase } from '@modules/workspace/use-cases/workspace.update.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateUseCase', () => {
@@ -30,8 +34,13 @@ describe('WorkspaceUpdateUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.owner)
     );
@@ -51,18 +60,26 @@ describe('WorkspaceUpdateUseCase', () => {
     });
 
     describe('execute', () => {
-        it('writes the details of the context workspace with the context snapshot and wraps the workspace', async () => {
+        it('writes the details of the context workspace with the context context and wraps the workspace', async () => {
             const body: WorkspaceUpdateRequestDto = {
                 name: 'Acme 2',
                 description: 'Our team workspace',
             };
             workspaceService.updateWorkspace.mockResolvedValue(workspace);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 { name: 'Acme 2', description: 'Our team workspace' }
             );
@@ -75,10 +92,18 @@ describe('WorkspaceUpdateUseCase', () => {
             };
             workspaceService.updateWorkspace.mockResolvedValue(workspace);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 { name: 'Acme 2', description: null }
             );
@@ -90,10 +115,16 @@ describe('WorkspaceUpdateUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, {
-                    name: 'Acme 2',
-                    description: null,
-                })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    {
+                        name: 'Acme 2',
+                        description: null,
+                    }
+                )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
         });
     });

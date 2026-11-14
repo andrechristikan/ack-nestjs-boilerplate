@@ -7,10 +7,12 @@ import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/proj
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateUseCase } from '@modules/project/use-cases/project.update.use-case';
 import {
-    buildRequestContextProject,
     buildUser,
-    buildWorkspace,
-    buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUpdateUseCase', () => {
@@ -32,12 +34,13 @@ describe('ProjectUpdateUseCase', () => {
         deletedBy: null,
     };
 
-    const context = buildRequestContextProject(
-        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        buildWorkspaceMember('507f1f77bcf86cd799439015'),
-        project
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -65,11 +68,19 @@ describe('ProjectUpdateUseCase', () => {
             };
             projectService.updateProject.mockResolvedValue(updated);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                projectContext,
+                body
+            );
 
             expect(result).toEqual({ data: updated });
             expect(projectService.updateProject).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 {
                     name: 'New Name',
@@ -85,10 +96,18 @@ describe('ProjectUpdateUseCase', () => {
             };
             projectService.updateProject.mockResolvedValue(project);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                projectContext,
+                body
+            );
 
             expect(projectService.updateProject).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 { name: 'New Name', description: null }
             );
@@ -98,10 +117,16 @@ describe('ProjectUpdateUseCase', () => {
             projectService.updateProject.mockRejectedValue(new Error('boom'));
 
             await expect(
-                useCase.execute(context, {
-                    name: 'New Name',
-                    description: null,
-                })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    {
+                        name: 'New Name',
+                        description: null,
+                    }
+                )
             ).rejects.toThrow('boom');
         });
     });

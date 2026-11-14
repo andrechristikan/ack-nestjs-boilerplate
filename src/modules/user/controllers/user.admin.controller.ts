@@ -1,4 +1,3 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
@@ -38,13 +37,23 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import type {
+    IUserContext,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
 import type {
     IResponseFileReturn,
     IResponsePaginationReturn,
@@ -58,11 +67,11 @@ import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.creat
 import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -76,6 +85,8 @@ import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserImportResponseSchema } from '@modules/user/dtos/response/user.import.response.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -147,12 +158,20 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserCreateRequestSchema })
         body: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userCreateByAdminUseCase.execute(context, body);
+        return this.userCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({ summary: 'update status of user' })
@@ -169,15 +188,20 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Patch('/update/:userId/status')
     async updateStatus(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.userUpdateStatusByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             userId,
             body
         );
@@ -197,12 +221,20 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Put('/update/:userId/password')
     async updatePassword(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.userUpdatePasswordByAdminUseCase.execute(context, userId);
+        return this.userUpdatePasswordByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            userId
+        );
     }
 
     @Doc({ summary: 'reset user' })
@@ -219,12 +251,20 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.userResetTwoFactorByAdminUseCase.execute(context, userId);
+        return this.userResetTwoFactorByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            userId
+        );
     }
 
     @Doc({ summary: 'import users via csv file' })
@@ -244,8 +284,9 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
@@ -256,7 +297,12 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<UserImportResponseDto>> {
-        return this.userImportByAdminUseCase.execute(context, data);
+        return this.userImportByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            data
+        );
     }
 
     @Doc({ summary: 'export users via csv file' })

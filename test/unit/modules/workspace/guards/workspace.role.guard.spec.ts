@@ -1,4 +1,3 @@
-import { RequestWorkspaceMemberStoreKey } from '@common/request/constants/request.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
@@ -9,7 +8,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { WorkspaceRoleMetaKey } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceContextStoreKey,
+    WorkspaceRoleMetaKey,
+} from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
@@ -60,7 +62,9 @@ describe('WorkspaceRoleGuard', () => {
         it('validates the stored member against the required roles', () => {
             const handler = executionContext.getHandler();
             reflector.get.mockReturnValue([EnumWorkspaceMemberRole.admin]);
-            requestStoreService.get.mockReturnValue(member);
+            requestStoreService.get.mockReturnValue({
+                workspaceMember: member,
+            });
 
             const result = guard.canActivate(executionContext);
 
@@ -70,7 +74,7 @@ describe('WorkspaceRoleGuard', () => {
                 handler
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestWorkspaceMemberStoreKey
+                WorkspaceContextStoreKey
             );
             expect(
                 workspaceMemberService.validateWorkspaceRoleGuard
@@ -79,7 +83,9 @@ describe('WorkspaceRoleGuard', () => {
 
         it('validates against an empty role list when none is set on the handler', () => {
             reflector.get.mockReturnValue(undefined);
-            requestStoreService.get.mockReturnValue(member);
+            requestStoreService.get.mockReturnValue({
+                workspaceMember: member,
+            });
 
             guard.canActivate(executionContext);
 
@@ -88,35 +94,40 @@ describe('WorkspaceRoleGuard', () => {
             ).toHaveBeenCalledWith(member, []);
         });
 
-        it('throws WorkspaceMemberGuardMissingException before the domain call when the member store is empty', () => {
-            reflector.get.mockReturnValue([EnumWorkspaceMemberRole.admin]);
-            requestStoreService.get.mockReturnValue(null);
+        it.each([null, {}])(
+            'throws WorkspaceMemberGuardMissingException before the domain call when the request context holds no workspace member',
+            workspaceContext => {
+                reflector.get.mockReturnValue([EnumWorkspaceMemberRole.admin]);
+                requestStoreService.get.mockReturnValue(workspaceContext);
 
-            let thrown: unknown;
-            try {
-                guard.canActivate(executionContext);
-            } catch (error) {
-                thrown = error;
+                let thrown: unknown;
+                try {
+                    guard.canActivate(executionContext);
+                } catch (error) {
+                    thrown = error;
+                }
+
+                expect(thrown).toMatchObject({
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.memberGuardMissing
+                        ],
+                    messagePath: 'workspace.error.memberGuardMissing',
+                    httpStatus: HttpStatus.FORBIDDEN,
+                });
+                expect(
+                    workspaceMemberService.validateWorkspaceRoleGuard
+                ).not.toHaveBeenCalled();
             }
-
-            expect(thrown).toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberGuardMissing
-                    ],
-                messagePath: 'workspace.error.memberGuardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-            expect(
-                workspaceMemberService.validateWorkspaceRoleGuard
-            ).not.toHaveBeenCalled();
-        });
+        );
 
         it('propagates the exception the domain throws for a forbidden role', () => {
             reflector.get.mockReturnValue([EnumWorkspaceMemberRole.owner]);
-            requestStoreService.get.mockReturnValue(member);
+            requestStoreService.get.mockReturnValue({
+                workspaceMember: member,
+            });
             const forbidden = new Error('forbidden');
             workspaceMemberService.validateWorkspaceRoleGuard.mockImplementation(
                 () => {

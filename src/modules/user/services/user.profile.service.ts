@@ -36,10 +36,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserProfileService {
@@ -107,11 +109,13 @@ export class UserProfileService {
     }
 
     private async replacePhotoProfile(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         previousPhoto: UserPhoto | null,
         photo: IAwsS3
     ): Promise<void> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         await this.outboxService.withTransaction(async tx => {
             await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
             await this.deletePreviousPhotoInTx(
@@ -120,9 +124,15 @@ export class UserProfileService {
                 previousPhoto,
                 photo.key
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userUpdatePhotoProfile,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userUpdatePhotoProfile,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
         });
     }
@@ -222,10 +232,12 @@ export class UserProfileService {
     }
 
     async updatePhotoProfile(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         { key }: IUserUpdatePhotoProfile
     ): Promise<void> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         const isOwned = this.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
             throw new UserPhotoKeyInvalidException();
@@ -250,7 +262,13 @@ export class UserProfileService {
                 throw new UserNotFoundException();
             }
 
-            await this.replacePhotoProfile(snapshot, user.photo, aws);
+            await this.replacePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                user.photo,
+                aws
+            );
 
             return;
         } catch (err: unknown) {
@@ -265,10 +283,12 @@ export class UserProfileService {
     }
 
     async uploadPhotoProfile(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         file: IFile
     ): Promise<void> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         const isSizeAllowed = this.isPhotoSizeAllowed(file.size);
         if (!isSizeAllowed) {
             throw new UserPhotoSizeExceededException();
@@ -315,7 +335,13 @@ export class UserProfileService {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            await this.replacePhotoProfile(snapshot, user.photo, aws);
+            await this.replacePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                user.photo,
+                aws
+            );
 
             return;
         } catch (err: unknown) {
@@ -328,7 +354,9 @@ export class UserProfileService {
     }
 
     async claimUsername(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         username: Lowercase<string>
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
@@ -349,14 +377,20 @@ export class UserProfileService {
             await this.outboxService.withTransaction(async tx => {
                 await this.userRepository.claimUsernameInTx(
                     tx,
-                    snapshot.actorUserId,
+                    authContext.userId,
                     {
                         username,
                     }
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userClaimUsername,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userClaimUsername,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
 

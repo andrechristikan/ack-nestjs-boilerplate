@@ -5,10 +5,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     FeatureFlagAnonymousIdHeaderName,
     FeatureFlagKeyPathMetaKey,
@@ -22,6 +20,8 @@ describe('FeatureFlagGuard', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const configGet =
         vi.fn<(key: string) => string | number | RegExp | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
@@ -46,6 +46,7 @@ describe('FeatureFlagGuard', () => {
                 FeatureFlagGuard,
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: Reflector, useValue: reflector },
+                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -64,17 +65,7 @@ describe('FeatureFlagGuard', () => {
             reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
-            request.user = {
-                loginAt: new Date('2026-01-01T00:00:00.000Z'),
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                email: 'jane@example.com',
-                username: 'meadowlark',
-                userId: '507f1f77bcf86cd799439011',
-                sessionId: '507f1f77bcf86cd799439012',
-                deviceOwnershipId: '507f1f77bcf86cd799439013',
-                roleId: '507f1f77bcf86cd799439014',
-            };
+            requestStoreService.get.mockReturnValue('507f1f77bcf86cd799439011');
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -85,6 +76,9 @@ describe('FeatureFlagGuard', () => {
                 FeatureFlagKeyPathMetaKey,
                 executionContext.getHandler()
             );
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestActorStoreKey
+            );
             expect(featureFlagService.validateFeatureFlag).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.changePassword,
                 '507f1f77bcf86cd799439011',
@@ -92,11 +86,11 @@ describe('FeatureFlagGuard', () => {
             );
         });
 
-        it('validates with a null userId when the caller carries no user', async () => {
+        it('validates with a null userId when the store holds no actor', async () => {
             reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -115,7 +109,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'anon-user-1',
             };
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -134,7 +128,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: ['anon-user-1'],
             };
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -151,7 +145,7 @@ describe('FeatureFlagGuard', () => {
             reflector.get.mockReturnValue(EnumFeatureFlagKey.changePassword);
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { [FeatureFlagAnonymousIdHeaderName]: '' };
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -170,7 +164,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'a'.repeat(21),
             };
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -189,7 +183,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'invalid id!',
             };
-            delete request.user;
+            requestStoreService.get.mockReturnValue(null);
             const executionContext = buildHttpExecutionContext(request);
             featureFlagService.validateFeatureFlag.mockResolvedValue(undefined);
 

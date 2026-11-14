@@ -4,11 +4,15 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthService } from '@modules/auth/services/auth.service';
-import { AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import { AuthJwtAccessContextStoreKey } from '@modules/auth/constants/auth.constant';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtAccessTokenPayload,
+} from '@modules/auth/interfaces/auth.interface';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -32,6 +36,13 @@ describe('AuthJwtAccessGuard', () => {
         roleId: 'role-1',
     };
 
+    const authContext: IAuthJwtAccessContext = {
+        userId: 'user-1',
+        sessionId: 'session-1',
+        deviceOwnershipId: 'device-1',
+        loginWith: EnumUserLoginWith.credential,
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
@@ -48,15 +59,26 @@ describe('AuthJwtAccessGuard', () => {
     });
 
     describe('handleRequest', () => {
-        it('stores the validated payload and returns it', () => {
+        it('returns the context translated from the validated payload', () => {
             authService.validateJwtAccessGuard.mockReturnValue(payload);
 
             const result = guard.handleRequest(null, payload, undefined);
 
-            expect(result).toBe(payload);
+            expect(result).toEqual(authContext);
+        });
+
+        it('stores the access context and the actor id', () => {
+            authService.validateJwtAccessGuard.mockReturnValue(payload);
+
+            guard.handleRequest(null, payload, undefined);
+
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                AuthPayloadStoreKey,
-                payload
+                AuthJwtAccessContextStoreKey,
+                authContext
+            );
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                RequestActorStoreKey,
+                'user-1'
             );
         });
 

@@ -6,8 +6,11 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
@@ -16,9 +19,12 @@ import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-
 describe('NotificationUpdateUserSettingUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-id', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: NotificationUpdateUserSettingUseCase;
 
     beforeEach(async () => {
@@ -42,11 +48,18 @@ describe('NotificationUpdateUserSettingUseCase', () => {
         it('updates the setting passing the request context and returns an empty response', async () => {
             notificationService.updateUserSetting.mockResolvedValue(undefined);
 
-            const result = await useCase.execute(context, data);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                data
+            );
 
             expect(result).toEqual({});
             expect(notificationService.updateUserSetting).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 data
             );
         });
@@ -55,7 +68,14 @@ describe('NotificationUpdateUserSettingUseCase', () => {
             const failure = new Error('write failed');
             notificationService.updateUserSetting.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, data)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    data
+                )
+            ).rejects.toBe(failure);
         });
     });
 });

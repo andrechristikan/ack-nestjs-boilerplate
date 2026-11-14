@@ -1,4 +1,4 @@
-import { RequestUserStoreKey } from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -29,6 +29,7 @@ import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('PolicyGuard', () => {
     const user: IUser = {
@@ -115,8 +116,8 @@ describe('PolicyGuard', () => {
             const policies: Policy[] = [];
             reflector.get.mockReturnValue(requiredPolicies);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === RequestUserStoreKey) {
-                    return user;
+                if (key === UserContextStoreKey) {
+                    return buildUserContext(user);
                 }
                 if (key === PolicyStoreKey) {
                     return policies;
@@ -143,8 +144,8 @@ describe('PolicyGuard', () => {
             const policies: Policy[] = [];
             reflector.get.mockReturnValue(undefined);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === RequestUserStoreKey) {
-                    return user;
+                if (key === UserContextStoreKey) {
+                    return buildUserContext(user);
                 }
                 return policies;
             });
@@ -159,7 +160,7 @@ describe('PolicyGuard', () => {
             );
         });
 
-        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(null);
 
@@ -181,8 +182,8 @@ describe('PolicyGuard', () => {
         it('throws PolicyGuardMissingException before the domain call when the policy store is empty', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === RequestUserStoreKey) {
-                    return user;
+                if (key === UserContextStoreKey) {
+                    return buildUserContext(user);
                 }
                 return null;
             });
@@ -205,8 +206,8 @@ describe('PolicyGuard', () => {
         it('propagates a false result from the domain', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockImplementation((key: string) => {
-                if (key === RequestUserStoreKey) {
-                    return user;
+                if (key === UserContextStoreKey) {
+                    return buildUserContext(user);
                 }
                 return [];
             });

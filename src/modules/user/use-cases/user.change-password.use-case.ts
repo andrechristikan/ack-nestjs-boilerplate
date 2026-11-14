@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -23,10 +23,19 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserChangePasswordUseCase implements IAppUseCase<
-    [IRequestContextUser, UserChangePasswordRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        UserChangePasswordRequestDto,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -44,7 +53,10 @@ export class UserChangePasswordUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         {
             newPassword,
             oldPassword,
@@ -53,10 +65,11 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             method,
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
-        const { user } = context;
+        const { user } = userContext;
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             user
         );
         if (attempt !== null) {
@@ -64,12 +77,16 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 attempt,
                 oldPassword ?? null
             );
-            await this.passwordHistoryService.assertNew(user.id, newPassword);
+            await this.passwordHistoryService.assertNew(
+                authContext.userId,
+                newPassword
+            );
         }
 
         const twoFactorVerified =
             await this.userTwoFactorService.verifyIfRequired(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 user,
                 {
                     code: code ?? null,
@@ -84,33 +101,39 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             await this.outboxService.withTransaction(async tx => {
                 await this.userService.updatePasswordInTx(
                     tx,
-                    user.id,
+                    authContext.userId,
                     password,
-                    user.id
+                    authContext.userId
                 );
                 await this.passwordHistoryService.createInTx(
                     tx,
-                    user.id,
+                    authContext.userId,
                     password.passwordHash,
                     EnumPasswordHistoryType.profile,
                     password.passwordPeriodExpired,
                     password.passwordCreated,
-                    user.id
+                    authContext.userId
                 );
                 await this.userPasswordService.markUnusedResetsUsedInTx(
                     tx,
-                    user.id
+                    authContext.userId
                 );
                 await this.sessionService.revokeActiveByUserInTx(
                     tx,
-                    user.id,
-                    user.id,
+                    authContext.userId,
+                    authContext.userId,
                     password.passwordCreated
                 );
                 const entries = [
-                    this.activityLogService.recordEffect(context.snapshot, {
-                        action: EnumActivityLogAction.userChangePassword,
-                    }),
+                    this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userChangePassword,
+                        }
+                    ),
                 ];
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
@@ -119,18 +142,24 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
-                        context.snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.userVerifyTwoFactor,
-                            userId: user.id,
-                            createdBy: user.id,
+                            userId: authContext.userId,
+                            createdBy: authContext.userId,
                         }
                     );
                     entries.push(verifyEntry);
                 }
                 const effect = this.notificationService.notify(
                     EnumNotificationKind.changePassword,
-                    { userId: user.id, proceedBy: user.id }
+                    {
+                        userId: authContext.userId,
+                        proceedBy: authContext.userId,
+                    }
                 );
                 await this.outboxService.addManyInTx(tx, [...entries, effect]);
             });

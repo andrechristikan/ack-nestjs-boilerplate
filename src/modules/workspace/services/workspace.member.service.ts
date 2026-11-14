@@ -8,7 +8,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -31,6 +31,8 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class WorkspaceMemberService {
@@ -87,7 +89,9 @@ export class WorkspaceMemberService {
     }
 
     private async transferOwnershipGuarded(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMember: WorkspaceMember
@@ -125,7 +129,10 @@ export class WorkspaceMemberService {
                 }
 
                 const ownerEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.workspaceOwnershipTransferred,
                         userId: actorMember.userId,
@@ -135,7 +142,10 @@ export class WorkspaceMemberService {
                     }
                 );
                 const newOwnerEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                         userId: targetMember.userId,
@@ -251,7 +261,9 @@ export class WorkspaceMemberService {
 
     /** Swaps the owner and adds both activity entries in one transaction, dispatched after the commit. */
     async transferOwnership(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetUserId: string
@@ -270,7 +282,9 @@ export class WorkspaceMemberService {
         }
 
         await this.transferOwnershipGuarded(
-            snapshot,
+            requestContext,
+            apiKeyContext,
+            authContext,
             workspaceId,
             actorMember,
             targetMember
@@ -316,7 +330,9 @@ export class WorkspaceMemberService {
 
     /** Swaps the role guarded by the role read and adds both activity entries in one transaction, dispatched after the commit. */
     async updateMemberRole(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string,
@@ -351,7 +367,10 @@ export class WorkspaceMemberService {
                 }
 
                 const actorEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                         userId: actorMember.userId,
@@ -361,7 +380,10 @@ export class WorkspaceMemberService {
                     }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                         userId: targetMember.userId,

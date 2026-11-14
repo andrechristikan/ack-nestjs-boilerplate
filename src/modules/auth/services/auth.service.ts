@@ -17,7 +17,7 @@ import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtPayloadIdentified,
     IAuthJwtRefreshTokenPayload,
-    IAuthSocialPayload,
+    IAuthSocialContext,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
@@ -166,7 +166,7 @@ export class AuthService {
         return user;
     }
 
-    async validateOAuthApple(idToken: string): Promise<IAuthSocialPayload> {
+    async validateOAuthApple(idToken: string): Promise<IAuthSocialContext> {
         try {
             const payload = await this.authSocialService.verifyApple(idToken);
 
@@ -188,7 +188,7 @@ export class AuthService {
         }
     }
 
-    async validateOAuthGoogle(idToken: string): Promise<IAuthSocialPayload> {
+    async validateOAuthGoogle(idToken: string): Promise<IAuthSocialContext> {
         try {
             const payload: TokenPayload =
                 await this.authSocialService.verifyGoogle(idToken);

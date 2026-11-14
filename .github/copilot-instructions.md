@@ -18,7 +18,7 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @WorkspaceMemberProtected(...)         // 9.  Workspace membership; pass roles to also gate by role
 @WorkspaceProtected()                  // 10. Workspace exists
 @UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag; reads request.user, so above JWT
+@FeatureFlagProtected(...)             // 12. Feature flag; reads RequestActorStoreKey, so above JWT
 @RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
 @AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
 @ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route

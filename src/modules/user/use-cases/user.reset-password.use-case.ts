@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContextPublic } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -22,10 +22,11 @@ import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/reque
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserResetPasswordUseCase implements IAppUseCase<
-    [IRequestContextPublic, UserForgotPasswordResetRequestDto],
+    [IRequestContext, IApiKeyContext, UserForgotPasswordResetRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -42,7 +43,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextPublic,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         {
             newPassword,
             token,
@@ -57,7 +59,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
         const twoFactorVerified =
             await this.userTwoFactorService.verifyIfRequired(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 reset.user,
                 {
                     code: code ?? null,
@@ -104,11 +107,17 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     password.passwordCreated
                 );
                 const entries = [
-                    this.activityLogService.recordEffect(context.snapshot, {
-                        action: EnumActivityLogAction.userResetPassword,
-                        userId: reset.userId,
-                        createdBy: reset.userId,
-                    }),
+                    this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userResetPassword,
+                            userId: reset.userId,
+                            createdBy: reset.userId,
+                        }
+                    ),
                 ];
                 if (twoFactorVerified) {
                     await this.userTwoFactorService.recordVerificationInTx(
@@ -117,7 +126,10 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         twoFactorVerified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
-                        context.snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
                         {
                             action: EnumActivityLogAction.userVerifyTwoFactor,
                             userId: reset.userId,

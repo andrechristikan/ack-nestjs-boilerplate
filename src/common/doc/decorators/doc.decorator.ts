@@ -6,7 +6,6 @@ import { z } from 'zod';
 import type {
     IDocOptions,
     IDocResponseEntry,
-    IDocResponseErrorOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ResponseSchema } from '@common/response/dtos/response.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -21,111 +20,113 @@ import {
 } from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
-function DocResponseError(
-    httpStatus: HttpStatus,
-    ...entries: IDocResponseErrorOptions[]
-): MethodDecorator {
-    return (target, propertyKey, descriptor): void => {
-        const incoming: IDocResponseEntry[] = entries.map(entry => ({
-            ...entry,
-            httpStatus,
-        }));
-
-        const method = descriptor.value as object;
-        const stored =
-            (Reflect.getMetadata(DocResponseEntryMetaKey, method) as
-                IDocResponseEntry[] | undefined) ?? [];
-
-        const combined: IDocResponseEntry[] = [...stored];
-        const seen = new Set<string>(
-            stored.map(
-                entry =>
-                    `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`
-            )
-        );
-
-        for (const entry of incoming) {
-            const key = `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`;
-
-            if (seen.has(key)) {
-                continue;
-            }
-
-            seen.add(key);
-            combined.push(entry);
-        }
-
-        Reflect.defineMetadata(DocResponseEntryMetaKey, combined, method);
-
-        const described = new Set<HttpStatus>(
-            stored.map(entry => entry.httpStatus)
-        );
-        const statusEntries = combined.filter(
-            entry => entry.httpStatus === httpStatus
-        );
-
-        const schemas: SchemaObject[] = statusEntries.map(entry => {
-            const baseSchema: z.ZodObject = entry.baseSchema ?? ResponseSchema;
-            const withData: z.ZodObject = entry.schema
-                ? baseSchema.extend({ data: entry.schema })
-                : baseSchema;
-            const documented = withData.extend({
-                message: withData.shape.message.meta({
-                    example: entry.messagePath,
-                }),
-                statusCode: withData.shape.statusCode.meta({
-                    example: entry.statusCode,
-                }),
-            });
-
-            return createSchema(documented, { io: 'output' })
-                .schema as SchemaObject;
-        });
-
-        const schema: SchemaObject =
-            schemas.length > 1
-                ? (createSchema(
-                      statusEntries[0]?.baseSchema ?? ResponseSchema,
-                      { io: 'output' }
-                  ).schema as SchemaObject)
-                : schemas[0]!;
-        const description = described.has(httpStatus)
-            ? ''
-            : httpStatus.toString();
-        const metadataExample = (
-            schema.properties as Record<string, SchemaObject> | undefined
-        )?.metadata?.example;
-        const examples =
-            schemas.length > 1
-                ? Object.fromEntries(
-                      statusEntries.map(entry => [
-                          entry.messagePath,
-                          {
-                              summary: `${entry.statusCode} — ${entry.messagePath}`,
-                              value: {
-                                  statusCode: entry.statusCode,
-                                  message: entry.messagePath,
-                                  metadata: metadataExample,
-                              },
-                          },
-                      ])
-                  )
-                : null;
-
-        ApiResponse({
-            description,
-            status: httpStatus,
-            schema,
-            ...(examples !== null && { examples }),
-        })(target, propertyKey, descriptor);
-    };
-}
-
 /** @public */
 export function DocErrors(...entries: IDocResponseEntry[]): MethodDecorator {
     return applyDecorators(
-        ...entries.map(({ httpStatus, ...entry }) =>
-            DocResponseError(httpStatus, entry)
+        ...entries.map(
+            ({ httpStatus, ...entry }): MethodDecorator =>
+                (target, propertyKey, descriptor): void => {
+                    const incoming: IDocResponseEntry[] = [
+                        { ...entry, httpStatus },
+                    ];
+
+                    const method = descriptor.value as object;
+                    const stored =
+                        (Reflect.getMetadata(
+                            DocResponseEntryMetaKey,
+                            method
+                        ) as IDocResponseEntry[] | undefined) ?? [];
+
+                    const combined: IDocResponseEntry[] = [...stored];
+                    const seen = new Set<string>(
+                        stored.map(
+                            entry =>
+                                `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`
+                        )
+                    );
+
+                    for (const entry of incoming) {
+                        const key = `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`;
+
+                        if (seen.has(key)) {
+                            continue;
+                        }
+
+                        seen.add(key);
+                        combined.push(entry);
+                    }
+
+                    Reflect.defineMetadata(
+                        DocResponseEntryMetaKey,
+                        combined,
+                        method
+                    );
+
+                    const described = new Set<HttpStatus>(
+                        stored.map(entry => entry.httpStatus)
+                    );
+                    const statusEntries = combined.filter(
+                        entry => entry.httpStatus === httpStatus
+                    );
+
+                    const schemas: SchemaObject[] = statusEntries.map(entry => {
+                        const baseSchema: z.ZodObject =
+                            entry.baseSchema ?? ResponseSchema;
+                        const withData: z.ZodObject = entry.schema
+                            ? baseSchema.extend({ data: entry.schema })
+                            : baseSchema;
+                        const documented = withData.extend({
+                            message: withData.shape.message.meta({
+                                example: entry.messagePath,
+                            }),
+                            statusCode: withData.shape.statusCode.meta({
+                                example: entry.statusCode,
+                            }),
+                        });
+
+                        return createSchema(documented, { io: 'output' })
+                            .schema as SchemaObject;
+                    });
+
+                    const schema: SchemaObject =
+                        schemas.length > 1
+                            ? (createSchema(
+                                  statusEntries[0]?.baseSchema ??
+                                      ResponseSchema,
+                                  { io: 'output' }
+                              ).schema as SchemaObject)
+                            : schemas[0]!;
+                    const description = described.has(httpStatus)
+                        ? ''
+                        : httpStatus.toString();
+                    const metadataExample = (
+                        schema.properties as
+                            Record<string, SchemaObject> | undefined
+                    )?.metadata?.example;
+                    const examples =
+                        schemas.length > 1
+                            ? Object.fromEntries(
+                                  statusEntries.map(entry => [
+                                      entry.messagePath,
+                                      {
+                                          summary: `${entry.statusCode} — ${entry.messagePath}`,
+                                          value: {
+                                              statusCode: entry.statusCode,
+                                              message: entry.messagePath,
+                                              metadata: metadataExample,
+                                          },
+                                      },
+                                  ])
+                              )
+                            : null;
+
+                    ApiResponse({
+                        description,
+                        status: httpStatus,
+                        schema,
+                        ...(examples !== null && { examples }),
+                    })(target, propertyKey, descriptor);
+                }
         )
     );
 }

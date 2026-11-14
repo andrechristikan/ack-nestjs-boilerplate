@@ -1,11 +1,11 @@
-import {
-    RequestProjectMemberStoreKey,
-    RequestProjectStoreKey,
-    RequestUserStoreKey,
-} from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import { ProjectContextStoreKey } from '@modules/project/constants/project.constant';
+import type {
+    IProjectContext,
+    IProjectContextPatch,
+} from '@modules/project/interfaces/project.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { Project } from '@generated/prisma-client/client';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -20,15 +20,19 @@ export class ProjectMemberGuard implements CanActivate {
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const user = this.requestStoreService.get<IUser>(RequestUserStoreKey);
-        if (!user) {
+        const userContext =
+            this.requestStoreService.get<IUserContext>(UserContextStoreKey);
+        const user = userContext?.user ?? null;
+        if (user === null) {
             throw new UserGuardMissingException();
         }
 
-        const project = this.requestStoreService.get<Project>(
-            RequestProjectStoreKey
-        );
-        if (!project) {
+        const projectContext =
+            this.requestStoreService.get<IProjectContextPatch>(
+                ProjectContextStoreKey
+            );
+        const project = projectContext?.project ?? null;
+        if (project === null) {
             throw new ProjectGuardMissingException();
         }
 
@@ -38,7 +42,10 @@ export class ProjectMemberGuard implements CanActivate {
                 user.id
             );
 
-        this.requestStoreService.set(RequestProjectMemberStoreKey, member);
+        this.requestStoreService.merge<IProjectContext>(
+            ProjectContextStoreKey,
+            { projectMember: member }
+        );
 
         return true;
     }

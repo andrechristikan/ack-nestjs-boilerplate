@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -31,6 +31,8 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable, Logger } from '@nestjs/common';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class DeviceService {
@@ -239,11 +241,13 @@ export class DeviceService {
     }
 
     async refresh(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         const notificationProvider = this.resolveNotificationProvider(
             data.platform,
             data.notificationToken
@@ -278,9 +282,15 @@ export class DeviceService {
                     );
                 }
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userDeviceRefresh,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userDeviceRefresh,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

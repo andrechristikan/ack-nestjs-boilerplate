@@ -6,11 +6,15 @@ import { AuthSocialAppleGuard } from '@modules/auth/guards/social/auth.social.ap
 import { AuthService } from '@modules/auth/services/auth.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthSocialContextStoreKey } from '@modules/auth/constants/auth.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IAuthSocialContext } from '@modules/auth/interfaces/auth.interface';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('AuthSocialAppleGuard', () => {
     const authService: MockProxy<AuthService> = mock<AuthService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
     let guard: AuthSocialAppleGuard;
 
@@ -20,6 +24,10 @@ describe('AuthSocialAppleGuard', () => {
             providers: [
                 AuthSocialAppleGuard,
                 { provide: AuthService, useValue: authService },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
@@ -28,8 +36,7 @@ describe('AuthSocialAppleGuard', () => {
 
     describe('canActivate', () => {
         it('throws AuthSocialAppleRequiredException when the header is absent', async () => {
-            const request: MockProxy<IRequestApp<IAuthSocialPayload>> =
-                mock<IRequestApp<IAuthSocialPayload>>();
+            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
 
             const rejection = guard.canActivate(
@@ -48,8 +55,7 @@ describe('AuthSocialAppleGuard', () => {
         });
 
         it('throws AuthSocialAppleRequiredException when the header carries no token', async () => {
-            const request: MockProxy<IRequestApp<IAuthSocialPayload>> =
-                mock<IRequestApp<IAuthSocialPayload>>();
+            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { authorization: 'Bearer' };
 
             const rejection = guard.canActivate(
@@ -67,22 +73,24 @@ describe('AuthSocialAppleGuard', () => {
             });
         });
 
-        it('validates the token and attaches the social payload to the request', async () => {
-            const request: MockProxy<IRequestApp<IAuthSocialPayload>> =
-                mock<IRequestApp<IAuthSocialPayload>>();
+        it('validates the token and stores the social context', async () => {
+            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { authorization: 'Bearer id-token' };
-            const payload: IAuthSocialPayload = {
+            const authContext: IAuthSocialContext = {
                 email: 'jane@example.com',
                 emailVerified: true,
             };
-            authService.validateOAuthApple.mockResolvedValue(payload);
+            authService.validateOAuthApple.mockResolvedValue(authContext);
 
             const result = await guard.canActivate(
                 buildHttpExecutionContext(request)
             );
 
             expect(result).toBe(true);
-            expect(request.user).toBe(payload);
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                AuthSocialContextStoreKey,
+                authContext
+            );
             expect(authService.validateOAuthApple).toHaveBeenCalledWith(
                 'id-token'
             );

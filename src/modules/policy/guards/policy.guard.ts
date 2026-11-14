@@ -1,4 +1,5 @@
-import { RequestUserStoreKey } from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -10,7 +11,6 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.guard-missing.exception';
 import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { Policy } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
@@ -29,8 +29,10 @@ export class PolicyGuard implements CanActivate {
         );
         const requiredPolicies = policyMetadata ?? [];
 
-        const user = this.requestStoreService.get<IUser>(RequestUserStoreKey);
-        if (!user) {
+        const userContext =
+            this.requestStoreService.get<IUserContext>(UserContextStoreKey);
+        const user = userContext?.user ?? null;
+        if (user === null) {
             throw new UserGuardMissingException();
         }
 

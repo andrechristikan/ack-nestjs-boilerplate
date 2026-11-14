@@ -7,7 +7,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -19,8 +19,8 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
+    Prisma,
 } from '@generated/prisma-client/client';
-import { Prisma } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
@@ -33,6 +33,10 @@ import type {
     ITermPolicyRef,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('TermPolicyAcceptanceService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
@@ -45,9 +49,7 @@ describe('TermPolicyAcceptanceService', () => {
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const context: IRequestContextUserSnapshot = {
-        actorUserId: 'user-1',
-        workspaceId: null,
+    const requestContext: IRequestContext = {
         requestLog: {
             userAgent: {
                 ua: null,
@@ -60,7 +62,10 @@ describe('TermPolicyAcceptanceService', () => {
             ipAddress: '127.0.0.1',
             geoLocation: null,
         },
+        language: 'en',
     };
+    const apiKeyContext = buildApiKeyContext();
+    const authContext = buildAuthJwtAccessContext('user-1');
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -422,7 +427,9 @@ describe('TermPolicyAcceptanceService', () => {
             );
 
             const promise = service.userAccept(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 EnumTermPolicyType.privacy
             );
 
@@ -448,7 +455,9 @@ describe('TermPolicyAcceptanceService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = service.userAccept(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 EnumTermPolicyType.privacy
             );
 
@@ -478,7 +487,9 @@ describe('TermPolicyAcceptanceService', () => {
             );
 
             const promise = service.userAccept(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 EnumTermPolicyType.privacy
             );
 
@@ -500,7 +511,12 @@ describe('TermPolicyAcceptanceService', () => {
                 fn(tx)
             );
 
-            await service.userAccept(context, EnumTermPolicyType.privacy);
+            await service.userAccept(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                EnumTermPolicyType.privacy
+            );
 
             expect(
                 termPolicyRepository.findLatestPublishedByTypesInTx
@@ -541,10 +557,18 @@ describe('TermPolicyAcceptanceService', () => {
                 fn(tx)
             );
 
-            await service.userAccept(context, EnumTermPolicyType.privacy);
+            await service.userAccept(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                EnumTermPolicyType.privacy
+            );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userAcceptTermPolicy }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
@@ -557,7 +581,9 @@ describe('TermPolicyAcceptanceService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             const promise = service.userAccept(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 EnumTermPolicyType.privacy
             );
 

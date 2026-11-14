@@ -1,8 +1,10 @@
-import { RequestWorkspaceMemberStoreKey } from '@common/request/constants/request.constant';
+import {
+    WorkspaceContextStoreKey,
+    WorkspaceRoleMetaKey,
+} from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceContextPatch } from '@modules/workspace/interfaces/workspace.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { WorkspaceRoleMetaKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
@@ -24,10 +26,12 @@ export class WorkspaceRoleGuard implements CanActivate {
         );
         const allowedRoles = requiredRoles ?? [];
 
-        const member = this.requestStoreService.get<WorkspaceMember>(
-            RequestWorkspaceMemberStoreKey
-        );
-        if (!member) {
+        const workspaceContext =
+            this.requestStoreService.get<IWorkspaceContextPatch>(
+                WorkspaceContextStoreKey
+            );
+        const member = workspaceContext?.workspaceMember ?? null;
+        if (member === null) {
             throw new WorkspaceMemberGuardMissingException();
         }
 

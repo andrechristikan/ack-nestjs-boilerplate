@@ -1,9 +1,10 @@
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    ApiKeyContextStoreKey,
     ApiKeyHeaderName,
-    ApiKeyStoreKey,
 } from '@modules/api-key/constants/api-key.constant';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -21,7 +22,9 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
             (request.headers[ApiKeyHeaderName] as string) ?? '';
         const apiKey = await this.apiKeyService.validateXApiKey(xApiKeyHeader);
 
-        this.requestStoreService.set(ApiKeyStoreKey, apiKey);
+        this.requestStoreService.set<IApiKeyContext>(ApiKeyContextStoreKey, {
+            apiKey,
+        });
 
         return true;
     }

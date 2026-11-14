@@ -8,8 +8,11 @@ import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateUseCase', () => {
@@ -28,9 +31,12 @@ describe('WorkspaceCreateUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: WorkspaceCreateUseCase;
 
@@ -56,11 +62,18 @@ describe('WorkspaceCreateUseCase', () => {
             };
             workspaceService.createWorkspace.mockResolvedValue(workspace);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 {
                     name: 'Acme',
                     description: 'Our team workspace',
@@ -73,10 +86,17 @@ describe('WorkspaceCreateUseCase', () => {
             const body: WorkspaceCreateRequestDto = { name: 'Acme' };
             workspaceService.createWorkspace.mockResolvedValue(workspace);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(workspaceService.createWorkspace).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 { name: 'Acme', description: null, isPublic: null }
             );
         });
@@ -87,7 +107,9 @@ describe('WorkspaceCreateUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, { name: 'Acme' })
+                useCase.execute(requestContext, apiKeyContext, authContext, {
+                    name: 'Acme',
+                })
             ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
         });
     });

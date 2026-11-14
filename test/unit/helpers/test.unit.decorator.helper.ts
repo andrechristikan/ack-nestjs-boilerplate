@@ -1,7 +1,5 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
-import { RequestContextCurrent } from '@common/request/decorators/request.decorator';
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 
@@ -37,15 +35,6 @@ export function getParamDecoratorFactory(
     const [paramMetadata] = Object.values(metadata);
 
     return paramMetadata!.factory;
-}
-
-export function buildContextFactory(
-    scope: EnumRequestContextScope
-): (data: unknown, ctx?: ExecutionContext) => unknown {
-    const target = {};
-    RequestContextCurrent(scope)(target, 'context', 0);
-
-    return getParamDecoratorFactory(target, 'context');
 }
 
 export function getDocResponseEntries(subject: object): IDocResponseEntry[] {

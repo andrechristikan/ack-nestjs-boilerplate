@@ -1,4 +1,3 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import type { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
@@ -6,10 +5,11 @@ import { AnalyticDateService } from '@modules/analytic/services/analytic.date.se
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class AnalyticSummaryUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, AnalyticOptionalDateRangeRequestDto],
+    [IWorkspaceContext, AnalyticOptionalDateRangeRequestDto],
     IResponseReturn<IAnalyticWorkspaceSummary>
 > {
     constructor(
@@ -18,7 +18,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        workspaceContext: IWorkspaceContext,
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
         const range = this.analyticDateService.optionalRange(
@@ -26,7 +26,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
             query.endDate ?? null
         );
         const data = await this.analyticWorkspaceUserService.summary(
-            context.workspace.id,
+            workspaceContext.workspace.id,
             range.startDate,
             range.endDate
         );

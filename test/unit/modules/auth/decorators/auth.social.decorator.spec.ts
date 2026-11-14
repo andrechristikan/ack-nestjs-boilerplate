@@ -1,19 +1,23 @@
 import { HttpStatus } from '@nestjs/common';
-import type { ExecutionContext, Type } from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
-import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
-import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
+import type { MockProxy } from 'vitest-mock-extended';
+import type { ExecutionContext, Type } from '@nestjs/common';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    AuthSocialContext,
+    AuthSocialAppleProtected,
+    AuthSocialGoogleProtected,
+} from '@modules/auth/decorators/auth.social.decorator';
+import { AuthSocialContextStoreKey } from '@modules/auth/constants/auth.constant';
+import {
+    buildAuthSocialContext,
+    expectRequestContextMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import {
-    AuthSocialAppleProtected,
-    AuthSocialEmail,
-    AuthSocialGoogleProtected,
-} from '@modules/auth/decorators/auth.social.decorator';
 import { AuthSocialAppleGuard } from '@modules/auth/guards/social/auth.social.apple.guard';
 import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.google.guard';
 
@@ -120,37 +124,29 @@ describe('auth.social.decorator', () => {
         });
     });
 
-    describe('AuthSocialEmail', () => {
+    describe('AuthSocialContext', () => {
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
         const target = {} as Type<unknown>;
-        AuthSocialEmail()(target, 'email', 0);
-        const factory = getParamDecoratorFactory(target, 'email');
-        const executionContext = mock<ExecutionContext>();
-        const httpArgumentsHost = mock<HttpArgumentsHost>();
+        AuthSocialContext()(target, 'authSocialContext', 0);
+        const factory = getParamDecoratorFactory(target, 'authSocialContext');
 
         beforeEach(() => {
-            executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
-        });
-
-        it('returns the email the social guard put on request.user', () => {
-            httpArgumentsHost.getRequest.mockReturnValue({
-                user: { email: 'jane@example.com' },
-            });
-
-            expect(factory(undefined, executionContext)).toBe(
-                'jane@example.com'
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
             );
         });
 
-        it('throws AuthJwtGuardMissingException when request.user is null', () => {
-            httpArgumentsHost.getRequest.mockReturnValue({ user: null });
-
-            expect(() => factory(undefined, executionContext)).toThrow(
-                AuthJwtGuardMissingException
-            );
+        afterEach(() => {
+            vi.restoreAllMocks();
         });
 
-        it('throws RequestContextMissingException naming request.user.email when the email is missing', () => {
-            httpArgumentsHost.getRequest.mockReturnValue({ user: {} });
+        it('throws RequestContextMissingException naming the key when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
 
             let thrown: unknown;
             try {
@@ -159,7 +155,20 @@ describe('auth.social.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestContextMissingWithKey(thrown, 'request.user.email');
+            expectRequestContextMissingWithKey(
+                thrown,
+                AuthSocialContextStoreKey
+            );
+        });
+
+        it('returns the stored social context', () => {
+            const authContext = buildAuthSocialContext('jane@example.com');
+            clsService.get.mockReturnValue(authContext);
+
+            expect(factory(undefined, executionContext)).toBe(authContext);
+            expect(clsService.get).toHaveBeenCalledWith(
+                AuthSocialContextStoreKey
+            );
         });
     });
 });

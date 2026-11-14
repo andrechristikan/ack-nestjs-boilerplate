@@ -1,4 +1,3 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -13,10 +12,11 @@ import {
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
-    [IRequestContextUser, TermPolicyAcceptedListRequestDto],
+    [IAuthJwtAccessContext, TermPolicyAcceptedListRequestDto],
     IResponsePaginationReturn<ITermPolicyUserAcceptance>
 > {
     constructor(
@@ -26,7 +26,7 @@ export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        authContext: IAuthJwtAccessContext,
         query: TermPolicyAcceptedListRequestDto
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         const { params, storePatch } =
@@ -42,7 +42,7 @@ export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.termPolicyAcceptanceService.getListUserAccepted(
-                context.user.id,
+                authContext.userId,
                 params
             );
         return {

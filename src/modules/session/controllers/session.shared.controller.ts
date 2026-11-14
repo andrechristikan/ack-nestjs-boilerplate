@@ -1,12 +1,11 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -16,8 +15,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
@@ -26,6 +31,8 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.user.session')
 @Controller({
@@ -47,12 +54,11 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: SessionSharedListRequestSchema })
         query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionGetListCursorUseCase.execute(context, query);
+        return this.sessionGetListCursorUseCase.execute(authContext, query);
     }
 
     @Doc({ summary: 'revoke user Session' })
@@ -64,11 +70,17 @@ export class SessionSharedController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeUseCase.execute(context, sessionId);
+        return this.sessionRevokeUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            sessionId
+        );
     }
 }

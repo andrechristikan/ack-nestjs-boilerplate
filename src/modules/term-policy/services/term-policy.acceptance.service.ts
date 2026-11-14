@@ -6,7 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -28,6 +28,8 @@ import {
     EnumTermPolicyType,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyAcceptanceService {
@@ -127,10 +129,12 @@ export class TermPolicyAcceptanceService {
     }
 
     async userAccept(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         type: EnumTermPolicyType
     ): Promise<void> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         try {
             await this.outboxService.withTransaction(async tx => {
                 const [latest] =
@@ -163,9 +167,15 @@ export class TermPolicyAcceptanceService {
                 );
                 await this.outboxService.addInTx(tx, effect);
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userAcceptTermPolicy,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userAcceptTermPolicy,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
         } catch (err: unknown) {

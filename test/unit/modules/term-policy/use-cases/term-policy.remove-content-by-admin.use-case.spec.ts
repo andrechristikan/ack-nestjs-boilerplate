@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumTermPolicyStatus,
@@ -32,9 +35,12 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('admin-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const body: TermPolicyRemoveContentRequestDto = {
         language: EnumMessageLanguage.en,
     };
@@ -64,7 +70,9 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
             );
 
             const result = await useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'term-policy-1',
                 body
             );
@@ -73,7 +81,9 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
             expect(
                 termPolicyContentService.removeContentByAdmin
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'term-policy-1',
                 EnumMessageLanguage.en
             );
@@ -86,7 +96,13 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'term-policy-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1',
+                    body
+                )
             ).rejects.toBe(error);
         });
     });

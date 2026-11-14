@@ -20,7 +20,12 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -110,7 +115,10 @@ describe('PolicyCreateByAdminUseCase', () => {
         role: { ...baseUser.role, id: 'role-actor' },
     };
 
-    const context = buildRequestContextUser(actor);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(actor);
+    const authContext = buildAuthJwtAccessContext(actor.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -153,7 +161,14 @@ describe('PolicyCreateByAdminUseCase', () => {
             const failure = new RoleRankForbiddenException();
             roleService.assertWritableByActor.mockRejectedValue(failure);
 
-            const promise = useCase.execute(context, 'role-1', body);
+            const promise = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                body
+            );
 
             await expect(promise).rejects.toBe(failure);
             expect(roleService.assertWritableByActor).toHaveBeenCalledWith(
@@ -167,7 +182,14 @@ describe('PolicyCreateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.createByAdminInTx.mockResolvedValue(policy);
 
-            const result = await useCase.execute(context, 'role-1', body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                body
+            );
 
             expect(result).toEqual({ data: policy });
             expect(policyService.createByAdminInTx).toHaveBeenCalledWith(
@@ -181,13 +203,23 @@ describe('PolicyCreateByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.createByAdminInTx.mockResolvedValue(policy);
 
-            await useCase.execute(context, 'role-1', body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                body
+            );
 
             expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 policy
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyCreate,
                     metadata: policyMetadata,
@@ -203,7 +235,14 @@ describe('PolicyCreateByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'role-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    body
+                )
             ).rejects.toThrow('boom');
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

@@ -45,7 +45,12 @@ import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.d
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+    buildUserContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -127,7 +132,10 @@ describe('UserDeleteSelfUseCase', () => {
         },
         twoFactor: null,
     };
-    const context = buildRequestContextUser(baseUser);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const authContext = buildAuthJwtAccessContext(baseUser.id);
+    const userContext = buildUserContext(baseUser);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -226,7 +234,13 @@ describe('UserDeleteSelfUseCase', () => {
             });
 
             await expect(
-                useCase.execute(buildRequestContextUser(superAdmin), dto)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    buildAuthJwtAccessContext(superAdmin.id),
+                    buildUserContext(superAdmin),
+                    dto
+                )
             ).rejects.toBe(failure);
 
             expect(userService.assertSelfDeletable).toHaveBeenCalledWith(
@@ -332,10 +346,19 @@ describe('UserDeleteSelfUseCase', () => {
                 }
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({});
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).resolves.toEqual({});
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 'plain-password'
             );
@@ -404,7 +427,10 @@ describe('UserDeleteSelfUseCase', () => {
             ).toHaveBeenCalledWith(tx, 'user-cinder', null);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessions,
                     userId: 'user-cinder',
@@ -413,7 +439,10 @@ describe('UserDeleteSelfUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userDeleteSelf }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -424,13 +453,44 @@ describe('UserDeleteSelfUseCase', () => {
             ]);
         });
 
+        it('reads the actor id from the context actorUserId', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                { ...authContext, userId: 'actor-other' },
+                userContext,
+                dto
+            );
+
+            expect(
+                workspaceService.assertOwnedHasNoOtherMembersInTx
+            ).toHaveBeenCalledWith(tx, 'actor-other');
+            expect(
+                workspaceMemberService.removeByUserInTx
+            ).toHaveBeenCalledWith(tx, 'actor-other');
+            expect(sessionService.revokeAllByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'actor-other',
+                'actor-other',
+                now
+            );
+        });
+
         it('throws WorkspaceOwnerTransferRequiredException and writes nothing when an owned workspace has another member', async () => {
             const failure = new WorkspaceOwnerTransferRequiredException();
             workspaceService.assertOwnedHasNoOtherMembersInTx.mockRejectedValue(
                 failure
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(failure);
 
             expect(
                 workspaceService.softDeleteOwnedByUserInTx
@@ -445,7 +505,15 @@ describe('UserDeleteSelfUseCase', () => {
                 'workspace-one',
             ]);
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({});
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).resolves.toEqual({});
 
             expect(
                 workspaceService.assertOwnedHasNoOtherMembersInTx
@@ -462,7 +530,13 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it("cancels the user's own pending join requests on the same tx", async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(
                 workspaceJoinRequestService.cancelPendingByRequesterInTx
@@ -470,7 +544,13 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it("revokes the pending invites to the user's email on the same tx before the soft delete", async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(
                 workspaceInviteService.revokeAllPendingByEmailInTx
@@ -481,7 +561,13 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(outboxService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
@@ -496,7 +582,15 @@ describe('UserDeleteSelfUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
                 messagePath: 'user.error.notFound',
@@ -511,10 +605,19 @@ describe('UserDeleteSelfUseCase', () => {
                 'workspace-two',
             ]);
 
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceDeleted,
                     userId: 'user-cinder',
@@ -523,7 +626,10 @@ describe('UserDeleteSelfUseCase', () => {
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceDeleted,
                     userId: 'user-cinder',
@@ -542,7 +648,13 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('cascades no workspace when the user owns none', async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(
                 projectService.softDeleteByWorkspaceInTx
@@ -559,10 +671,19 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('passes a null password for an absent one', async () => {
-            await expect(useCase.execute(context, {})).resolves.toEqual({});
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    {}
+                )
+            ).resolves.toEqual({});
 
             expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 null
             );
@@ -574,7 +695,15 @@ describe('UserDeleteSelfUseCase', () => {
                 new UserPasswordNotMatchException()
             );
 
-            await expect(useCase.execute(context, {})).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    {}
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 statusCodeKey:
@@ -592,7 +721,15 @@ describe('UserDeleteSelfUseCase', () => {
             const failure = new UserPasswordExpiredException();
             userAuthService.assertCurrentPassword.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(failure);
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
@@ -604,7 +741,13 @@ describe('UserDeleteSelfUseCase', () => {
                 photo,
             });
 
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(
                 userProfileService.deleteOwnedPhotoInTx
@@ -616,7 +759,15 @@ describe('UserDeleteSelfUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
             });

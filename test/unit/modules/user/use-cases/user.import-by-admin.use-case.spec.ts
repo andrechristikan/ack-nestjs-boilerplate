@@ -19,8 +19,11 @@ import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportByAdminUseCase', () => {
@@ -30,9 +33,12 @@ describe('UserImportByAdminUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserImportByAdminUseCase;
 
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('admin-bramble', 'admin-bramble@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const importEffect: IOutboxEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.importByAdmin,
@@ -44,7 +50,12 @@ describe('UserImportByAdminUseCase', () => {
                     name: null,
                 },
             ],
-            context: context.snapshot,
+            activityLog: {
+                apiKeyId: apiKeyContext.apiKey.id,
+                actorUserId: authContext.userId,
+                workspaceId: null,
+                requestLog: requestContext.requestLog,
+            },
         },
         priority: EnumQueuePriority.medium,
         idempotencyKey: null,
@@ -93,20 +104,34 @@ describe('UserImportByAdminUseCase', () => {
             );
         });
 
-        it('adds one importByAdmin effect holding the rows and the snapshot and answers its outbox id', async () => {
-            await expect(useCase.execute(context, rows)).resolves.toEqual({
+        it('adds one importByAdmin effect holding the rows and the context and answers its outbox id', async () => {
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    rows
+                )
+            ).resolves.toEqual({
                 data: { outboxId: 'outbox-bramble' },
             });
 
             expect(userService.importByAdminEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 imported
             );
             expect(outboxService.add).toHaveBeenCalledWith(importEffect);
         });
 
         it('runs the email, username, and row checks in order before adding the effect', async () => {
-            await useCase.execute(context, rows);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                rows
+            );
 
             expect(userImportService.getExistingEmails).toHaveBeenCalledWith([
                 'bramble@example.com',
@@ -136,7 +161,14 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserImportEmailExistException('bramble@example.com');
             });
 
-            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    rows
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importEmailExist,
                 statusCodeKey:
@@ -156,7 +188,14 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserImportUsernameExistException('bramble2fox');
             });
 
-            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    rows
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
                 messagePath: 'user.error.importUsernameExist',
@@ -170,7 +209,14 @@ describe('UserImportByAdminUseCase', () => {
                 throw new UserUsernameContainBadWordException();
             });
 
-            await expect(useCase.execute(context, rows)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    rows
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameContainBadWord,
             });

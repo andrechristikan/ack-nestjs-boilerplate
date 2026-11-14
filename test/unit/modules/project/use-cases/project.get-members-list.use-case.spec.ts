@@ -7,8 +7,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -19,12 +18,7 @@ import {
     ProjectMemberUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
-import {
-    buildRequestContextProject,
-    buildUser,
-    buildWorkspace,
-    buildWorkspaceMember,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { buildProjectContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectGetMembersListUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
@@ -84,12 +78,7 @@ describe('ProjectGetMembersListUseCase', () => {
         },
     };
 
-    const context = buildRequestContextProject(
-        buildUser('user-1', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        buildWorkspaceMember('user-1'),
-        project
-    );
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -124,7 +113,7 @@ describe('ProjectGetMembersListUseCase', () => {
             };
             projectMemberService.getMembersList.mockResolvedValue(page);
 
-            const result = await useCase.execute(context, query);
+            const result = await useCase.execute(projectContext, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {

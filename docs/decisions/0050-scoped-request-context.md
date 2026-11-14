@@ -1,6 +1,6 @@
 # 0050. Scoped request context, its snapshot to services and jobs
 
-- Status: accepted
+- Status: superseded by 0051
 - Date: 2026-11-13
 
 ## Context

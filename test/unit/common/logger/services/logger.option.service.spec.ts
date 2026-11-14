@@ -8,6 +8,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    RequestActorStoreKey,
     RequestCorrelationIdStoreKey,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
@@ -282,7 +283,7 @@ describe('LoggerOptionService', () => {
     });
 
     describe('createMixin', () => {
-        it('returns the pino level with the request and correlation ids from the store', async () => {
+        it('returns the pino level with the request id, correlation id, and actor from the store', async () => {
             const service = await createLoggerOptionService(
                 baseConfig,
                 loggerDoubles
@@ -292,7 +293,9 @@ describe('LoggerOptionService', () => {
                     ? 'request-id-1'
                     : key === RequestCorrelationIdStoreKey
                       ? 'correlation-id-1'
-                      : null
+                      : key === RequestActorStoreKey
+                        ? 'user-1'
+                        : null
             );
 
             const mixin = service['createMixin']();
@@ -301,9 +304,13 @@ describe('LoggerOptionService', () => {
                 level: 30,
                 requestId: 'request-id-1',
                 correlationId: 'correlation-id-1',
+                userId: 'user-1',
             });
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestIdStoreKey
+            );
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestActorStoreKey
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestCorrelationIdStoreKey
@@ -323,6 +330,7 @@ describe('LoggerOptionService', () => {
                 level: 30,
                 requestId: null,
                 correlationId: null,
+                userId: null,
             });
         });
     });
@@ -376,14 +384,17 @@ describe('LoggerOptionService', () => {
                 level: 30,
                 requestId: 'request-id-1',
                 correlationId: 'correlation-id-1',
+                userId: 'user-1',
                 extra: 'field',
             });
 
             expect(result).toMatchObject({
                 requestId: 'request-id-1',
                 correlationId: 'correlation-id-1',
+                userId: 'user-1',
                 additionalData: { extra: 'field' },
             });
+            expect(result.additionalData).not.toHaveProperty('userId');
             expect(result.additionalData).not.toHaveProperty('requestId');
             expect(result.additionalData).not.toHaveProperty('correlationId');
         });
@@ -403,10 +414,12 @@ describe('LoggerOptionService', () => {
                 level: 30,
                 requestId: null,
                 correlationId: null,
+                userId: null,
             });
 
             expect(result).toHaveProperty('requestId', null);
             expect(result).toHaveProperty('correlationId', null);
+            expect(result).toHaveProperty('userId', null);
             expect(result.additionalData).toBeUndefined();
         });
 

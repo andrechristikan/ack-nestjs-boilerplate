@@ -6,16 +6,22 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserClaimUsernameUseCase } from '@modules/user/use-cases/user.claim-username.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserClaimUsernameUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-sable', 'user-sable@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: UserClaimUsernameUseCase;
 
@@ -32,15 +38,22 @@ describe('UserClaimUsernameUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the username and the snapshot to the domain', async () => {
+        it('delegates the username and the context to the domain', async () => {
             const dto: UserClaimUsernameRequestDto = {
                 username: 'sableGrove' as Lowercase<string>,
             };
 
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                dto
+            );
 
             expect(userProfileService.claimUsername).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 dto.username
             );
         });

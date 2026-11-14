@@ -15,8 +15,11 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumNotificationProcess,
@@ -77,9 +80,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     const resendEffect: IOutboxEffect = {
         queue: EnumNotificationQueue.notification,
@@ -134,7 +140,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 publishedTermPolicy
             );
 
-            const result = await useCase.execute(context, 'term-policy-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1'
+            );
 
             expect(result).toEqual({});
             expect(
@@ -153,7 +164,10 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyResendEmail,
                     metadata,
@@ -174,7 +188,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             outboxService.addMany.mockRejectedValue(cause);
 
             await expect(
-                useCase.execute(context, 'term-policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1'
+                )
             ).rejects.toBe(cause);
         });
 
@@ -183,7 +202,12 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             termPolicyService.getPublishedByAdmin.mockRejectedValue(error);
 
             await expect(
-                useCase.execute(context, 'term-policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1'
+                )
             ).rejects.toBe(error);
             expect(outboxService.addMany).not.toHaveBeenCalled();
         });

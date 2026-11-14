@@ -108,8 +108,9 @@ export class DatabaseExtensionFactory {
     }
 
     build(): IDatabaseExtension {
-        const getActor = (): string | null =>
-            this.requestStoreService.get<string>(RequestActorStoreKey);
+        const getActor = (): string | null => {
+            return this.requestStoreService.get<string>(RequestActorStoreKey);
+        };
         const getNow = (): Date => this.helperDateService.create();
 
         return Prisma.defineExtension({

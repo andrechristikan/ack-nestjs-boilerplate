@@ -41,8 +41,11 @@ import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface'
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -57,9 +60,12 @@ describe('UserProfileService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-persimmon', 'user-persimmon@example.com')
-    ).snapshot;
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
     const configGet = vi.fn<(key: string) => number | string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
@@ -348,7 +354,12 @@ describe('UserProfileService', () => {
         it('heads the uploaded object and stores the headed item', async () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await service.updatePhotoProfile(context, { key: aws.key });
+            await service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
 
             expect(awsS3Service.checkItem).toHaveBeenCalledWith(aws.key, {
                 access: EnumAwsS3Accessibility.public,
@@ -360,7 +371,10 @@ describe('UserProfileService', () => {
                 aws
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userUpdatePhotoProfile }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -372,9 +386,14 @@ describe('UserProfileService', () => {
                 size: photoMaxSizeInBytes + 1,
             });
 
-            const call = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -397,9 +416,14 @@ describe('UserProfileService', () => {
                 new NotFound({ message: 'missing', $metadata: {} })
             );
 
-            const call = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -420,7 +444,12 @@ describe('UserProfileService', () => {
                 photo: previousPhoto,
             });
 
-            await service.updatePhotoProfile(context, { key: aws.key });
+            await service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
@@ -444,9 +473,14 @@ describe('UserProfileService', () => {
         ])(
             'throws UserPhotoKeyInvalidException and heads nothing when the key %s is outside the user photo path',
             async foreignKey => {
-                const call = service.updatePhotoProfile(context, {
-                    key: foreignKey,
-                });
+                const call = service.updatePhotoProfile(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    {
+                        key: foreignKey,
+                    }
+                );
 
                 await expect(call).rejects.toMatchObject({
                     module: 'user',
@@ -469,7 +503,12 @@ describe('UserProfileService', () => {
         it('adds no row when the user has no previous photo', async () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await service.updatePhotoProfile(context, { key: aws.key });
+            await service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
@@ -487,7 +526,12 @@ describe('UserProfileService', () => {
                     photo: { ...previousPhoto, key: foreignKey },
                 });
 
-                await service.updatePhotoProfile(context, { key: aws.key });
+                await service.updatePhotoProfile(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    { key: aws.key }
+                );
 
                 expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             }
@@ -500,7 +544,12 @@ describe('UserProfileService', () => {
                 photo: { ...previousPhoto, key: aws.key },
             });
 
-            await service.updatePhotoProfile(context, { key: aws.key });
+            await service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
@@ -509,9 +558,14 @@ describe('UserProfileService', () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
             userRepository.findOneById.mockResolvedValue(null);
 
-            const rejection = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const rejection = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'user',
@@ -527,9 +581,14 @@ describe('UserProfileService', () => {
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             awsS3Service.checkItem.mockResolvedValue(null);
 
-            const call = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'aws',
@@ -549,9 +608,14 @@ describe('UserProfileService', () => {
             const error = new UserNotFoundException();
             awsS3Service.checkItem.mockRejectedValue(error);
 
-            const call = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -567,9 +631,14 @@ describe('UserProfileService', () => {
             const error = new Error('boom');
             awsS3Service.checkItem.mockRejectedValue(error);
 
-            const call = service.updatePhotoProfile(context, {
-                key: aws.key,
-            });
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    key: aws.key,
+                }
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -614,7 +683,12 @@ describe('UserProfileService', () => {
             );
             awsS3Service.putItem.mockResolvedValue(aws);
 
-            await service.uploadPhotoProfile(context, file);
+            await service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             expect(awsS3Service.putItem).toHaveBeenCalledWith(
                 {
@@ -643,7 +717,12 @@ describe('UserProfileService', () => {
                 photo: previousPhoto,
             });
 
-            await service.uploadPhotoProfile(context, file);
+            await service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
@@ -667,7 +746,12 @@ describe('UserProfileService', () => {
             fileService.createRandomFilename.mockReturnValue(aws.key);
             awsS3Service.putItem.mockResolvedValue(aws);
 
-            await service.uploadPhotoProfile(context, file);
+            await service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
@@ -689,7 +773,12 @@ describe('UserProfileService', () => {
                     photo: { ...previousPhoto, key: foreignKey },
                 });
 
-                await service.uploadPhotoProfile(context, file);
+                await service.uploadPhotoProfile(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    file
+                );
 
                 expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             }
@@ -706,7 +795,12 @@ describe('UserProfileService', () => {
                 photo: { ...previousPhoto, key: aws.key },
             });
 
-            await service.uploadPhotoProfile(context, file);
+            await service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
@@ -719,7 +813,12 @@ describe('UserProfileService', () => {
             awsS3Service.putItem.mockResolvedValue(aws);
             userRepository.findOneById.mockResolvedValue(null);
 
-            const rejection = service.uploadPhotoProfile(context, file);
+            const rejection = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'user',
@@ -741,7 +840,12 @@ describe('UserProfileService', () => {
             );
             awsS3Service.putItem.mockResolvedValue(null);
 
-            const call = service.uploadPhotoProfile(context, file);
+            const call = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'aws',
@@ -763,7 +867,12 @@ describe('UserProfileService', () => {
                 throw error;
             });
 
-            const call = service.uploadPhotoProfile(context, file);
+            const call = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -781,7 +890,12 @@ describe('UserProfileService', () => {
                 throw error;
             });
 
-            const call = service.uploadPhotoProfile(context, file);
+            const call = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -799,7 +913,12 @@ describe('UserProfileService', () => {
                 size: photoMaxSizeInBytes + 1,
             } as IFile;
 
-            const call = service.uploadPhotoProfile(context, oversizedFile);
+            const call = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                oversizedFile
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -833,7 +952,12 @@ describe('UserProfileService', () => {
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
 
-            await service.claimUsername(context, username);
+            await service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                username
+            );
 
             expect(userRepository.claimUsernameInTx).toHaveBeenCalledWith(
                 tx,
@@ -841,7 +965,10 @@ describe('UserProfileService', () => {
                 { username }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userClaimUsername }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -852,7 +979,12 @@ describe('UserProfileService', () => {
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
 
-            const call = service.claimUsername(context, 'bad name');
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'bad name'
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -870,7 +1002,12 @@ describe('UserProfileService', () => {
             userUtil.checkBadWord.mockResolvedValue(true);
             userRepository.existsByUsername.mockResolvedValue(false);
 
-            const call = service.claimUsername(context, 'damn');
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'damn'
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -888,7 +1025,12 @@ describe('UserProfileService', () => {
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(true);
 
-            const call = service.claimUsername(context, username);
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                username
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -909,7 +1051,12 @@ describe('UserProfileService', () => {
             userRepository.claimUsernameInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
-            const call = service.claimUsername(context, username);
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                username
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -929,7 +1076,12 @@ describe('UserProfileService', () => {
             const error = new UserUsernameExistException();
             userRepository.claimUsernameInTx.mockRejectedValue(error);
 
-            const call = service.claimUsername(context, username);
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                username
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -950,7 +1102,12 @@ describe('UserProfileService', () => {
             const error = new Error('boom');
             userRepository.claimUsernameInTx.mockRejectedValue(error);
 
-            const call = service.claimUsername(context, username);
+            const call = service.claimUsername(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                username
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',

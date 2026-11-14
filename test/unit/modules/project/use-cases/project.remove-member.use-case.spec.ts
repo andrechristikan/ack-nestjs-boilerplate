@@ -9,9 +9,14 @@ import type { IProjectMemberActor } from '@modules/project/interfaces/project.in
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { ProjectRemoveMemberUseCase } from '@modules/project/use-cases/project.remove-member.use-case';
 import {
-    buildRequestContextProject,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
+    buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectRemoveMemberUseCase', () => {
@@ -53,12 +58,17 @@ describe('ProjectRemoveMemberUseCase', () => {
         deletedBy: null,
     };
 
-    const context = buildRequestContextProject(
-        buildUser('507f1f77bcf86cd799439033', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        actorMember,
-        project
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439033', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
+        { ...buildWorkspace(), id: project.workspaceId },
+        actorMember
+    );
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -81,7 +91,11 @@ describe('ProjectRemoveMemberUseCase', () => {
     describe('execute', () => {
         it('maps the actor and delegates the removal with the context', async () => {
             const result = await useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext,
                 '507f1f77bcf86cd799439021'
             );
 
@@ -90,7 +104,9 @@ describe('ProjectRemoveMemberUseCase', () => {
                 actorMember
             );
             expect(projectMemberService.removeMember).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 actor,
                 '507f1f77bcf86cd799439021'
@@ -103,7 +119,14 @@ describe('ProjectRemoveMemberUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, '507f1f77bcf86cd799439021')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext,
+                    '507f1f77bcf86cd799439021'
+                )
             ).rejects.toThrow('boom');
         });
     });

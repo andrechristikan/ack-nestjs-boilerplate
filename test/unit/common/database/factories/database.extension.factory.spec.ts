@@ -7,6 +7,7 @@ import { DatabaseExtensionFactory } from '@common/database/factories/database.ex
 import type { IDatabaseData } from '@common/database/interfaces/database.extension.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { extractDatabaseExtension } from '@test/unit/helpers/test.unit.database.helper';
 import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
 
@@ -53,6 +54,9 @@ describe('DatabaseExtensionFactory', () => {
                     createdBy: 'actor-1',
                     updatedBy: 'actor-1',
                 });
+                expect(requestStoreService.get).toHaveBeenCalledWith(
+                    RequestActorStoreKey
+                );
                 expect(query).toHaveBeenCalledWith(args);
                 expect(result).toBe('created');
             });

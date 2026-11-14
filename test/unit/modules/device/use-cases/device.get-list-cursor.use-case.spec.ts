@@ -19,8 +19,9 @@ import {
 } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('DeviceGetListCursorUseCase', () => {
@@ -81,9 +82,10 @@ describe('DeviceGetListCursorUseCase', () => {
         revokedBy: null,
         _count: { sessions: 2 },
     };
-    const context = buildRequestContextUser(
+    const userContext = buildUserContext(
         buildUser('user-1', 'user@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: DeviceGetListCursorUseCase;
 
     beforeEach(async () => {
@@ -122,7 +124,7 @@ describe('DeviceGetListCursorUseCase', () => {
                 data: [withSession],
             });
 
-            const result = await useCase.execute(context, query);
+            const result = await useCase.execute(authContext, query);
 
             expect(result.data).toEqual([
                 {
@@ -140,8 +142,8 @@ describe('DeviceGetListCursorUseCase', () => {
                 storePatch
             );
             expect(deviceService.getListCursor).toHaveBeenCalledWith(
-                context.user.id,
-                context.session.sessionId,
+                authContext.userId,
+                authContext.sessionId,
                 params
             );
         });
@@ -160,7 +162,7 @@ describe('DeviceGetListCursorUseCase', () => {
                 data: [withoutSession],
             });
 
-            const result = await useCase.execute(context, query);
+            const result = await useCase.execute(authContext, query);
 
             expect(result.data).toEqual([
                 {

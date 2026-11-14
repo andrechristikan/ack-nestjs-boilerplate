@@ -17,10 +17,14 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceRevokeInviteUseCase } from '@modules/workspace/use-cases/workspace.revoke-invite.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRevokeInviteUseCase', () => {
@@ -79,8 +83,13 @@ describe('WorkspaceRevokeInviteUseCase', () => {
         deletedAt: null,
         deletedBy: null,
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1')
     );
@@ -128,7 +137,13 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                 callOrder.push('revoke');
             });
 
-            const result = await useCase.execute(context, 'invite-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'invite-1'
+            );
 
             expect(result).toEqual({});
             expect(callOrder).toEqual(['pending', 'lookup', 'revoke']);
@@ -140,7 +155,9 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                 'invitee@example.com'
             );
             expect(workspaceInviteService.revokeInvite).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 'workspace-1',
                 null
@@ -150,10 +167,18 @@ describe('WorkspaceRevokeInviteUseCase', () => {
         it('passes the invitee user id when the invitee has an account', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute(context, 'invite-1');
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'invite-1'
+            );
 
             expect(workspaceInviteService.revokeInvite).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'invite-1',
                 'workspace-1',
                 'user-2'
@@ -166,7 +191,13 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'invite-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'invite-1'
+                )
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
             expect(userService.getOneActiveByEmail).not.toHaveBeenCalled();
         });
@@ -177,7 +208,13 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'invite-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'invite-1'
+                )
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
         });
     });

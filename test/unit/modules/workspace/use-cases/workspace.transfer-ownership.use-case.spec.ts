@@ -9,9 +9,13 @@ import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dt
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceTransferOwnershipUseCase', () => {
@@ -28,11 +32,13 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
-        buildWorkspace(),
-        member
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
 
     let useCase: WorkspaceTransferOwnershipUseCase;
 
@@ -58,13 +64,21 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
                 targetUserId: 'user-2',
             };
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({});
             expect(
                 workspaceMemberService.transferOwnership
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 member,
                 'user-2'
@@ -77,9 +91,15 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, {
-                    targetUserId: 'user-1',
-                })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    {
+                        targetUserId: 'user-1',
+                    }
+                )
             ).rejects.toBeInstanceOf(WorkspaceSelfTransferException);
         });
     });

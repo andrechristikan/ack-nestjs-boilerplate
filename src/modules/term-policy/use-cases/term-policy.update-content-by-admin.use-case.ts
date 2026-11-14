@@ -1,13 +1,21 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyUpdateContentByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string, TermPolicyContentRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        string,
+        TermPolicyContentRequestDto,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -15,12 +23,16 @@ export class TermPolicyUpdateContentByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentService.updateContentByAdmin(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
+            authContext,
             termPolicyId,
             body
         );

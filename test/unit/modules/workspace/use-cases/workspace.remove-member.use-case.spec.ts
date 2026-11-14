@@ -23,9 +23,13 @@ import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/except
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRemoveMemberUseCase', () => {
@@ -56,11 +60,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
-        buildWorkspace(),
-        member
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
 
     let useCase: WorkspaceRemoveMemberUseCase;
 
@@ -145,7 +151,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 callOrder.push('lastWorkspace');
             });
 
-            const result = await useCase.execute(context, 'member-2');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'member-2'
+            );
 
             expect(result).toEqual({});
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -173,7 +185,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             ]);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemoved,
                     userId: 'user-1',
@@ -184,7 +199,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                     userId: 'user-2',
@@ -205,7 +223,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'user-2@example.com'
             );
 
-            await useCase.execute(context, 'member-2');
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'member-2'
+            );
 
             expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
                 tx,
@@ -220,7 +244,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             workspaceMemberService.removeMemberInTx.mockResolvedValue(target);
             userService.getEmailByIdInTx.mockResolvedValue(null);
 
-            const result = await useCase.execute(context, 'member-2');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'member-2'
+            );
 
             expect(result).toEqual({});
             expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
@@ -238,7 +268,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'member-2')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2'
+                )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
@@ -262,7 +298,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'member-2')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2'
+                )
             ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
@@ -275,7 +317,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, 'member-2')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2'
+                )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });

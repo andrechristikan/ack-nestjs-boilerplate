@@ -3,10 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type {
-    IRequestContextPublic,
-    IRequestContextSnapshot,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -34,10 +31,11 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserSignUpUseCase implements IAppUseCase<
-    [IRequestContextPublic, UserSignUpRequestDto],
+    [IRequestContext, IApiKeyContext, UserSignUpRequestDto],
     IResponseReturn<void>
 > {
     private readonly userRoleName: string;
@@ -69,7 +67,8 @@ export class UserSignUpUseCase implements IAppUseCase<
     }
 
     private async createSignUpUser(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         input: IUserCreateWithWorkspaceInput,
         emailVerification: IUserVerificationEmailCreate
     ): Promise<void> {
@@ -151,7 +150,10 @@ export class UserSignUpUseCase implements IAppUseCase<
                         );
                         const entries = stages.map(stage =>
                             this.activityLogService.recordEffect(
-                                snapshot,
+                                requestContext,
+                                apiKeyContext,
+                                null,
+                                null,
                                 stage
                             )
                         );
@@ -187,7 +189,8 @@ export class UserSignUpUseCase implements IAppUseCase<
     }
 
     async execute(
-        context: IRequestContextPublic,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         {
             countryId,
             email,
@@ -235,7 +238,12 @@ export class UserSignUpUseCase implements IAppUseCase<
                 roleId: role.id,
                 workspaceContext,
             });
-        await this.createSignUpUser(context.snapshot, input, emailVerification);
+        await this.createSignUpUser(
+            requestContext,
+            apiKeyContext,
+            input,
+            emailVerification
+        );
 
         return {};
     }

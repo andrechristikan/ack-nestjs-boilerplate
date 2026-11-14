@@ -25,10 +25,9 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetInvitesListUseCase } from '@modules/workspace/use-cases/workspace.get-invites-list.use-case';
 import {
-    buildRequestContextWorkspace,
-    buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetInvitesListUseCase', () => {
@@ -46,8 +45,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             limit: 20,
             orderBy: [],
         };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1')
     );
@@ -100,7 +98,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute(context, query);
+            await useCase.execute(workspaceContext, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceInviteUserListCursorScope,
@@ -133,7 +131,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute(context, {});
+            await useCase.execute(workspaceContext, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

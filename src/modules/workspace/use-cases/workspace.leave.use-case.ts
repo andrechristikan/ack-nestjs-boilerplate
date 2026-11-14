@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -14,10 +14,13 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceLeaveUseCase implements IAppUseCase<
-    [IRequestContextWorkspace],
+    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, IWorkspaceContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -31,10 +34,13 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<void>> {
-        const workspaceId = context.workspace.id;
-        const member = context.workspaceMember;
+        const workspaceId = workspaceContext.workspace.id;
+        const member = workspaceContext.workspaceMember;
         try {
             await this.outboxService.withTransaction(async tx => {
                 await this.workspaceMemberService.leaveWorkspaceInTx(
@@ -57,7 +63,10 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
                     workspaceId
                 );
                 const entry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
                     {
                         action: EnumActivityLogAction.workspaceMemberLeft,
                         userId: member.userId,

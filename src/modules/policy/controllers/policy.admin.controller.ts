@@ -1,10 +1,9 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -13,8 +12,14 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
@@ -30,7 +35,10 @@ import { PolicyUpdateByAdminUseCase } from '@modules/policy/use-cases/policy.upd
 import { PolicyDeleteByAdminUseCase } from '@modules/policy/use-cases/policy.delete-by-admin.use-case';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import {
     Body,
     Controller,
@@ -41,6 +49,9 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.admin.role.policy')
 @Controller({
@@ -89,14 +100,23 @@ export class PolicyAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        return this.policyCreateByAdminUseCase.execute(context, roleId, body);
+        return this.policyCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            roleId,
+            body
+        );
     }
 
     @Doc({ summary: 'update the action list of a role policy' })
@@ -113,8 +133,10 @@ export class PolicyAdminController {
     @ApiKeyProtected()
     @Put('/update/:policyId')
     async update(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Param('policyId', { schema: RequestMongoIdSchema })
@@ -123,7 +145,10 @@ export class PolicyAdminController {
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         return this.policyUpdateByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             roleId,
             policyId,
             body
@@ -144,15 +169,20 @@ export class PolicyAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:policyId')
     async delete(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyDeleteByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             roleId,
             policyId
         );

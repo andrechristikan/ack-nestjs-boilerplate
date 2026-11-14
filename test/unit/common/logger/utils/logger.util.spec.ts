@@ -4,11 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Response } from 'express';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import {
@@ -19,18 +14,6 @@ import {
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
 describe('LoggerUtil', () => {
-    const accessPayload: IAuthJwtAccessTokenPayload = {
-        loginAt: new Date('2026-01-01T00:00:00.000Z'),
-        loginFrom: EnumUserLoginFrom.website,
-        loginWith: EnumUserLoginWith.credential,
-        email: 'jane@example.com',
-        username: 'jane',
-        userId: 'u1',
-        sessionId: 'session-1',
-        deviceOwnershipId: 'device-1',
-        roleId: 'role-1',
-    };
-
     const baseRequest = {
         id: 'req-1',
         method: 'GET',
@@ -43,7 +26,6 @@ describe('LoggerUtil', () => {
         params: {},
         query: {},
         headers: {},
-        user: undefined,
     };
 
     let util: LoggerUtil;
@@ -99,12 +81,12 @@ describe('LoggerUtil', () => {
                 },
                 query: { search: 'x' },
                 params: { id: '1' },
-                user: accessPayload,
             } as unknown as IRequestApp;
 
             const result = util.serializeRequest(request);
 
             expect(result).not.toHaveProperty('id');
+            expect(result).not.toHaveProperty('user');
             expect(result).toMatchObject({
                 method: 'POST',
                 route: '/api/user',
@@ -112,7 +94,6 @@ describe('LoggerUtil', () => {
                 contentType: 'application/json',
                 referer: `https://host.com/api/user/${LoggerRedactedValue}`,
                 ip: '1.2.3.4',
-                user: 'u1',
                 query: { search: 'x' },
                 params: { id: LoggerRedactedValue },
             });
@@ -511,26 +492,6 @@ describe('LoggerUtil', () => {
 
         it('returns an empty object when params is null', () => {
             expect(util['serializeParams'](null)).toEqual({});
-        });
-    });
-
-    describe('serializeUser', () => {
-        it('returns the userId when a user is present', () => {
-            const request = {
-                ...baseRequest,
-                user: accessPayload,
-            } as unknown as IRequestApp;
-
-            expect(util['serializeUser'](request)).toBe('u1');
-        });
-
-        it('returns null when no user is present', () => {
-            const request = {
-                ...baseRequest,
-                user: undefined,
-            } as unknown as IRequestApp;
-
-            expect(util['serializeUser'](request)).toBeNull();
         });
     });
 });

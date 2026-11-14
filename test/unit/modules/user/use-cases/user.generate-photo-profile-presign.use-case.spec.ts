@@ -8,8 +8,9 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import { UserGeneratePhotoProfilePresignUseCase } from '@modules/user/use-cases/user.generate-photo-profile-presign.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGeneratePhotoProfilePresignUseCase', () => {
@@ -31,9 +32,10 @@ describe('UserGeneratePhotoProfilePresignUseCase', () => {
     });
 
     describe('execute', () => {
-        const context = buildRequestContextUser(
+        const userContext = buildUserContext(
             buildUser('user-sable', 'sable@example.com')
         );
+        const authContext = buildAuthJwtAccessContext(userContext.user.id);
         it('wraps the presign in a response envelope', async () => {
             const dto: UserGeneratePhotoProfileRequestDto = {
                 extension: EnumFileExtensionImage.png,
@@ -50,7 +52,7 @@ describe('UserGeneratePhotoProfilePresignUseCase', () => {
                 presign
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(useCase.execute(authContext, dto)).resolves.toEqual({
                 data: presign,
             });
             expect(

@@ -9,6 +9,12 @@ import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/works
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /** @public */
+export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
+
+/** @public */
+export const WorkspaceContextStoreKey = 'WorkspaceContextStoreKey';
+
+/** @public */
 export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
     { deletedAt: null },
     { deletedAt: { isSet: false } },

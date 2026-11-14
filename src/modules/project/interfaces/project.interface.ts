@@ -1,5 +1,17 @@
-import type { Prisma, ProjectMember } from '@generated/prisma-client/client';
+import type {
+    Prisma,
+    Project,
+    ProjectMember,
+} from '@generated/prisma-client/client';
+import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
+
+export interface IProjectContext {
+    project: Project;
+    projectMember: ProjectMember | null;
+}
+
+export type IProjectContextPatch = IRequestStorePatch<IProjectContext>;
 
 export interface IProjectMember extends ProjectMember {
     user: IUserRef;

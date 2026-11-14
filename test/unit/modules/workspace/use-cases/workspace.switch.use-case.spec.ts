@@ -22,8 +22,11 @@ import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSwitchUseCase', () => {
@@ -61,9 +64,12 @@ describe('WorkspaceSwitchUseCase', () => {
         role: EnumWorkspaceMemberRole.member,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: WorkspaceSwitchUseCase;
 
@@ -119,7 +125,12 @@ describe('WorkspaceSwitchUseCase', () => {
                 return 'outbox-1';
             });
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({});
             expect(callOrder).toEqual([
@@ -140,7 +151,10 @@ describe('WorkspaceSwitchUseCase', () => {
                 'workspace-1'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceSwitched,
                     userId: 'user-1',
@@ -156,9 +170,14 @@ describe('WorkspaceSwitchUseCase', () => {
                 new WorkspaceNotFoundException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceNotFoundException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
             expect(
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).not.toHaveBeenCalled();
@@ -173,9 +192,14 @@ describe('WorkspaceSwitchUseCase', () => {
                 new WorkspaceMemberForbiddenException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceMemberForbiddenException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceMemberForbiddenException);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
     });

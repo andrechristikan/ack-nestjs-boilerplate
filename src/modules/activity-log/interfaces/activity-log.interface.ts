@@ -34,6 +34,17 @@ export type IActivityLogInput<A extends EnumActivityLogAction> = {
     workspaceId?: string;
 };
 
+export interface IActivityLogContextPayload {
+    apiKeyId: string;
+    actorUserId: string | null;
+    workspaceId: string | null;
+    requestLog: IRequestLog;
+}
+
+export interface IActivityLogActorPayload extends IActivityLogContextPayload {
+    actorUserId: string;
+}
+
 export interface IActivityLogCreate {
     id: string;
     userId: string;

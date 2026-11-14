@@ -17,6 +17,7 @@ export interface ILoggerMixin {
     level: number;
     requestId: string | null;
     correlationId: string | null;
+    userId: string | null;
 }
 
 export type ILoggerTransport = NonNullable<Options['transport']>;

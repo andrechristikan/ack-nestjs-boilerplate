@@ -8,6 +8,14 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildWorkspace,
+    buildWorkspaceContext,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogUtil', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -59,6 +67,50 @@ describe('ActivityLogUtil', () => {
                 `activityLog.${EnumActivityLogAction.userLogout}`,
                 {}
             );
+        });
+    });
+
+    describe('toPayload', () => {
+        const requestContext = buildRequestContext();
+        const apiKeyContext = buildApiKeyContext();
+
+        it('carries the ids and the request log of the four contexts', () => {
+            const authContext = buildAuthJwtAccessContext('user-1');
+            const workspace = buildWorkspace();
+            const workspaceContext = buildWorkspaceContext(
+                workspace,
+                buildWorkspaceMember('user-1')
+            );
+
+            const result = util.toPayload(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext
+            );
+
+            expect(result).toEqual({
+                apiKeyId: 'api-key-1',
+                actorUserId: 'user-1',
+                workspaceId: workspace.id,
+                requestLog: requestContext.requestLog,
+            });
+        });
+
+        it('carries a null actor and workspace when the route has none', () => {
+            const result = util.toPayload(
+                requestContext,
+                apiKeyContext,
+                null,
+                null
+            );
+
+            expect(result).toEqual({
+                apiKeyId: 'api-key-1',
+                actorUserId: null,
+                workspaceId: null,
+                requestLog: requestContext.requestLog,
+            });
         });
     });
 

@@ -6,7 +6,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -40,6 +40,10 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('DeviceService', () => {
     const deviceOwnershipRepository: MockProxy<DeviceOwnershipRepository> =
@@ -535,9 +539,7 @@ describe('DeviceService', () => {
     });
 
     describe('refresh', () => {
-        const context: IRequestContextUserSnapshot = {
-            actorUserId: 'user-1',
-            workspaceId: null,
+        const requestContext: IRequestContext = {
             requestLog: {
                 userAgent: {
                     ua: null,
@@ -550,7 +552,10 @@ describe('DeviceService', () => {
                 ipAddress: '127.0.0.1',
                 geoLocation: null,
             },
+            language: 'en',
         };
+        const apiKeyContext = buildApiKeyContext();
+        const authContext = buildAuthJwtAccessContext('user-1');
         const entry: IOutboxEffect = {
             queue: EnumActivityLogQueue.activityLog,
             name: EnumActivityLogProcess.createMany,
@@ -573,7 +578,13 @@ describe('DeviceService', () => {
             );
 
             await expect(
-                service.refresh(context, 'device-ownership-1', data)
+                service.refresh(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1',
+                    data
+                )
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -598,10 +609,19 @@ describe('DeviceService', () => {
                 async fn => fn(tx) as never
             );
 
-            await service.refresh(context, 'device-ownership-1', data);
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                data
+            );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userDeviceRefresh }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -615,7 +635,13 @@ describe('DeviceService', () => {
             );
 
             await expect(
-                service.refresh(context, 'device-ownership-1', data)
+                service.refresh(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1',
+                    data
+                )
             ).rejects.toBeInstanceOf(DeviceNotFoundException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -632,7 +658,13 @@ describe('DeviceService', () => {
                 notificationToken: 'token-9',
             };
 
-            await service.refresh(context, 'device-ownership-1', refreshed);
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                refreshed
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -657,10 +689,16 @@ describe('DeviceService', () => {
                 async fn => fn(tx) as never
             );
 
-            await service.refresh(context, 'device-ownership-1', {
-                ...data,
-                notificationToken: 'token-9',
-            });
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                {
+                    ...data,
+                    notificationToken: 'token-9',
+                }
+            );
 
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -674,7 +712,13 @@ describe('DeviceService', () => {
                 async fn => fn(tx) as never
             );
 
-            await service.refresh(context, 'device-ownership-1', data);
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                data
+            );
 
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -688,10 +732,16 @@ describe('DeviceService', () => {
                 async fn => fn(tx) as never
             );
 
-            await service.refresh(context, 'device-ownership-1', {
-                ...data,
-                notificationToken: 'token-9',
-            });
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                {
+                    ...data,
+                    notificationToken: 'token-9',
+                }
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -710,7 +760,13 @@ describe('DeviceService', () => {
                 async fn => fn(tx) as never
             );
 
-            await service.refresh(context, 'device-ownership-1', data);
+            await service.refresh(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                data
+            );
 
             expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
                 tx,
@@ -742,7 +798,13 @@ describe('DeviceService', () => {
             outboxService.withTransaction.mockRejectedValue(notFound);
 
             await expect(
-                service.refresh(context, 'device-ownership-1', data)
+                service.refresh(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1',
+                    data
+                )
             ).rejects.toBe(notFound);
         });
 
@@ -755,7 +817,13 @@ describe('DeviceService', () => {
             );
 
             await expect(
-                service.refresh(context, 'device-ownership-1', data)
+                service.refresh(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1',
+                    data
+                )
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,
                 module: 'device',
@@ -776,7 +844,13 @@ describe('DeviceService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.refresh(context, 'device-ownership-1', data)
+                service.refresh(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1',
+                    data
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 module: 'app',

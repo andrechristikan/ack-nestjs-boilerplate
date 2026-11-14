@@ -15,8 +15,11 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateJoinRequestUseCase', () => {
@@ -54,9 +57,12 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         expiredAt: new Date('2026-01-09T00:00:00.000Z'),
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-2', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: WorkspaceCreateJoinRequestUseCase;
 
@@ -127,7 +133,12 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     return joinRequest;
                 }
             );
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({ data: joinRequest });
             expect(callOrder.slice(0, 2)).toEqual(['gate', 'joinable']);
@@ -148,7 +159,9 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 { workspaceId: 'workspace-1', message: 'Please let me in' },
                 {
                     workspaceName: 'Acme',
@@ -159,14 +172,16 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         });
 
         it('passes null for an omitted message', async () => {
-            await useCase.execute(context, {
+            await useCase.execute(requestContext, apiKeyContext, authContext, {
                 workspaceId: 'workspace-1',
             });
 
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 { workspaceId: 'workspace-1', message: null },
                 expect.objectContaining({ reviewerIds: ['reviewer-1'] })
             );
@@ -175,13 +190,20 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         it('passes an empty reviewer list when the workspace has no reviewer', async () => {
             workspaceMemberService.getReviewerUserIds.mockResolvedValue([]);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({ data: joinRequest });
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 { workspaceId: 'workspace-1', message: 'Please let me in' },
                 expect.objectContaining({ reviewerIds: [] })
             );
@@ -192,9 +214,14 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 new FeatureFlagDisabledException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                FeatureFlagDisabledException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
             ).not.toHaveBeenCalled();
@@ -205,9 +232,14 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 new WorkspaceNotPublicException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceNotPublicException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceNotPublicException);
             expect(userService.getNameById).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.createJoinRequest
@@ -220,7 +252,14 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 failure
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBe(failure);
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).not.toHaveBeenCalled();
@@ -231,9 +270,14 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 new WorkspaceNotPublicException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceNotPublicException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceNotPublicException);
         });
     });
 });

@@ -1,12 +1,27 @@
 import { HttpStatus } from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import type { ExecutionContext, Type } from '@nestjs/common';
+import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import {
+    UserContextStoreKey,
+    UserGuardIsVerifiedMetaKey,
+} from '@modules/user/constants/user.constant';
+import {
+    buildUser,
+    buildUserContext,
+    expectRequestContextMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import type { Type } from '@nestjs/common';
-import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { UserGuard } from '@modules/user/guards/user.guard';
 
 describe('user.decorator', () => {
@@ -82,6 +97,51 @@ describe('user.decorator', () => {
                     messagePath: 'auth.error.jwtGuardMissing',
                 },
             ]);
+        });
+    });
+
+    describe('UserContext', () => {
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+        const target = {} as Type<unknown>;
+        UserContext()(target, 'userContext', 0);
+        const factory = getParamDecoratorFactory(target, 'userContext');
+
+        beforeEach(() => {
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
+            );
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('throws RequestContextMissingException naming the key when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(thrown, UserContextStoreKey);
+        });
+
+        it('returns the stored user context', () => {
+            const userContext = buildUserContext(
+                buildUser('user-1', 'jane@example.com')
+            );
+            clsService.get.mockReturnValue(userContext);
+
+            expect(factory(undefined, executionContext)).toBe(userContext);
+            expect(clsService.get).toHaveBeenCalledWith(UserContextStoreKey);
         });
     });
 });

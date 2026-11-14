@@ -6,7 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
-import type { IRequestContextSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -22,6 +22,7 @@ import { UserVerificationRepository } from '@modules/user/repositories/user.veri
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserVerificationService {
@@ -63,7 +64,8 @@ export class UserVerificationService {
 
     /** Marks the verification used and the user verified, and adds the verifiedEmail effect and the activity entry in the same transaction, dispatched after the commit. */
     async verifyEmail(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         verification: Verification
     ): Promise<void> {
         try {
@@ -91,11 +93,17 @@ export class UserVerificationService {
                         reference: verification.reference,
                     }
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: verification.userId,
-                    createdBy: verification.userId,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    null,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userVerifiedEmail,
+                        userId: verification.userId,
+                        createdBy: verification.userId,
+                    }
+                );
                 await this.outboxService.addManyInTx(tx, [entry, effect]);
             });
 
@@ -164,17 +172,24 @@ export class UserVerificationService {
 
     /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect and the activity entry in the same transaction, dispatched after the commit. */
     async sendEmail(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         userId: string,
         email: string
     ): Promise<void> {
         await this.outboxService.withTransaction(async tx => {
             await this.sendEmailInTx(tx, userId, email);
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userSendVerificationEmail,
-                userId,
-                createdBy: userId,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId,
+                    createdBy: userId,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
         });
     }

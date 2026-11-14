@@ -16,8 +16,11 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserUpdateProfileUseCase } from '@modules/user/use-cases/user.update-profile.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdateProfileUseCase', () => {
@@ -28,9 +31,12 @@ describe('UserUpdateProfileUseCase', () => {
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-sable', 'user-sable@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = { queue: 'activityLog' } as unknown as IOutboxEffect;
 
     let useCase: UserUpdateProfileUseCase;
@@ -62,7 +68,12 @@ describe('UserUpdateProfileUseCase', () => {
         };
 
         it('writes the profile and adds the entry on one transaction', async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                dto
+            );
 
             expect(countryService.getOne).toHaveBeenCalledWith(dto.countryId);
             expect(userProfileService.updateProfileInTx).toHaveBeenCalledWith(
@@ -75,7 +86,10 @@ describe('UserUpdateProfileUseCase', () => {
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userUpdateProfile }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -87,9 +101,9 @@ describe('UserUpdateProfileUseCase', () => {
                 new CountryNotFoundException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toBeInstanceOf(
-                CountryNotFoundException
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext, dto)
+            ).rejects.toBeInstanceOf(CountryNotFoundException);
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -99,13 +113,18 @@ describe('UserUpdateProfileUseCase', () => {
             const cause = new Error('database exploded');
             userProfileService.updateProfileInTx.mockRejectedValue(cause);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(cause);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext, dto)
+            ).rejects.toBe(cause);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('passes a null name through to clear it', async () => {
-            await useCase.execute(context, { ...dto, name: null });
+            await useCase.execute(requestContext, apiKeyContext, authContext, {
+                ...dto,
+                name: null,
+            });
 
             expect(userProfileService.updateProfileInTx).toHaveBeenCalledWith(
                 tx,

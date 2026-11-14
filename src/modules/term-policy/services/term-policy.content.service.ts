@@ -9,7 +9,7 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
@@ -32,6 +32,8 @@ import {
     EnumTermPolicyStatus,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyContentService {
@@ -126,7 +128,9 @@ export class TermPolicyContentService {
     }
 
     async updateContentByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
@@ -181,10 +185,16 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.adminTermPolicyUpdateContent,
-                    metadata,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyUpdateContent,
+                        metadata,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -204,7 +214,9 @@ export class TermPolicyContentService {
     }
 
     async addContentByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<TermPolicy> {
@@ -256,10 +268,16 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.adminTermPolicyAddContent,
-                    metadata,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyAddContent,
+                        metadata,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -279,7 +297,9 @@ export class TermPolicyContentService {
     }
 
     async removeContentByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         language: EnumMessageLanguage
     ): Promise<TermPolicy> {
@@ -313,10 +333,16 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.adminTermPolicyRemoveContent,
-                    metadata,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyRemoveContent,
+                        metadata,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
 

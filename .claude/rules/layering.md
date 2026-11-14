@@ -38,7 +38,7 @@ Lower and higher come from `imports:`: a module is lower than every module whose
 - The kit, the `src/common/` modules `common.module.ts` composes, sits below every feature; anyone injects it.
 - Lint enforces the layer matrix only (`eslint.md`, Config blocks): a new edge adds an import, and `reviewer` checks the module files against this list.
 
-`AwsModule` is imported where used. `src/common/` reaches a feature only through `common.module.ts` and `import type` (`src/common/request/interfaces/request.interface.ts:2`). Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub.
+`AwsModule` is imported where used. `src/common/` and `src/app/` import no module code or type outside `common.module.ts`, `app.module.ts`, outbox callers; other code imports anything. Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub.
 
 ## `@Global()`
 

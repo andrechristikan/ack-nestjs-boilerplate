@@ -1,4 +1,3 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -14,10 +13,11 @@ import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/pr
 import { ProjectService } from '@modules/project/services/project.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, ProjectUserListRequestDto],
+    [IWorkspaceContext, ProjectUserListRequestDto],
     IResponsePaginationReturn<Project>
 > {
     constructor(
@@ -27,7 +27,7 @@ export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        workspaceContext: IWorkspaceContext,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } =
@@ -40,8 +40,8 @@ export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.projectService.getListCursorByMember(
-                context.workspace.id,
-                context.workspaceMember,
+                workspaceContext.workspace.id,
+                workspaceContext.workspaceMember,
                 params
             );
 

@@ -25,8 +25,11 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateDatesByAdminUseCase', () => {
@@ -57,9 +60,12 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-actor', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -102,10 +108,16 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         it('updates the date window on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateDatesByAdminInTx.mockResolvedValue(updated);
 
-            const result = await useCase.execute(context, apiKey.id, {
-                startAt,
-                endAt,
-            });
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id,
+                {
+                    startAt,
+                    endAt,
+                }
+            );
 
             expect(result).toEqual({ data: updated });
             expect(apiKeyService.updateDatesByAdminInTx).toHaveBeenCalledWith(
@@ -119,14 +131,23 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         it('adds the date activity entry from the updated key and the passed context on the same tx', async () => {
             apiKeyService.updateDatesByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(context, apiKey.id, { startAt, endAt });
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id,
+                { startAt, endAt }
+            );
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdateDate,
                     metadata,
@@ -140,7 +161,13 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
             apiKeyService.updateDatesByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(context, apiKey.id, { startAt, endAt })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -154,7 +181,13 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, apiKey.id, { startAt, endAt })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
             ).rejects.toBeInstanceOf(ApiKeyInactiveException);
         });
 
@@ -164,7 +197,13 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, apiKey.id, { startAt, endAt })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

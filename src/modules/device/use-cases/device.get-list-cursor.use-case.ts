@@ -2,7 +2,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
@@ -13,10 +12,11 @@ import {
     DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class DeviceGetListCursorUseCase implements IAppUseCase<
-    [IRequestContextUser, DeviceSharedListRequestDto],
+    [IAuthJwtAccessContext, DeviceSharedListRequestDto],
     IResponsePaginationReturn<IDeviceOwnershipDetail>
 > {
     constructor(
@@ -26,7 +26,7 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        authContext: IAuthJwtAccessContext,
         query: DeviceSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
@@ -40,8 +40,8 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.deviceService.getListCursor(
-            context.user.id,
-            context.session.sessionId,
+            authContext.userId,
+            authContext.sessionId,
             params
         );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(

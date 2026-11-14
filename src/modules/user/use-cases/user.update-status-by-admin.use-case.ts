@@ -6,7 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -19,10 +19,20 @@ import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string, UserUpdateStatusRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        string,
+        UserUpdateStatusRequestDto,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -38,15 +48,20 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         userId: string,
         { status }: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        const user = context.user;
-        this.userService.assertNotSelf(userId, user.id);
+        this.userService.assertNotSelf(userId, authContext.userId);
 
         const target = await this.userService.getOneWithRole(userId);
-        this.roleService.assertActorOutranks(user.role.type, target.role.type);
+        this.roleService.assertActorOutranks(
+            userContext.user.role.type,
+            target.role.type
+        );
         this.userService.assertUnblocked(target);
 
         const now = this.helperDateService.create();
@@ -64,7 +79,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                     revoked = await this.sessionService.revokeActiveByUserInTx(
                         tx,
                         userId,
-                        user.id,
+                        authContext.userId,
                         now
                     );
                 }
@@ -78,41 +93,62 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                         );
                     const revokeAllTargetMetadata =
                         this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                            user.id,
+                            authContext.userId,
                             revoked.length
                         );
                     const revokeAllActorEntry =
-                        this.activityLogService.recordEffect(context.snapshot, {
-                            action: EnumActivityLogAction.adminSessionRevokeAll,
-                            metadata: revokeAllActorMetadata,
-                        });
+                        this.activityLogService.recordEffect(
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
+                            null,
+                            {
+                                action: EnumActivityLogAction.adminSessionRevokeAll,
+                                metadata: revokeAllActorMetadata,
+                            }
+                        );
                     const revokeAllTargetEntry =
-                        this.activityLogService.recordEffect(context.snapshot, {
-                            action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                            userId,
-                            createdBy: user.id,
-                            metadata: revokeAllTargetMetadata,
-                        });
+                        this.activityLogService.recordEffect(
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
+                            null,
+                            {
+                                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                                userId,
+                                createdBy: authContext.userId,
+                                metadata: revokeAllTargetMetadata,
+                            }
+                        );
                     entries.push(revokeAllActorEntry, revokeAllTargetEntry);
                 }
 
                 const actorMetadata =
                     this.userUtil.mapActivityLogActorMetadata(row);
                 const targetMetadata =
-                    this.userUtil.mapActivityLogTargetMetadata(row, user.id);
+                    this.userUtil.mapActivityLogTargetMetadata(
+                        row,
+                        authContext.userId
+                    );
                 const actorEntry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.adminUserUpdateStatus,
                         metadata: actorMetadata,
                     }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action,
                         userId,
-                        createdBy: user.id,
+                        createdBy: authContext.userId,
                         metadata: targetMetadata,
                     }
                 );

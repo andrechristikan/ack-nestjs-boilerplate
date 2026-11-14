@@ -34,8 +34,11 @@ import { ProjectMemberRepository } from '@modules/project/repositories/project.m
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectMemberService', () => {
@@ -47,9 +50,12 @@ describe('ProjectMemberService', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const tx = {} as IDatabaseTransactionClient;
-    const { snapshot } = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('507f1f77bcf86cd799439033', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     let service: ProjectMemberService;
@@ -184,7 +190,7 @@ describe('ProjectMemberService', () => {
     });
 
     describe('validateProjectRoleGuard', () => {
-        it('resolves with no value and no repository lookup when the caller is the workspace owner', async () => {
+        it('resolves with null and no repository lookup when the caller is the workspace owner', async () => {
             projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             const workspaceMember = baseWorkspaceMember;
 
@@ -194,7 +200,7 @@ describe('ProjectMemberService', () => {
                 []
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toBeNull();
             expect(
                 projectMemberRepository.findOneByProjectAndUser
             ).not.toHaveBeenCalled();
@@ -250,12 +256,15 @@ describe('ProjectMemberService', () => {
             });
         });
 
-        it('resolves with no value when the member role is allowed', async () => {
+        it('resolves with the member row when the member role is allowed', async () => {
             projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
+            const member = {
                 ...baseProjectMember,
                 role: EnumProjectMemberRole.admin,
-            });
+            };
+            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
+                member
+            );
             const workspaceMember = baseWorkspaceMember;
 
             const result = await service.validateProjectRoleGuard(
@@ -264,7 +273,24 @@ describe('ProjectMemberService', () => {
                 [EnumProjectMemberRole.admin]
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toBe(member);
+        });
+    });
+
+    describe('assertMember', () => {
+        it('returns the member when one is given', () => {
+            const member = baseProjectMember;
+
+            expect(service.assertMember(member)).toBe(member);
+        });
+
+        it('throws ProjectMemberNotFoundException on null', () => {
+            expect(() => service.assertMember(null)).toThrow(
+                expect.objectContaining({
+                    module: 'project',
+                    statusCode: EnumProjectStatusCodeError.memberNotFound,
+                })
+            );
         });
     });
 
@@ -376,7 +402,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     project,
                     plainActor,
                     targetMember,
@@ -399,7 +427,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     project,
                     bypassActor,
                     null,
@@ -424,7 +454,9 @@ describe('ProjectMemberService', () => {
             };
 
             const rejection = service.assignMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember,
@@ -454,7 +486,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     project,
                     bypassActor,
                     targetMember,
@@ -489,7 +523,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     project,
                     bypassActor,
                     targetMember,
@@ -511,7 +547,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.assignMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     project,
                     bypassActor,
                     targetMember,
@@ -537,7 +575,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.createInTx.mockResolvedValue(created);
 
             const result = await service.assignMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember,
@@ -554,7 +594,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberAssigned,
                     userId: bypassActor.userId,
@@ -565,7 +608,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
@@ -592,7 +638,9 @@ describe('ProjectMemberService', () => {
             );
 
             await service.assignMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember,
@@ -612,7 +660,9 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
 
             const rejection = service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 '507f1f77bcf86cd799439021',
@@ -641,7 +691,9 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 plainActor,
                 targetMember.id,
@@ -675,7 +727,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(false);
 
             const rejection = service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 plainActor,
                 targetMember.id,
@@ -706,7 +760,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
 
             await service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember.id,
@@ -721,7 +777,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdated,
                     userId: bypassActor.userId,
@@ -732,7 +791,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
@@ -758,7 +820,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
 
             await service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 baseProject,
                 bypassActor,
                 targetMember.id,
@@ -787,7 +851,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     baseProject,
                     bypassActor,
                     targetMember.id,
@@ -815,7 +881,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     baseProject,
                     bypassActor,
                     targetMember.id,
@@ -831,7 +899,9 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
 
             const rejection = service.removeMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 '507f1f77bcf86cd799439021'
@@ -859,7 +929,9 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.removeMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember.id
@@ -887,7 +959,9 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.removeMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 plainActor,
                 targetMember.id
@@ -920,7 +994,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             const rejection = service.removeMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 plainActor,
                 targetMember.id
@@ -950,7 +1026,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeMemberInTx.mockResolvedValue(true);
 
             await service.removeMember(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 bypassActor,
                 targetMember.id
@@ -965,7 +1043,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberRemoved,
                     userId: bypassActor.userId,
@@ -976,7 +1057,10 @@ describe('ProjectMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                     userId: targetMember.userId,
@@ -1008,7 +1092,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.removeMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     baseProject,
                     bypassActor,
                     targetMember.id
@@ -1034,7 +1120,9 @@ describe('ProjectMemberService', () => {
 
             await expect(
                 service.removeMember(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     baseProject,
                     bypassActor,
                     targetMember.id
@@ -1048,7 +1136,9 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeByIdInTx.mockResolvedValue(false);
 
             const rejection = service.leaveProject(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 baseProject,
                 baseProjectMember
             );
@@ -1069,7 +1159,13 @@ describe('ProjectMemberService', () => {
             const member = baseProjectMember;
             projectMemberRepository.removeByIdInTx.mockResolvedValue(true);
 
-            await service.leaveProject(snapshot, baseProject, member);
+            await service.leaveProject(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseProject,
+                member
+            );
 
             expect(projectMemberRepository.removeByIdInTx).toHaveBeenCalledWith(
                 tx,
@@ -1079,7 +1175,10 @@ describe('ProjectMemberService', () => {
                 projectMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectMemberLeft,
                     userId: member.userId,
@@ -1099,7 +1198,13 @@ describe('ProjectMemberService', () => {
             );
 
             await expect(
-                service.leaveProject(snapshot, baseProject, baseProjectMember)
+                service.leaveProject(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    baseProjectMember
+                )
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
@@ -1113,7 +1218,13 @@ describe('ProjectMemberService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.leaveProject(snapshot, baseProject, baseProjectMember)
+                service.leaveProject(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    baseProjectMember
+                )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });

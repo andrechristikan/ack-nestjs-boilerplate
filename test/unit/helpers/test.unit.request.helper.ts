@@ -1,7 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import type { ClsServiceManager } from 'nestjs-cls';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { CorsOptions } from 'cors';
@@ -12,14 +11,12 @@ import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.
 import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request.url-version.middleware';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
 import type {
-    IRequestContextProject,
-    IRequestContextPublic,
-    IRequestContextProjectMember,
-    IRequestContextSnapshot,
-    IRequestContextUser,
-    IRequestContextWorkspace,
+    IRequestContext,
+    IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import {
+    EnumApiKeyType,
+    EnumProjectMemberRole,
     EnumRoleType,
     EnumUserGender,
     EnumUserLoginFrom,
@@ -30,12 +27,24 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
+    ApiKey,
     Project,
     ProjectMember,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtRefreshContext,
+    IAuthSocialContext,
+} from '@modules/auth/interfaces/auth.interface';
+import type { IProjectContext } from '@modules/project/interfaces/project.interface';
+import type {
+    IUser,
+    IUserContext,
+} from '@modules/user/interfaces/user.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -52,40 +61,23 @@ export interface IFreshCorsMiddleware {
     captured: { options: CorsOptions };
 }
 
-export function stubRequestStore(
-    clsService: MockProxy<ReturnType<typeof ClsServiceManager.getClsService>>,
-    values: Record<string, unknown>
-): void {
-    clsService.get.mockImplementation(
-        (key?: string | symbol): unknown => values[String(key)] ?? null
-    );
-}
-
-export function buildRequestContext(
-    actorUserId: string | null
-): IRequestContextSnapshot {
+export function buildRequestLog(): IRequestLog {
     return {
-        actorUserId,
-        workspaceId: null,
-        requestLog: {
-            userAgent: {
-                ua: null,
-                browser: null,
-                cpu: null,
-                device: null,
-                engine: null,
-                os: null,
-            },
-            ipAddress: '127.0.0.1',
-            geoLocation: null,
+        userAgent: {
+            ua: null,
+            browser: null,
+            cpu: null,
+            device: null,
+            engine: null,
+            os: null,
         },
+        ipAddress: '127.0.0.1',
+        geoLocation: null,
     };
 }
 
-export function buildRequestContextPublic(): IRequestContextPublic {
-    const snapshot = buildRequestContext(null);
-
-    return { requestLog: snapshot.requestLog, snapshot };
+export function buildRequestContext(): IRequestContext {
+    return { requestLog: buildRequestLog(), language: 'en' };
 }
 
 export function buildUser(id: string, email: string): IUser {
@@ -175,75 +167,106 @@ export function buildWorkspaceMember(
     };
 }
 
-export function buildRequestContextUser(user: IUser): IRequestContextUser {
-    const { requestLog } = buildRequestContext(user.id);
+export function buildApiKey(): ApiKey {
+    const date = new Date('2026-01-01T00:00:00.000Z');
 
     return {
-        requestLog,
-        user,
-        session: {
-            sessionId: 'session-1',
-            deviceOwnershipId: 'device-ownership-1',
-        },
-        snapshot: { actorUserId: user.id, workspaceId: null, requestLog },
+        id: 'api-key-1',
+        type: EnumApiKeyType.default,
+        name: 'key',
+        key: 'key-1',
+        hash: 'hash-1',
+        isActive: true,
+        startAt: null,
+        endAt: null,
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
     };
 }
 
-export function buildRequestContextWorkspace(
-    user: IUser,
+export function buildProject(): Project {
+    const date = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        id: 'project-1',
+        workspaceId: 'workspace-1',
+        name: 'Apollo',
+        slug: 'apollo',
+        description: null,
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+    };
+}
+
+export function buildProjectMember(
+    userId: string,
+    role: EnumProjectMemberRole = EnumProjectMemberRole.member
+): ProjectMember {
+    const date = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        id: 'project-member-1',
+        projectId: 'project-1',
+        userId,
+        role,
+        joinedAt: date,
+        createdAt: date,
+        createdBy: null,
+        updatedAt: date,
+        updatedBy: null,
+    };
+}
+
+export function buildApiKeyContext(
+    apiKey: ApiKey = buildApiKey()
+): IApiKeyContext {
+    return { apiKey };
+}
+
+export function buildAuthJwtAccessContext(
+    userId: string
+): IAuthJwtAccessContext {
+    return {
+        userId,
+        sessionId: 'session-1',
+        deviceOwnershipId: 'device-ownership-1',
+        loginWith: EnumUserLoginWith.credential,
+    };
+}
+
+export function buildAuthJwtRefreshContext(
+    userId: string,
+    token: string
+): IAuthJwtRefreshContext {
+    return { ...buildAuthJwtAccessContext(userId), token };
+}
+
+export function buildAuthSocialContext(email: string): IAuthSocialContext {
+    return { email, emailVerified: true };
+}
+
+export function buildUserContext(user: IUser): IUserContext {
+    return { user };
+}
+
+export function buildWorkspaceContext(
     workspace: Workspace,
     workspaceMember: WorkspaceMember
-): IRequestContextWorkspace {
-    const context = buildRequestContextUser(user);
-
-    return {
-        ...context,
-        workspace,
-        workspaceMember,
-        snapshot: { ...context.snapshot, workspaceId: workspace.id },
-    };
+): IWorkspaceContext {
+    return { workspaceId: workspace.id, workspace, workspaceMember };
 }
 
-export function buildRequestContextProject(
-    user: IUser,
-    workspace: Workspace,
-    workspaceMember: WorkspaceMember,
-    project: Project
-): IRequestContextProject {
-    return {
-        ...buildRequestContextWorkspace(user, workspace, workspaceMember),
-        project,
-    };
-}
-
-export function buildRequestContextProjectMember(
-    user: IUser,
-    workspace: Workspace,
-    workspaceMember: WorkspaceMember,
+export function buildProjectContext(
     project: Project,
-    projectMember: ProjectMember
-): IRequestContextProjectMember {
-    return {
-        ...buildRequestContextProject(
-            user,
-            workspace,
-            workspaceMember,
-            project
-        ),
-        projectMember,
-    };
-}
-
-export function expectRequestContextMissing(thrown: unknown): void {
-    expect(thrown).toMatchObject({
-        module: 'request',
-        statusCode: EnumRequestStatusCodeError.contextMissing,
-        statusCodeKey:
-            EnumRequestStatusCodeError[
-                EnumRequestStatusCodeError.contextMissing
-            ],
-        messagePath: 'request.error.contextMissing',
-    });
+    projectMember: ProjectMember | null
+): IProjectContext {
+    return { project, projectMember };
 }
 
 export function expectRequestContextMissingWithKey(

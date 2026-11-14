@@ -4,11 +4,16 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import { AuthService } from '@modules/auth/services/auth.service';
-import { AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import { AuthJwtRefreshContextStoreKey } from '@modules/auth/constants/auth.constant';
+import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtRefreshContext,
+    IAuthJwtRefreshTokenPayload,
+} from '@modules/auth/interfaces/auth.interface';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -29,8 +34,20 @@ describe('AuthJwtRefreshGuard', () => {
         deviceOwnershipId: 'device-1',
     };
 
+    const authContext: IAuthJwtRefreshContext = {
+        userId: 'user-1',
+        sessionId: 'session-1',
+        deviceOwnershipId: 'device-1',
+        loginWith: EnumUserLoginWith.credential,
+        token: 'refresh-token',
+    };
+    let executionContext: ReturnType<typeof buildHttpExecutionContext>;
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        executionContext = buildHttpExecutionContext({
+            headers: { authorization: 'Bearer refresh-token' },
+        });
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshGuard,
@@ -45,23 +62,54 @@ describe('AuthJwtRefreshGuard', () => {
     });
 
     describe('handleRequest', () => {
-        it('stores the validated payload and returns it', () => {
+        it('returns the context translated from the validated payload and the bearer token', () => {
             authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
-            const result = guard.handleRequest(null, payload, undefined);
-
-            expect(result).toBe(payload);
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                AuthPayloadStoreKey,
-                payload
+            const result = guard.handleRequest(
+                null,
+                payload,
+                undefined,
+                executionContext
             );
+
+            expect(result).toEqual(authContext);
+        });
+
+        it('stores the refresh context and the actor id', () => {
+            authService.validateJwtRefreshGuard.mockReturnValue(payload);
+
+            guard.handleRequest(null, payload, undefined, executionContext);
+
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                AuthJwtRefreshContextStoreKey,
+                authContext
+            );
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                RequestActorStoreKey,
+                'user-1'
+            );
+        });
+
+        it('throws AuthJwtRefreshTokenInvalidException without storing anything when the request carries no bearer token', () => {
+            authService.validateJwtRefreshGuard.mockReturnValue(payload);
+            const bare = buildHttpExecutionContext({ headers: {} });
+
+            let thrown: unknown;
+            try {
+                guard.handleRequest(null, payload, undefined, bare);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBeInstanceOf(AuthJwtRefreshTokenInvalidException);
+            expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
         it('hands the service null for the false user Passport reports on a failed authentication', () => {
             const info = new Error('invalid signature');
             authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
-            guard.handleRequest(null, false, info);
+            guard.handleRequest(null, false, info, executionContext);
 
             expect(authService.validateJwtRefreshGuard).toHaveBeenCalledWith(
                 null,
@@ -73,7 +121,12 @@ describe('AuthJwtRefreshGuard', () => {
         it('hands the service null for an info that is not an Error', () => {
             authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
-            guard.handleRequest(null, payload, 'No auth token');
+            guard.handleRequest(
+                null,
+                payload,
+                'No auth token',
+                executionContext
+            );
 
             expect(authService.validateJwtRefreshGuard).toHaveBeenCalledWith(
                 null,
@@ -90,7 +143,7 @@ describe('AuthJwtRefreshGuard', () => {
 
             let thrown: unknown;
             try {
-                guard.handleRequest(err, payload, undefined);
+                guard.handleRequest(err, payload, undefined, executionContext);
             } catch (error) {
                 thrown = error;
             }

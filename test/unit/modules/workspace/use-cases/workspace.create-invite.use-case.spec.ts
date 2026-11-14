@@ -32,9 +32,13 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
 
@@ -135,8 +139,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
         inviterName: 'Jane Doe',
         inviteeUserId: null,
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('user-1')
     );
@@ -203,7 +212,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 return { invite, tokenData };
             });
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({ data: invite });
             expect(callOrder[0]).toBe('paired');
@@ -234,7 +249,9 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 workspaceInviteService.assertInviteeNotMember
             ).not.toHaveBeenCalled();
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 {
                     email: 'invitee@example.com',
@@ -250,10 +267,18 @@ describe('WorkspaceCreateInviteUseCase', () => {
         it('passes the invitee user id in the notice when the invitee has an account', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 expect.objectContaining({ email: 'invitee@example.com' }),
                 { ...notice, inviteeUserId: 'user-2' }
@@ -263,12 +288,18 @@ describe('WorkspaceCreateInviteUseCase', () => {
         it('looks up the active project and forwards the project fields and expiry when given', async () => {
             projectService.getActiveByIdAndWorkspace.mockResolvedValue(project);
 
-            await useCase.execute(context, {
-                ...body,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
-                expiryDuration: 14,
-            } as WorkspaceInviteCreateRequestDto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                {
+                    ...body,
+                    projectId: 'project-1',
+                    projectRole: EnumProjectMemberRole.member,
+                    expiryDuration: 14,
+                } as WorkspaceInviteCreateRequestDto
+            );
 
             expect(
                 projectService.getActiveByIdAndWorkspace
@@ -282,7 +313,9 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 project
             );
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 expect.objectContaining({ expiryDuration: 14 }),
                 notice
@@ -300,11 +333,17 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 return null;
             });
 
-            await useCase.execute(context, {
-                ...body,
-                projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
-            } as WorkspaceInviteCreateRequestDto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                {
+                    ...body,
+                    projectId: 'project-1',
+                    projectRole: EnumProjectMemberRole.member,
+                } as WorkspaceInviteCreateRequestDto
+            );
 
             expect(workspaceInviteService.assertCreatable).toHaveBeenCalledWith(
                 expect.objectContaining({ projectId: 'project-1' }),
@@ -317,9 +356,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 new WorkspaceInviteRoleRequiredException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceInviteRoleRequiredException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceInviteRoleRequiredException);
             expect(
                 projectService.getActiveByIdAndWorkspace
             ).not.toHaveBeenCalled();
@@ -331,16 +376,28 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 throw new WorkspaceInviteProjectMismatchException();
             });
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceInviteProjectMismatchException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceInviteProjectMismatchException);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
         });
 
         it('checks the existing user is not a member before the write', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(
                 workspaceInviteService.assertInviteeNotMember
@@ -356,9 +413,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 new WorkspaceMemberAlreadyExistsException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceMemberAlreadyExistsException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
         });
 
@@ -366,7 +429,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
             const failure = new Error('read-failed');
             workspaceInviteService.getInviterName.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, body)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBe(failure);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
         });
 
@@ -375,9 +446,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 new WorkspaceInviteDuplicateException()
             );
 
-            await expect(useCase.execute(context, body)).rejects.toBeInstanceOf(
-                WorkspaceInviteDuplicateException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBeInstanceOf(WorkspaceInviteDuplicateException);
         });
     });
 });

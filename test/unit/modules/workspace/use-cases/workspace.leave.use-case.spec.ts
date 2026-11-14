@@ -22,9 +22,13 @@ import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceLeaveUseCase', () => {
@@ -53,11 +57,13 @@ describe('WorkspaceLeaveUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
-        buildWorkspace(),
-        member
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
 
     let useCase: WorkspaceLeaveUseCase;
 
@@ -124,7 +130,12 @@ describe('WorkspaceLeaveUseCase', () => {
                 return 'outbox-1';
             });
 
-            const result = await useCase.execute(context);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext
+            );
 
             expect(result).toEqual({});
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -143,7 +154,10 @@ describe('WorkspaceLeaveUseCase', () => {
                 'workspace-1'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberLeft,
                     userId: 'user-1',
@@ -166,9 +180,14 @@ describe('WorkspaceLeaveUseCase', () => {
                 new WorkspaceLastOwnerException()
             );
 
-            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
-                WorkspaceLastOwnerException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext
+                )
+            ).rejects.toBeInstanceOf(WorkspaceLastOwnerException);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
@@ -188,9 +207,14 @@ describe('WorkspaceLeaveUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
-                WorkspaceMemberNotFoundException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext
+                )
+            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -201,9 +225,14 @@ describe('WorkspaceLeaveUseCase', () => {
             );
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
-                AppUnknownException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext
+                )
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 });

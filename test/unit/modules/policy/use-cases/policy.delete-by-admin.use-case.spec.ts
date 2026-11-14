@@ -20,7 +20,12 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -114,7 +119,10 @@ describe('PolicyDeleteByAdminUseCase', () => {
         role: { ...baseUser.role, id: 'role-actor' },
     };
 
-    const context = buildRequestContextUser(actor);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(actor);
+    const authContext = buildAuthJwtAccessContext(actor.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -153,7 +161,14 @@ describe('PolicyDeleteByAdminUseCase', () => {
             const failure = new RoleRankForbiddenException();
             roleService.assertWritableByActor.mockRejectedValue(failure);
 
-            const promise = useCase.execute(context, 'role-1', 'policy-1');
+            const promise = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1'
+            );
 
             await expect(promise).rejects.toBe(failure);
             expect(roleService.assertWritableByActor).toHaveBeenCalledWith(
@@ -167,7 +182,14 @@ describe('PolicyDeleteByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.deleteByAdminInTx.mockResolvedValue(policy);
 
-            const result = await useCase.execute(context, 'role-1', 'policy-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1'
+            );
 
             expect(result).toEqual({});
             expect(policyService.deleteByAdminInTx).toHaveBeenCalledWith(
@@ -181,13 +203,23 @@ describe('PolicyDeleteByAdminUseCase', () => {
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.deleteByAdminInTx.mockResolvedValue(policy);
 
-            await useCase.execute(context, 'role-1', 'policy-1');
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1'
+            );
 
             expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 policy
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyDelete,
                     metadata: policyMetadata,
@@ -202,7 +234,14 @@ describe('PolicyDeleteByAdminUseCase', () => {
             policyService.deleteByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1'
+                )
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -216,7 +255,14 @@ describe('PolicyDeleteByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1'
+                )
             ).rejects.toBeInstanceOf(PolicyNotFoundException);
         });
 
@@ -227,7 +273,14 @@ describe('PolicyDeleteByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, 'role-1', 'policy-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'role-1',
+                    'policy-1'
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

@@ -33,9 +33,12 @@ import type {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import {
-    buildRequestContextUser,
     buildUser,
     expectRequestContextMissingWithKey,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectService', () => {
@@ -47,9 +50,12 @@ describe('ProjectService', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const tx = {} as IDatabaseTransactionClient;
-    const { snapshot } = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = { queue: 'entry' } as unknown as IOutboxEffect;
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
@@ -285,7 +291,9 @@ describe('ProjectService', () => {
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 '507f1f77bcf86cd799439012',
                 create
             );
@@ -298,7 +306,10 @@ describe('ProjectService', () => {
                 'p-abc123'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectCreated,
                     userId: 'user-1',
@@ -318,7 +329,9 @@ describe('ProjectService', () => {
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 '507f1f77bcf86cd799439012',
                 create
             );
@@ -339,7 +352,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     '507f1f77bcf86cd799439012',
                     create
                 )
@@ -357,7 +372,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     '507f1f77bcf86cd799439012',
                     create
                 )
@@ -373,7 +390,9 @@ describe('ProjectService', () => {
 
             await expect(
                 service.createProject(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     '507f1f77bcf86cd799439012',
                     create
                 )
@@ -396,7 +415,9 @@ describe('ProjectService', () => {
             };
 
             const result = await service.updateProject(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 update
             );
@@ -408,7 +429,10 @@ describe('ProjectService', () => {
                 update
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',
@@ -425,7 +449,13 @@ describe('ProjectService', () => {
             const project = baseProject;
 
             await expect(
-                service.updateProjectSlug(snapshot, project, 'invalid slug!')
+                service.updateProjectSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    project,
+                    'invalid slug!'
+                )
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
@@ -445,7 +475,13 @@ describe('ProjectService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
-                service.updateProjectSlug(snapshot, project, 'p-taken')
+                service.updateProjectSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    project,
+                    'p-taken'
+                )
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
@@ -468,7 +504,13 @@ describe('ProjectService', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
-                service.updateProjectSlug(snapshot, project, 'p-new-slug')
+                service.updateProjectSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    project,
+                    'p-new-slug'
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: otherError,
@@ -481,7 +523,9 @@ describe('ProjectService', () => {
             projectRepository.updateSlugInTx.mockResolvedValue(updated);
 
             const result = await service.updateProjectSlug(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 'p-new-slug'
             );
@@ -493,7 +537,10 @@ describe('ProjectService', () => {
                 'p-new-slug'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',

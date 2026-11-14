@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -15,10 +15,20 @@ import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class RoleUpdateByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string, RoleUpdateRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        string,
+        RoleUpdateRequestDto,
+    ],
     IResponseReturn<RoleDto>
 > {
     constructor(
@@ -31,7 +41,10 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
@@ -46,8 +59,8 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                             type: body.type,
                         },
                         {
-                            roleId: context.user.roleId,
-                            roleType: context.user.role.type,
+                            roleId: userContext.user.roleId,
+                            roleType: userContext.user.role.type,
                         }
                     );
 
@@ -57,7 +70,10 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                         timestamp
                     );
                     const effect = this.activityLogService.recordEffect(
-                        context.snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.adminRoleUpdate,
                             metadata,

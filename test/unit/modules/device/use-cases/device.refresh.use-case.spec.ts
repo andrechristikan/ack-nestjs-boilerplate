@@ -4,8 +4,11 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
@@ -14,9 +17,12 @@ import { DeviceRefreshUseCase } from '@modules/device/use-cases/device.refresh.u
 
 describe('DeviceRefreshUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const body: DeviceRefreshRequestDto = {
         name: 'iPhone 13',
         platform: EnumDevicePlatform.ios,
@@ -41,12 +47,19 @@ describe('DeviceRefreshUseCase', () => {
         it('forwards the refresh body and the request context to the domain and returns an empty response', async () => {
             deviceService.refresh.mockResolvedValue();
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({});
             expect(deviceService.refresh).toHaveBeenCalledWith(
-                context.snapshot,
-                context.session.deviceOwnershipId,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                authContext.deviceOwnershipId,
                 body
             );
         });
@@ -55,7 +68,14 @@ describe('DeviceRefreshUseCase', () => {
             const notFound = new DeviceNotFoundException();
             deviceService.refresh.mockRejectedValue(notFound);
 
-            await expect(useCase.execute(context, body)).rejects.toBe(notFound);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBe(notFound);
         });
     });
 });

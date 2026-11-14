@@ -25,8 +25,11 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUpdateStatusByAdminUseCase', () => {
@@ -57,9 +60,12 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-actor', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -100,9 +106,15 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         it('updates the status on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateStatusByAdminInTx.mockResolvedValue(updated);
 
-            const result = await useCase.execute(context, apiKey.id, {
-                isActive: false,
-            });
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id,
+                {
+                    isActive: false,
+                }
+            );
 
             expect(result).toEqual({ data: updated });
             expect(apiKeyService.updateStatusByAdminInTx).toHaveBeenCalledWith(
@@ -115,14 +127,23 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
         it('adds the status activity entry from the updated key and the passed context on the same tx', async () => {
             apiKeyService.updateStatusByAdminInTx.mockResolvedValue(updated);
 
-            await useCase.execute(context, apiKey.id, { isActive: false });
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                apiKey.id,
+                { isActive: false }
+            );
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 updated,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdateStatus,
                     metadata,
@@ -136,7 +157,13 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             apiKeyService.updateStatusByAdminInTx.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(context, apiKey.id, { isActive: false })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { isActive: false }
+                )
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -150,7 +177,13 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, apiKey.id, { isActive: false })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { isActive: false }
+                )
             ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
         });
 
@@ -160,7 +193,13 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, apiKey.id, { isActive: false })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { isActive: false }
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

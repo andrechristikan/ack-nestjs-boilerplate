@@ -1,4 +1,3 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -13,13 +12,16 @@ import {
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceContext,
+    IWorkspaceInviteList,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, WorkspaceInviteListRequestDto],
+    [IWorkspaceContext, WorkspaceInviteListRequestDto],
     IResponsePaginationReturn<IWorkspaceInviteList>
 > {
     constructor(
@@ -30,7 +32,7 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        workspaceContext: IWorkspaceContext,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         const { params, storePatch } =
@@ -57,7 +59,7 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceInviteService.getInvitesList(
-                context.workspace.id,
+                workspaceContext.workspace.id,
                 params,
                 status?.where
             );

@@ -14,8 +14,9 @@ import {
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogGetListCursorByUserUseCase', () => {
@@ -41,9 +42,10 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
         data: [],
     };
 
-    const context = buildRequestContextUser(
+    const userContext = buildUserContext(
         buildUser('user-1', 'user@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: ActivityLogGetListCursorByUserUseCase;
 
     beforeEach(async () => {
@@ -74,7 +76,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute(context, cursorQuery);
+            const result = await useCase.execute(authContext, cursorQuery);
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(

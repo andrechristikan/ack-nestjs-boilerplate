@@ -1,8 +1,5 @@
-import {
-    RequestUserStoreKey,
-    RequestProjectStoreKey,
-    RequestProjectMemberStoreKey,
-} from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import { ProjectContextStoreKey } from '@modules/project/constants/project.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -26,6 +23,7 @@ import { EnumProjectStatusCodeError } from '@modules/project/enums/project.statu
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectMemberGuard', () => {
     const user: IUser = {
@@ -127,15 +125,13 @@ describe('ProjectMemberGuard', () => {
                 deletedAt: null,
                 deletedBy: null,
             };
-            requestStoreService.get.mockImplementation(key => {
-                if (key === RequestProjectStoreKey) {
-                    return project;
-                } else if (key === RequestUserStoreKey) {
-                    return user;
-                }
-
-                return null;
-            });
+            const store: Record<string, unknown> = {
+                [UserContextStoreKey]: buildUserContext(user),
+                [ProjectContextStoreKey]: { project },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
             projectMemberService.validateProjectMemberGuard.mockResolvedValue(
                 member
             );
@@ -149,13 +145,13 @@ describe('ProjectMemberGuard', () => {
                 '507f1f77bcf86cd799439012',
                 '507f1f77bcf86cd799439013'
             );
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestProjectMemberStoreKey,
-                member
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                ProjectContextStoreKey,
+                { projectMember: member }
             );
         });
 
-        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
             requestStoreService.get.mockReturnValue(null);
 
             await expect(
@@ -175,14 +171,10 @@ describe('ProjectMemberGuard', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws ProjectGuardMissingException before the domain call when the project store is empty', async () => {
-            requestStoreService.get.mockImplementation(key => {
-                if (key === RequestUserStoreKey) {
-                    return user;
-                }
-
-                return null;
-            });
+        it('throws ProjectGuardMissingException before the domain call when the store holds no project', async () => {
+            requestStoreService.get.mockImplementation(key =>
+                key === UserContextStoreKey ? buildUserContext(user) : null
+            );
 
             await expect(
                 guard.canActivate(executionContext)

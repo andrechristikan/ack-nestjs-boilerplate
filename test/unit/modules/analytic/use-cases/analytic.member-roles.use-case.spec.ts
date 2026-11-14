@@ -6,15 +6,13 @@ import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analyti
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
-    buildRequestContextWorkspace,
-    buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticMemberRolesUseCase', () => {
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
@@ -45,7 +43,7 @@ describe('AnalyticMemberRolesUseCase', () => {
                 { role: 'admin', count: 2 },
             ]);
 
-            const result = await useCase.execute(context);
+            const result = await useCase.execute(workspaceContext);
 
             expect(result).toEqual({
                 data: { roles: [{ role: 'admin', count: 2 }] },

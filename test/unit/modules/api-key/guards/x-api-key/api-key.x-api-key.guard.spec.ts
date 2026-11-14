@@ -5,11 +5,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    ApiKeyContextStoreKey,
     ApiKeyHeaderName,
-    ApiKeyStoreKey,
 } from '@modules/api-key/constants/api-key.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
@@ -55,7 +55,7 @@ describe('ApiKeyXApiKeyGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('validates the header value and stores the resolved api key', async () => {
+        it('validates the header value and stores the resolved api key as the api key context', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
@@ -73,8 +73,8 @@ describe('ApiKeyXApiKeyGuard', () => {
                 'local_abc123:secret-1'
             );
             expect(requestStoreService.set).toHaveBeenCalledWith(
-                ApiKeyStoreKey,
-                apiKey
+                ApiKeyContextStoreKey,
+                { apiKey }
             );
         });
 

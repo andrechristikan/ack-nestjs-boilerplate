@@ -2,7 +2,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -13,10 +12,11 @@ import {
     SessionSharedListCursorScope,
 } from '@modules/session/constants/session.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class SessionGetListCursorUseCase implements IAppUseCase<
-    [IRequestContextUser, SessionSharedListRequestDto],
+    [IAuthJwtAccessContext, SessionSharedListRequestDto],
     IResponsePaginationReturn<ISessionList>
 > {
     constructor(
@@ -26,7 +26,7 @@ export class SessionGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        authContext: IAuthJwtAccessContext,
         query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
@@ -37,7 +37,7 @@ export class SessionGetListCursorUseCase implements IAppUseCase<
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.sessionService.getListCursor(
-            context.user.id,
+            authContext.userId,
             params
         );
         return {

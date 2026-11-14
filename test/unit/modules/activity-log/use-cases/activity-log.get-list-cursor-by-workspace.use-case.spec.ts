@@ -6,10 +6,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -43,8 +44,8 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
     };
 
     const user = buildUser('user-1', 'user@example.com');
-    const context = buildRequestContextWorkspace(
-        user,
+    const authContext = buildAuthJwtAccessContext(user.id);
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember(user.id)
     );
@@ -78,7 +79,11 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
                 cursorPage
             );
 
-            const result = await useCase.execute(context, cursorQuery);
+            const result = await useCase.execute(
+                authContext,
+                workspaceContext,
+                cursorQuery
+            );
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
@@ -91,8 +96,8 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
             expect(
                 activityLogService.getListCursorByWorkspace
             ).toHaveBeenCalledWith(
-                context.workspace.id,
-                context.user.id,
+                workspaceContext.workspace.id,
+                authContext.userId,
                 params
             );
         });

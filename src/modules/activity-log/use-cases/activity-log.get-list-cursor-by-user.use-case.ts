@@ -1,4 +1,3 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -13,10 +12,11 @@ import {
     ActivityLogSharedUserListCursorScope,
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
-    [IRequestContextUser, ActivityLogSharedListRequestDto],
+    [IAuthJwtAccessContext, ActivityLogSharedListRequestDto],
     IResponsePaginationReturn<IActivityLog>
 > {
     constructor(
@@ -26,7 +26,7 @@ export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        authContext: IAuthJwtAccessContext,
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
@@ -41,7 +41,7 @@ export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.activityLogService.getListCursorByUser(
-                context.user.id,
+                authContext.userId,
                 params
             );
 

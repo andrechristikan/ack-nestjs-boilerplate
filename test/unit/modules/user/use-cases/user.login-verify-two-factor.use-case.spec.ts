@@ -48,7 +48,10 @@ import type {
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
 import { UserLoginVerifyTwoFactorUseCase } from '@modules/user/use-cases/user.login-verify-two-factor.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserLoginVerifyTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
@@ -64,7 +67,8 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
     let useCase: UserLoginVerifyTwoFactorUseCase;
     let setupUseCase: UserLoginSetupTwoFactorUseCase;
 
@@ -153,7 +157,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         twoFactor: null,
     };
     const enabledTwoFactor = { ...twoFactor, enabled: true };
-    const twoFactorUser: IUserTwoFactorEnabled = {
+    const twoFactorUser: IUser & IUserTwoFactorEnabled = {
         ...baseUser,
         twoFactor: enabledTwoFactor,
     };
@@ -260,7 +264,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 }
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: tokens,
             });
 
@@ -272,7 +278,11 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             ).toHaveBeenCalledWith('user-bramble');
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(context.snapshot, twoFactorUser);
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                twoFactorUser
+            );
             expect(userTwoFactorService.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
@@ -285,7 +295,10 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 userTwoFactorService.recordVerificationInTx
             ).toHaveBeenCalledWith(tx, twoFactorUser, verified);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                     userId: 'user-bramble',
@@ -294,7 +307,8 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 twoFactorUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -323,7 +337,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 'backup-one',
             ]);
 
-            await setupUseCase.execute(context, {
+            await setupUseCase.execute(requestContext, apiKeyContext, {
                 challengeToken: 'challenge-token',
                 code: '123456',
             });
@@ -332,7 +346,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 authTwoFactorService.consumeChallenge
             ).not.toHaveBeenCalled();
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: tokens,
             });
 
@@ -343,7 +359,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         });
 
         it('forwards the backup code', async () => {
-            await useCase.execute(context, {
+            await useCase.execute(requestContext, apiKeyContext, {
                 challengeToken: 'challenge-token',
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 backupCode: 'backup-code',
@@ -364,7 +380,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 new AuthTwoFactorChallengeInvalidException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
             });
@@ -378,7 +396,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 new AuthTwoFactorAttemptMaxException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
                 statusCodeKey:
@@ -401,7 +421,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             const failure = new Error('invalid code');
             userTwoFactorService.verify.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(
                 userTwoFactorService.recordVerificationInTx
@@ -417,9 +439,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 new Error('invalid code')
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toThrow(
-                'invalid code'
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toThrow('invalid code');
 
             expect(
                 authTwoFactorService.consumeChallenge
@@ -430,7 +452,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             const failure = new Error('redis down');
             authTwoFactorService.consumeChallenge.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(
                 userTwoFactorService.recordVerificationInTx
@@ -446,7 +470,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 failure
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
@@ -463,7 +489,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
                 messagePath: 'auth.error.twoFactorInvalid',
@@ -483,7 +511,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: failure,
@@ -499,13 +529,16 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             const failure = new Error('tx failed');
             userAuthService.createTokenAndSession.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
         });
     });
 
     describe('startSession', () => {
         const startArgs = [
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             twoFactorUser,
             deviceIdentity,
             EnumUserLoginFrom.website,
@@ -517,7 +550,8 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             await useCase['startSession'](...startArgs);
 
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 twoFactorUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,

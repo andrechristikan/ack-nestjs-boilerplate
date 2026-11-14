@@ -264,4 +264,38 @@ export class SentryUtil {
 
         return log;
     }
+
+    isExcludedUrl(url: string | null, patterns: string[]): boolean {
+        if (!url || !patterns.length) {
+            return false;
+        }
+
+        let pathname: string;
+        try {
+            pathname = new URL(url).pathname;
+        } catch {
+            pathname = url.split('?')[0]!.split('#')[0]!;
+        }
+
+        const normalizedPath = pathname.toLowerCase();
+
+        return patterns.some(pattern => {
+            if (!pattern) {
+                return false;
+            }
+
+            const normalizedPattern = pattern.toLowerCase();
+
+            if (normalizedPath === normalizedPattern) {
+                return true;
+            }
+
+            if (normalizedPattern.endsWith('*')) {
+                const base = normalizedPattern.slice(0, -1);
+                return base ? normalizedPath.startsWith(base) : true;
+            }
+
+            return false;
+        });
+    }
 }

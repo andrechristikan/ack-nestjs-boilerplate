@@ -1,4 +1,4 @@
-import { RequestUserStoreKey } from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -21,6 +21,7 @@ import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('TermPolicyGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
@@ -105,7 +106,7 @@ describe('TermPolicyGuard', () => {
         it('reads the required term policies and the user, then delegates the user id to the domain', async () => {
             const requiredTermPolicies = [EnumTermPolicyType.privacy];
             reflector.get.mockReturnValue(requiredTermPolicies);
-            requestStoreService.get.mockReturnValue(user);
+            requestStoreService.get.mockReturnValue(buildUserContext(user));
             termPolicyAcceptanceService.validateTermPolicyGuard.mockResolvedValue(
                 undefined
             );
@@ -118,14 +119,14 @@ describe('TermPolicyGuard', () => {
                 executionContext.getHandler()
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestUserStoreKey
+                UserContextStoreKey
             );
             expect(
                 termPolicyAcceptanceService.validateTermPolicyGuard
             ).toHaveBeenCalledWith(user.id, requiredTermPolicies);
         });
 
-        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(null);
 
@@ -148,7 +149,7 @@ describe('TermPolicyGuard', () => {
 
         it('propagates the exception the domain throws for a missing acceptance', async () => {
             reflector.get.mockReturnValue([]);
-            requestStoreService.get.mockReturnValue(user);
+            requestStoreService.get.mockReturnValue(buildUserContext(user));
             const rejection = new Error('required-invalid');
             termPolicyAcceptanceService.validateTermPolicyGuard.mockRejectedValue(
                 rejection

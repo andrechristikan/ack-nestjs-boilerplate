@@ -19,12 +19,12 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
 import {
+    EnumNotificationKind,
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
+import type { INotificationSnapshot } from '@modules/notification/interfaces/notification.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -36,7 +36,12 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdatePasswordByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -107,7 +112,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         id: 'admin-linden',
         role: { ...user.role, type: EnumRoleType.admin },
     };
-    const context = buildRequestContextUser(admin);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(admin);
+    const authContext = buildAuthJwtAccessContext(admin.id);
     const password: IAuthPassword = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
@@ -144,10 +152,17 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogService.recordEffect.mockImplementation((_context, input) =>
-            input.action === EnumActivityLogAction.adminUserUpdatePassword
-                ? adminEntry
-                : targetEntry
+        activityLogService.recordEffect.mockImplementation(
+            (
+                _requestContext,
+                _apiKeyContext,
+                _authContext,
+                _workspaceContext,
+                input
+            ) =>
+                input.action === EnumActivityLogAction.adminUserUpdatePassword
+                    ? adminEntry
+                    : targetEntry
         );
         helperDateService.create.mockReturnValue(now);
         helperDateService.formatToIso
@@ -242,7 +257,13 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute(context, 'user-linden')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-linden'
+                )
             ).resolves.toEqual({});
 
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
@@ -304,7 +325,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminUserUpdatePassword,
                     metadata: { targetUserId: 'user-linden' },
@@ -312,7 +336,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                     userId: 'user-linden',
@@ -345,11 +372,50 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 return updatedRow;
             });
 
-            await useCase.execute(context, 'user-linden');
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-linden'
+            );
 
             expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
                 sessionService.revokeActiveByUserInTx
+            );
+        });
+
+        it('reads the actor id from the context actorUserId', async () => {
+            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                { ...authContext, userId: 'admin-other' },
+                userContext,
+                'user-linden'
+            );
+
+            expect(userService.assertNotSelf).toHaveBeenCalledWith(
+                'user-linden',
+                'admin-other'
+            );
+            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                password,
+                'admin-other'
+            );
+            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'admin-other',
+                password.passwordCreated
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.temporaryPasswordByAdmin,
+                expect.objectContaining({ proceedBy: 'admin-other' })
             );
         });
 
@@ -359,7 +425,13 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             });
 
             await expect(
-                useCase.execute(context, 'user-linden')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-linden'
+                )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -371,7 +443,13 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'user-linden')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-linden'
+                )
             ).rejects.toThrow('read');
             expect(
                 sessionService.revokeActiveByUserInTx
@@ -383,9 +461,15 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
 
-            await expect(useCase.execute(context, 'user-linden')).rejects.toBe(
-                cause
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-linden'
+                )
+            ).rejects.toBe(cause);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });

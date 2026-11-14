@@ -1,12 +1,11 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -16,8 +15,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
@@ -26,7 +31,10 @@ import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/s
 import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
 import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -34,6 +42,9 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.admin.user.session')
 @Controller({
@@ -95,15 +106,20 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
     async revoke(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string
     ): Promise<IResponseReturn<void>> {
         return this.sessionRevokeByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             userId,
             sessionId
         );
@@ -129,11 +145,19 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Delete('/revoke-all')
     async revokeAll(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionRevokeAllByAdminUseCase.execute(context, userId);
+        return this.sessionRevokeAllByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            userId
+        );
     }
 }

@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
@@ -33,9 +36,12 @@ describe('TermPolicyCreateByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('admin-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const body: TermPolicyCreateRequestDto = {
         type: EnumTermPolicyType.privacy,
         version: 1,
@@ -63,11 +69,18 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockResolvedValue(termPolicy);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({ data: termPolicy });
             expect(termPolicyService.createByAdmin).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'term-policy-1',
                 body
             );
@@ -78,7 +91,14 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             databaseUtil.createId.mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockRejectedValue(error);
 
-            await expect(useCase.execute(context, body)).rejects.toBe(error);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    body
+                )
+            ).rejects.toBe(error);
         });
     });
 });

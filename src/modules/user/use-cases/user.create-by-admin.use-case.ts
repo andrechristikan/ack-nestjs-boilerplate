@@ -5,10 +5,7 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type {
-    IRequestContextSnapshot,
-    IRequestContextUser,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -21,6 +18,7 @@ import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type {
     IUser,
+    IUserContext,
     IUserCreateWithWorkspaceInput,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -30,10 +28,18 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserCreateByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, UserCreateRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        UserCreateRequestDto,
+    ],
     IResponseReturn<DatabaseIdResponseDto>
 > {
     private readonly createTimeoutInMs: number;
@@ -60,7 +66,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     }
 
     private async createAdminUsers(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
         timeoutInMs: number
@@ -100,7 +107,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
                             return stages.map(stage =>
                                 this.activityLogService.recordEffect(
-                                    snapshot,
+                                    requestContext,
+                                    apiKeyContext,
+                                    null,
+                                    null,
                                     stage
                                 )
                             );
@@ -136,13 +146,18 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     }
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         { countryId, email, name, roleId, username }: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const actor = context.user;
         // Sequential by design: gate before the work it guards
         const role = await this.roleService.getById(roleId);
-        this.roleService.assertActorOutranks(actor.role.type, role.type);
+        this.roleService.assertActorOutranks(
+            userContext.user.role.type,
+            role.type
+        );
 
         const [emailExist, usernameCheck] = await Promise.all([
             this.userService.existsByEmail(email),
@@ -155,7 +170,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         const { input, passwordString } =
             await this.userService.prepareCreateByAdmin(
                 { countryId, email, name: name ?? null, roleId, username },
-                actor.id,
+                authContext.userId,
                 role
             );
         const effects: IOutboxEffect[] = [];
@@ -170,7 +185,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                 EnumNotificationKind.welcomeByAdmin,
                 {
                     userId: input.userId,
-                    proceedBy: actor.id,
+                    proceedBy: authContext.userId,
                     password: passwordString,
                     passwordCreatedAt,
                     passwordExpiredAt,
@@ -180,7 +195,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         }
 
         const users = await this.createAdminUsers(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             [input],
             effects,
             this.createTimeoutInMs

@@ -24,10 +24,9 @@ import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-cases/workspace.get-join-requests-list.use-case';
 import {
-    buildRequestContextWorkspace,
-    buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
@@ -45,8 +44,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             limit: 20,
             orderBy: [],
         };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1')
     );
@@ -87,9 +85,9 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                 new FeatureFlagDisabledException()
             );
 
-            await expect(useCase.execute(context, {})).rejects.toBeInstanceOf(
-                FeatureFlagDisabledException
-            );
+            await expect(
+                useCase.execute(workspaceContext, {})
+            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(paginationQueryUtil.cursor).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.getJoinRequestsList
@@ -119,7 +117,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                 page
             );
 
-            await useCase.execute(context, query);
+            await useCase.execute(workspaceContext, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceJoinRequestUserListCursorScope,
@@ -159,7 +157,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                 page
             );
 
-            await useCase.execute(context, {});
+            await useCase.execute(workspaceContext, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

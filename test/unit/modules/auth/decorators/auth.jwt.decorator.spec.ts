@@ -5,17 +5,26 @@ import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
-import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
+import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     AuthJwtAccessProtected,
     AuthJwtRefreshProtected,
-    AuthJwtToken,
+    AuthJwtAccessContext,
+    AuthJwtRefreshContext,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import {
+    AuthJwtAccessContextStoreKey,
+    AuthJwtRefreshContextStoreKey,
+} from '@modules/auth/constants/auth.constant';
+import {
+    buildAuthJwtAccessContext,
+    buildAuthJwtRefreshContext,
+    expectRequestContextMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
 
 describe('auth.jwt.decorator', () => {
@@ -104,43 +113,108 @@ describe('auth.jwt.decorator', () => {
         });
     });
 
-    const executionContext: MockProxy<ExecutionContext> =
-        mock<ExecutionContext>();
-    const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
-        mock<HttpArgumentsHost>();
+    describe('AuthJwtAccessContext', () => {
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+        const target = {} as Type<unknown>;
+        AuthJwtAccessContext()(target, 'authJwtAccessContext', 0);
+        const factory = getParamDecoratorFactory(
+            target,
+            'authJwtAccessContext'
+        );
 
-    beforeEach(() => {
-        vi.resetAllMocks();
-        executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
+        beforeEach(() => {
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
+            );
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('throws RequestContextMissingException naming the key when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(
+                thrown,
+                AuthJwtAccessContextStoreKey
+            );
+        });
+
+        it('returns the stored context', () => {
+            const authContext = buildAuthJwtAccessContext('user-1');
+            clsService.get.mockReturnValue(authContext);
+
+            expect(factory(undefined, executionContext)).toBe(authContext);
+            expect(clsService.get).toHaveBeenCalledWith(
+                AuthJwtAccessContextStoreKey
+            );
+        });
     });
 
-    describe('AuthJwtToken', () => {
+    describe('AuthJwtRefreshContext', () => {
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
         const target = {} as Type<unknown>;
-        AuthJwtToken()(target, 'token', 0);
-        const factory = getParamDecoratorFactory(target, 'token');
+        AuthJwtRefreshContext()(target, 'authJwtRefreshContext', 0);
+        const factory = getParamDecoratorFactory(
+            target,
+            'authJwtRefreshContext'
+        );
 
-        it('returns null when the authorization header is absent', () => {
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = {};
-            httpArgumentsHost.getRequest.mockReturnValue(request);
-
-            expect(factory(undefined, executionContext)).toBeNull();
+        beforeEach(() => {
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
+            );
         });
 
-        it('returns null when the authorization header carries no token', () => {
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { authorization: 'Bearer' };
-            httpArgumentsHost.getRequest.mockReturnValue(request);
-
-            expect(factory(undefined, executionContext)).toBeNull();
+        afterEach(() => {
+            vi.restoreAllMocks();
         });
 
-        it('returns the token stripped of the scheme prefix', () => {
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { authorization: 'Bearer token-value' };
-            httpArgumentsHost.getRequest.mockReturnValue(request);
+        it('throws RequestContextMissingException naming the key when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
 
-            expect(factory(undefined, executionContext)).toBe('token-value');
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(
+                thrown,
+                AuthJwtRefreshContextStoreKey
+            );
+        });
+
+        it('returns the stored context', () => {
+            const authContext = buildAuthJwtRefreshContext(
+                'user-1',
+                'refresh-token'
+            );
+            clsService.get.mockReturnValue(authContext);
+
+            expect(factory(undefined, executionContext)).toBe(authContext);
+            expect(clsService.get).toHaveBeenCalledWith(
+                AuthJwtRefreshContextStoreKey
+            );
         });
     });
 });

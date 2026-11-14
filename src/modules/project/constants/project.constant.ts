@@ -10,6 +10,9 @@ import type { IProjectActiveFilter } from '@modules/project/interfaces/project.i
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /** @public */
+export const ProjectContextStoreKey = 'ProjectContextStoreKey';
+
+/** @public */
 export const ProjectActiveFilter: IProjectActiveFilter = [
     { deletedAt: null },
     { deletedAt: { isSet: false } },

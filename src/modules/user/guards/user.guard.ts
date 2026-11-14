@@ -1,11 +1,21 @@
-import { RequestUserStoreKey } from '@common/request/constants/request.constant';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
-import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
+import {
+    UserContextStoreKey,
+    UserGuardIsVerifiedMetaKey,
+} from '@modules/user/constants/user.constant';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import {
+    AuthJwtAccessContextStoreKey,
+    AuthJwtRefreshContextStoreKey,
+} from '@modules/auth/constants/auth.constant';
 import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtRefreshContext,
+} from '@modules/auth/interfaces/auth.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 @Injectable()
@@ -23,19 +33,27 @@ export class UserGuard implements CanActivate {
         );
         const isVerified = isVerifiedRequired ?? false;
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
-
-        const payload = request.user ?? null;
-        if (!payload) {
+        const accessContext =
+            this.requestStoreService.get<IAuthJwtAccessContext>(
+                AuthJwtAccessContextStoreKey
+            );
+        const refreshContext =
+            this.requestStoreService.get<IAuthJwtRefreshContext>(
+                AuthJwtRefreshContextStoreKey
+            );
+        const authContext = accessContext ?? refreshContext;
+        if (authContext === null) {
             throw new AuthJwtGuardMissingException();
         }
 
         const user = await this.userService.validateUserGuard(
-            payload,
+            authContext,
             isVerified
         );
 
-        this.requestStoreService.set(RequestUserStoreKey, user);
+        this.requestStoreService.set<IUserContext>(UserContextStoreKey, {
+            user,
+        });
 
         return true;
     }

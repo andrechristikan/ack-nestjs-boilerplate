@@ -13,9 +13,13 @@ import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspac
 import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/exceptions/workspace.join-request-not-found.exception';
 import { WorkspaceAcceptJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.accept-join-request.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceAcceptJoinRequestUseCase', () => {
@@ -50,8 +54,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
         expiredAt: new Date('2026-01-09T00:00:00.000Z'),
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('reviewer-1', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('reviewer-1', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('reviewer-1')
     );
@@ -101,7 +110,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                 }
             );
 
-            const result = await useCase.execute(context, 'join-request-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'join-request-1'
+            );
 
             expect(result).toEqual({});
             expect(callOrder).toEqual(['gate', 'pending', 'accept']);
@@ -113,7 +128,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             ).toHaveBeenCalledWith('join-request-1', 'workspace-1');
             expect(
                 workspaceJoinRequestService.acceptJoinRequest
-            ).toHaveBeenCalledWith(context.snapshot, joinRequest, 'Acme');
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                joinRequest,
+                'Acme'
+            );
         });
 
         it('runs the join-request gate first and stops when it rejects', async () => {
@@ -122,7 +143,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'join-request-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'join-request-1'
+                )
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(
                 workspaceJoinRequestService.getPendingById
@@ -135,7 +162,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'join-request-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'join-request-1'
+                )
             ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
             expect(
                 workspaceJoinRequestService.acceptJoinRequest
@@ -148,7 +181,13 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'join-request-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'join-request-1'
+                )
             ).rejects.toBeInstanceOf(
                 WorkspaceJoinRequestAlreadyProcessedException
             );

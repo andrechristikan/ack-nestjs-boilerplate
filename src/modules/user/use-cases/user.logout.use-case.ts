@@ -4,7 +4,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,10 +13,12 @@ import { SessionService } from '@modules/session/services/session.service';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserLogoutUseCase implements IAppUseCase<
-    [IRequestContextUser],
+    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -29,10 +31,12 @@ export class UserLogoutUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<void>> {
-        const userId = context.user.id;
-        const { sessionId, deviceOwnershipId } = context.session;
+        const userId = authContext.userId;
+        const { sessionId, deviceOwnershipId } = authContext;
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -51,7 +55,10 @@ export class UserLogoutUseCase implements IAppUseCase<
                     now
                 );
                 const entry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.userLogout,
                     }

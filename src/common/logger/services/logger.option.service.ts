@@ -8,6 +8,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    RequestActorStoreKey,
     RequestCorrelationIdStoreKey,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
@@ -130,6 +131,7 @@ export class LoggerOptionService {
                 level,
                 requestId,
                 correlationId,
+                userId,
                 req,
                 res,
                 err,
@@ -153,6 +155,7 @@ export class LoggerOptionService {
                 context: context ?? LoggerAutoContext,
                 requestId,
                 correlationId,
+                userId,
                 timestamp: today.valueOf(),
                 msg: sanitizedMessage,
                 service: {
@@ -256,10 +259,14 @@ export class LoggerOptionService {
                 RequestCorrelationIdStoreKey
             );
 
+            const userId =
+                this.requestStoreService.get<string>(RequestActorStoreKey);
+
             return {
                 level,
                 requestId,
                 correlationId,
+                userId,
             };
         };
     }

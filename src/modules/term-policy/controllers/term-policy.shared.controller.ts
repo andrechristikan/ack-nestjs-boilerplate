@@ -1,4 +1,3 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import { TermPolicyAcceptedListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -13,7 +12,10 @@ import {
     Query,
 } from '@nestjs/common';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     Response,
     ResponsePagination,
@@ -21,12 +23,15 @@ import {
 import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
 import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
-    RequestContextCurrent,
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -40,6 +45,8 @@ import type {
     ITermPolicyPending,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -64,13 +71,12 @@ export class TermPolicySharedController {
     @ApiKeyProtected()
     @Get('/acceptance/list')
     async listAccepted(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: TermPolicyAcceptedListRequestSchema })
         query: TermPolicyAcceptedListRequestDto
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         return this.termPolicyGetListUserAcceptedUseCase.execute(
-            context,
+            authContext,
             query
         );
     }
@@ -88,10 +94,9 @@ export class TermPolicySharedController {
     @ApiKeyProtected()
     @Get('/pending/list')
     async listPending(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<ITermPolicyPending>> {
-        return this.termPolicyGetListUserPendingUseCase.execute(context);
+        return this.termPolicyGetListUserPendingUseCase.execute(authContext);
     }
 
     @Doc({ summary: 'user accepts term or policy' })
@@ -103,11 +108,17 @@ export class TermPolicySharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyUserAcceptUseCase.execute(context, body);
+        return this.termPolicyUserAcceptUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 }

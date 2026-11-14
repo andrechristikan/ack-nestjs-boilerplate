@@ -1,7 +1,8 @@
 import {
-    RequestWorkspaceMemberStoreKey,
-    RequestProjectStoreKey,
-} from '@common/request/constants/request.constant';
+    ProjectContextStoreKey,
+    ProjectRoleMetaKey,
+} from '@modules/project/constants/project.constant';
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -14,8 +15,11 @@ import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
+import type {
+    Project,
+    ProjectMember,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -74,20 +78,33 @@ describe('ProjectRoleGuard', () => {
             updatedBy: null,
         };
 
-        it('validates with the declared roles, the stored project, and workspace member, and writes nothing to the request store', async () => {
+        it('validates with the declared roles, the stored project, and workspace member, and merges the returned member into the project context', async () => {
             const project = stubProject;
             const workspaceMember = stubWorkspaceMember;
             reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
-            requestStoreService.get.mockImplementation(key => {
-                if (key === RequestProjectStoreKey) {
-                    return project;
-                } else if (key === RequestWorkspaceMemberStoreKey) {
-                    return workspaceMember;
-                }
-
-                return null;
-            });
-            projectMemberService.validateProjectRoleGuard.mockResolvedValue();
+            const store: Record<string, unknown> = {
+                [ProjectContextStoreKey]: { project: project },
+                [WorkspaceContextStoreKey]: {
+                    workspaceMember: workspaceMember,
+                },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            const projectMember: ProjectMember = {
+                id: '507f1f77bcf86cd799439015',
+                projectId: project.id,
+                userId: workspaceMember.userId,
+                role: EnumProjectMemberRole.admin,
+                joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            projectMemberService.validateProjectRoleGuard.mockResolvedValue(
+                projectMember
+            );
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -104,21 +121,52 @@ describe('ProjectRoleGuard', () => {
             ).toHaveBeenCalledWith(project.id, workspaceMember, [
                 EnumProjectMemberRole.admin,
             ]);
-            expect(requestStoreService.set).not.toHaveBeenCalled();
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                ProjectContextStoreKey,
+                { projectMember }
+            );
+        });
+
+        it('merges a null project member when the workspace bypass returns no member', async () => {
+            reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
+            const store: Record<string, unknown> = {
+                [ProjectContextStoreKey]: { project: stubProject },
+                [WorkspaceContextStoreKey]: {
+                    workspaceMember: stubWorkspaceMember,
+                },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            projectMemberService.validateProjectRoleGuard.mockResolvedValue(
+                null
+            );
+            const executionContext: MockProxy<ExecutionContext> =
+                mock<ExecutionContext>();
+            executionContext.getHandler.mockReturnValue(vi.fn());
+
+            await guard.canActivate(executionContext);
+
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                ProjectContextStoreKey,
+                { projectMember: null }
+            );
         });
 
         it('validates with an empty role list when the handler declares none', async () => {
             reflector.get.mockReturnValue(undefined);
-            requestStoreService.get.mockImplementation(key => {
-                if (key === RequestProjectStoreKey) {
-                    return stubProject;
-                } else if (key === RequestWorkspaceMemberStoreKey) {
-                    return stubWorkspaceMember;
-                }
-
-                return null;
-            });
-            projectMemberService.validateProjectRoleGuard.mockResolvedValue();
+            const store: Record<string, unknown> = {
+                [ProjectContextStoreKey]: { project: stubProject },
+                [WorkspaceContextStoreKey]: {
+                    workspaceMember: stubWorkspaceMember,
+                },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            projectMemberService.validateProjectRoleGuard.mockResolvedValue(
+                null
+            );
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());
@@ -130,39 +178,43 @@ describe('ProjectRoleGuard', () => {
             ).toHaveBeenCalledWith(stubProject.id, stubWorkspaceMember, []);
         });
 
-        it('throws ProjectGuardMissingException before the domain call when the project store is empty', async () => {
+        it.each([null, {}])(
+            'throws ProjectGuardMissingException before the domain call when the store holds no project',
+            async projectContext => {
+                reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
+                requestStoreService.get.mockImplementation(key =>
+                    key === ProjectContextStoreKey ? projectContext : null
+                );
+                const executionContext: MockProxy<ExecutionContext> =
+                    mock<ExecutionContext>();
+                executionContext.getHandler.mockReturnValue(vi.fn());
+
+                await expect(
+                    guard.canActivate(executionContext)
+                ).rejects.toMatchObject({
+                    module: 'project',
+                    statusCode: EnumProjectStatusCodeError.guardMissing,
+                    statusCodeKey:
+                        EnumProjectStatusCodeError[
+                            EnumProjectStatusCodeError.guardMissing
+                        ],
+                    messagePath: 'project.error.guardMissing',
+                    httpStatus: HttpStatus.FORBIDDEN,
+                });
+                expect(
+                    projectMemberService.validateProjectRoleGuard
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it('throws WorkspaceMemberGuardMissingException before the domain call when the store holds no workspace member', async () => {
             reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
-            requestStoreService.get.mockReturnValue(null);
-            const executionContext: MockProxy<ExecutionContext> =
-                mock<ExecutionContext>();
-            executionContext.getHandler.mockReturnValue(vi.fn());
-
-            await expect(
-                guard.canActivate(executionContext)
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.guardMissing
-                    ],
-                messagePath: 'project.error.guardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-            expect(
-                projectMemberService.validateProjectRoleGuard
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberGuardMissingException before the domain call when the workspace member store is empty', async () => {
-            reflector.get.mockReturnValue([EnumProjectMemberRole.admin]);
-            requestStoreService.get.mockImplementation(key => {
-                if (key === RequestProjectStoreKey) {
-                    return stubProject;
-                }
-
-                return null;
-            });
+            const store: Record<string, unknown> = {
+                [ProjectContextStoreKey]: { project: stubProject },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             executionContext.getHandler.mockReturnValue(vi.fn());

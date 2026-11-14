@@ -9,7 +9,7 @@ import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status
 export const ApiKeyXTypeMetaKey = 'ApiKeyXTypeMetaKey';
 
 /** @public */
-export const ApiKeyStoreKey = 'ApiKeyStoreKey';
+export const ApiKeyContextStoreKey = 'ApiKeyContextStoreKey';
 
 /** @public */
 export const ApiKeyDocSecurityName = 'xApiKey';

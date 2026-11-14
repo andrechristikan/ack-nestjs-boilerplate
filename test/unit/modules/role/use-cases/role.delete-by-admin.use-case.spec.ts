@@ -15,7 +15,12 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -103,7 +108,10 @@ describe('RoleDeleteByAdminUseCase', () => {
         roleType: EnumRoleType.superAdmin,
     };
     const metadata = { roleId: role.id };
-    const context = buildRequestContextUser(actorUser);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(actorUser);
+    const authContext = buildAuthJwtAccessContext(actorUser.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -142,7 +150,13 @@ describe('RoleDeleteByAdminUseCase', () => {
         it('deletes the role on the outbox transaction and returns an empty envelope', async () => {
             roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            const result = await useCase.execute(context, role.id);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                role.id
+            );
 
             expect(result).toEqual({});
             expect(roleService.deleteByAdminInTx).toHaveBeenCalledWith(
@@ -155,14 +169,23 @@ describe('RoleDeleteByAdminUseCase', () => {
         it('adds the delete activity entry from the deleted role and the passed context on the same tx', async () => {
             roleService.deleteByAdminInTx.mockResolvedValue(role);
 
-            await useCase.execute(context, role.id);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                role.id
+            );
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 role,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.adminRoleDelete, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
@@ -172,9 +195,15 @@ describe('RoleDeleteByAdminUseCase', () => {
             const failure = new RoleUsedException();
             roleService.deleteByAdminInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, role.id)).rejects.toBe(
-                failure
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    role.id
+                )
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -186,7 +215,13 @@ describe('RoleDeleteByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, role.id)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    role.id
+                )
             ).rejects.toBeInstanceOf(RoleUsedException);
         });
 
@@ -196,7 +231,13 @@ describe('RoleDeleteByAdminUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, role.id)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    role.id
+                )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,

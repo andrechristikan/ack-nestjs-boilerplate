@@ -11,7 +11,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -59,6 +59,8 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class WorkspaceInviteService {
@@ -186,35 +188,49 @@ export class WorkspaceInviteService {
     }
 
     private inviteActivityEffects(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         action: EnumActivityLogAction,
         byAdminAction: EnumActivityLogAction,
         workspaceId: string,
         workspaceInviteId: string,
         inviteeUserId: string | null
     ): IOutboxEffect[] {
-        const actorId = snapshot.actorUserId;
-        const actorEntry = this.activityLogService.recordEffect(snapshot, {
-            action,
-            userId: actorId,
-            createdBy: actorId,
-            workspaceId,
-            metadata:
-                inviteeUserId === null
-                    ? { workspaceInviteId }
-                    : { workspaceInviteId, targetUserId: inviteeUserId },
-        });
+        const actorId = authContext.userId;
+        const actorEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId,
+                metadata:
+                    inviteeUserId === null
+                        ? { workspaceInviteId }
+                        : { workspaceInviteId, targetUserId: inviteeUserId },
+            }
+        );
         if (inviteeUserId === null || inviteeUserId === actorId) {
             return [actorEntry];
         }
 
-        const inviteeEntry = this.activityLogService.recordEffect(snapshot, {
-            action: byAdminAction,
-            userId: inviteeUserId,
-            createdBy: actorId,
-            workspaceId,
-            metadata: { actorUserId: actorId },
-        });
+        const inviteeEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: byAdminAction,
+                userId: inviteeUserId,
+                createdBy: actorId,
+                workspaceId,
+                metadata: { actorUserId: actorId },
+            }
+        );
 
         return [actorEntry, inviteeEntry];
     }
@@ -394,12 +410,14 @@ export class WorkspaceInviteService {
 
     /** Creates the pending invite and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async createInvite(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         create: IWorkspaceInviteCreate,
         notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
-        const actorId = snapshot.actorUserId;
+        const actorId = authContext.userId;
         const workspaceInviteId = this.databaseUtil.createId();
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceInviteNoncePattern,
@@ -438,7 +456,9 @@ export class WorkspaceInviteService {
                         );
                         await this.outboxService.addInTx(tx, effect);
                         const entries = this.inviteActivityEffects(
-                            snapshot,
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
                             EnumActivityLogAction.workspaceInviteCreated,
                             EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                             workspaceId,
@@ -529,12 +549,14 @@ export class WorkspaceInviteService {
 
     /** Rotates the invite token and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
     async resendInvite(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceInviteId: string,
         expiryDuration: EnumWorkspaceInviteExpiry | null,
         notice: IWorkspaceInviteNotice
     ): Promise<IWorkspaceInviteIssued> {
-        const actorId = snapshot.actorUserId;
+        const actorId = authContext.userId;
         const resentAt = this.helperDateService.create();
 
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
@@ -564,7 +586,9 @@ export class WorkspaceInviteService {
                         );
                         await this.outboxService.addInTx(tx, effect);
                         const entries = this.inviteActivityEffects(
-                            snapshot,
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
                             EnumActivityLogAction.workspaceInviteResent,
                             EnumActivityLogAction.workspaceInviteResentByAdmin,
                             rotated.workspaceId,
@@ -607,7 +631,9 @@ export class WorkspaceInviteService {
 
     /** Revokes the pending invite and adds its activity entries in one transaction, dispatched after the commit. */
     async revokeInvite(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceInviteId: string,
         workspaceId: string,
         inviteeUserId: string | null
@@ -623,7 +649,9 @@ export class WorkspaceInviteService {
                 }
 
                 const entries = this.inviteActivityEffects(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     EnumActivityLogAction.workspaceInviteRevoked,
                     EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     workspaceId,

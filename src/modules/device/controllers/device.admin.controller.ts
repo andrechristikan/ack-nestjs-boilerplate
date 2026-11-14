@@ -1,12 +1,11 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -21,8 +20,14 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
@@ -30,9 +35,15 @@ import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.rem
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.admin.user.device')
 @Controller({
@@ -95,15 +106,20 @@ export class DeviceAdminController {
     @ApiKeyProtected()
     @Delete('/remove/:deviceOwnershipId')
     async remove(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceRemoveByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             userId,
             deviceOwnershipId
         );

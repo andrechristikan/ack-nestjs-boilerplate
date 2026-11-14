@@ -5,9 +5,12 @@ import type {
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
-    IRequestContextSnapshot,
+    IRequestContext,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
@@ -22,11 +25,12 @@ import { ActivityLogContractInvalidException } from '@modules/activity-log/excep
 import type {
     IActivityLog,
     IActivityLogActionContract,
+    IActivityLogContextPayload,
+    IActivityLogCreate,
     IActivityLogInput,
     IActivityLogMetadata,
     IActivityLogMetadataParseResult,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
@@ -206,7 +210,24 @@ export class ActivityLogService {
     }
 
     recordEffect(
-        context: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext | null,
+        workspaceContext: IWorkspaceContext | null,
+        input: IActivityLogInput<EnumActivityLogAction>
+    ): IOutboxEffect {
+        const payload = this.activityLogUtil.toPayload(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
+        );
+
+        return this.recordEffectFromPayload(payload, input);
+    }
+
+    recordEffectFromPayload(
+        payload: IActivityLogContextPayload,
         input: IActivityLogInput<EnumActivityLogAction>
     ): IOutboxEffect {
         const contract = this.getContract(input.action);
@@ -229,9 +250,9 @@ export class ActivityLogService {
         const createdAt = this.helperDateService.create();
         const row = this.buildCreate(
             input,
-            context.actorUserId,
-            context.workspaceId,
-            context.requestLog,
+            payload.actorUserId,
+            payload.workspaceId,
+            payload.requestLog,
             createdAt
         );
 

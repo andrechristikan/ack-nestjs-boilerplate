@@ -1,11 +1,15 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtAccessTokenPayload,
+} from '@modules/auth/interfaces/auth.interface';
 import {
+    AuthJwtAccessContextStoreKey,
     AuthJwtAccessGuardKey,
-    AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
 import { AuthService } from '@modules/auth/services/auth.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 @Injectable()
@@ -17,7 +21,7 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         super();
     }
 
-    handleRequest<T = IAuthJwtAccessTokenPayload>(
+    handleRequest<T = IAuthJwtAccessContext>(
         err: Error | null,
         user: IAuthJwtAccessTokenPayload | false,
         info: Error | string | undefined
@@ -28,8 +32,21 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
             info instanceof Error ? info : null
         );
 
-        this.requestStoreService.set(AuthPayloadStoreKey, payload);
+        const authContext: IAuthJwtAccessContext = {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+            deviceOwnershipId: payload.deviceOwnershipId,
+            loginWith: payload.loginWith,
+        };
+        this.requestStoreService.set<IAuthJwtAccessContext>(
+            AuthJwtAccessContextStoreKey,
+            authContext
+        );
+        this.requestStoreService.set<string>(
+            RequestActorStoreKey,
+            authContext.userId
+        );
 
-        return payload as T;
+        return authContext as T;
     }
 }

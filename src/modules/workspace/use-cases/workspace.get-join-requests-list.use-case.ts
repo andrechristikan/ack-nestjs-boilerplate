@@ -1,4 +1,3 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -15,10 +14,11 @@ import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, WorkspaceJoinRequestListRequestDto],
+    [IWorkspaceContext, WorkspaceJoinRequestListRequestDto],
     IResponsePaginationReturn<WorkspaceJoinRequest>
 > {
     constructor(
@@ -29,7 +29,7 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        workspaceContext: IWorkspaceContext,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards
@@ -59,7 +59,7 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.workspaceJoinRequestService.getJoinRequestsList(
-                context.workspace.id,
+                workspaceContext.workspace.id,
                 params,
                 status?.where
             );

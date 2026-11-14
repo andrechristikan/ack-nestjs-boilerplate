@@ -17,10 +17,15 @@ import { ProjectNotFoundException } from '@modules/project/exceptions/project.no
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { ProjectSoftDeleteUseCase } from '@modules/project/use-cases/project.soft-delete.use-case';
 import {
-    buildRequestContextProject,
     buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
+    buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectSoftDeleteUseCase', () => {
@@ -61,12 +66,17 @@ describe('ProjectSoftDeleteUseCase', () => {
         deletedBy: null,
     };
 
-    const context = buildRequestContextProject(
-        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        buildWorkspaceMember('507f1f77bcf86cd799439015'),
-        project
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('507f1f77bcf86cd799439015')
+    );
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -108,7 +118,13 @@ describe('ProjectSoftDeleteUseCase', () => {
                 }
             );
 
-            const result = await useCase.execute(context);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext
+            );
 
             expect(result).toEqual({});
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -125,10 +141,19 @@ describe('ProjectSoftDeleteUseCase', () => {
         });
 
         it('adds the deleted entry on the same tx after the cascade', async () => {
-            await useCase.execute(context);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext
+            );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
                 {
                     action: EnumActivityLogAction.projectDeleted,
                     userId: '507f1f77bcf86cd799439015',
@@ -146,7 +171,15 @@ describe('ProjectSoftDeleteUseCase', () => {
             const failure = new ProjectNotFoundException();
             projectService.softDeleteProjectInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext
+                )
+            ).rejects.toBe(failure);
             expect(
                 workspaceInviteService.clearProjectInTx
             ).not.toHaveBeenCalled();
@@ -160,9 +193,15 @@ describe('ProjectSoftDeleteUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
-                ProjectNotFoundException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext
+                )
+            ).rejects.toBeInstanceOf(ProjectNotFoundException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -173,9 +212,15 @@ describe('ProjectSoftDeleteUseCase', () => {
             );
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(context)).rejects.toBeInstanceOf(
-                AppUnknownException
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext
+                )
+            ).rejects.toBeInstanceOf(AppUnknownException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

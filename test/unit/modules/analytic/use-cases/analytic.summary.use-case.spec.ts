@@ -7,15 +7,13 @@ import { AnalyticDateService } from '@modules/analytic/services/analytic.date.se
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
-    buildRequestContextWorkspace,
-    buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticSummaryUseCase', () => {
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
@@ -60,7 +58,7 @@ describe('AnalyticSummaryUseCase', () => {
                 activityCount: 9,
             });
 
-            const result = await useCase.execute(context, {
+            const result = await useCase.execute(workspaceContext, {
                 startDate,
                 endDate,
             });
@@ -90,7 +88,7 @@ describe('AnalyticSummaryUseCase', () => {
                 activityCount: 0,
             });
 
-            await useCase.execute(context, {});
+            await useCase.execute(workspaceContext, {});
 
             expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
                 null,

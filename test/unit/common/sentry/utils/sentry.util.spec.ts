@@ -351,4 +351,38 @@ describe('SentryUtil', () => {
             expect(util['redactValue'](3, 0)).toBe(3);
         });
     });
+
+    describe('isExcludedUrl', () => {
+        it('matches an exact path or a wildcard prefix, ignoring case', () => {
+            expect(util.isExcludedUrl('/Health', ['/health'])).toBe(true);
+            expect(util.isExcludedUrl('/docs/ui', ['/docs/*'])).toBe(true);
+            expect(util.isExcludedUrl('/docs/ui', ['*'])).toBe(true);
+        });
+
+        it('returns false on a miss or an empty pattern', () => {
+            expect(util.isExcludedUrl('/user', ['/health', '/docs/*'])).toBe(
+                false
+            );
+            expect(util.isExcludedUrl('/user', [''])).toBe(false);
+        });
+
+        it('returns false for a null url or an empty pattern list', () => {
+            expect(util.isExcludedUrl(null, ['/health'])).toBe(false);
+            expect(util.isExcludedUrl('/health', [])).toBe(false);
+        });
+
+        it('drops the query and the hash of an absolute url', () => {
+            expect(
+                util.isExcludedUrl('https://api.example.com/Health?x=1#top', [
+                    '/health',
+                ])
+            ).toBe(true);
+        });
+
+        it('falls back to splitting a url that fails new URL', () => {
+            expect(util.isExcludedUrl('/health?x=1#top', ['/health'])).toBe(
+                true
+            );
+        });
+    });
 });

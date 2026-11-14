@@ -10,10 +10,8 @@ import type { Project, Workspace } from '@generated/prisma-client/client';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import {
-    RequestProjectStoreKey,
-    RequestWorkspaceStoreKey,
-} from '@common/request/constants/request.constant';
+import { ProjectContextStoreKey } from '@modules/project/constants/project.constant';
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
 describe('ProjectGuard', () => {
@@ -65,10 +63,10 @@ describe('ProjectGuard', () => {
             isPublic: false,
         };
 
-        it('validates and stores the project resolved for the workspace and projectId param', async () => {
+        it('validates and merges into the project context the project resolved for the workspace and projectId param', async () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.params = { projectId: '507f1f77bcf86cd799439012' };
-            requestStoreService.get.mockReturnValue(workspace);
+            requestStoreService.get.mockReturnValue({ workspace });
             projectService.validateProjectGuard.mockResolvedValue(project);
             const executionContext = buildHttpExecutionContext(request);
 
@@ -76,43 +74,48 @@ describe('ProjectGuard', () => {
                 true
             );
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestWorkspaceStoreKey
+                WorkspaceContextStoreKey
             );
             expect(projectService.validateProjectGuard).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439013',
                 '507f1f77bcf86cd799439012'
             );
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestProjectStoreKey,
-                project
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                ProjectContextStoreKey,
+                { project }
             );
         });
 
-        it('throws WorkspaceGuardMissingException before the domain call when no workspace is stored', async () => {
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.params = { projectId: '507f1f77bcf86cd799439012' };
-            requestStoreService.get.mockReturnValue(null);
-            const executionContext = buildHttpExecutionContext(request);
+        it.each([null, {}])(
+            'throws WorkspaceGuardMissingException before the domain call when the store holds no workspace',
+            async workspaceContext => {
+                const request: MockProxy<IRequestApp> = mock<IRequestApp>();
+                request.params = { projectId: '507f1f77bcf86cd799439012' };
+                requestStoreService.get.mockReturnValue(workspaceContext);
+                const executionContext = buildHttpExecutionContext(request);
 
-            await expect(
-                guard.canActivate(executionContext)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.guardMissing
-                    ],
-                messagePath: 'workspace.error.guardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-            expect(projectService.validateProjectGuard).not.toHaveBeenCalled();
-        });
+                await expect(
+                    guard.canActivate(executionContext)
+                ).rejects.toMatchObject({
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.guardMissing
+                        ],
+                    messagePath: 'workspace.error.guardMissing',
+                    httpStatus: HttpStatus.FORBIDDEN,
+                });
+                expect(
+                    projectService.validateProjectGuard
+                ).not.toHaveBeenCalled();
+            }
+        );
 
         it('validates with a null projectId when the route carries none', async () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.params = {};
-            requestStoreService.get.mockReturnValue(workspace);
+            requestStoreService.get.mockReturnValue({ workspace });
             projectService.validateProjectGuard.mockResolvedValue(project);
             const executionContext = buildHttpExecutionContext(request);
 

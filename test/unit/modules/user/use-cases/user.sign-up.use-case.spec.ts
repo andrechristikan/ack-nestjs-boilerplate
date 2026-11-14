@@ -76,7 +76,10 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserSignUpUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -111,7 +114,8 @@ describe('UserSignUpUseCase', () => {
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
     const activityEntry = {
         queue: 'activity-entry',
     } as unknown as IOutboxEffect;
@@ -426,7 +430,9 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('commits the new user on one transaction, adds the created entries and the welcome and verification effects on the same tx, and returns an empty envelope', async () => {
-            await expect(useCase.execute(context, dto)).resolves.toEqual({});
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({});
 
             expect(workspaceInviteService.getSignUpInvite).toHaveBeenCalledWith(
                 null,
@@ -454,7 +460,10 @@ describe('UserSignUpUseCase', () => {
                 [committedUser]
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 stageInput
             );
             expect(userVerificationUtil.mapEmailContext).toHaveBeenCalledWith(
@@ -480,7 +489,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('adds the effects after the last write and before the commit returns', async () => {
-            await useCase.execute(context, dto);
+            await useCase.execute(requestContext, apiKeyContext, dto);
 
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
@@ -493,7 +502,7 @@ describe('UserSignUpUseCase', () => {
                 inviteContext
             );
 
-            await useCase.execute(context, {
+            await useCase.execute(requestContext, apiKeyContext, {
                 ...dto,
                 name: 'Bramble Fox',
                 inviteToken: 'raw-token',
@@ -522,7 +531,10 @@ describe('UserSignUpUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, { ...dto, inviteToken: 'raw-token' })
+                useCase.execute(requestContext, apiKeyContext, {
+                    ...dto,
+                    inviteToken: 'raw-token',
+                })
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
@@ -544,7 +556,10 @@ describe('UserSignUpUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, { ...dto, inviteToken: 'raw-token' })
+                useCase.execute(requestContext, apiKeyContext, {
+                    ...dto,
+                    inviteToken: 'raw-token',
+                })
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
@@ -565,7 +580,9 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
                 messagePath: 'role.error.notFound',
@@ -584,7 +601,9 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
                 messagePath: 'country.error.notFound',
@@ -599,7 +618,9 @@ describe('UserSignUpUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
                 statusCodeKey:
@@ -616,7 +637,9 @@ describe('UserSignUpUseCase', () => {
                 throw new UserUsernameExistException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
                 statusCodeKey:
@@ -637,7 +660,9 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(false);
             userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -658,7 +683,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     inviteInput,
                     emailVerification
                 )
@@ -728,7 +754,8 @@ describe('UserSignUpUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await useCase['createSignUpUser'](
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 input,
                 emailVerification
             );
@@ -747,7 +774,8 @@ describe('UserSignUpUseCase', () => {
 
         it('asserts the published term policy before createInTx and accepts it last', async () => {
             await useCase['createSignUpUser'](
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 input,
                 emailVerification
             );
@@ -764,7 +792,8 @@ describe('UserSignUpUseCase', () => {
 
         it('creates the project membership only when the invite carries a project and role', async () => {
             await useCase['createSignUpUser'](
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 {
                     ...inviteInput,
                     workspaceContext: {
@@ -784,7 +813,8 @@ describe('UserSignUpUseCase', () => {
 
         it('accepts no invite for a personal input', async () => {
             await useCase['createSignUpUser'](
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 input,
                 emailVerification
             );
@@ -807,7 +837,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     input,
                     emailVerification
                 )
@@ -824,7 +855,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     input,
                     emailVerification
                 )
@@ -849,7 +881,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     input,
                     emailVerification
                 )
@@ -871,7 +904,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     input,
                     emailVerification
                 )
@@ -889,7 +923,8 @@ describe('UserSignUpUseCase', () => {
 
             await expect(
                 useCase['createSignUpUser'](
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
                     input,
                     emailVerification
                 )

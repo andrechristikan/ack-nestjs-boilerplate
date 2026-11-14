@@ -53,10 +53,19 @@ export type IAuthJwtPayloadIdentified<
     T extends { sub?: string; jti?: string },
 > = T & { sub: string; jti: string };
 
-export interface IAuthSocialPayload extends Pick<
-    IAuthJwtAccessTokenPayload,
-    'email'
-> {
+export interface IAuthJwtAccessContext {
+    userId: string;
+    sessionId: string;
+    deviceOwnershipId: string;
+    loginWith: EnumUserLoginWith;
+}
+
+export interface IAuthJwtRefreshContext extends IAuthJwtAccessContext {
+    token: string;
+}
+
+export interface IAuthSocialContext {
+    email: string;
     emailVerified: boolean;
 }
 
@@ -97,8 +106,3 @@ export interface IAuthTwoFactorChallengeCache {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
 }
-
-export type IAuthJwtAccessTokenPayloadUser = Pick<
-    IAuthJwtAccessTokenPayload,
-    'userId' | 'loginWith'
->;

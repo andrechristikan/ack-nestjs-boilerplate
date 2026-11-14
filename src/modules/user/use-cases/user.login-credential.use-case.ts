@@ -1,8 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
-    IRequestContextPublic,
-    IRequestContextSnapshot,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -27,10 +24,11 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserLoginCredentialUseCase implements IAppUseCase<
-    [IRequestContextPublic, UserLoginRequestDto],
+    [IRequestContext, IApiKeyContext, UserLoginRequestDto],
     IResponseReturn<IUserLoginOutcome>
 > {
     constructor(
@@ -47,7 +45,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     ) {}
 
     private async startSession(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -55,7 +54,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         loginAt: Date
     ): Promise<IAuthToken> {
         const session = await this.userAuthService.createTokenAndSession(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             device,
             loginFrom,
@@ -72,7 +72,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     }
 
     private async resolveLoginOutcome(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -89,7 +90,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
             const tokens = await this.startSession(
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 user,
                 device,
                 loginFrom,
@@ -106,7 +108,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         }
 
         const twoFactor = await this.userAuthService.createTwoFactorChallenge(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user,
             device,
             loginFrom,
@@ -122,7 +125,8 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     }
 
     private async requestVerificationEmail(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
@@ -138,22 +142,30 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 user.id,
                 user.email
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userSendVerificationEmail,
-                userId: user.id,
-                createdBy: user.id,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId: user.id,
+                    createdBy: user.id,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
         });
     }
 
     async execute(
-        context: IRequestContextPublic,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         { email, password, from, device }: UserLoginRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const attempt = await this.userAuthService.countCredentialAttempt(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             email
         );
 
@@ -166,7 +178,10 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         );
         if (!isMatch) {
             const failedEntry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userLoginFailed,
                     userId: attempt.user.id,
@@ -179,14 +194,19 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         const isUnverified = this.userUtil.isUnverified(attempt.user);
         if (isUnverified) {
-            await this.requestVerificationEmail(context.snapshot, attempt.user);
+            await this.requestVerificationEmail(
+                requestContext,
+                apiKeyContext,
+                attempt.user
+            );
         }
         this.userAuthService.assertVerified(attempt.user);
         this.userAuthService.assertPasswordNotExpired(attempt.user);
 
         const loginAt = this.helperDateService.create();
         const outcome = await this.resolveLoginOutcome(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             attempt.user,
             deviceIdentity,
             from,

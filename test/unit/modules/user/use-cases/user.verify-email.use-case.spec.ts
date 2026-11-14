@@ -14,12 +14,16 @@ import type { User, Verification } from '@generated/prisma-client/client';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserVerifyEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
 
     let useCase: UserVerifyEmailUseCase;
 
@@ -89,17 +93,22 @@ describe('UserVerifyEmailUseCase', () => {
     });
 
     describe('execute', () => {
-        it('verifies the token with the snapshot and answers empty', async () => {
+        it('verifies the token with the context and answers empty', async () => {
             const dto: UserVerifyEmailRequestDto = { token: 'raw-token' };
 
-            const result = await useCase.execute(context, dto);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                dto
+            );
 
             expect(result).toEqual({});
             expect(
                 userVerificationService.getOneActiveByEmailToken
             ).toHaveBeenCalledWith('raw-token');
             expect(userVerificationService.verifyEmail).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 verification
             );
         });
@@ -110,7 +119,9 @@ describe('UserVerifyEmailUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, { token: 'raw-token' })
+                useCase.execute(requestContext, apiKeyContext, {
+                    token: 'raw-token',
+                })
             ).rejects.toThrow('boom');
         });
     });

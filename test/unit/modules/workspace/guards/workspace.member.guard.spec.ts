@@ -18,11 +18,8 @@ import {
     EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import {
-    RequestUserStoreKey,
-    RequestWorkspaceMemberStoreKey,
-    RequestWorkspaceStoreKey,
-} from '@common/request/constants/request.constant';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
@@ -30,6 +27,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceMemberGuard', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -131,13 +129,13 @@ describe('WorkspaceMemberGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('validates membership by the stored workspace and user ids and caches it', async () => {
+        it('validates membership by the stored workspace and user ids and merges the member into the workspace context', async () => {
+            const store: Record<string, unknown> = {
+                [UserContextStoreKey]: buildUserContext(user),
+                [WorkspaceContextStoreKey]: { workspace },
+            };
             requestStoreService.get.mockImplementation(
-                (key: string): unknown => {
-                    if (key === RequestWorkspaceStoreKey) return workspace;
-                    if (key === RequestUserStoreKey) return user;
-                    return null;
-                }
+                key => store[key] ?? null
             );
             workspaceMemberService.validateWorkspaceMemberGuard.mockResolvedValue(
                 member
@@ -149,19 +147,14 @@ describe('WorkspaceMemberGuard', () => {
             expect(
                 workspaceMemberService.validateWorkspaceMemberGuard
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestWorkspaceMemberStoreKey,
-                member
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                WorkspaceContextStoreKey,
+                { workspaceMember: member }
             );
         });
 
-        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
-            requestStoreService.get.mockImplementation(
-                (key: string): unknown => {
-                    if (key === RequestWorkspaceStoreKey) return workspace;
-                    return null;
-                }
-            );
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
+            requestStoreService.get.mockReturnValue(null);
 
             await expect(
                 guard.canActivate(executionContext)
@@ -180,29 +173,33 @@ describe('WorkspaceMemberGuard', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceGuardMissingException before the domain call when the workspace store is empty', async () => {
-            requestStoreService.get.mockImplementation(
-                (key: string): unknown => {
-                    if (key === RequestUserStoreKey) return user;
-                    return null;
-                }
-            );
+        it.each([null, {}])(
+            'throws WorkspaceGuardMissingException before the domain call when the store holds no workspace',
+            async workspaceContext => {
+                const store: Record<string, unknown> = {
+                    [UserContextStoreKey]: buildUserContext(user),
+                    [WorkspaceContextStoreKey]: workspaceContext,
+                };
+                requestStoreService.get.mockImplementation(
+                    key => store[key] ?? null
+                );
 
-            await expect(
-                guard.canActivate(executionContext)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.guardMissing
-                    ],
-                messagePath: 'workspace.error.guardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
-            });
-            expect(
-                workspaceMemberService.validateWorkspaceMemberGuard
-            ).not.toHaveBeenCalled();
-        });
+                await expect(
+                    guard.canActivate(executionContext)
+                ).rejects.toMatchObject({
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.guardMissing
+                        ],
+                    messagePath: 'workspace.error.guardMissing',
+                    httpStatus: HttpStatus.FORBIDDEN,
+                });
+                expect(
+                    workspaceMemberService.validateWorkspaceMemberGuard
+                ).not.toHaveBeenCalled();
+            }
+        );
     });
 });

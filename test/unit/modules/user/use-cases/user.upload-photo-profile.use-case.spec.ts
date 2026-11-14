@@ -6,16 +6,22 @@ import type { IFile } from '@common/file/interfaces/file.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserUploadPhotoProfileUseCase } from '@modules/user/use-cases/user.upload-photo-profile.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUploadPhotoProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-sable', 'user-sable@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: UserUploadPhotoProfileUseCase;
 
@@ -32,17 +38,24 @@ describe('UserUploadPhotoProfileUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the file and the snapshot to the domain', async () => {
+        it('delegates the file and the context to the domain', async () => {
             const file = {
                 originalname: 'photo.png',
                 size: 2048,
                 buffer: Buffer.from('binary-data'),
             } as IFile;
 
-            await useCase.execute(context, file);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
 
             expect(userProfileService.uploadPhotoProfile).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 file
             );
         });

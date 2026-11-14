@@ -177,7 +177,7 @@ export type INotificationKeyPatterns = Record<
 
 export type INotificationSealedRecord = Record<string, Prisma.JsonValue>;
 
-export type INotificationSealedContext = INotificationContextBase &
+export type INotificationSealedData = INotificationContextBase &
     INotificationSealedRecord;
 
 export type INotificationRecipientRecord = {
@@ -190,7 +190,7 @@ export type INotificationRecipientRecord = {
 
 export interface INotificationNotifyPayload {
     kind: EnumNotificationKind;
-    context: INotificationSealedContext;
+    context: INotificationSealedData;
     recipient: INotificationRecipientRecord | null;
     notificationId: string | null;
 }
@@ -201,7 +201,7 @@ export interface INotificationEmailSendPayload {
     userId: string;
     username: string;
     encryptedEmail: string;
-    context: INotificationSealedContext;
+    context: INotificationSealedData;
     completedSteps: EnumNotificationStep[];
 }
 
@@ -222,7 +222,7 @@ export interface INotificationPushSendPayload {
     userId: string;
     username: string;
     encryptedTokens: string[];
-    context: INotificationSealedContext;
+    context: INotificationSealedData;
     completedSteps: EnumNotificationStep[];
     encryptedPendingTokens: string[] | null;
     encryptedFailureTokens: string[] | null;

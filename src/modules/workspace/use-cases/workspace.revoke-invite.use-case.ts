@@ -1,13 +1,22 @@
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        string,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -16,12 +25,15 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext,
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
         const existing = await this.workspaceInviteService.getPendingById(
             workspaceInviteId,
-            context.workspace.id
+            workspaceContext.workspace.id
         );
 
         const existingUser = await this.userService.getOneActiveByEmail(
@@ -29,9 +41,11 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
         );
 
         await this.workspaceInviteService.revokeInvite(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
+            authContext,
             workspaceInviteId,
-            context.workspace.id,
+            workspaceContext.workspace.id,
             existingUser?.id ?? null
         );
 

@@ -7,10 +7,14 @@ import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/proj
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectCreateUseCase', () => {
@@ -32,8 +36,13 @@ describe('ProjectCreateUseCase', () => {
         deletedBy: null,
     };
 
-    const context = buildRequestContextWorkspace(
-        buildUser('507f1f77bcf86cd799439015', 'jane@example.com'),
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439015', 'jane@example.com')
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
         { ...buildWorkspace(), id: '507f1f77bcf86cd799439012' },
         buildWorkspaceMember('507f1f77bcf86cd799439015')
     );
@@ -59,11 +68,19 @@ describe('ProjectCreateUseCase', () => {
             };
             projectService.createProject.mockResolvedValue(project);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(result).toEqual({ data: project });
             expect(projectService.createProject).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 '507f1f77bcf86cd799439012',
                 {
                     name: 'Website Revamp',
@@ -76,19 +93,33 @@ describe('ProjectCreateUseCase', () => {
             const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
             projectService.createProject.mockRejectedValue(new Error('boom'));
 
-            await expect(useCase.execute(context, body)).rejects.toThrow(
-                'boom'
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toThrow('boom');
         });
 
         it('passes null for an omitted description', async () => {
             const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
             projectService.createProject.mockResolvedValue(project);
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
 
             expect(projectService.createProject).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 '507f1f77bcf86cd799439012',
                 { name: 'Website Revamp', description: null }
             );

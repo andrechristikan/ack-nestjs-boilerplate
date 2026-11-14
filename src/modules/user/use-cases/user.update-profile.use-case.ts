@@ -1,4 +1,4 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -8,10 +8,17 @@ import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/use
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserUpdateProfileUseCase implements IAppUseCase<
-    [IRequestContextUser, UserUpdateProfileRequestDto],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        UserUpdateProfileRequestDto,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -22,7 +29,9 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         { countryId, gender, name }: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
@@ -31,7 +40,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
         await this.outboxService.withTransaction(async tx => {
             await this.userProfileService.updateProfileInTx(
                 tx,
-                context.user.id,
+                authContext.userId,
                 {
                     countryId,
                     gender,
@@ -39,7 +48,10 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
                 }
             );
             const entry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userUpdateProfile,
                 }

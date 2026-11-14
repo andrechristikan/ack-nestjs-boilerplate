@@ -42,6 +42,8 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -52,14 +54,18 @@ import {
 } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import {} from '@common/request/enums/request.status-code.enum';
 
 describe('UserService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
@@ -166,6 +172,10 @@ describe('UserService', () => {
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserUtil, useValue: userUtil },
                 {
+                    provide: ActivityLogUtil,
+                    useValue: activityLogUtil,
+                },
+                {
                     provide: UserVerificationUtil,
                     useValue: userVerificationUtil,
                 },
@@ -189,35 +199,12 @@ describe('UserService', () => {
     });
 
     describe('validateUserGuard', () => {
-        it('throws RequestContextMissingException when the authenticated user carries no user id', async () => {
-            let thrown: unknown;
-            try {
-                await service.validateUserGuard(
-                    { userId: '', loginWith: EnumUserLoginWith.credential },
-                    false
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "request.user.userId"',
-                }),
-            });
-        });
-
         it('throws UserAccountNotFoundException when the user row is gone', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = service.validateUserGuard(
                 {
-                    userId: 'user-cobalt',
+                    ...buildAuthJwtAccessContext('user-cobalt'),
                     loginWith: EnumUserLoginWith.credential,
                 },
                 false
@@ -243,7 +230,7 @@ describe('UserService', () => {
 
             const call = service.validateUserGuard(
                 {
-                    userId: 'user-cobalt',
+                    ...buildAuthJwtAccessContext('user-cobalt'),
                     loginWith: EnumUserLoginWith.credential,
                 },
                 false
@@ -268,7 +255,7 @@ describe('UserService', () => {
 
             const call = service.validateUserGuard(
                 {
-                    userId: 'user-cobalt',
+                    ...buildAuthJwtAccessContext('user-cobalt'),
                     loginWith: EnumUserLoginWith.credential,
                 },
                 false
@@ -292,7 +279,7 @@ describe('UserService', () => {
             await expect(
                 service.validateUserGuard(
                     {
-                        userId: 'user-cobalt',
+                        ...buildAuthJwtAccessContext('user-cobalt'),
                         loginWith: EnumUserLoginWith.socialGoogle,
                     },
                     false
@@ -309,7 +296,7 @@ describe('UserService', () => {
 
             const call = service.validateUserGuard(
                 {
-                    userId: 'user-cobalt',
+                    ...buildAuthJwtAccessContext('user-cobalt'),
                     loginWith: EnumUserLoginWith.credential,
                 },
                 false
@@ -335,7 +322,7 @@ describe('UserService', () => {
 
             const call = service.validateUserGuard(
                 {
-                    userId: 'user-cobalt',
+                    ...buildAuthJwtAccessContext('user-cobalt'),
                     loginWith: EnumUserLoginWith.credential,
                 },
                 true
@@ -360,7 +347,7 @@ describe('UserService', () => {
             await expect(
                 service.validateUserGuard(
                     {
-                        userId: 'user-cobalt',
+                        ...buildAuthJwtAccessContext('user-cobalt'),
                         loginWith: EnumUserLoginWith.credential,
                     },
                     true
@@ -1385,7 +1372,7 @@ describe('UserService', () => {
     });
 
     describe('importByAdminEffect', () => {
-        it('returns a medium-priority importByAdmin effect on the user queue holding the rows and the context, with no business key', () => {
+        it('returns a medium-priority importByAdmin effect on the user queue holding the rows and the activity log payload, with no business key', () => {
             const rows = [
                 {
                     username: 'bramble2fox',
@@ -1393,16 +1380,38 @@ describe('UserService', () => {
                     name: null,
                 },
             ];
-            const context = buildRequestContextUser(
+            const requestContext = buildRequestContext();
+            const apiKeyContext = buildApiKeyContext();
+            const userContext = buildUserContext(
                 buildUser('admin-bramble', 'admin@example.com')
-            ).snapshot;
+            );
+            const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
-            const effect = service.importByAdminEffect(context, rows);
+            const activityLog: IActivityLogActorPayload = {
+                actorUserId: authContext.userId,
+                workspaceId: null,
+                apiKeyId: apiKeyContext.apiKey.id,
+                requestLog: requestContext.requestLog,
+            };
+            activityLogUtil.toPayload.mockReturnValue(activityLog);
 
+            const effect = service.importByAdminEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                rows
+            );
+
+            expect(activityLogUtil.toPayload).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null
+            );
             expect(effect).toEqual({
                 queue: EnumUserQueue.user,
                 name: EnumUserProcess.importByAdmin,
-                data: { rows, context },
+                data: { rows, activityLog },
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: null,
             });

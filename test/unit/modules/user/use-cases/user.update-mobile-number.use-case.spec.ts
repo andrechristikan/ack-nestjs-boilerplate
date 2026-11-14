@@ -10,8 +10,11 @@ import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface'
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdateMobileNumberUseCase', () => {
@@ -19,9 +22,12 @@ describe('UserUpdateMobileNumberUseCase', () => {
         mock<UserMobileNumberService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
 
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-swift', 'user-swift@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: UserUpdateMobileNumberUseCase;
 
@@ -79,13 +85,19 @@ describe('UserUpdateMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the mobile number, passes the snapshot, and wraps it in a response envelope', async () => {
+        it('updates the mobile number, passes the context, and wraps it in a response envelope', async () => {
             userMobileNumberService.updateMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
             await expect(
-                useCase.execute(context, mobileNumber.id, dto)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber.id,
+                    dto
+                )
             ).resolves.toEqual({ data: mobileNumber });
             expect(
                 userMobileNumberService.getOneMobileNumber
@@ -94,7 +106,9 @@ describe('UserUpdateMobileNumberUseCase', () => {
             expect(
                 userMobileNumberService.updateMobileNumber
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 mobileNumber,
                 {
                     number: dto.number,
@@ -132,7 +146,13 @@ describe('UserUpdateMobileNumberUseCase', () => {
                 mobileNumber
             );
 
-            await useCase.execute(context, mobileNumber.id, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumber.id,
+                dto
+            );
 
             expect(
                 userMobileNumberService.updateMobileNumber
@@ -145,7 +165,13 @@ describe('UserUpdateMobileNumberUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, mobileNumber.id, dto)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber.id,
+                    dto
+                )
             ).rejects.toBeInstanceOf(CountryNotFoundException);
 
             expect(
@@ -157,9 +183,15 @@ describe('UserUpdateMobileNumberUseCase', () => {
             const error = new Error('mobile-number-missing');
             userMobileNumberService.getOneMobileNumber.mockRejectedValue(error);
 
-            await expect(useCase.execute(context, 'missing', dto)).rejects.toBe(
-                error
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'missing',
+                    dto
+                )
+            ).rejects.toBe(error);
 
             expect(countryService.getOne).not.toHaveBeenCalled();
             expect(

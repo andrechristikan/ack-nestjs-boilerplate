@@ -5,7 +5,6 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
-import { RequestActorInterceptor } from '@common/request/interceptors/request.actor.interceptor';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -34,10 +33,6 @@ export class RequestModule {
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,
-                },
-                {
-                    provide: APP_INTERCEPTOR,
-                    useClass: RequestActorInterceptor,
                 },
                 {
                     provide: APP_PIPE,

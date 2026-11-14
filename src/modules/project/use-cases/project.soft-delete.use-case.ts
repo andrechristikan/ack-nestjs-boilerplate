@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContextProject } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,10 +13,20 @@ import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import type { IProjectContext } from '@modules/project/interfaces/project.interface';
 
 @Injectable()
 export class ProjectSoftDeleteUseCase implements IAppUseCase<
-    [IRequestContextProject],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        IProjectContext,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -29,10 +39,14 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextProject
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext,
+        projectContext: IProjectContext
     ): Promise<IResponseReturn<void>> {
-        const project = context.project;
-        const actorId = context.user.id;
+        const project = projectContext.project;
+        const actorId = authContext.userId;
         const deletedAt = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -47,7 +61,10 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
                     project.id
                 );
                 const entry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
                     {
                         action: EnumActivityLogAction.projectDeleted,
                         userId: actorId,

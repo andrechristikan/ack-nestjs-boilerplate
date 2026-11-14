@@ -18,11 +18,13 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberAnalyticService } from '@modules/workspace/services/workspace.member.analytic.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceIdMiddleware } from '@modules/workspace/middlewares/workspace.id.middleware';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { UserModule } from '@modules/user/user.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 
 @Module({
     controllers: [],
@@ -67,4 +69,8 @@ import { Module } from '@nestjs/common';
         }),
     ],
 })
-export class WorkspaceModule {}
+export class WorkspaceModule implements NestModule {
+    configure(consumer: MiddlewareConsumer): void {
+        consumer.apply(WorkspaceIdMiddleware).forRoutes('{*wildcard}');
+    }
+}

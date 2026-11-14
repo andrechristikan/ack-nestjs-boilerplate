@@ -1,4 +1,3 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { ApiKeyListRequestSchema } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -15,10 +14,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -43,21 +42,31 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IApiKey,
+    IApiKeyContext,
+} from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -110,12 +119,18 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: ApiKeyCreateRequestSchema })
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyCreateByAdminUseCase.execute(context, body);
+        return this.apiKeyCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'reset secret an api key' })
@@ -134,12 +149,18 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/reset/:apiKeyId')
     async reset(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyResetByAdminUseCase.execute(context, apiKeyId);
+        return this.apiKeyResetByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId
+        );
     }
 
     @Doc({ summary: 'update data an api key' })
@@ -158,14 +179,21 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Put('/update/:apiKeyId')
     async update(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyUpdateByAdminUseCase.execute(context, apiKeyId, body);
+        return this.apiKeyUpdateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId,
+            body
+        );
     }
 
     @Doc({ summary: 'update date of api key' })
@@ -184,15 +212,18 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Put('/update/:apiKeyId/date')
     async updateDate(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateDatesByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             apiKeyId,
             body
         );
@@ -214,15 +245,18 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateStatusByAdminUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
             apiKeyId,
             body
         );
@@ -244,11 +278,17 @@ export class ApiKeyAdminController {
     @ApiKeyProtected()
     @Delete('/delete/:apiKeyId')
     async delete(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
-        return this.apiKeyDeleteByAdminUseCase.execute(context, apiKeyId);
+        return this.apiKeyDeleteByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId
+        );
     }
 }

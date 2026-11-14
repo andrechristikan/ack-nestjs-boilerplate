@@ -13,7 +13,7 @@ import type {
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -52,6 +52,8 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class TermPolicyService {
@@ -153,7 +155,9 @@ export class TermPolicyService {
     }
 
     async createByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { contents, type, version }: ITermPolicyCreate
     ): Promise<TermPolicy> {
@@ -223,10 +227,16 @@ export class TermPolicyService {
                     { id: termPolicyId, type, version },
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.adminTermPolicyCreate,
-                    metadata,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyCreate,
+                        metadata,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return created;
@@ -255,7 +265,9 @@ export class TermPolicyService {
     }
 
     async deleteByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string
     ): Promise<TermPolicy> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
@@ -290,10 +302,16 @@ export class TermPolicyService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.adminTermPolicyDelete,
-                    metadata,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminTermPolicyDelete,
+                        metadata,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
             });
 
@@ -313,7 +331,9 @@ export class TermPolicyService {
     }
 
     async publishByAdmin(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         termPolicyId: string
     ): Promise<TermPolicy> {
         const termPolicy =
@@ -410,7 +430,7 @@ export class TermPolicyService {
                                     recipientCutoffAt,
                                     resendNonce: null,
                                 },
-                                snapshot.actorUserId
+                                authContext.userId
                             );
                         await this.outboxService.addManyInTx(tx, [
                             copyEffect,
@@ -423,7 +443,10 @@ export class TermPolicyService {
                                 row.updatedAt
                             );
                         const entry = this.activityLogService.recordEffect(
-                            snapshot,
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
+                            null,
                             {
                                 action: EnumActivityLogAction.adminTermPolicyPublish,
                                 metadata,

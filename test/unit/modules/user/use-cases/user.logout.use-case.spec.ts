@@ -27,8 +27,9 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
 import {
-    buildRequestContextUser,
-    buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserLogoutUseCase', () => {
@@ -44,15 +45,12 @@ describe('UserLogoutUseCase', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const baseContext = buildRequestContextUser(
-        buildUser('user-bramble', 'user-bramble@example.com')
-    );
-    const context = {
-        ...baseContext,
-        session: {
-            sessionId: 'session-bramble',
-            deviceOwnershipId: 'device-ownership-bramble',
-        },
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const authContext = {
+        ...buildAuthJwtAccessContext('user-bramble'),
+        sessionId: 'session-bramble',
+        deviceOwnershipId: 'device-ownership-bramble',
     };
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -143,7 +141,9 @@ describe('UserLogoutUseCase', () => {
                 callOrder.push('clearNotificationInTx');
             });
 
-            await expect(useCase.execute(context)).resolves.toEqual({});
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext)
+            ).resolves.toEqual({});
 
             expect(sessionService.revokeInTx).toHaveBeenCalledWith(
                 tx,
@@ -163,7 +163,10 @@ describe('UserLogoutUseCase', () => {
                 deviceService.clearNotificationInTx
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userLogout }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
@@ -181,7 +184,9 @@ describe('UserLogoutUseCase', () => {
             );
             sessionService.revokeInTx.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext)
+            ).rejects.toBe(failure);
             expect(deviceService.clearNotificationInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -193,7 +198,9 @@ describe('UserLogoutUseCase', () => {
                 new DatabaseWriteConflictException()
             );
 
-            await expect(useCase.execute(context)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext)
+            ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
                 statusCodeKey:
@@ -213,7 +220,9 @@ describe('UserLogoutUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
             databaseUtil.toException.mockReturnValue(null);
 
-            await expect(useCase.execute(context)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext)
+            ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: failure,

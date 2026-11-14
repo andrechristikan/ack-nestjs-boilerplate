@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContextWorkspace } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -15,10 +15,19 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
-    [IRequestContextWorkspace, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        string,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -33,11 +42,14 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextWorkspace,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
-        const workspaceId = context.workspace.id;
-        const actorMember = context.workspaceMember;
+        const workspaceId = workspaceContext.workspace.id;
+        const actorMember = workspaceContext.workspaceMember;
         try {
             await this.outboxService.withTransaction(async tx => {
                 const removed =
@@ -74,7 +86,10 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     workspaceId
                 );
                 const actorEntry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
                     {
                         action: EnumActivityLogAction.workspaceMemberRemoved,
                         userId: actorMember.userId,
@@ -84,7 +99,10 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     }
                 );
                 const targetEntry = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
                     {
                         action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                         userId: removed.userId,

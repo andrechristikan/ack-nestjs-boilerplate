@@ -6,16 +6,22 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdatePhotoProfileUseCase } from '@modules/user/use-cases/user.update-photo-profile.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserUpdatePhotoProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-sable', 'user-sable@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: UserUpdatePhotoProfileUseCase;
 
@@ -32,15 +38,22 @@ describe('UserUpdatePhotoProfileUseCase', () => {
     });
 
     describe('execute', () => {
-        it('delegates the key and the snapshot to the domain', async () => {
+        it('delegates the key and the context to the domain', async () => {
             const dto: UserUpdateProfilePhotoRequestDto = {
                 key: 'photo-profile/user-sable/random.png',
             };
 
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                dto
+            );
 
             expect(userProfileService.updatePhotoProfile).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 { key: dto.key }
             );
         });

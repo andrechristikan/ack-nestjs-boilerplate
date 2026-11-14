@@ -17,9 +17,14 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
 import {
-    buildRequestContextProject,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
+    buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectAssignMemberUseCase', () => {
@@ -88,12 +93,17 @@ describe('ProjectAssignMemberUseCase', () => {
         },
     };
 
-    const context = buildRequestContextProject(
-        buildUser('507f1f77bcf86cd799439033', 'jane@example.com'),
-        { ...buildWorkspace(), id: project.workspaceId },
-        actorMember,
-        project
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('507f1f77bcf86cd799439033', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
+        { ...buildWorkspace(), id: project.workspaceId },
+        actorMember
+    );
+    const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -141,7 +151,14 @@ describe('ProjectAssignMemberUseCase', () => {
             const created = { ...projectMemberRow, userId: body.userId };
             projectMemberService.assignMember.mockResolvedValue(created);
 
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext,
+                body
+            );
 
             expect(result).toEqual({ data: created });
             expect(
@@ -151,7 +168,9 @@ describe('ProjectAssignMemberUseCase', () => {
                 actorMember
             );
             expect(projectMemberService.assignMember).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 actor,
                 targetMember,
@@ -167,10 +186,19 @@ describe('ProjectAssignMemberUseCase', () => {
                 projectMemberRow
             );
 
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext,
+                body
+            );
 
             expect(projectMemberService.assignMember).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 project,
                 actor,
                 null,
@@ -186,9 +214,16 @@ describe('ProjectAssignMemberUseCase', () => {
                 new Error('boom')
             );
 
-            await expect(useCase.execute(context, body)).rejects.toThrow(
-                'boom'
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext,
+                    body
+                )
+            ).rejects.toThrow('boom');
         });
     });
 });

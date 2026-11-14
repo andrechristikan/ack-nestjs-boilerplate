@@ -1,4 +1,3 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import { WorkspaceJoinRequestListRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
@@ -9,13 +8,10 @@ import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/reques
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type {
-    IRequestContextUser,
-    IRequestContextWorkspace,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -31,12 +27,21 @@ import type {
     WorkspaceInvite,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteClaimRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -66,10 +71,12 @@ import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/resp
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type {
+    IWorkspaceContext,
     IWorkspaceInviteList,
     IWorkspaceMember,
 } from '@modules/workspace/interfaces/workspace.interface';
 import {
+    WorkspaceContext,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
@@ -109,6 +116,9 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.user.workspace')
 @Controller({
@@ -153,13 +163,12 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: WorkspaceUserListRequestSchema })
         query: WorkspaceUserListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceGetListCursorByMemberUseCase.execute(
-            context,
+            authContext,
             query
         );
     }
@@ -174,12 +183,18 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceCreateRequestSchema })
         body: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceCreateUseCase.execute(context, body);
+        return this.workspaceCreateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'get the current workspace (`x-workspace-id`)' })
@@ -196,10 +211,9 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/get')
     async get(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceGetCurrentUseCase.execute(context);
+        return this.workspaceGetCurrentUseCase.execute(workspaceContext);
     }
 
     @Doc({ summary: 'update the current workspace name/description' })
@@ -216,12 +230,20 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Put('/update')
     async update(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateRequestSchema })
         body: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceUpdateUseCase.execute(context, body);
+        return this.workspaceUpdateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({
@@ -241,12 +263,20 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Patch('/update/is-public')
     async updateIsPublic(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateIsPublicRequestSchema })
         body: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceUpdateIsPublicUseCase.execute(context, body);
+        return this.workspaceUpdateIsPublicUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({ summary: 'update the current workspace slug' })
@@ -263,12 +293,20 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Patch('/update/slug')
     async updateSlug(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateSlugRequestSchema })
         body: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceUpdateSlugUseCase.execute(context, body);
+        return this.workspaceUpdateSlugUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({
@@ -285,12 +323,18 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/switch')
     async switch(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceSwitchRequestSchema })
         body: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceSwitchUseCase.execute(context, body);
+        return this.workspaceSwitchUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -306,12 +350,20 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/ownership/transfer')
     async ownershipTransfer(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceTransferOwnershipUseCase.execute(context, body);
+        return this.workspaceTransferOwnershipUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({ summary: 'leave the current workspace' })
@@ -327,10 +379,17 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/leave')
     async leave(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceLeaveUseCase.execute(context);
+        return this.workspaceLeaveUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
+        );
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
@@ -345,10 +404,17 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Delete('/delete')
     async softDelete(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceSoftDeleteUseCase.execute(context);
+        return this.workspaceSoftDeleteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
+        );
     }
 
     @Doc({ summary: 'list members of the current workspace' })
@@ -365,12 +431,14 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/member/list')
     async memberList(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceMemberListRequestSchema })
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceGetMembersListUseCase.execute(context, query);
+        return this.workspaceGetMembersListUseCase.execute(
+            workspaceContext,
+            query
+        );
     }
 
     @Doc({ summary: 'update a member role in the current workspace' })
@@ -385,15 +453,20 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Patch('/member/:workspaceMemberId/role/update')
     async memberUpdateRole(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.workspaceUpdateMemberRoleUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceMemberId,
             body
         );
@@ -411,13 +484,18 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Delete('/member/:workspaceMemberId/remove')
     async memberRemove(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRemoveMemberUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceMemberId
         );
     }
@@ -436,12 +514,14 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/invite/list')
     async inviteList(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceInviteListRequestSchema })
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        return this.workspaceGetInvitesListUseCase.execute(context, query);
+        return this.workspaceGetInvitesListUseCase.execute(
+            workspaceContext,
+            query
+        );
     }
 
     @Doc({
@@ -461,12 +541,20 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Post('/invite/create')
     async inviteCreate(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        return this.workspaceCreateInviteUseCase.execute(context, body);
+        return this.workspaceCreateInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({
@@ -487,15 +575,20 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/invite/:workspaceInviteId/resend')
     async inviteResend(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
         return this.workspaceResendInviteUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceInviteId,
             body
         );
@@ -513,13 +606,18 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Delete('/invite/:workspaceInviteId/revoke')
     async inviteRevoke(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRevokeInviteUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceInviteId
         );
     }
@@ -538,12 +636,20 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/invite/claim')
     async inviteClaim(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
         body: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.workspaceClaimInviteUseCase.execute(context, body);
+        return this.workspaceClaimInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({
@@ -561,12 +667,18 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Post('/join-request/create')
     async joinRequestCreate(
-        @RequestContextCurrent(EnumRequestContextScope.user)
-        context: IRequestContextUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
         body: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
-        return this.workspaceCreateJoinRequestUseCase.execute(context, body);
+        return this.workspaceCreateJoinRequestUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'list join requests for the current workspace' })
@@ -583,12 +695,14 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/join-request/list')
     async joinRequestList(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceJoinRequestListRequestSchema })
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        return this.workspaceGetJoinRequestsListUseCase.execute(context, query);
+        return this.workspaceGetJoinRequestsListUseCase.execute(
+            workspaceContext,
+            query
+        );
     }
 
     @Doc({
@@ -607,13 +721,18 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/accept')
     async joinRequestAccept(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceAcceptJoinRequestUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceJoinRequestId
         );
     }
@@ -631,15 +750,20 @@ export class WorkspaceUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/reject')
     async joinRequestReject(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRejectJoinRequestUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceJoinRequestId,
             body
         );

@@ -54,6 +54,12 @@ const restrictedImportPatterns = [
     },
 ];
 
+const featureImportPattern = {
+    regex: '^@modules/',
+    message:
+        'src/common and src/app import nothing from a feature module, a type included (layering.md).',
+};
+
 const relativeImportPattern = {
     regex: '^\\.',
     message:
@@ -209,8 +215,41 @@ const namingConventionRules = {
     ],
 };
 
+const moduleFunctionRestriction = {
+    selector:
+        'Program > FunctionDeclaration:not([id.name="bootstrap"]), Program > VariableDeclaration > VariableDeclarator > :matches(ArrowFunctionExpression, FunctionExpression).init',
+    message:
+        'No module-level function; fold it into the method or class that uses it (code-style.md).',
+};
+
+const contextTypeName = '/^I[A-Za-z]+Context$/';
+
+const contextParam = `:matches([typeAnnotation.typeAnnotation.typeName.name=${contextTypeName}], [typeAnnotation.typeAnnotation.types.0.typeName.name=${contextTypeName}])`;
+
+const parameterOrderRestrictions = [
+    {
+        selector: ':function > Identifier.params[name="tx"]:not(:first-child)',
+        message: 'tx is the first parameter (code-style.md).',
+    },
+    {
+        selector: `:function > Identifier.params:not(${contextParam}):not([name="tx"]) ~ Identifier.params${contextParam}`,
+        message:
+            'A context parameter comes before every other parameter but tx (code-style.md).',
+    },
+];
+
+const requestUserRestriction = {
+    selector:
+        'MemberExpression[property.name="user"]:matches([object.name=/^(request|req)$/], [object.callee.property.name="getRequest"])',
+    message:
+        'Read identity from the request store or the request context, never request.user (security.md).',
+};
+
 const codeStyleRestrictedSyntax = [
     ...codeStyleSyntaxRestrictions,
+    moduleFunctionRestriction,
+    requestUserRestriction,
+    ...parameterOrderRestrictions,
     newDateRestriction,
     throwNewErrorRestriction,
     throwIdentifierRestriction,
@@ -606,6 +645,30 @@ export default [
         ],
         rules: {
             'no-restricted-syntax': ['error', ...codeStyleRestrictedSyntax],
+        },
+    },
+    {
+        name: 'ts/common',
+        files: ['src/common/**/*.ts', 'src/app/**/*.ts'],
+        ignores: [
+            'src/app/app.module.ts',
+            'src/common/common.module.ts',
+            'src/common/cache/processors/cache.processor.ts',
+            'src/common/cache/services/cache.service.ts',
+            'src/common/queue/bases/queue.processor.base.ts',
+        ],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: restrictedImportPaths,
+                    patterns: [
+                        ...restrictedImportPatterns,
+                        relativeImportPattern,
+                        featureImportPattern,
+                    ],
+                },
+            ],
         },
     },
     {

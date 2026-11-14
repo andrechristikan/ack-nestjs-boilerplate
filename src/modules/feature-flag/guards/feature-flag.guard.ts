@@ -1,4 +1,6 @@
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     FeatureFlagAnonymousIdHeaderName,
     FeatureFlagKeyPathMetaKey,
@@ -18,7 +20,8 @@ export class FeatureFlagGuard implements CanActivate {
     constructor(
         private readonly featureFlagService: FeatureFlagService,
         private readonly reflector: Reflector,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly requestStoreService: RequestStoreService
     ) {
         this.anonymousIdMaxLength = this.configService.get<number>(
             'featureFlag.anonymous.idMaxLength'
@@ -50,9 +53,12 @@ export class FeatureFlagGuard implements CanActivate {
             }
         }
 
+        const actorUserId =
+            this.requestStoreService.get<string>(RequestActorStoreKey);
+
         await this.featureFlagService.validateFeatureFlag(
             featureFlagKeyPath,
-            request.user?.userId ?? null,
+            actorUserId,
             anonymousId
         );
 

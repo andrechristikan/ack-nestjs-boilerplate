@@ -5,6 +5,9 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
 /** @public */
+export const UserContextStoreKey = 'UserContextStoreKey';
+
+/** @public */
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /** @public */

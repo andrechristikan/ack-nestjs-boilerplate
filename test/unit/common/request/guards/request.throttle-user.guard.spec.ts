@@ -8,17 +8,13 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
+    RequestActorStoreKey,
+    RequestThrottleOptionsMetaKey,
+} from '@common/request/constants/request.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
-import type {
-    IRequestApp,
-    IRequestThrottlePolicy,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
@@ -32,17 +28,8 @@ describe('RequestThrottleUserGuard', () => {
     const requestThrottleService: MockProxy<RequestThrottleService> =
         mock<RequestThrottleService>();
     const policy = { ttlInMs: 1000, limit: 5, blockDurationInMs: 5000 };
-    const user: IAuthJwtAccessTokenPayload = {
-        loginAt: new Date('2026-01-01T00:00:00.000Z'),
-        loginFrom: EnumUserLoginFrom.website,
-        loginWith: EnumUserLoginWith.credential,
-        email: 'jane@example.com',
-        username: 'jane',
-        userId: 'user-1',
-        sessionId: 'session-1',
-        deviceOwnershipId: 'device-1',
-        roleId: 'role-1',
-    };
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     let guard: RequestThrottleUserGuard;
 
     beforeEach(async () => {
@@ -53,6 +40,7 @@ describe('RequestThrottleUserGuard', () => {
                 RequestThrottleUserGuard,
                 { provide: Reflector, useValue: reflector },
                 { provide: ConfigService, useValue: configService },
+                { provide: RequestStoreService, useValue: requestStoreService },
                 {
                     provide: RequestThrottleService,
                     useValue: requestThrottleService,
@@ -95,16 +83,14 @@ describe('RequestThrottleUserGuard', () => {
             expect(requestThrottleService.evaluate).not.toHaveBeenCalled();
         });
 
-        it('throws a context-missing error when the user option is set and the request carries no authenticated user', async () => {
+        it('throws a context-missing error when the user option is set and the store holds no context', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            Reflect.set(request, 'user', undefined);
             reflector.get.mockReturnValue({ user: true });
+            requestStoreService.get.mockReturnValue(null);
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
-            httpArgumentsHost.getRequest.mockReturnValue(request);
 
             let thrown: unknown;
             try {
@@ -113,25 +99,43 @@ describe('RequestThrottleUserGuard', () => {
                 thrown = caught;
             }
 
-            expectRequestContextMissingWithKey(thrown, 'request.user');
+            expectRequestContextMissingWithKey(thrown, RequestActorStoreKey);
             expect(requestThrottleService.evaluate).not.toHaveBeenCalled();
         });
 
-        it('evaluates the user policy and activates when the request carries an authenticated user', async () => {
+        it('throws a context-missing error when the user option is set and the context holds no actor', async () => {
+            const executionContext: MockProxy<ExecutionContext> =
+                mock<ExecutionContext>();
+            reflector.get.mockReturnValue({ user: true });
+            requestStoreService.get.mockReturnValue(null);
+
+            let thrown: unknown;
+            try {
+                await guard.canActivate(executionContext);
+            } catch (caught) {
+                thrown = caught;
+            }
+
+            expectRequestContextMissingWithKey(thrown, RequestActorStoreKey);
+            expect(requestThrottleService.evaluate).not.toHaveBeenCalled();
+        });
+
+        it('evaluates the user policy and activates when the store holds the actor', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.user = user;
             const response: MockProxy<Response> = mock<Response>();
             reflector.get.mockReturnValue({ user: true });
+            requestStoreService.get.mockReturnValue('user-1');
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
-            httpArgumentsHost.getRequest.mockReturnValue(request);
             httpArgumentsHost.getResponse.mockReturnValue(response);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 true
+            );
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestActorStoreKey
             );
             expect(requestThrottleService.evaluate).toHaveBeenCalledWith(
                 response,

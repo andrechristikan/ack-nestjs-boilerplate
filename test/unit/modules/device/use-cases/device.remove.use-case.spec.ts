@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
@@ -12,9 +15,12 @@ import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use
 
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: DeviceRemoveUseCase;
 
     beforeEach(async () => {
@@ -34,11 +40,18 @@ describe('DeviceRemoveUseCase', () => {
         it('removes the ownership as the owner passing the request context and returns an empty envelope', async () => {
             sessionService.removeDeviceOwnership.mockResolvedValue();
 
-            const result = await useCase.execute(context, 'device-ownership-1');
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1'
+            );
 
             expect(result).toEqual({});
             expect(sessionService.removeDeviceOwnership).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'device-ownership-1'
             );
         });
@@ -48,7 +61,12 @@ describe('DeviceRemoveUseCase', () => {
             sessionService.removeDeviceOwnership.mockRejectedValue(notFound);
 
             await expect(
-                useCase.execute(context, 'device-ownership-1')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'device-ownership-1'
+                )
             ).rejects.toBe(notFound);
         });
     });

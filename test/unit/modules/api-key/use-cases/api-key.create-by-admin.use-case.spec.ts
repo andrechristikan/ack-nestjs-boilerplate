@@ -23,8 +23,11 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyCreateByAdminUseCase', () => {
@@ -55,9 +58,12 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const metadata = { apiKeyId: apiKey.id };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-actor', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const effect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -109,7 +115,12 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         });
 
         it('creates the api key on the outbox transaction and shapes the secret-bearing response', async () => {
-            const result = await useCase.execute(context, body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(result).toEqual({ data: created });
             expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
@@ -129,7 +140,12 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         });
 
         it('adds only the create activity entry with the drawn id and the passed context on the same tx', async () => {
-            await useCase.execute(context, body);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
 
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
@@ -140,7 +156,10 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyCreate,
                     metadata,
@@ -154,7 +173,11 @@ describe('ApiKeyCreateByAdminUseCase', () => {
             const startAt = new Date('2026-02-01T00:00:00.000Z');
             const endAt = new Date('2026-03-01T00:00:00.000Z');
 
-            await useCase.execute(context, { ...body, startAt, endAt });
+            await useCase.execute(requestContext, apiKeyContext, authContext, {
+                ...body,
+                startAt,
+                endAt,
+            });
 
             expect(apiKeyService.createByAdminInTx).toHaveBeenCalledWith(
                 tx,

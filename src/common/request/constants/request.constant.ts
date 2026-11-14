@@ -32,8 +32,6 @@ export const RequestEnvProtectedDocErrors: IDocResponseEntry[] = [
 export const RequestThrottleOptionsMetaKey = 'RequestThrottleOptionsMetaKey';
 
 /** @public */
-export const RequestLogStoreKey = 'RequestLogStoreKey';
-/** @public */
 export const RequestLanguageStoreKey = 'RequestLanguageStoreKey';
 /** @public */
 export const RequestVersionStoreKey = 'RequestVersionStoreKey';
@@ -41,6 +39,8 @@ export const RequestVersionStoreKey = 'RequestVersionStoreKey';
 export const RequestCorrelationIdStoreKey = 'RequestCorrelationIdStoreKey';
 /** @public */
 export const RequestIdStoreKey = 'RequestIdStoreKey';
+/** @public */
+export const RequestLogStoreKey = 'RequestLogStoreKey';
 /** @public */
 export const RequestActorStoreKey = 'RequestActorStoreKey';
 /** @public */
@@ -57,21 +57,3 @@ export const RequestThrottleHeaderName = 'X-RateLimit';
 
 /** @public */
 export const RequestWorkspaceIdHeaderName = 'x-workspace-id';
-
-/** @public */
-export const RequestWorkspaceIdStoreKey = 'RequestWorkspaceIdStoreKey';
-
-/** @public */
-export const RequestWorkspaceStoreKey = 'RequestWorkspaceStoreKey';
-
-/** @public */
-export const RequestUserStoreKey = 'RequestUserStoreKey';
-
-/** @public */
-export const RequestWorkspaceMemberStoreKey = 'RequestWorkspaceMemberStoreKey';
-
-/** @public */
-export const RequestProjectStoreKey = 'RequestProjectStoreKey';
-
-/** @public */
-export const RequestProjectMemberStoreKey = 'RequestProjectMemberStoreKey';

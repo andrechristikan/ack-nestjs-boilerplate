@@ -10,7 +10,11 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -65,7 +69,9 @@ describe('TermPolicyUserAcceptUseCase', () => {
         },
         twoFactor: null,
     };
-    const context = buildRequestContextUser(user);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const authContext = buildAuthJwtAccessContext(user.id);
 
     let useCase: TermPolicyUserAcceptUseCase;
 
@@ -89,13 +95,20 @@ describe('TermPolicyUserAcceptUseCase', () => {
         it('accepts the type for the user passing the request context and returns an empty envelope', async () => {
             termPolicyAcceptanceService.userAccept.mockResolvedValue();
 
-            const result = await useCase.execute(context, {
-                type: EnumTermPolicyType.privacy,
-            });
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                {
+                    type: EnumTermPolicyType.privacy,
+                }
+            );
 
             expect(result).toEqual({});
             expect(termPolicyAcceptanceService.userAccept).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 EnumTermPolicyType.privacy
             );
         });
@@ -105,7 +118,9 @@ describe('TermPolicyUserAcceptUseCase', () => {
             termPolicyAcceptanceService.userAccept.mockRejectedValue(error);
 
             await expect(
-                useCase.execute(context, { type: EnumTermPolicyType.privacy })
+                useCase.execute(requestContext, apiKeyContext, authContext, {
+                    type: EnumTermPolicyType.privacy,
+                })
             ).rejects.toBe(error);
         });
     });

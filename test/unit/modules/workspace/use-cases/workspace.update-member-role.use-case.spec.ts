@@ -9,9 +9,13 @@ import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dto
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
 import {
-    buildRequestContextWorkspace,
     buildUser,
     buildWorkspace,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceUpdateMemberRoleUseCase', () => {
@@ -28,11 +32,13 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
         role: EnumWorkspaceMemberRole.owner,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
-        buildWorkspace(),
-        member
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
 
     let useCase: WorkspaceUpdateMemberRoleUseCase;
 
@@ -58,13 +64,22 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 role: EnumWorkspaceMemberRole.admin,
             };
 
-            const result = await useCase.execute(context, 'member-2', body);
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                'member-2',
+                body
+            );
 
             expect(result).toEqual({});
             expect(
                 workspaceMemberService.updateMemberRole
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 member,
                 'member-2',
@@ -78,9 +93,16 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'member-2', {
-                    role: EnumWorkspaceMemberRole.admin,
-                })
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2',
+                    {
+                        role: EnumWorkspaceMemberRole.admin,
+                    }
+                )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
         });
     });

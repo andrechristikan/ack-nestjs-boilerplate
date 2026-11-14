@@ -19,8 +19,10 @@ import {
 } from '@modules/notification/constants/notification.list.constant';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationGetListCursorUseCase', () => {
@@ -31,9 +33,11 @@ describe('NotificationGetListCursorUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const context = buildRequestContextUser(
+    const userContext = buildUserContext(
         buildUser('user-id', 'user@example.com')
     );
+    const requestContext = buildRequestContext();
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     let useCase: NotificationGetListCursorUseCase;
 
     const cursorParams = {
@@ -78,7 +82,11 @@ describe('NotificationGetListCursorUseCase', () => {
             });
             notificationService.getListCursor.mockResolvedValue(cursorPage);
 
-            const result = await useCase.execute(context, query, null);
+            const result = await useCase.execute(
+                requestContext,
+                authContext,
+                query
+            );
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: NotificationSharedListCursorScope,
@@ -137,7 +145,11 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => `translated:${path}`
             );
 
-            const result = await useCase.execute(context, query, 'en');
+            const result = await useCase.execute(
+                requestContext,
+                authContext,
+                query
+            );
 
             expect(requestStoreService.get).not.toHaveBeenCalled();
             expect(
@@ -202,55 +214,14 @@ describe('NotificationGetListCursorUseCase', () => {
                 (path: string) => path
             );
 
-            await useCase.execute(context, query, null);
+            await useCase.execute(requestContext, authContext, query);
 
             expect(
                 notificationService.toMessageProperties
             ).toHaveBeenCalledWith(stored.title, stored.metadata);
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.newDeviceLogin.body',
-                { properties }
-            );
-        });
-
-        it('translates with no custom language when none is stored', async () => {
-            const stored: Notification = {
-                id: 'notification-id',
-                userId: 'user-id',
-                type: EnumNotificationType.securityAlert,
-                priority: EnumNotificationPriority.normal,
-                title: 'notification.notify.changePassword.title',
-                body: 'notification.notify.changePassword.body',
-                metadata: null,
-                isRead: false,
-                readAt: null,
-                createdAt: new Date('2024-01-01T00:00:00.000Z'),
-                createdBy: null,
-                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-                updatedBy: null,
-            };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: {},
-            });
-            notificationService.getListCursor.mockResolvedValue({
-                ...cursorPage,
-                data: [stored],
-            });
-            notificationService.toMessageProperties.mockReturnValue({});
-            notificationService.toRejectReasonProperties.mockReturnValue({});
-            messageService.setMessage.mockImplementation(
-                (path: string) => path
-            );
-
-            await useCase.execute(context, query, null);
-
-            expect(
-                notificationService.toRejectReasonProperties
-            ).toHaveBeenCalledWith({}, null);
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.notify.changePassword.title',
-                { properties: {} }
+                { customLanguage: 'en', properties }
             );
         });
     });

@@ -42,9 +42,9 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` an
 | interface, data shape, payload | kind word last | `IUser`, `INotificationSendPushEncryptedPayload` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | injected field | the class name in camelCase | `authService: AuthService`, `userSignUpUseCase: UserSignUpUseCase` |
-| metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `RequestUserStoreKey = 'RequestUserStoreKey'` |
+| metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `ProjectContextStoreKey = 'ProjectContextStoreKey'` |
 | cursor scope | `<Module><Endpoint>CursorScope`, PascalCase; the value equals the name | `SessionSharedListCursorScope = 'SessionSharedListCursorScope'` |
-| guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Current(...)` for request state, `AuthJwtToken()` and `AuthSocialEmail()` for a credential claim | `WorkspaceMemberProtected()`; `RequestContextCurrent(scope)`, `RequestLanguageCurrent()` |
+| guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Context()` for request state | `WorkspaceMemberProtected()`; `WorkspaceContext()`, `AuthJwtRefreshContext()` |
 | repository read; service read | `find*`, `count*`, `exists*`, `group*`; `get*` | `findOneById`; `getListOffsetByAdmin` |
 | method or use case serving one audience | `By<Audience>` suffix | `createByAdmin`, `getListCursorBySystem`, `UserCreateByAdminUseCase` |
 | narrowed list read; Prisma select constant | `I<Module>List` when narrower than the single-row shape, `I<Module>` when list and single-row reads share one neutral select, never `…Row`; `<Module>[<Audience>][<Concern>]Select` | `IUserList` + `UserAdminListSelect`; `IApiKey` + `ApiKeySelect` |

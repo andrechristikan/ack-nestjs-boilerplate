@@ -7,15 +7,13 @@ import { AnalyticDateService } from '@modules/analytic/services/analytic.date.se
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
-    buildRequestContextWorkspace,
-    buildUser,
     buildWorkspace,
     buildWorkspaceMember,
+    buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('AnalyticInviteFunnelUseCase', () => {
-    const context = buildRequestContextWorkspace(
-        buildUser('user-1', 'jane@example.com'),
+    const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
@@ -58,7 +56,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await useCase.execute(context, {
+            const result = await useCase.execute(workspaceContext, {
                 startDate,
                 endDate,
             });
@@ -78,7 +76,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
             });
             analyticWorkspaceUserService.inviteFunnel.mockResolvedValue([]);
 
-            await useCase.execute(context, { startDate, endDate });
+            await useCase.execute(workspaceContext, { startDate, endDate });
 
             expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,

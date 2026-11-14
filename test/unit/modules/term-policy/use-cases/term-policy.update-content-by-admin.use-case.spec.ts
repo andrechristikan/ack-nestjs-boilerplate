@@ -3,8 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {
     EnumTermPolicyStatus,
@@ -32,9 +35,12 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('admin-1', 'actor@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const body: TermPolicyContentRequestDto = {
         language: EnumMessageLanguage.en,
         size: 1024,
@@ -66,7 +72,9 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
             );
 
             const result = await useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'term-policy-1',
                 body
             );
@@ -74,7 +82,13 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
             expect(result).toEqual({});
             expect(
                 termPolicyContentService.updateContentByAdmin
-            ).toHaveBeenCalledWith(context.snapshot, 'term-policy-1', body);
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                body
+            );
         });
 
         it('rethrows the domain exception', async () => {
@@ -84,7 +98,13 @@ describe('TermPolicyUpdateContentByAdminUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'term-policy-1', body)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1',
+                    body
+                )
             ).rejects.toBe(error);
         });
     });

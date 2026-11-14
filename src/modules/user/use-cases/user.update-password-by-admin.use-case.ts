@@ -1,5 +1,5 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -17,10 +17,19 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        string,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -37,15 +46,20 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
-        const user = context.user;
-        this.userService.assertNotSelf(userId, user.id);
+        this.userService.assertNotSelf(userId, authContext.userId);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const target = await this.userService.getOneWithRole(userId);
-        this.roleService.assertActorOutranks(user.role.type, target.role.type);
+        this.roleService.assertActorOutranks(
+            userContext.user.role.type,
+            target.role.type
+        );
         this.userService.assertUnblocked(target);
 
         const { password, passwordString } =
@@ -63,7 +77,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                     tx,
                     userId,
                     password,
-                    user.id
+                    authContext.userId
                 ),
                 this.notificationService.getSnapshot(target),
             ]);
@@ -74,20 +88,20 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 EnumPasswordHistoryType.admin,
                 password.passwordPeriodExpired,
                 password.passwordCreated,
-                user.id
+                authContext.userId
             );
             await this.userPasswordService.markUnusedResetsUsedInTx(tx, userId);
             await this.sessionService.revokeActiveByUserInTx(
                 tx,
                 userId,
-                user.id,
+                authContext.userId,
                 password.passwordCreated
             );
             const effect = this.notificationService.notify(
                 EnumNotificationKind.temporaryPasswordByAdmin,
                 {
                     userId,
-                    proceedBy: user.id,
+                    proceedBy: authContext.userId,
                     password: passwordString,
                     passwordCreatedAt,
                     passwordExpiredAt,
@@ -98,21 +112,27 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 this.userUtil.mapActivityLogActorMetadata(updated);
             const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
                 updated,
-                user.id
+                authContext.userId
             );
             const actorEntry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminUserUpdatePassword,
                     metadata: actorMetadata,
                 }
             );
             const targetEntry = this.activityLogService.recordEffect(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                     userId,
-                    createdBy: user.id,
+                    createdBy: authContext.userId,
                     metadata: targetMetadata,
                 }
             );

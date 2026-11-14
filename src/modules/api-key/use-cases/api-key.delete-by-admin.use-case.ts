@@ -3,21 +3,25 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
-import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IApiKey,
+    IApiKeyContext,
+} from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string],
+    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, string],
     IResponseReturn<IApiKey>
 > {
     constructor(
@@ -30,7 +34,9 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         id: string
     ): Promise<IResponseReturn<IApiKey>> {
         try {
@@ -47,7 +53,10 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
                         timestamp
                     );
                     const effect = this.activityLogService.recordEffect(
-                        context.snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.adminApiKeyDelete,
                             metadata,

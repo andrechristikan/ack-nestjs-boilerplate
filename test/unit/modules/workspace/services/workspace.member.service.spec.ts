@@ -40,8 +40,11 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceMemberService', () => {
@@ -53,9 +56,12 @@ describe('WorkspaceMemberService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const { snapshot } = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const firstEntry = { queue: 'first-entry' } as unknown as IOutboxEffect;
     const secondEntry = { queue: 'second-entry' } as unknown as IOutboxEffect;
     let service: WorkspaceMemberService;
@@ -318,7 +324,9 @@ describe('WorkspaceMemberService', () => {
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-1'
@@ -342,7 +350,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -365,7 +375,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -398,7 +410,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -435,7 +449,9 @@ describe('WorkspaceMemberService', () => {
             workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
 
             await service.transferOwnership(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 actor,
                 'user-2'
@@ -443,7 +459,10 @@ describe('WorkspaceMemberService', () => {
 
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferred,
                     userId: 'user-1',
@@ -454,7 +473,10 @@ describe('WorkspaceMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                     userId: 'user-2',
@@ -484,7 +506,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -514,7 +538,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -538,7 +564,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -558,7 +586,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.transferOwnership(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'user-2'
@@ -721,7 +751,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',
@@ -746,7 +778,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',
@@ -768,7 +802,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',
@@ -791,7 +827,9 @@ describe('WorkspaceMemberService', () => {
             );
 
             await service.updateMemberRole(
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'workspace-1',
                 actor,
                 'member-2',
@@ -811,7 +849,10 @@ describe('WorkspaceMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                     userId: 'user-1',
@@ -822,7 +863,10 @@ describe('WorkspaceMemberService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                     userId: 'user-2',
@@ -845,7 +889,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',
@@ -870,7 +916,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',
@@ -892,7 +940,9 @@ describe('WorkspaceMemberService', () => {
 
             await expect(
                 service.updateMemberRole(
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
                     'workspace-1',
                     actor,
                     'member-2',

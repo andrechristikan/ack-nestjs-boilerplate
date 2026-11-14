@@ -1,21 +1,37 @@
 import { HttpStatus } from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import type { ExecutionContext, Type } from '@nestjs/common';
+import {
+    getParamDecoratorFactory,
+    buildDecoratorTarget,
+} from '@test/unit/helpers/test.unit.decorator.helper';
+import {
+    ProjectContext,
+    ProjectMemberProtected,
+    ProjectProtected,
+} from '@modules/project/decorators/project.decorator';
+import {
+    ProjectContextStoreKey,
+    ProjectRoleMetaKey,
+} from '@modules/project/constants/project.constant';
+import {
+    buildProject,
+    buildProjectMember,
+    expectRequestContextMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
-import { ProjectRoleMetaKey } from '@modules/project/constants/project.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
-import {
-    ProjectMemberProtected,
-    ProjectProtected,
-} from '@modules/project/decorators/project.decorator';
-import { buildDecoratorTarget } from '@test/unit/helpers/test.unit.decorator.helper';
 
 describe('project.decorator', () => {
     describe('ProjectProtected', () => {
@@ -151,6 +167,75 @@ describe('project.decorator', () => {
                     messagePath: 'workspace.error.memberGuardMissing',
                 },
             ]);
+        });
+    });
+
+    describe('ProjectContext', () => {
+        const project = buildProject();
+        const projectMember = buildProjectMember('user-1');
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+        const target = {} as Type<unknown>;
+        ProjectContext()(target, 'projectContext', 0);
+        const factory = getParamDecoratorFactory(target, 'projectContext');
+
+        beforeEach(() => {
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
+            );
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('throws RequestContextMissingException naming the key when the store holds none', () => {
+            clsService.get.mockReturnValue(undefined);
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(thrown, ProjectContextStoreKey);
+        });
+
+        it('throws RequestContextMissingException naming the key when the store holds no project', () => {
+            clsService.get.mockReturnValue({ projectMember });
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(thrown, ProjectContextStoreKey);
+        });
+
+        it('returns the stored project and project member', () => {
+            clsService.get.mockReturnValue({ project, projectMember });
+
+            expect(factory(undefined, executionContext)).toEqual({
+                project,
+                projectMember,
+            });
+            expect(clsService.get).toHaveBeenCalledWith(ProjectContextStoreKey);
+        });
+
+        it('returns a null project member when no member guard wrote one', () => {
+            clsService.get.mockReturnValue({ project });
+
+            expect(factory(undefined, executionContext)).toEqual({
+                project,
+                projectMember: null,
+            });
         });
     });
 });

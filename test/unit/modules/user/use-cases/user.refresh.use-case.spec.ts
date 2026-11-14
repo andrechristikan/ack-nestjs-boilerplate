@@ -44,7 +44,12 @@ import {
 } from '@test/unit/helpers/test.unit.user-refresh.helper';
 import type { IUserRefreshSessionDoubles } from '@test/unit/helpers/test.unit.user-refresh.helper';
 import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-case';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtRefreshContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserRefreshUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -140,8 +145,15 @@ describe('UserRefreshUseCase', () => {
         },
         twoFactor: null,
     };
-    const context = buildRequestContextUser(baseUser);
-    const { requestLog } = context.snapshot;
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(baseUser);
+    const authContext = {
+        ...buildAuthJwtRefreshContext(baseUser.id, 'refresh-token'),
+        sessionId: 'session-bramble',
+        deviceOwnershipId: 'device-ownership-bramble',
+    };
+    const { requestLog } = requestContext;
     const committedUser: IUser = { ...baseUser, twoFactor };
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -224,7 +236,12 @@ describe('UserRefreshUseCase', () => {
             });
 
             await expect(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             ).resolves.toEqual({ data: tokens });
 
             expect(sessionService.updateJtiInTx).toHaveBeenCalledWith(
@@ -248,7 +265,10 @@ describe('UserRefreshUseCase', () => {
                 'new-jti'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 { action: EnumActivityLogAction.userRefreshToken }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
@@ -276,7 +296,12 @@ describe('UserRefreshUseCase', () => {
             );
 
             await expect(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             ).resolves.toEqual({ data: tokens });
 
             expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
@@ -294,7 +319,12 @@ describe('UserRefreshUseCase', () => {
             });
 
             await expect(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
@@ -315,18 +345,23 @@ describe('UserRefreshUseCase', () => {
             sessionService.revokeIfActive.mockResolvedValue();
 
             await expectSessionRevoked(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             );
 
             expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                context.snapshot,
                 'user-bramble',
-                'session-bramble'
+                'session-bramble',
+                entryEffect
             );
             expect(sessionService.updateLogin).not.toHaveBeenCalled();
         });
 
-        it('revokes the session with the passed snapshot after the commit and answers revoked when the jti compare-and-set matches no row', async () => {
+        it('revokes the session with the passed context after the commit and answers revoked when the jti compare-and-set matches no row', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -349,13 +384,18 @@ describe('UserRefreshUseCase', () => {
             });
 
             await expectSessionRevoked(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             );
 
             expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                context.snapshot,
                 'user-bramble',
-                'session-bramble'
+                'session-bramble',
+                entryEffect
             );
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
@@ -381,12 +421,17 @@ describe('UserRefreshUseCase', () => {
             sessionService.revokeIfActive.mockResolvedValue();
 
             await expectSessionRevoked(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             );
             expect(sessionService.revokeIfActive).toHaveBeenCalledWith(
-                context.snapshot,
                 'user-bramble',
-                'session-bramble'
+                'session-bramble',
+                entryEffect
             );
             expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
         });
@@ -407,7 +452,12 @@ describe('UserRefreshUseCase', () => {
             );
 
             await expectSessionRevoked(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             );
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -428,7 +478,12 @@ describe('UserRefreshUseCase', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
@@ -444,7 +499,12 @@ describe('UserRefreshUseCase', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                useCase.execute(context, 'refresh-token')
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,

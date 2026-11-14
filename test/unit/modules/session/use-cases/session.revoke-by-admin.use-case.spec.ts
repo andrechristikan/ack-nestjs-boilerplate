@@ -10,7 +10,12 @@ import {
 } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
@@ -119,7 +124,10 @@ describe('SessionRevokeByAdminUseCase', () => {
         },
         twoFactor: null,
     };
-    const context = buildRequestContextUser(admin);
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(admin);
+    const authContext = buildAuthJwtAccessContext(admin.id);
     let useCase: SessionRevokeByAdminUseCase;
 
     beforeEach(async () => {
@@ -142,7 +150,10 @@ describe('SessionRevokeByAdminUseCase', () => {
             sessionService.revokeByAdmin.mockResolvedValue(session);
 
             const result = await useCase.execute(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
                 'user-1',
                 'session-1'
             );
@@ -154,7 +165,9 @@ describe('SessionRevokeByAdminUseCase', () => {
                 EnumRoleType.user
             );
             expect(sessionService.revokeByAdmin).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                authContext,
                 'user-1',
                 'session-1',
                 revokedAt
@@ -168,7 +181,14 @@ describe('SessionRevokeByAdminUseCase', () => {
                 throw rankForbidden;
             });
 
-            const rejection = useCase.execute(context, 'root-1', 'session-1');
+            const rejection = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'root-1',
+                'session-1'
+            );
 
             await expect(rejection).rejects.toBe(rankForbidden);
             expect(sessionService.revokeByAdmin).not.toHaveBeenCalled();
@@ -180,7 +200,14 @@ describe('SessionRevokeByAdminUseCase', () => {
             const failure = new SessionNotFoundException();
             sessionService.revokeByAdmin.mockRejectedValue(failure);
 
-            const rejection = useCase.execute(context, 'user-1', 'session-1');
+            const rejection = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-1',
+                'session-1'
+            );
 
             await expect(rejection).rejects.toBe(failure);
         });

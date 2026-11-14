@@ -7,17 +7,23 @@ import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/u
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDeleteMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
 
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-swift', 'user-swift@example.com')
     );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
     let useCase: UserDeleteMobileNumberUseCase;
 
@@ -73,17 +79,27 @@ describe('UserDeleteMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('deletes the mobile number, passes the snapshot, and wraps it in a response envelope', async () => {
+        it('deletes the mobile number, passes the context, and wraps it in a response envelope', async () => {
             userMobileNumberService.deleteMobileNumber.mockResolvedValue(
                 mobileNumber
             );
 
             await expect(
-                useCase.execute(context, mobileNumber.id)
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber.id
+                )
             ).resolves.toEqual({ data: mobileNumber });
             expect(
                 userMobileNumberService.deleteMobileNumber
-            ).toHaveBeenCalledWith(context.snapshot, mobileNumber.id);
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumber.id
+            );
         });
     });
 });

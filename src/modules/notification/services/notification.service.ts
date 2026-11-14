@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -45,7 +45,7 @@ import type {
     INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokensResult,
     INotificationRecipientRecord,
-    INotificationSealedContext,
+    INotificationSealedData,
     INotificationSealedRecord,
     INotificationSnapshot,
     INotificationUserSettingPreference,
@@ -59,6 +59,8 @@ import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { MessageService } from '@common/message/services/message.service';
 import type { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class NotificationService {
@@ -157,7 +159,7 @@ export class NotificationService {
     private sendEmailEffect(
         kind: EnumNotificationKind,
         notificationId: string,
-        context: INotificationSealedContext,
+        context: INotificationSealedData,
         { userId, username, encryptedEmail }: INotificationRecipientRecord
     ): IOutboxEffect {
         const { queuePriority } = NotificationKindContract[kind];
@@ -186,7 +188,7 @@ export class NotificationService {
     private sendPushEffect(
         kind: EnumNotificationKind,
         notificationId: string,
-        context: INotificationSealedContext,
+        context: INotificationSealedData,
         { userId, username, encryptedTokens }: INotificationRecipientRecord
     ): IOutboxEffect {
         const { queuePriority } = NotificationKindContract[kind];
@@ -370,7 +372,7 @@ export class NotificationService {
         tx: IDatabaseTransactionClient,
         notificationId: string,
         kind: EnumNotificationKind,
-        context: INotificationSealedContext,
+        context: INotificationSealedData,
         recipient: INotificationRecipientRecord
     ): Promise<void> {
         const { userId, username, channels, encryptedTokens } = recipient;
@@ -534,7 +536,9 @@ export class NotificationService {
     }
 
     async updateUserSetting(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         data: INotificationUserSettingUpdate
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
@@ -543,21 +547,27 @@ export class NotificationService {
             const updated =
                 await this.notificationUserSettingRepository.updateUserSettingInTx(
                     tx,
-                    snapshot.actorUserId,
+                    authContext.userId,
                     data
                 );
             if (!updated) {
                 throw new NotificationSettingInvalidException();
             }
 
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userUpdateNotificationSetting,
-                metadata: {
-                    channel: data.channel,
-                    type: data.type,
-                    isActive: data.isActive,
-                },
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userUpdateNotificationSetting,
+                    metadata: {
+                        channel: data.channel,
+                        type: data.type,
+                        isActive: data.isActive,
+                    },
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
         });
     }

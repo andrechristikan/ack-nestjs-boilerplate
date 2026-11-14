@@ -6,7 +6,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -67,10 +67,10 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
     }
 
     private async createAdminUsers(
+        activityLog: IActivityLogActorPayload,
         inputs: IUserCreateWithWorkspaceInput[],
         welcomes: IOutboxEffect[],
-        outboxId: string,
-        context: IRequestContextUserSnapshot
+        outboxId: string
     ): Promise<IUser[] | UserUsernameExistException | UserEmailExistException> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -104,13 +104,16 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                                 users
                             );
                         const entries = stages.map(stage =>
-                            this.activityLogService.recordEffect(context, stage)
+                            this.activityLogService.recordEffectFromPayload(
+                                activityLog,
+                                stage
+                            )
                         );
                         const result = this.notificationService.notify(
                             EnumNotificationKind.userImportResult,
                             {
-                                userId: context.actorUserId,
-                                proceedBy: context.actorUserId,
+                                userId: activityLog.actorUserId,
+                                proceedBy: activityLog.actorUserId,
                                 reference: outboxId,
                                 created: users.length,
                                 failed: 0,
@@ -157,9 +160,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        { rows, context }: IUserImportByAdminPayload
+        { rows, activityLog }: IUserImportByAdminPayload
     ): Promise<IQueueResponse> {
-        const { actorUserId } = context;
+        const { actorUserId } = activityLog;
         // Sequential by design: gate before the work it guards; write after the preparation
         const [role, countryId] = await Promise.all([
             this.roleService.getByName(this.userRoleName),
@@ -193,10 +196,10 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         });
 
         const created = await this.createAdminUsers(
+            activityLog,
             inputs,
             welcomes,
-            outboxId,
-            context
+            outboxId
         );
         const message = this.messageService.setMessage(
             'user.queue.importByAdmin'

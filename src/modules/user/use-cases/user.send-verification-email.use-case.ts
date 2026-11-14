@@ -1,13 +1,14 @@
-import type { IRequestContextPublic } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserSendVerificationEmailUseCase implements IAppUseCase<
-    [IRequestContextPublic, UserSendEmailVerificationRequestDto],
+    [IRequestContext, IApiKeyContext, UserSendEmailVerificationRequestDto],
     IResponseReturn<void>
 > {
     constructor(
@@ -15,7 +16,8 @@ export class UserSendVerificationEmailUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextPublic,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         { email }: UserSendEmailVerificationRequestDto
     ): Promise<IResponseReturn<void>> {
         const user =
@@ -26,7 +28,8 @@ export class UserSendVerificationEmailUseCase implements IAppUseCase<
 
         // Sequential by design: write must not run if an earlier step throws
         await this.userVerificationService.sendEmail(
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             user.id,
             user.email
         );

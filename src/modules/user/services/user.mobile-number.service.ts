@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@modules/outbox/services/outbox.service';
@@ -18,6 +18,8 @@ import type {
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserMobileNumberService {
@@ -49,12 +51,14 @@ export class UserMobileNumberService {
     }
 
     async addMobileNumber(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         { number, countryId, phoneCode }: IUserMobileNumberInput,
         countryPhoneCodes: string[],
         isDuplicate: boolean
     ): Promise<IUserMobileNumber> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         const checkValidMobileNumber = this.checkMobileNumber(
             countryPhoneCodes,
             phoneCode
@@ -77,9 +81,15 @@ export class UserMobileNumberService {
                     });
                 await this.userService.touchUpdatedByInTx(tx, userId);
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userAddMobileNumber,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userAddMobileNumber,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;
@@ -120,13 +130,15 @@ export class UserMobileNumberService {
     }
 
     async updateMobileNumber(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         current: IUserMobileNumberSummary,
         { number, countryId, phoneCode }: IUserMobileNumberInput,
         countryPhoneCodes: string[],
         isDuplicate: boolean
     ): Promise<IUserMobileNumber> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         if (isDuplicate) {
             throw new UserMobileNumberExistException();
         }
@@ -159,9 +171,15 @@ export class UserMobileNumberService {
                     );
                 await this.userService.touchUpdatedByInTx(tx, userId);
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userUpdateMobileNumber,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userUpdateMobileNumber,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;
@@ -186,10 +204,12 @@ export class UserMobileNumberService {
     }
 
     async deleteMobileNumber(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         // Sequential by design: gate before the work it guards
         await this.getOneMobileNumber(userId, mobileNumberId);
 
@@ -206,9 +226,15 @@ export class UserMobileNumberService {
 
                 await this.userService.touchUpdatedByInTx(tx, userId);
 
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.userDeleteMobileNumber,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userDeleteMobileNumber,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return mobileNumber;

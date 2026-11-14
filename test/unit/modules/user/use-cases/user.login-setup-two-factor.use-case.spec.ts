@@ -21,14 +21,18 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserLoginSetupTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const authTwoFactorService: MockProxy<AuthTwoFactorService> =
         mock<AuthTwoFactorService>();
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
     let useCase: UserLoginSetupTwoFactorUseCase;
 
     const deviceIdentity: IDeviceIdentity = {
@@ -144,8 +148,10 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             ]);
         });
 
-        it('counts the attempt with the passed snapshot, verifies the setup code against the pending secret, and enables two-factor', async () => {
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+        it('counts the attempt with the passed context, verifies the setup code against the pending secret, and enables two-factor', async () => {
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: { backupCodes: ['backup-one'] },
             });
 
@@ -154,14 +160,19 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             ).toHaveBeenCalledWith('user-bramble');
             expect(
                 userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(context.snapshot, twoFactorUser);
+            ).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                twoFactorUser
+            );
             expect(userTwoFactorService.verifySetupCode).toHaveBeenCalledWith(
                 twoFactorUser,
                 'pending-secret',
                 '123456'
             );
             expect(userTwoFactorService.enableTwoFactor).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 'user-bramble',
                 'pending-secret'
             );
@@ -178,7 +189,9 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                 new AuthTwoFactorChallengeInvalidException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
             });
@@ -192,7 +205,9 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
                 new AuthTwoFactorAttemptMaxException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
                 statusCodeKey:
@@ -210,7 +225,9 @@ describe('UserLoginSetupTwoFactorUseCase', () => {
             const failure = new Error('invalid code');
             userTwoFactorService.verifySetupCode.mockRejectedValue(failure);
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
         });

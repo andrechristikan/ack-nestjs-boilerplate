@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,10 +13,20 @@ import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class PolicyDeleteByAdminUseCase implements IAppUseCase<
-    [IRequestContextUser, string, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IUserContext,
+        string,
+        string,
+    ],
     IResponseReturn<void>
 > {
     constructor(
@@ -29,14 +39,17 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
         await this.roleService.assertWritableByActor(roleId, {
-            roleId: context.user.roleId,
-            roleType: context.user.role.type,
+            roleId: userContext.user.roleId,
+            roleType: userContext.user.role.type,
         });
 
         try {
@@ -50,7 +63,10 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                 const metadata =
                     this.policyUtil.mapActivityLogMetadata(deleted);
                 const effect = this.activityLogService.recordEffect(
-                    context.snapshot,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.adminPolicyDelete,
                         metadata,

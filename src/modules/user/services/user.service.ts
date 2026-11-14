@@ -8,7 +8,8 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -22,7 +23,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { TwoFactor, User } from '@generated/prisma-client/client';
 import type {
-    IAuthJwtAccessTokenPayloadUser,
+    IAuthJwtAccessContext,
     IAuthPassword,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -36,7 +37,6 @@ import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
@@ -69,6 +69,7 @@ import { UserVerificationUtil } from '@modules/user/utils/user.verification.util
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserService {
@@ -84,6 +85,7 @@ export class UserService {
         private readonly userCreateUtil: UserCreateUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -124,15 +126,11 @@ export class UserService {
     }
 
     async validateUserGuard(
-        payload: IAuthJwtAccessTokenPayloadUser,
+        authContext: IAuthJwtAccessContext,
         requiredVerified: boolean
     ): Promise<IUser> {
-        if (!payload.userId) {
-            throw new RequestContextMissingException('request.user.userId');
-        }
-
         const user = await this.userRepository.findOneWithRoleById(
-            payload.userId
+            authContext.userId
         );
         if (!user) {
             throw new UserAccountNotFoundException();
@@ -143,7 +141,7 @@ export class UserService {
         }
 
         const gatesPasswordExpiry = this.gatesPasswordExpiryOn(
-            payload.loginWith
+            authContext.loginWith
         );
         if (gatesPasswordExpiry) {
             const checkPasswordExpired: boolean =
@@ -525,13 +523,22 @@ export class UserService {
     }
 
     importByAdminEffect(
-        context: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         rows: IUserImport[]
     ): IOutboxEffect {
+        const activityLog = this.activityLogUtil.toPayload(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null
+        );
+
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.importByAdmin,
-            data: { rows, context },
+            data: { rows, activityLog },
             priority: EnumQueuePriority.medium,
             idempotencyKey: null,
         };

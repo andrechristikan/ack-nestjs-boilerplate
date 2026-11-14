@@ -48,7 +48,10 @@ import type { IUserLoginSession } from '@modules/user/interfaces/user.login.inte
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
-import { buildRequestContextPublic } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserLoginCredentialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -67,7 +70,8 @@ describe('UserLoginCredentialUseCase', () => {
         mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContextPublic();
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
     let useCase: UserLoginCredentialUseCase;
 
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -262,12 +266,15 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('logs the user in through the service on a repeat device, counting with the passed context', async () => {
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: tokenOutcome,
             });
 
             expect(userAuthService.countCredentialAttempt).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 dto.email
             );
             expect(
@@ -281,7 +288,8 @@ describe('UserLoginCredentialUseCase', () => {
                 userAuthService.assertCredentialMatched
             ).toHaveBeenCalledWith(true);
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -310,11 +318,15 @@ describe('UserLoginCredentialUseCase', () => {
             };
             deviceUtil.toIdentity.mockReturnValue(fullDevice);
 
-            await useCase.execute(context, { ...dto, device: requestDevice });
+            await useCase.execute(requestContext, apiKeyContext, {
+                ...dto,
+                device: requestDevice,
+            });
 
             expect(deviceUtil.toIdentity).toHaveBeenCalledWith(requestDevice);
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 fullDevice,
                 EnumUserLoginFrom.website,
@@ -323,17 +335,22 @@ describe('UserLoginCredentialUseCase', () => {
             );
         });
 
-        it('adds the failed-login entry from the passed snapshot through OutboxService.add before the mismatch is answered', async () => {
+        it('adds the failed-login entry from the passed context through OutboxService.add before the mismatch is answered', async () => {
             const failure = new Error('not match');
             userAuthService.verifyCredential.mockResolvedValue(false);
             userAuthService.assertCredentialMatched.mockImplementation(() => {
                 throw failure;
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userLoginFailed,
                     userId: 'user-bramble',
@@ -359,7 +376,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw failure;
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toBe(failure);
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
 
             expect(
                 userAuthService.createTokenAndSession
@@ -403,9 +422,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw new UserEmailNotVerifiedException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject(
-                emailNotVerifiedFields
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject(emailNotVerifiedFields);
 
             expect(userUtil.isUnverified).toHaveBeenCalledWith(unverifiedUser);
             expect(
@@ -418,7 +437,10 @@ describe('UserLoginCredentialUseCase', () => {
                 'bramble@example.com'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: 'user-bramble',
@@ -455,9 +477,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw new UserEmailNotVerifiedException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject(
-                emailNotVerifiedFields
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject(emailNotVerifiedFields);
 
             expect(
                 userVerificationService.isEmailResendable
@@ -488,9 +510,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw new UserPasswordExpiredException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject(
-                emailNotVerifiedFields
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject(emailNotVerifiedFields);
 
             expect(userVerificationService.sendEmailInTx).toHaveBeenCalledWith(
                 tx,
@@ -506,7 +528,9 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('skips the send for a verified user', async () => {
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: tokenOutcome,
             });
 
@@ -539,7 +563,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw new UserCredentialInvalidException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
                 statusCodeKey:
@@ -570,9 +596,9 @@ describe('UserLoginCredentialUseCase', () => {
                 throw new UserEmailNotVerifiedException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject(
-                emailNotVerifiedFields
-            );
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject(emailNotVerifiedFields);
 
             expect(
                 userAuthService.createTwoFactorChallenge
@@ -582,7 +608,7 @@ describe('UserLoginCredentialUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('creates a challenge with the passed snapshot and issues nothing for an already set-up two-factor user', async () => {
+        it('creates a challenge with the passed context and issues nothing for an already set-up two-factor user', async () => {
             userUtil.isTwoFactorEnabled.mockReturnValue(true);
             userAuthService.countCredentialAttempt.mockResolvedValue({
                 ...counted,
@@ -592,7 +618,9 @@ describe('UserLoginCredentialUseCase', () => {
                 verifyChallenge
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
@@ -604,7 +632,8 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userAuthService.createTwoFactorChallenge
             ).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 twoFactorUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
@@ -624,7 +653,9 @@ describe('UserLoginCredentialUseCase', () => {
                 'workspace-resolved'
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: {
                     ...tokenOutcome,
                     lastWorkspaceId: 'workspace-resolved',
@@ -651,7 +682,9 @@ describe('UserLoginCredentialUseCase', () => {
                 setupChallenge
             );
 
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toEqual({
                 data: {
                     isTwoFactorEnable: true,
                     lastWorkspaceId: null,
@@ -672,7 +705,8 @@ describe('UserLoginCredentialUseCase', () => {
 
     describe('startSession', () => {
         const startArgs = [
-            context.snapshot,
+            requestContext,
+            apiKeyContext,
             baseUser,
             deviceIdentity,
             EnumUserLoginFrom.website,
@@ -684,7 +718,8 @@ describe('UserLoginCredentialUseCase', () => {
             await useCase['startSession'](...startArgs);
 
             expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 deviceIdentity,
                 EnumUserLoginFrom.website,

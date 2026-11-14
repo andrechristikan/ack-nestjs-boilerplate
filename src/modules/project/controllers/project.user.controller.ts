@@ -1,18 +1,13 @@
-import { EnumRequestContextScope } from '@common/request/enums/request.enum';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
-    RequestContextCurrent,
+    RequestContext,
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
-import type {
-    IRequestContextProject,
-    IRequestContextProjectMember,
-    IRequestContextWorkspace,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -27,8 +22,14 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
@@ -43,8 +44,12 @@ import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/projec
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectContext,
+    IProjectMember,
+} from '@modules/project/interfaces/project.interface';
 import {
+    ProjectContext,
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
@@ -62,6 +67,7 @@ import { ProjectLeaveUseCase } from '@modules/project/use-cases/project.leave.us
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
+    WorkspaceContext,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
@@ -79,6 +85,9 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.user.project')
 @Controller({
@@ -117,12 +126,14 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: ProjectUserListRequestSchema })
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectGetListCursorByMemberUseCase.execute(context, query);
+        return this.projectGetListCursorByMemberUseCase.execute(
+            workspaceContext,
+            query
+        );
     }
 
     @Doc({ summary: 'create a project in the current workspace' })
@@ -137,12 +148,20 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Post('/create')
     async create(
-        @RequestContextCurrent(EnumRequestContextScope.workspace)
-        context: IRequestContextWorkspace,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: ProjectCreateRequestSchema })
         body: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectCreateUseCase.execute(context, body);
+        return this.projectCreateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            body
+        );
     }
 
     @Doc({ summary: 'get a project by id, subject to visibility' })
@@ -165,10 +184,9 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/get/:projectId')
     async get(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject
+        @ProjectContext() projectContext: IProjectContext
     ): Promise<IResponseReturn<Project>> {
-        return this.projectGetUseCase.execute(context);
+        return this.projectGetUseCase.execute(projectContext);
     }
 
     @Doc({
@@ -190,12 +208,20 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Put('/update/:projectId')
     async update(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @ProjectContext() projectContext: IProjectContext,
         @Body({ schema: ProjectUpdateRequestSchema })
         body: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectUpdateUseCase.execute(context, body);
+        return this.projectUpdateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            projectContext,
+            body
+        );
     }
 
     @Doc({
@@ -217,12 +243,20 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Patch('/update/:projectId/slug')
     async updateSlug(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @ProjectContext() projectContext: IProjectContext,
         @Body({ schema: ProjectUpdateSlugRequestSchema })
         body: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
-        return this.projectUpdateSlugUseCase.execute(context, body);
+        return this.projectUpdateSlugUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            projectContext,
+            body
+        );
     }
 
     @Doc({ summary: 'soft-delete a project; workspace owner/admin only' })
@@ -238,10 +272,19 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Delete('/delete/:projectId')
     async softDelete(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @ProjectContext() projectContext: IProjectContext
     ): Promise<IResponseReturn<void>> {
-        return this.projectSoftDeleteUseCase.execute(context);
+        return this.projectSoftDeleteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext
+        );
     }
 
     @Doc({ summary: 'list members of a project, subject to visibility' })
@@ -264,12 +307,11 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/member/:projectId/list')
     async memberList(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @ProjectContext() projectContext: IProjectContext,
         @Query({ schema: ProjectMemberListRequestSchema })
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        return this.projectGetMembersListUseCase.execute(context, query);
+        return this.projectGetMembersListUseCase.execute(projectContext, query);
     }
 
     @Doc({
@@ -289,12 +331,22 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Post('/member/:projectId/assign')
     async memberAssign(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @ProjectContext() projectContext: IProjectContext,
         @Body({ schema: ProjectMemberAssignRequestSchema })
         body: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        return this.projectAssignMemberUseCase.execute(context, body);
+        return this.projectAssignMemberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext,
+            body
+        );
     }
 
     @Doc({
@@ -314,15 +366,22 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Patch('/member/:projectId/:projectMemberId/role/update')
     async memberUpdateRole(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @ProjectContext() projectContext: IProjectContext,
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.projectUpdateMemberRoleUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext,
             projectMemberId,
             body
         );
@@ -345,13 +404,20 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Delete('/member/:projectId/:projectMemberId/remove')
     async memberRemove(
-        @RequestContextCurrent(EnumRequestContextScope.project)
-        context: IRequestContextProject,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @ProjectContext() projectContext: IProjectContext,
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string
     ): Promise<IResponseReturn<void>> {
         return this.projectRemoveMemberUseCase.execute(
-            context,
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext,
             projectMemberId
         );
     }
@@ -371,9 +437,16 @@ export class ProjectUserController {
     @HttpCode(HttpStatus.OK)
     @Post('/member/:projectId/leave')
     async memberLeave(
-        @RequestContextCurrent(EnumRequestContextScope.projectMember)
-        context: IRequestContextProjectMember
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @ProjectContext() projectContext: IProjectContext
     ): Promise<IResponseReturn<void>> {
-        return this.projectLeaveUseCase.execute(context);
+        return this.projectLeaveUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            projectContext
+        );
     }
 }

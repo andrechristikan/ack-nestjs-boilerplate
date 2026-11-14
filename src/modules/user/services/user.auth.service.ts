@@ -1,9 +1,6 @@
 import { OutboxService } from '@modules/outbox/services/outbox.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import type {
-    IRequestContextSnapshot,
-    IRequestContextUserSnapshot,
-} from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@modules/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -47,6 +44,7 @@ import { UserVerificationService } from '@modules/user/services/user.verificatio
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserAuthService {
@@ -89,7 +87,8 @@ export class UserAuthService {
 
     /** Resolves the active credential user of an email and counts one password attempt, adding the lockout row and entries when the budget is spent; isAttemptCounted false on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
     async countCredentialAttempt(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         email: string
     ): Promise<IUserCredentialAttempt> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
@@ -98,7 +97,8 @@ export class UserAuthService {
         }
 
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user
         );
         if (!attempt) {
@@ -144,12 +144,14 @@ export class UserAuthService {
 
     /** Counts one password attempt of an account holding a password, then asserts the password; returns at once for an account with no password. */
     async assertCurrentPassword(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         plainPassword: string | null
     ): Promise<void> {
         const attempt = await this.userPasswordService.countPasswordAttempt(
-            snapshot,
+            requestContext,
+            apiKeyContext,
             user
         );
         if (attempt === null) {
@@ -201,7 +203,8 @@ export class UserAuthService {
 
     /** Marks the user verified by the provider-verified email, clearing its password, and adds the verified entry in the same transaction. */
     async verifyEmailBySocial(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser
     ): Promise<IUser> {
         const row = await this.outboxService.withTransaction(async tx => {
@@ -210,11 +213,17 @@ export class UserAuthService {
                     tx,
                     user.id
                 );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.userVerifiedEmail,
-                userId: user.id,
-                createdBy: user.id,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: user.id,
+                    createdBy: user.id,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
 
             return marked;
@@ -231,14 +240,15 @@ export class UserAuthService {
 
     /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, stamps the login, and adds the login and revoke entries in one transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens. */
     async createTokenAndSession(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IUserLoginSession> {
-        const { requestLog } = snapshot;
+        const { requestLog } = requestContext;
         const { sessionId, jti } = this.authUtil.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
             loginAt,
@@ -302,11 +312,17 @@ export class UserAuthService {
                 );
 
                 const effects: IOutboxEffect[] = [
-                    this.activityLogService.recordEffect(snapshot, {
-                        action: loginAction,
-                        userId: user.id,
-                        createdBy: user.id,
-                    }),
+                    this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
+                        {
+                            action: loginAction,
+                            userId: user.id,
+                            createdBy: user.id,
+                        }
+                    ),
                 ];
                 for (const { userId, sessions } of affectedSessions) {
                     const metadata =
@@ -315,7 +331,10 @@ export class UserAuthService {
                             sessions.length
                         );
                     const revokeEntry = this.activityLogService.recordEffect(
-                        snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
                         {
                             action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
                             userId,
@@ -371,7 +390,8 @@ export class UserAuthService {
 
     /** Creates the login challenge; when setup is required, also generates and saves a pending authenticator secret with its setup entry. */
     async createTwoFactorChallenge(
-        snapshot: IRequestContextSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUserTwoFactorEnabled,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
@@ -393,7 +413,8 @@ export class UserAuthService {
                 this.userTwoFactorService.setup(user),
             ]);
             await this.userTwoFactorService.saveSetup(
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 user.id,
                 encryptedSecret
             );

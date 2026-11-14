@@ -20,10 +20,10 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
 import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class AuthJwtService {

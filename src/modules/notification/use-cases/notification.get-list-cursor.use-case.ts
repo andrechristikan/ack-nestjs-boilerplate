@@ -1,8 +1,8 @@
-import type { IRequestContextUser } from '@common/request/interfaces/request.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
@@ -14,10 +14,11 @@ import {
     NotificationSharedListCursorScope,
 } from '@modules/notification/constants/notification.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class NotificationGetListCursorUseCase implements IAppUseCase<
-    [IRequestContextUser, NotificationListRequestDto, string | null],
+    [IRequestContext, IAuthJwtAccessContext, NotificationListRequestDto],
     IResponsePaginationReturn<Notification>
 > {
     constructor(
@@ -28,9 +29,9 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        context: IRequestContextUser,
-        query: NotificationListRequestDto,
-        language: string | null
+        requestContext: IRequestContext,
+        authContext: IAuthJwtAccessContext,
+        query: NotificationListRequestDto
     ): Promise<IResponsePaginationReturn<Notification>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.NotificationWhereInput>(
@@ -44,7 +45,7 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
 
         const { data, ...others } =
             await this.notificationService.getListCursor(
-                context.user.id,
+                authContext.userId,
                 params
             );
 
@@ -57,10 +58,10 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
             const properties =
                 this.notificationService.toRejectReasonProperties(
                     metadataProperties,
-                    language
+                    requestContext.language
                 );
             const options = {
-                ...(language !== null && { customLanguage: language }),
+                customLanguage: requestContext.language,
                 properties,
             };
             const title = this.messageService.setMessage(

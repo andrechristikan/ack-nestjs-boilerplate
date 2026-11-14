@@ -27,8 +27,11 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    buildRequestContextUser,
     buildUser,
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -69,9 +72,12 @@ describe('UserTwoFactorService', () => {
     let service: UserTwoFactorService;
 
     const tx = {} as IDatabaseTransactionClient;
-    const context = buildRequestContextUser(
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const userContext = buildUserContext(
         buildUser('user-quartz', 'user-quartz@example.com')
-    ).snapshot;
+    );
+    const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entryEffect: IOutboxEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -384,9 +390,9 @@ describe('UserTwoFactorService', () => {
                 true
             );
 
-            await expect(service.countAttempt(context, baseUser)).resolves.toBe(
-                true
-            );
+            await expect(
+                service.countAttempt(requestContext, apiKeyContext, baseUser)
+            ).resolves.toBe(true);
             expect(
                 userTwoFactorRepository.incrementAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
@@ -402,7 +408,7 @@ describe('UserTwoFactorService', () => {
             );
 
             await expect(
-                service.countAttempt(context, baseUser)
+                service.countAttempt(requestContext, apiKeyContext, baseUser)
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -417,9 +423,9 @@ describe('UserTwoFactorService', () => {
             const failure = new DatabaseUnavailableException();
             outboxService.withTransaction.mockRejectedValue(failure);
 
-            await expect(service.countAttempt(context, baseUser)).rejects.toBe(
-                failure
-            );
+            await expect(
+                service.countAttempt(requestContext, apiKeyContext, baseUser)
+            ).rejects.toBe(failure);
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
@@ -429,7 +435,7 @@ describe('UserTwoFactorService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.countAttempt(context, baseUser)
+                service.countAttempt(requestContext, apiKeyContext, baseUser)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: cause,
@@ -456,22 +462,31 @@ describe('UserTwoFactorService', () => {
                 false
             );
             activityLogService.recordEffect.mockImplementation(
-                (_context, input) =>
+                (
+                    _requestContext,
+                    _apiKeyContext,
+                    _authContext,
+                    _workspaceContext,
+                    input
+                ) =>
                     input.action === EnumActivityLogAction.userRevokeAllSessions
                         ? revokeAllEntry
                         : reachMaxEntry
             );
 
-            await expect(service.countAttempt(context, baseUser)).resolves.toBe(
-                false
-            );
+            await expect(
+                service.countAttempt(requestContext, apiKeyContext, baseUser)
+            ).resolves.toBe(false);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userTwoFactorRepository.incrementAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 5);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
-                context,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userRevokeAllSessions,
                     userId: 'user-quartz',
@@ -480,7 +495,10 @@ describe('UserTwoFactorService', () => {
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 2,
-                context,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
                     userId: 'user-quartz',
@@ -509,7 +527,11 @@ describe('UserTwoFactorService', () => {
             );
 
             await expect(
-                service.assertAttemptCounted(context, baseUser)
+                service.assertAttemptCounted(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser
+                )
             ).resolves.toBeUndefined();
         });
 
@@ -520,7 +542,11 @@ describe('UserTwoFactorService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
-                service.assertAttemptCounted(context, baseUser)
+                service.assertAttemptCounted(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -550,7 +576,12 @@ describe('UserTwoFactorService', () => {
             userUtil.requiresTwoFactorVerification.mockReturnValue(false);
 
             await expect(
-                service.verifyIfRequired(context, baseUser, input)
+                service.verifyIfRequired(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser,
+                    input
+                )
             ).resolves.toBeNull();
             expect(
                 userTwoFactorRepository.incrementAttemptInTx
@@ -561,10 +592,15 @@ describe('UserTwoFactorService', () => {
             userUtil.requiresTwoFactorVerification.mockReturnValue(true);
 
             await expect(
-                service.verifyIfRequired(context, baseUser, {
-                    ...input,
-                    method: null,
-                })
+                service.verifyIfRequired(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        method: null,
+                    }
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
@@ -584,7 +620,12 @@ describe('UserTwoFactorService', () => {
             userTwoFactorRepository.markTotpUsed.mockResolvedValue(true);
 
             await expect(
-                service.verifyIfRequired(context, baseUser, input)
+                service.verifyIfRequired(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser,
+                    input
+                )
             ).resolves.toEqual({
                 method: EnumAuthTwoFactorMethod.code,
                 newBackupCodes: null,
@@ -606,7 +647,12 @@ describe('UserTwoFactorService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
-                service.verifyIfRequired(context, baseUser, input)
+                service.verifyIfRequired(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser,
+                    input
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorAttemptMax,
@@ -973,13 +1019,21 @@ describe('UserTwoFactorService', () => {
         });
 
         it('stores the encrypted pending secret and adds the setup entry from the passed context on the same tx', async () => {
-            await service.saveSetup(context, 'user-quartz', 'encrypted-secret');
+            await service.saveSetup(
+                requestContext,
+                apiKeyContext,
+                'user-quartz',
+                'encrypted-secret'
+            );
 
             expect(
                 userTwoFactorRepository.setupTwoFactorInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', 'encrypted-secret');
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: 'user-quartz',
@@ -1004,7 +1058,8 @@ describe('UserTwoFactorService', () => {
             );
 
             await service.saveSetupConsumingBackupCode(
-                context,
+                requestContext,
+                apiKeyContext,
                 baseUser,
                 'encrypted-secret',
                 verifiedResult
@@ -1020,7 +1075,10 @@ describe('UserTwoFactorService', () => {
                 baseTwoFactor.backupCodes
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: 'user-quartz',
@@ -1037,7 +1095,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.saveSetupConsumingBackupCode(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     baseUser,
                     'encrypted-secret',
                     verifiedResult
@@ -1059,7 +1118,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.saveSetupConsumingBackupCode(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     baseUser,
                     'encrypted-secret',
                     verifiedResult
@@ -1079,7 +1139,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.saveSetupConsumingBackupCode(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     baseUser,
                     'encrypted-secret',
                     verifiedResult
@@ -1097,7 +1158,8 @@ describe('UserTwoFactorService', () => {
             );
 
             await service.saveSetupConsumingBackupCode(
-                context,
+                requestContext,
+                apiKeyContext,
                 { ...baseUser, twoFactor: null },
                 'encrypted-secret',
                 verifiedResult
@@ -1182,7 +1244,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.enableTwoFactor(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     'user-quartz',
                     'pending-secret'
                 )
@@ -1193,7 +1256,10 @@ describe('UserTwoFactorService', () => {
                 'hash1',
             ]);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 {
                     action: EnumActivityLogAction.userEnableTwoFactor,
                     userId: 'user-quartz',
@@ -1210,7 +1276,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.enableTwoFactor(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     'user-quartz',
                     'pending-secret'
                 )
@@ -1236,7 +1303,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.enableTwoFactor(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     'user-quartz',
                     'pending-secret'
                 )
@@ -1260,7 +1328,8 @@ describe('UserTwoFactorService', () => {
 
             await expect(
                 service.enableTwoFactor(
-                    context,
+                    requestContext,
+                    apiKeyContext,
                     'user-quartz',
                     'pending-secret'
                 )
@@ -1273,7 +1342,8 @@ describe('UserTwoFactorService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             const call = service.enableTwoFactor(
-                context,
+                requestContext,
+                apiKeyContext,
                 'user-quartz',
                 'pending'
             );
@@ -1304,13 +1374,20 @@ describe('UserTwoFactorService', () => {
             );
 
             await expect(
-                service.regenerateTwoFactorBackupCodes(context)
+                service.regenerateTwoFactorBackupCodes(
+                    requestContext,
+                    apiKeyContext,
+                    authContext
+                )
             ).resolves.toEqual(['CODE1', 'CODE2']);
             expect(
                 userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx
             ).toHaveBeenCalledWith(tx, 'user-quartz', ['hash1', 'hash2']);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                 }
@@ -1328,7 +1405,11 @@ describe('UserTwoFactorService', () => {
             );
 
             await expect(
-                service.regenerateTwoFactorBackupCodes(context)
+                service.regenerateTwoFactorBackupCodes(
+                    requestContext,
+                    apiKeyContext,
+                    authContext
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -1348,7 +1429,11 @@ describe('UserTwoFactorService', () => {
             });
 
             await expect(
-                service.regenerateTwoFactorBackupCodes(context)
+                service.regenerateTwoFactorBackupCodes(
+                    requestContext,
+                    apiKeyContext,
+                    authContext
+                )
             ).rejects.toBe(failure);
         });
 
@@ -1360,7 +1445,11 @@ describe('UserTwoFactorService', () => {
             );
 
             await expect(
-                service.regenerateTwoFactorBackupCodes(context)
+                service.regenerateTwoFactorBackupCodes(
+                    requestContext,
+                    apiKeyContext,
+                    authContext
+                )
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -1379,7 +1468,11 @@ describe('UserTwoFactorService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.regenerateTwoFactorBackupCodes(context)
+                service.regenerateTwoFactorBackupCodes(
+                    requestContext,
+                    apiKeyContext,
+                    authContext
+                )
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,

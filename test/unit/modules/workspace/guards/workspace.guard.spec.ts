@@ -5,9 +5,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
-    RequestWorkspaceIdStoreKey,
-    RequestWorkspaceStoreKey,
-} from '@common/request/constants/request.constant';
+    WorkspaceContextStoreKey,
+    WorkspaceIdStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
@@ -51,7 +51,7 @@ describe('WorkspaceGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('resolves the workspace by the stored id and caches it', async () => {
+        it('resolves the workspace by the stored id and merges it into the workspace context', async () => {
             requestStoreService.get.mockReturnValue('workspace-1');
             workspaceService.validateWorkspaceGuard.mockResolvedValue(
                 workspace
@@ -61,18 +61,18 @@ describe('WorkspaceGuard', () => {
 
             expect(result).toBe(true);
             expect(requestStoreService.get).toHaveBeenCalledWith(
-                RequestWorkspaceIdStoreKey
+                WorkspaceIdStoreKey
             );
             expect(
                 workspaceService.validateWorkspaceGuard
             ).toHaveBeenCalledWith('workspace-1');
-            expect(requestStoreService.set).toHaveBeenCalledWith(
-                RequestWorkspaceStoreKey,
-                workspace
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                WorkspaceContextStoreKey,
+                { workspaceId: 'workspace-1', workspace }
             );
         });
 
-        it('validates with a null id when the store has none', async () => {
+        it('validates with a null id when the store holds none', async () => {
             requestStoreService.get.mockReturnValue(null);
             workspaceService.validateWorkspaceGuard.mockResolvedValue(
                 workspace

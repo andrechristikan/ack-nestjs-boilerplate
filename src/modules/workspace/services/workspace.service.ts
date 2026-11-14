@@ -9,7 +9,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestContextUserSnapshot } from '@common/request/interfaces/request.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
@@ -35,6 +35,8 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class WorkspaceService {
@@ -165,10 +167,12 @@ export class WorkspaceService {
 
     /** Creates the workspace with its owner row and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
     async createWorkspace(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
-        const userId = snapshot.actorUserId;
+        const userId = authContext.userId;
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
@@ -193,7 +197,10 @@ export class WorkspaceService {
                         workspaceId
                     );
                     const entry = this.activityLogService.recordEffect(
-                        snapshot,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
                         {
                             action: EnumActivityLogAction.workspaceCreated,
                             userId,
@@ -225,7 +232,9 @@ export class WorkspaceService {
 
     /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspace(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
@@ -235,12 +244,18 @@ export class WorkspaceService {
                 workspaceId,
                 update
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.workspaceUpdated,
-                userId: snapshot.actorUserId,
-                createdBy: snapshot.actorUserId,
-                workspaceId,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.workspaceUpdated,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                    workspaceId,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
 
             return workspace;
@@ -249,7 +264,9 @@ export class WorkspaceService {
 
     /** Writes the visibility and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceIsPublic(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
@@ -259,12 +276,18 @@ export class WorkspaceService {
                 workspaceId,
                 isPublic
             );
-            const entry = this.activityLogService.recordEffect(snapshot, {
-                action: EnumActivityLogAction.workspaceVisibilityUpdated,
-                userId: snapshot.actorUserId,
-                createdBy: snapshot.actorUserId,
-                workspaceId,
-            });
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                    workspaceId,
+                }
+            );
             await this.outboxService.addInTx(tx, entry);
 
             return workspace;
@@ -273,7 +296,9 @@ export class WorkspaceService {
 
     /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
     async updateWorkspaceSlug(
-        snapshot: IRequestContextUserSnapshot,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         slug: string
     ): Promise<Workspace> {
@@ -289,12 +314,18 @@ export class WorkspaceService {
                     workspaceId,
                     slug
                 );
-                const entry = this.activityLogService.recordEffect(snapshot, {
-                    action: EnumActivityLogAction.workspaceUpdated,
-                    userId: snapshot.actorUserId,
-                    createdBy: snapshot.actorUserId,
-                    workspaceId,
-                });
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.workspaceUpdated,
+                        userId: authContext.userId,
+                        createdBy: authContext.userId,
+                        workspaceId,
+                    }
+                );
                 await this.outboxService.addInTx(tx, entry);
 
                 return workspace;

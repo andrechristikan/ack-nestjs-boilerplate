@@ -57,7 +57,12 @@ import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
-import { buildRequestContextUser } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestContext,
+    buildApiKeyContext,
+    buildUserContext,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -303,7 +308,10 @@ describe('UserCreateByAdminUseCase', () => {
             role: { ...baseUser.role, type: EnumRoleType.admin },
             roleId: 'role-actor-bramble',
         };
-        const context = buildRequestContextUser(actor);
+        const requestContext = buildRequestContext();
+        const apiKeyContext = buildApiKeyContext();
+        const userContext = buildUserContext(actor);
+        const authContext = buildAuthJwtAccessContext(actor.id);
 
         beforeEach(() => {
             roleService.getById.mockResolvedValue(role);
@@ -319,7 +327,15 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('commits once without the policy assertion, and adds the entries and the welcome effect with the generated password on the same tx', async () => {
-            await expect(useCase.execute(context, dto)).resolves.toEqual({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).resolves.toEqual({
                 data: { id: 'user-bramble' },
             });
 
@@ -361,7 +377,10 @@ describe('UserCreateByAdminUseCase', () => {
                 userRegistrationService.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                context.snapshot,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
                 stageInput
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -370,13 +389,44 @@ describe('UserCreateByAdminUseCase', () => {
             ]);
         });
 
+        it('reads the actor id from actorUserId', async () => {
+            const actorAuthContext = {
+                ...authContext,
+                userId: 'actor-bramble',
+            };
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                actorAuthContext,
+                userContext,
+                dto
+            );
+
+            expect(userService.prepareCreateByAdmin).toHaveBeenCalledWith(
+                expect.objectContaining({ email: 'bramble@example.com' }),
+                'actor-bramble',
+                role
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.welcomeByAdmin,
+                expect.objectContaining({ proceedBy: 'actor-bramble' })
+            );
+        });
+
         it('adds no welcome effect when the created account carries no password', async () => {
             userService.prepareCreateByAdmin.mockResolvedValue({
                 input: { ...input, password: null, passwordHistoryType: null },
                 passwordString: 'random-password',
             });
 
-            await useCase.execute(context, dto);
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
 
             expect(notificationService.notify).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -387,7 +437,15 @@ describe('UserCreateByAdminUseCase', () => {
         it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {
             roleService.getById.mockRejectedValue(new RoleNotFoundException());
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
                 messagePath: 'role.error.notFound',
@@ -403,7 +461,15 @@ describe('UserCreateByAdminUseCase', () => {
                 throw new RoleRankForbiddenException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
             });
@@ -422,7 +488,15 @@ describe('UserCreateByAdminUseCase', () => {
                 new CountryNotFoundException()
             );
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
             });
@@ -435,7 +509,15 @@ describe('UserCreateByAdminUseCase', () => {
                 throw new UserEmailExistException();
             });
 
-            await expect(useCase.execute(context, dto)).rejects.toMatchObject({
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
                 statusCodeKey:
@@ -448,7 +530,8 @@ describe('UserCreateByAdminUseCase', () => {
     });
 
     describe('createAdminUsers', () => {
-        const snapshot = buildRequestContextUser(baseUser).snapshot;
+        const requestContext = buildRequestContext();
+        const apiKeyContext = buildApiKeyContext();
         const acceptanceEntry = {
             userId: 'user-bramble',
             types: [],
@@ -471,7 +554,8 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
             const users = await useCase['createAdminUsers'](
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 [input],
                 [welcomeEffect],
                 7000
@@ -512,7 +596,8 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('passes timeoutInMs to withTransaction', async () => {
             await useCase['createAdminUsers'](
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 [input],
                 [welcomeEffect],
                 7000
@@ -532,7 +617,8 @@ describe('UserCreateByAdminUseCase', () => {
             databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const users = await useCase['createAdminUsers'](
-                snapshot,
+                requestContext,
+                apiKeyContext,
                 [input],
                 [welcomeEffect],
                 5000
@@ -559,7 +645,8 @@ describe('UserCreateByAdminUseCase', () => {
 
             await expect(
                 useCase['createAdminUsers'](
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
                     [input],
                     [welcomeEffect],
                     5000
@@ -578,7 +665,8 @@ describe('UserCreateByAdminUseCase', () => {
 
             await expect(
                 useCase['createAdminUsers'](
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
                     [input],
                     [welcomeEffect],
                     5000
@@ -597,7 +685,8 @@ describe('UserCreateByAdminUseCase', () => {
 
             await expect(
                 useCase['createAdminUsers'](
-                    snapshot,
+                    requestContext,
+                    apiKeyContext,
                     [input],
                     [welcomeEffect],
                     5000
