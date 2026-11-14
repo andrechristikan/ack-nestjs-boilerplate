@@ -123,7 +123,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.resetTwoFactorByAdmin:
                 return await this.notificationProcessorService.processResetTwoFactorByAdmin(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload,
                         IQueueResponse,
                         EnumNotificationProcess
                     >

@@ -120,6 +120,7 @@ export const NotificationKindContract: Record<
         pendingChannels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
+            EnumNotificationChannel.sms,
         ],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
@@ -131,6 +132,7 @@ export const NotificationKindContract: Record<
         pendingChannels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
+            EnumNotificationChannel.sms,
         ],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
