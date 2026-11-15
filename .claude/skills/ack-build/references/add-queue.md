@@ -1,6 +1,6 @@
 # Add a queue or a job
 
-Invariants: `.claude/rules/queue.md`, `.claude/rules/outbox.md`. Reference implementation: the `workspace` queue (one job, a scheduler) and the `notificationEmail` queue (many jobs, encrypted fields, a rate limiter). Framework files live in `src/common/queue/`.
+Invariants: `.claude/rules/queue.md`, `.claude/rules/outbox.md`, `.claude/rules/effects.md`. Reference implementation: the `workspace` queue (one job, a scheduler) and the `notificationEmail` queue (many jobs, encrypted fields, a rate limiter). Framework files live in `src/common/queue/`.
 
 ## New queue
 
@@ -19,10 +19,10 @@ Invariants: `.claude/rules/queue.md`, `.claude/rules/outbox.md`. Reference imple
 
 1. Job name: a member of the module's process enum, `Enum<Module>Process` in `<module>/enums/<module>.enum.ts` (`EnumWorkspaceProcess` in `src/modules/workspace/enums/workspace.enum.ts`; `EnumNotificationProcess` in `src/modules/notification/enums/notification.enum.ts`).
 2. Payload in `<module>/interfaces/<module>.interface.ts`, camelCase fields: the envelope `I<Module>[<Channel>][Bulk]QueuePayload<T>` carries the data `I<Module><Action>Payload`, `I<Module><Action>EncryptedPayload` once a field is encrypted (`ISessionPurgeLoginsPayload`, `src/modules/session/interfaces/session.interface.ts`).
-3. Producer. A side effect of a write is an outbox effect: a `<action>Effect` method on the owning module's service returns the job's `I<Module><Action>Effect`, declared in the owning module's interface file, with its priority and `idempotencyKey` (`.claude/rules/outbox.md`, Effects). A scheduler is a queue-class method instead: `upsertJobScheduler` from the queue class's own `onModuleInit` (`src/modules/workspace/queues/workspace.queue.ts`); a failure throws. A sensitive field is encrypted where the payload is built, with `HelperEncryptionService.aes256Encrypt`, the root secret, the module's `*EncryptionPurpose` constant, and as context the id the value belongs to; it is named `encrypted<Field>` (`NotificationService.notify`, `src/modules/notification/services/notification.service.ts`).
+3. Producer. A side effect of a write is an outbox effect: a `<action>Effect` method on the owning module's service returns the job's `I<Module><Action>Effect`, declared in the owning module's interface file, with its priority and `idempotencyKey` (`.claude/rules/effects.md`, Effects). A scheduler is a queue-class method instead: `upsertJobScheduler` from the queue class's own `onModuleInit` (`src/modules/workspace/queues/workspace.queue.ts`); a failure throws. A sensitive field is encrypted where the payload is built, with `HelperEncryptionService.aes256Encrypt`, the root secret, the module's `*EncryptionPurpose` constant, and as context the id the value belongs to; it is named `encrypted<Field>` (`NotificationService.notify`, `src/modules/notification/services/notification.service.ts`).
 4. Processor case: one `case` in `handle` awaiting the use case's `execute` (`src/modules/notification/processors/notification.email.processor.ts`). A failure no retry fixes is thrown as `UnrecoverableError` inside `handle`. Its catch rethrows `QueueException`, `AppBaseException`, or `UnrecoverableError` as is and throws an unknown error with `this.throwUnknownException(error);`: a `QueueException` with the `queue.error.unknown` message, `isFatal` `true`, and the error as `rawError`.
 5. Use case: `execute(data)` translates the payload and calls the service (`src/modules/workspace/use-cases/workspace.process-expire-stale-invites.use-case.ts`); the `IQueueResponse` carries the `<module>.queue.[<channel>.]<process>` message, built as New queue step 7 states, its keys added per step 10.
-6. Caller: an effect goes into the caller's transaction (`.claude/rules/outbox.md`, Writing and dispatch); a caller in another module calls the owning service's `<action>Effect` as `.claude/rules/layering.md`, Dependency order, allows.
+6. Caller: an effect goes into the caller's transaction (`.claude/rules/effects.md`, Writing); a caller in another module calls the owning service's `<action>Effect` as `.claude/rules/layering.md`, Dependency order, allows.
 
 ## Rename
 
@@ -35,6 +35,6 @@ pnpm typecheck
 pnpm test <module>
 ```
 
-Boot in the Docker `apis` container (`.claude/rules/docker.md`, Boot): the worker registers there. Check the boot log for the `App Name:` block and the `<Module>UseCaseModule dependencies initialized` line, BullMQ logging no line per worker.
+Boot in the Docker `apis` container (`.claude/skills/ack-build/references/boot.md`): the worker registers there. Check the boot log for the `App Name:` block and the `<Module>UseCaseModule dependencies initialized` line, BullMQ logging no line per worker.
 
 Specs: an effect builder asserts queue, name, data, priority, and key; the queue class asserts the scheduler's job name and options; a use case asserts the hand-off and the message path it resolves; the processor holds the `unknownProcess` throw and its file is excluded from coverage (`.claude/rules/testing.md`). BullBoard shows the queue at the port in `docker-compose.yml`.

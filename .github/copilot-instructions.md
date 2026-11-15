@@ -43,7 +43,7 @@ Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `i
 
 ## Tests
 
-A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
+A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Reused logic is a helper. Rule: `.claude/rules/testing.md`.
 
 ## Errors
 

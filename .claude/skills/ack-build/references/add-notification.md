@@ -1,6 +1,6 @@
 # Add a notification
 
-Invariants: `.claude/rules/notification.md`, `.claude/rules/outbox.md`. Reference: `workspaceInvite`; a broadcast: step 7. A kind adds no queue method, process, step, service, or use case.
+Invariants: `.claude/rules/notification.md`, `.claude/rules/notify.md`, `.claude/rules/effects.md`. Reference: `workspaceInvite`; a broadcast: step 7. A kind adds no queue method, process, step, service, or use case.
 
 ## 1. Name the kind
 

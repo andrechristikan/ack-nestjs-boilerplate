@@ -1,7 +1,7 @@
 ---
 name: ack-doc
 description: >-
-    Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale; the code on disk wins. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description (ack-pr), src/ (ack-design), or .claude/**, decision records, and docs/ai-harness.md (ack-harness).
+    Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md against the checkout through writer and repairs what is stale; the code on disk wins. Use when the owner asks to update, verify, or extend the docs, or for an architecture diagram. Not for a PR description (ack-pr), src/ (ack-design), or .claude/**, decision entries, and docs/ai-harness.md (ack-harness).
 blurb: 'docs, root people files, .github against the code; the code wins'
 disable-model-invocation: true
 argument-hint: "<named doc files, a .scratch/ plan or requirement path, or 'all'> [what changed recently] [diagram: <name and subject>]"
@@ -19,7 +19,7 @@ The session assigns one `writer` dispatch, then a reader test of what it added. 
 
 - The argument names the files, a `.scratch/<feature>/plan.md` whose build's changed modules are the scope, a `.scratch/requirements/doc-<slug>.md` naming its own scope, or `all` for every `docs/*.md`.
 - Every run also covers the root people files and `.github/**` except `copilot-instructions.md`.
-- `docs/decisions/**` and `docs/ai-harness.md` belong to `/ack-harness` and are never in scope.
+- `docs/ai-harness.md` belongs to `/ack-harness` and is never in scope.
 - A missing or ambiguous file list, or a diagram without a clear subject, is a question to the owner with `AskUserQuestion` before the dispatch.
 
 | File | Checkable claims |
@@ -77,7 +77,7 @@ A CONFLICT is a doc and the code disagreeing about a decision, where the code ma
 
 ## Boundaries
 
-- No `src/`, `test/`, `.claude/`, `prisma/`, `docs/decisions/`, `docs/ai-harness.md`, or `.github/copilot-instructions.md`.
+- No `src/`, `test/`, `.claude/`, `prisma/`, `docs/ai-harness.md`, or `.github/copilot-instructions.md`.
 - No database or seed command.
 - Commits go through `ask`; propose the subject only.
 

@@ -14,7 +14,7 @@ A use case stays inside its feature: `<Module>UseCaseModule` exports it to `src/
 | its exceptions | yes, when the failed subject is its entity | yes, when the failed subject is its entity |
 | its Prisma model through your own `DatabaseService` | no | no |
 
-A guard, strategy, interceptor, or decorator injects the exported services and utils of a `@Global()` module (`layering.md`, `@Global()`), and nothing else from another feature module.
+A guard, strategy, interceptor, or decorator injects the exported services and utils of a `@Global()` module (`module-files.md`, `@Global()`), and nothing else from another feature module.
 
 A repository reaches another module's util only when the owner is `@Global()`. A util injects no `src/modules/` util, its own module's or another module's; the value arrives as an argument. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the dependency order.
 
@@ -24,19 +24,19 @@ A repository reaches another module's util only when the owner is `@Global()`. A
 
 A repository issues statements against the model it owns and satellite models with no repository of their own (`NotificationRepository` owns `Notification`, `NotificationDelivery`, and `TermPolicyRecipient`). Ownership is per class: `UserPasswordRepository` does not write `User`, and a `*.analytic.repository.ts` reads a model its module's write repository owns and writes nothing (`layering.md`). A nested write counts as a statement against the related model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one writer, `ActivityLogRepository`.
 
-A repository does not inject or call another repository. Work spanning one module's repositories is its service calling `this.databaseService.withTransaction` and each repository as `*InTx(tx, ...)`. Work spanning modules in one transaction is opened by the use case serving the flow, or by a service of the highest participating module when two or more use cases share the sequence and its subject is that module's (`service.md`, Shared transactions); every other participant joins through its service's `*InTx(tx, ...)` method, which forwards `tx` to its own repositories. Whoever opens it maps a guarded transition's write conflict (`database.md`, Transactions). A method the owning service lacks is added there, even three lines long.
+A repository does not inject or call another repository. Who opens a transaction spanning repositories or modules, and how the others join: `transaction.md`, Transactions. A method the owning service lacks is added there, even three lines long.
 
 ## A repository stays inside its feature
 
-`<Module>Module` provides its repositories and never exports them. Data another module needs goes through the owning service, which holds that feature's invariants. `src/migration/` sits outside this file and `layering.md`: a seed writes models through `DatabaseService` directly, and `MigrationModule` imports a feature `<Module>Module` only for an injection `seeding.md` allows.
+`<Module>Module` provides its repositories and never exports them. Data another module needs goes through the owning service, which holds that feature's invariants. `src/migration/` sits outside this file (`seeding.md`).
 
 ## Composition follows the dependency order
 
-Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`layering.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden (`eslint.md`, Config blocks). When a service needs a higher module, the ways out:
+Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`module-files.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden. When a service needs a higher module, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
 2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
-3. A fire-and-forget hand-off: an outbox effect the use case adds in its transaction (`outbox.md`), a notification included (`notification.md`).
+3. A fire-and-forget hand-off: an outbox effect the use case adds in its transaction (`effects.md`), a notification included.
 
 ## An exception names the subject that failed
 
@@ -48,4 +48,4 @@ A controller file lives in its feature module; `src/router/http/router.http.<sco
 
 ## Workspace scoping follows the surface
 
-A workspace-scoped route in any module resolves its subject from the `x-workspace-id` header through the workspace guards and carries `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)` (`guards.md`).
+A workspace-scoped route in any module carries the workspace guards and flag: `guards.md`, Decorator order.

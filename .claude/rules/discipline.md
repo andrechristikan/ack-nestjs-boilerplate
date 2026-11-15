@@ -25,7 +25,7 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 
 - Judge a scenario by what a person normally does. No code, branch, spec, review finding, or sweep row exists for a case only deliberate hacking with tools reaches (scripted brute force), or a case normal human use almost never reaches (two requests landing in one millisecond window).
 - Existing guards, authentication, password handling, validation, and rate limits stay: the bullet above binds new work and removes none of them.
-- In the auth area the reference is OWASP ASVS 5.0 level 2: a control it requires is in scope even when only an attacker reaches its case.
+- In the auth area and in ASVS chapters V1 to V5 (encoding, validation, frontend headers, API, files), the reference is OWASP ASVS 5.0 level 2: a control it requires is in scope even when only an attacker reaches its case.
 
 ## Surgical changes
 

@@ -29,7 +29,7 @@ Agent: debugger
 Symptom: <input, observed result, expected result, where it surfaces>
 Scope: <the modules or paths the symptom names>
 Decision: <the owner's answer to a previous NEEDS_DECISION, or none>
-Decisions to honour: <the docs/decisions/README.md lines the scope touches, or none>
+Decisions to honour: <the entries of .claude/decisions/architecture.md and .claude/decisions/security.md the scope touches, or none>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted>
 ```
 

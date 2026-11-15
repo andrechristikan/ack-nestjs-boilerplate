@@ -11,14 +11,13 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 ## Keys
 
 - A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
-- A gate reference is the member: `@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
+- A gate reference is the member: `@FeatureFlagProtected(EnumFeatureFlagKey.changePassword)`. The decorator checks the key when the route is decorated (`guards.md`).
 
 ## Metadata
 
 - Flat only. Values are `boolean | number | string` or a homogeneous `string[]` / `number[]`; a mixed or nested array, `boolean[]`, an empty array, and `''` fail. An array value cannot change element type on update.
+- A metadata sub-key used as a gate holds a boolean and is asserted in the calling service, never in the decorator (`service.md`, Shape).
 - Keys are frozen; the admin API updates values and never adds or removes a key.
-- A metadata sub-key used as a gate holds a boolean and is asserted in the service, never in the decorator: `await this.featureFlagService.validateFeatureFlagMetadata(EnumFeatureFlagKey.workspace, EnumFeatureFlagMetadataKey.invitationAllowed)` (`src/modules/feature-flag/services/feature-flag.service.ts`) at the top of the service method; it throws `FeatureFlagNotConfiguredException` for a key no row holds and `FeatureFlagDisabledException` for a disabled flag, a non-boolean, or `false`. Written into the decorator it would gate one route instead of every caller.
-- `feature-flag` sits in the kernel, so a service of any module above it injects `FeatureFlagService` (`layering.md`, Dependency order), and only to assert a flag or metadata sub-key its own module owns: `WorkspaceInviteService.validateInviteToken` asserts `invitationAllowed` (`src/modules/workspace/services/workspace.invite.service.ts`).
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating

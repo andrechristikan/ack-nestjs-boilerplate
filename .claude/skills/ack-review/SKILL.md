@@ -79,7 +79,7 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the pin's files, 
 
 ## Hand back
 
-- The `review.md` path and its coverage table: rule files, decision records, and flows read.
+- The `review.md` path and its coverage table: rule files, decision entries, and flows read.
 - Each finding: the owner's answer, its route, its state.
 - The gate output after the fixes.
 - The `docs/` pages the change makes stale, as a list for `/ack-doc`.

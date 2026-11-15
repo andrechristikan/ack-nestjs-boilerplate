@@ -23,14 +23,14 @@ src/migration/
 - Static rows live in `data/` as PascalCase consts; a seed whose data has no external key needs no data file.
 - A bulk list shared by every environment exports one PascalCase `string[]` const, its file listed in `cspell.json` `ignorePaths` (`MigrationCommonPasswordData`, the `commonPassword` seed). Any other data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` and `updatedBy` on every seeded row, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
-- A seed's create writes `null` into each nullable column a read filters by `null` (`database.md`, Access).
+- A seed's create writes `null` into each nullable column a read filters by `null` (`repository.md`).
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
 - A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
 - A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 
 ## Outside the layering
 
-`src/migration/` does not follow the `src/` architecture. `layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`activity-log.md`, `outbox.md`) do not bind a seed; a seed writing a model directly is the convention, not a finding.
+`src/migration/` does not follow the `src/` architecture. `layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`effects.md`) do not bind a seed; a seed writing a model directly is the convention, not a finding.
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
@@ -38,16 +38,15 @@ src/migration/
 - A seed may inject any module's util, pure by `layering.md`, and any cache, and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and adds no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
-- What binds a seed: `naming.md`, `code-style.md`, `eslint.md`, `null-safety.md`, `concurrency.md`, and this file.
+- What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, and this file.
 
 ## Term policies
 
 The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPath`, `TermPolicyUtil.createRandomFilenameContentWithPath`).
 
-- The content is the bundled template in `src/modules/term-policy/templates/`: `term-policy.term.en.hbs` (`termsOfService`), `term-policy.privacy.en.hbs`, `term-policy.cookies.en.hbs`, `term-policy.marketing.en.hbs`.
-- `nest-cli.json` `assets` (`**/**/templates/*`) copies them to `dist/modules/term-policy/templates/`; the seed runs from `dist/migration/seeds/` and reads `join(import.meta.dirname, '../../modules/term-policy/templates', <file>)`.
 - When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
 - It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
+- `nest-cli.json` `assets` (`**/**/templates/*`) copies the term-policy templates to `dist/modules/term-policy/templates/`; the seed runs from `dist/migration/seeds/` and reads `join(import.meta.dirname, '../../modules/term-policy/templates', <file>)`.
 
 ## Order is in the script
 

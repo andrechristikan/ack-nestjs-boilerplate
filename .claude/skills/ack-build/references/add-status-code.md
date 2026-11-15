@@ -1,6 +1,6 @@
 # Add a status code
 
-Invariants: `.claude/rules/exceptions.md` (5-digit integer, one contiguous hundred per owner, sequential members, enum files are the registry). Reference: `src/modules/device/enums/device.status-code.enum.ts` and `src/modules/device/exceptions/device.not-found.exception.ts`.
+Invariants: `.claude/rules/exception-class.md`, `.claude/rules/exceptions.md` (5-digit integer, one contiguous hundred per owner, sequential members, enum files are the registry). Reference: `src/modules/device/enums/device.status-code.enum.ts` and `src/modules/device/exceptions/device.not-found.exception.ts`.
 
 ## 1. Scan first
 

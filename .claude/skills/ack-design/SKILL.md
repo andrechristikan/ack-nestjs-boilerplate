@@ -17,7 +17,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 
 - Read the code the request touches and the module closest to it in shape.
 - Run `bash .claude/hooks/rules.sh` over the `src/` paths in scope and read each rule it prints.
-- Name the records in `docs/decisions/README.md` that touch the scope before offering any option. Offer no option a record rejects.
+- Name the entries in `.claude/decisions/architecture.md` and `.claude/decisions/security.md` that touch the scope before offering any option. Offer no option a rule forbids or an entry rejects.
 - Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: challenge each part of the request the need does not justify, before any design.
 
 ## 2. Question rounds
@@ -25,7 +25,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 Follow `.claude/skills/grilling/SKILL.md`, with these departures:
 
 - Ask each round with `AskUserQuestion`, the recommended answer first. A frontier larger than four questions takes several calls.
-- A fact the code, a rule, or a decision record answers is yours to find. Read it, or dispatch the built-in `Explore` agent. Never ask the owner for it.
+- A fact the code, a rule, or a decision entry answers is yours to find. Read it, or dispatch the built-in `Explore` agent. Never ask the owner for it.
 - When the owner says "you decide", decide and record it as an assumption.
 
 The frontier covers what the owner has not named:
@@ -53,10 +53,10 @@ Follow `.claude/skills/to-spec/SKILL.md`, with these departures:
 
 - The tracker is local markdown (`.claude/CLAUDE.md`, Work artifacts). Write `.scratch/<feature>/spec.md`, the feature slug kebab-case from the request, with `Status: ready-for-agent` as its first line.
 - Its step 2 is step 3 of this file: the seams are already agreed.
-- Add `## Decisions to honour` (each binding decision record, by number and title) and `## Owner decisions` (every owner answer, verbatim, one per line) before `## Implementation Decisions`.
+- Add `## Decisions to honour` (each binding decision entry, by title) and `## Owner decisions` (every owner answer, verbatim, one per line) before `## Implementation Decisions`.
 - `## Testing Decisions` lists each agreed seam and the behaviours asserted at it.
 - Name every class, method, DTO field, status code, message key, and config key the change introduces.
-- `## Harness changes` lists each rule the design needs changed or added and each decision-record candidate (an architecture choice closed with a named alternative rejected), one per line, or `none`.
+- `## Harness changes` lists each rule the design needs changed or added and each decision candidate (an architecture choice closed with a named alternative rejected), one per line, or `none`.
 - No compatibility, backfill, or migration section (`AGENTS.md`).
 
 ## 5. Approval

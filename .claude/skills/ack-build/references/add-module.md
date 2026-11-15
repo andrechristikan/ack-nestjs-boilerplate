@@ -1,6 +1,6 @@
 # Add a module
 
-Invariants: `.claude/rules/layering.md` (roles, dependency order, `@Global()`, module files, boot-only defects), `.claude/rules/use-case.md` and `.claude/rules/service.md`, `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
+Invariants: `.claude/rules/layering.md` (roles, dependency order), `.claude/rules/module-files.md` (`@Global()`, module files, boot-only defects), `.claude/rules/use-case.md` and `.claude/rules/service.md`, `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
 
 ## 1. Claim the status-code block
 
@@ -30,7 +30,7 @@ The module's rank is the `imports:` its module file declares: it sits above ever
 | use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, implements `IAppUseCase`, one public `async execute` | `src/modules/device/use-cases/` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts` |
 
-A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, the services and utils of imported and `@Global()` modules, and the kit; a gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/outbox.md`, `.claude/rules/activity-log.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
+A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, the services and utils of imported and `@Global()` modules, and the kit; a gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/effects.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
 
 ## 5. The module files
 
@@ -43,9 +43,9 @@ Copy the shape, not the names:
 
 ## 6. Register
 
-- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/layering.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
+- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/module-files.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
 - Processor: the processor into `providers` and the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
-- A `@Global()` module: `@Global()` plus a no-argument `forRoot()`, imported as `<Module>.forRoot()` by `src/common/common.module.ts` only, and only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/layering.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
+- A `@Global()` module: `@Global()` plus a no-argument `forRoot()`, imported as `<Module>.forRoot()` by `src/common/common.module.ts` only, and only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/module-files.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
 
 ## 7. Messages
 
@@ -62,4 +62,4 @@ pnpm typecheck
 pnpm test <module>
 ```
 
-Boot in the Docker `apis` container (`.claude/rules/docker.md`, Boot): wiring defects surface only there. Check the boot log for the `App Name:` block and no `UnknownDependenciesException` line. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).
+Boot in the Docker `apis` container (`.claude/skills/ack-build/references/boot.md`): wiring defects surface only there. Check the boot log for the `App Name:` block and no `UnknownDependenciesException` line. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).

@@ -53,10 +53,10 @@ Stop before the last ticket only when:
 
 ## 2. Prove
 
-1. Run `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and `pnpm test <filter>` for each module the build touched. Read the output, not only the exit code (`.claude/CLAUDE.md`, Gotchas).
+1. Run `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and `pnpm test <filter>` for each module the build touched. Read the output, not only the exit code (`.claude/rules/code-style.md`, Lint; `.claude/rules/testing.md`, Layout and runs).
 2. Run `pnpm test:cov <filter>` and read the row of each file the build changed. A row under 100 is behaviour without a spec: one more `coder` dispatch on that ticket.
 3. Name the spec or the command that proves each acceptance criterion of each ticket. A criterion without proof goes back to step 1.
-4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/rules/docker.md`, Boot, gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
+4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/skills/ack-build/references/boot.md` gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
 
 ## Hand back
 

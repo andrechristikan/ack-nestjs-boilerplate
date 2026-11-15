@@ -25,15 +25,6 @@ Role suffixes: `.use-case .service .repository .controller .guard .strategy .dec
 
 A DTO's `<concern>` is an action, a noun, or absent for the module's canonical shape; the direction segment is not optional, and file and exports agree on it. A list request DTO is `<module>.list.request.dto.ts`, or one `<module>.<scope>-list.request.dto.ts` per scope when several scopes list. At most two constants files: `<module>.constant.ts` (store keys, selects, everything the module owns) and `<module>.list.constant.ts` (list allow-lists, filter defaults, and a list's cursor scope, only with a list endpoint); a data constant never lives in a class file. An internal read's cursor scope sits beside its select in `<module>.constant.ts`. `I*` declarations live under `interfaces/`: the repository port alone, data shapes collected in `<module>[.<concern>].interface.ts`.
 
-The user module's sign-in and sign-up flows are two groups of use cases:
-
-- sign-in, sharing `UserAuthService` (`user.auth.service.ts`): `UserLoginCredentialUseCase`, `UserLoginWithSocialUseCase` with its first-login sign-up, `UserLoginVerifyTwoFactorUseCase`, `UserLoginSetupTwoFactorUseCase`, `UserRefreshUseCase`, `UserLogoutUseCase`.
-- sign-up: `UserSignUpUseCase`, `UserCreateByAdminUseCase`, `UserImportByAdminUseCase`.
-
-A util, interface, config key, or service method one flow uses takes that flow's concern, `auth` (sign-in) or `registration` (sign-up); one both use takes its action concern, a config group included (`user.create` holds `timeoutInMs` and `bulkTimeoutInMs`). `onboarding` names nothing in the user module.
-
-Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` and mirrors its `src/` path under `test/<type>/`. An e2e spec for a flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts` (`user.login-profile.spec.ts`); integration and e2e are held (`testing.md`), so their names are the planned ones. Every other file starts with `test.`: `test.[<type>.][<noun>.]<role>.ts`, role `setup` or `global-setup` at the root of `test/<type>/`, `helper` in a `helpers/` folder; the type segment is present everywhere except `test/helpers/`. `test/helpers/test.provided-context.d.ts` will type `inject()`. A binary fixture is `test.<type>.<noun>.fixture.<ext>` in that type's `helpers/`.
-
 ## Identifiers
 
 | Kind | Rule | Example |
@@ -57,4 +48,4 @@ An `OrThrow` suffix is Prisma's only (`findUniqueOrThrow`), never on a name this
 
 ## Renaming
 
-No frozen surface: rename a wrong name and change every call site; Prisma-generated names are schema-owned (`database.md`); a queue, job name, or payload field rename follows `queue.md`. An i18n key rename changes both halves, in every language, in the same change (`i18n.md`).
+No frozen surface: rename a wrong name and change every call site; Prisma-generated names are schema-owned (`repository.md`); a queue, job name, or payload field rename follows `queue.md`. An i18n key rename changes both halves, in every language, in the same change (`i18n.md`).

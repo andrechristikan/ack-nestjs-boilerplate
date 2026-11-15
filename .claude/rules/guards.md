@@ -8,7 +8,7 @@ paths:
 
 # Guards and decorators
 
-Exception classes, status codes, and the filter chain: `exceptions.md`.
+Exception classes, status codes, and the filter chain: `exceptions.md`, `exception-class.md`, `filter.md`.
 
 ## Decorator order
 
@@ -39,7 +39,7 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 - A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
 - `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`src/modules/workspace/decorators/workspace.decorator.ts`). `@ProjectMemberProtected(...roles)` uses `ProjectMemberGuard` with no roles and `ProjectRoleGuard` alone with roles (`src/modules/project/decorators/project.decorator.ts`). Both merge the caller's member as `projectMember` into `ProjectContextStoreKey`; `ProjectRoleGuard` merges `null` when a workspace owner or admin passes with no member row.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` / `:projectId` param. `@RoleProtected` never lists `superAdmin`; `RoleService.validateRoleGuard` and `PolicyService.validatePolicyGuard` pass it.
-- Every workspace-scoped and project-scoped route in `user`, `shared`, and `public` carries `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`; the decorator takes an `EnumFeatureFlagKey` member, and a metadata sub-key, an `EnumFeatureFlagMetadataKey` member, is asserted in the service (`feature-flag.md`, Metadata).
+- Every workspace-scoped and project-scoped route in `user`, `shared`, and `public` carries `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`; the decorator takes an `EnumFeatureFlagKey` member, and a metadata sub-key, an `EnumFeatureFlagMetadataKey` member, is asserted in the service (`service.md`, Shape).
 
 ## Guards
 

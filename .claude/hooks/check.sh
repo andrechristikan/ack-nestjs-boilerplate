@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Harness check, run by ack-harness and by reviewer at Depth harness, never as a hook. Prints one line per defect and
 # exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets
-# (.claude/rules/authoring.md, Harness files), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
+# (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
 # Copied skills (skills-lock.json) are checked for presence only: their text is not ours to hold to these rules.
 set -uo pipefail
 
@@ -38,8 +38,8 @@ for name in skills:
     if name not in copied and not name.startswith('ack-'):
         out.append(f'.claude/skills/{name}: neither an ack-* skill nor in skills-lock.json')
 
-budgets = [('.claude/CLAUDE.md', 1400), ('AGENTS.md', 700), ('.github/copilot-instructions.md', 450)]
-budgets += [(p, 1200) for p in glob.glob('.claude/rules/*.md')]
+budgets = [('.claude/CLAUDE.md', 1000), ('AGENTS.md', 700), ('.github/copilot-instructions.md', 450)]
+budgets += [(p, 1000) for p in glob.glob('.claude/rules/*.md')]
 budgets += [(p, 900) for p in glob.glob('.claude/agents/*.md')]
 budgets += [(p, 1300) for p in glob.glob('.claude/skills/ack-*/SKILL.md')]
 budgets += [(p, 1000) for p in glob.glob('.claude/skills/ack-*/references/*.md')]

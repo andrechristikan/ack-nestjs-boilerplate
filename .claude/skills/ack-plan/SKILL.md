@@ -29,7 +29,7 @@ Follow `.claude/skills/to-tickets/SKILL.md`, with these departures:
 - Its step 4 quiz uses `AskUserQuestion`.
 - A wide refactor is one ticket that changes every call site. This repository takes no expand-contract sequence (`AGENTS.md`).
 - Each ticket also carries `**Seam:**`, from the spec's Testing Decisions, and `**First failing spec:**`, the behaviour its first unit spec asserts.
-- A ticket that adds a module, a status code, a queue, a seed, or a notification carries `**Procedure:**` with its `.claude/skills/ack-build/references/add-<topic>.md`.
+- A ticket that adds a module, a status code, a queue, a seed, a notification, or an upload carries `**Procedure:**` with its `.claude/skills/ack-build/references/add-<topic>.md`.
 - Every acceptance criterion states an observable result a unit spec, a gate command, or a request against the booted app proves.
 - Run `bash .claude/hooks/rules.sh` over the `src/` paths the tickets touch and read each rule it prints. A ticket step a rule forbids is rewritten, or the rule joins `## Harness changes`.
 
@@ -61,9 +61,9 @@ Write `.scratch/<feature>/plan.md`. It is an index a person reads to see the ord
 
 - `**Approved:** no` as the first line.
 - `**Spec:**` the spec path.
-- `**Decisions to honour:**` the decision records the spec names.
+- `**Decisions to honour:**` the decision entries the spec names.
 - One table, a row per ticket: `#`, `Ticket`, `Blocked by`, `Seam`, `Coder`, `Status`, `Evidence`. `Status` starts as `ready`.
-- `## Harness changes`: the spec's lines and any step 1 added, each `- [ ] <rule change or decision record>`, or `none`.
+- `## Harness changes`: the spec's lines and any step 1 added, each `- [ ] <rule change or decision entry>`, or `none`.
 - `## Cold read`: each round, and what it changed.
 - `## Owner commands`: empty until the build fills it.
 

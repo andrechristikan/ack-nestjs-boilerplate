@@ -3,11 +3,15 @@ paths:
     - 'src/common/pagination/**'
     - '**/*list.request.dto.ts'
     - '**/*.list.constant.ts'
-    - '**/*.use-case.ts'
+    - '**/*list*.use-case.ts'
+    - '**/*export*.use-case.ts'
+    - 'src/modules/analytic/use-cases/**'
     - '**/*.repository.ts'
 ---
 
 # Pagination
+
+The cursor token, the kit utils, and the keyset read: `pagination-kit.md`.
 
 - `/admin/**` is offset; every other scope is cursor, with no `page` or `totalPage`, and no `count` unless a repository passes `includeCount`, a repository-side argument a client never sets.
 - `PaginationService` (`src/common/pagination/services/pagination.service.ts`: `offset`, `cursor`) is injected in repositories, which return `IResponsePaginationReturn<T>`, and is database-level only. A computed result, scored in memory by a service or grouped by an analytic repository, pages with `PaginationOffsetUtil.page`; the util is kit, so anyone may inject it (`layering.md`, Dependency order).
@@ -17,19 +21,10 @@ paths:
 - `availableOrderBy` in the response pagination metadata is mandatory (`ResponsePaginationMetadataSchema`, `src/common/response/dtos/response.pagination-metadata.dto.ts`). Every `availableOrderBy` field on a cursor route is immutable and non-null on every row the route's `where` returns; the test for immutable is whether a write path exists. Split `<Module>CursorAvailableOrderBy` from `<Module>DefaultAvailableOrderBy` only when the sets differ.
 - A multi-field sort a client names is custom per module and per case, usually outside `PaginationService`; the kit holds no alias mechanism. `metadata.orderBy` is an array because a backend sort may hold more terms than the request.
 - A filter is a typed structure from `PaginationFilterUtil` (`src/common/pagination/utils/pagination.filter.util.ts`: `equalBoolean`, `equalString`, `equalNumber`, `notEqual`, `inEnum`, `ninEnum`, `dateBetween`); no `Record<string, unknown>`, no raw `filter` string, no `JSON.parse` into `where`. The util output types carry no `include`, `select`, or `includeCount`; `select` and `include` are exclusive; a row narrower than the model takes a `*Select` constant pinned by `Prisma.<Model>GetPayload<{ select: typeof <Const> }>`.
-- The cursor token carries `{ values, fingerprint }` only, sealed by `HelperEncryptionService.aes256Encrypt` under `PaginationCursorEncryptionPurpose` with the `app.encryptionSecretKey` root; a client can neither read nor change it. The token is the `aes256Encrypt` output as is, with no further encoding; its parts are base64url joined by `.`. `values` holds the last row's value of every `orderBy` term, tiebreak included.
-- `PaginationCursorUtil` (`src/common/pagination/utils/pagination.cursor.util.ts`) owns seal, open, value encode and decode, the keyset filter, the fingerprint, and the format check. It returns `null` on a failure, and `PaginationService` throws; `checkFormat` returns the exception, and its caller throws. The token is opened once per request, in `PaginationService.cursor`.
-- `PaginationOffsetUtil` (`src/common/pagination/utils/pagination.offset.util.ts`) owns `page`, `skip`, and `parsePage`. `parsePage` returns the page or the exception. The caller of `checkFormat` or `parsePage` throws through `if (x instanceof AppBaseException)`.
-- `PaginationQueryUtil` composes `PaginationCursorUtil` and `PaginationOffsetUtil` and owns search and `orderBy` parsing and `perPage` validation.
-- `PaginationQueryUtil.cursor` obtains the fingerprint from `PaginationCursorUtil.fingerprint`: a hash of the canonicalized `{ scope, filters, orderBy }` of the client request. `filters` is the whole DTO less `cursor`, `perPage`, and the raw `orderBy`, with `search` included and blank values dropped. A whole string filter value is trimmed before hashing, and one blank after trim is dropped. `orderBy` is the resolved value, so an absent and an empty `orderBy` compare equal. Value order and spacing inside a comma-separated filter count (`a,b` differs from `b,a` and from `a, b`). `perPage` may change between pages.
 - `scope` is one constant per cursor endpoint, so a token issued at one endpoint answers 422 at another even when its payload matches.
 - A mismatch raises `PaginationInvalidCursorPaginationParamsException` (422). A client sends the same filter, sort, and search on every page; one that changes any of them sends no cursor and restarts at the first page; the server never resets it.
 - Server-built `where` (owner id, workspace, a clock) is outside the fingerprint and applies on every page. A clock filter in a cursor `where` reads `HelperDateService` on each page.
 - A read that skips `PaginationQueryUtil` (a processor or analytic loop) has no client request and passes its scope constant directly as `fingerprint`; its token stays a local variable, never sent to a client or persisted.
-- `PaginationService.cursor` reads through a keyset filter built from `values` and joined to `where` by `AND`, never Prisma's `cursor` argument or `skip`, so a last row that left `where` or was deleted moves no page boundary.
 - A cursor `select` carries every sort field and the tiebreak `id`; `PaginationService` adds nothing to `select`.
-- A null or absent sort value on the last row throws `PaginationInvalidCursorDataException`, and a token whose `values` keys differ from the `orderBy` terms throws the same. A token that fails to open throws `PaginationFailedToDecodeCursorException`. A failure sealing a token is unhandled and answers 500 through `AppGeneralFilter`.
-- A `Date` value is tagged under `PaginationCursorDateKey`, so a date-shaped string stays a string.
 - `PaginationService` appends the tiebreak to every `offset` and `cursor` `orderBy` (`PaginationQueryUtil.resolveTiebreak`): an empty `orderBy` becomes `PaginationDefaultOrderBy`, then `{ id: <direction of the last term> }` (`PaginationDefaultCursorField`) follows, skipped when a term already names it. A repository, service, or use case never adds its own tiebreak term to `orderBy`; `metadata.orderBy` omits it. A tiebreaker fixes ties, not a mutating key.
-- A value the cursor token, query parsing, or fingerprint exclusion names is a constant in `src/common/pagination/constants/pagination.constant.ts`; a Prisma operator stays literal.
-- Date bounds use `EnumPaginationFilterDateBetweenType`; the interceptor reads `EnumPaginationType` off the return. OpenAPI list params come only from the zod schema.
+- A query param filtered against an enum is a field on the list schema; the use case applies `PaginationFilterUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts`). Never a hand-parsed `@Query` plus a manual `includes`.

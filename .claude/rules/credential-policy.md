@@ -9,7 +9,7 @@ paths:
 
 # Credential policy
 
-Passwords, the inactivity of a credential, and re-authentication. Two-factor, sessions, and sign-in: `auth.md`. Hashing: `security.md`.
+Passwords, the inactivity of a credential, and re-authentication. Two-factor and sessions: `session.md`. Sign-in: `login.md`. Hashing: `security.md`.
 
 ## Passwords
 
@@ -20,5 +20,5 @@ Passwords, the inactivity of a credential, and re-authentication. Two-factor, se
 
 - Each flow of `EnumUserReauthenticationAction` calls `UserAuthService.assertReauthentication` before its work, writing nothing on a match, and `completeReauthenticationInTx` first in the flow's one transaction. The use case opens that transaction and maps its write conflicts.
 - The proof is the current password when the account has one, plus a TOTP or backup code when 2FA requires verification. 2FA enable proves the new authenticator, no old one. Logout of the caller's own session takes none.
-- A mismatch counts on its own budget (`auth.md`, Two-factor). A two-factor proof completes through `verifyInTx` and `recordVerificationInTx`, which consumes a backup code, and the `userVerifyTwoFactor` entry.
+- A mismatch counts on its own budget (`session.md`, Two-factor). A two-factor proof completes through `verifyInTx` and `recordVerificationInTx`, which consumes a backup code, and the `userVerifyTwoFactor` entry.
 - An account with no password and no 2FA proves itself with an email code: `POST /shared/user/reauthentication/send` with the flow's action, refused for an account with a stronger proof. The code is bound to that action, works once within `verification.expiredInMinutes`, and stays valid after a wrong attempt; its resend window counts the latest code per user and action, used or not. The `reauthenticationOtp` kind is mandatory and email only.

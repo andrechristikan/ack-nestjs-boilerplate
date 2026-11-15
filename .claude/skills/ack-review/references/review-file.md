@@ -16,9 +16,9 @@ New names in this example, not in the checkout: the `country-inactive` feature f
 | Read | Result |
 | --- | --- |
 | spec: 6 acceptance criteria | pass |
-| `.claude/rules/cache.md` | 1 |
+| `.claude/rules/effects.md` | 1 |
 | `.claude/rules/service.md` | pass |
-| decision 0022 | 1 |
+| decision: Cache invalidation is a job | 1 |
 | flow: `PATCH /admin/country/:id/inactive`, beside `PATCH /admin/api-key/:id/inactive` | 1 |
 
 ## Findings
@@ -26,7 +26,7 @@ New names in this example, not in the checkout: the `country-inactive` feature f
 ### 1. Important: the cache is invalidated inline
 
 - **Where:** `src/modules/country/use-cases/country.set-inactive.use-case.ts:41`
-- **Breaks:** `.claude/rules/cache.md`, "It opens `OutboxService.withTransaction` over its `*InTx` write and adds `CacheService.invalidateEffect(keys)`"; decision 0022.
+- **Breaks:** `.claude/rules/effects.md`, "It opens `OutboxService.withTransaction` over its `*InTx` write and adds `CacheService.invalidateEffect(keys)`"; decision: Cache invalidation is a job.
 - **Cause:** `execute` awaits `cacheService.invalidate(keys)` after the transaction. Its sibling, `ApiKeyService.addInvalidateEffectInTx`, adds the effect on `tx`.
 - **Change:** remove the `cacheService.invalidate` call from `execute`. In `CountryService.setInactiveInTx`, build the keys with `CountryCache`, then `await this.outboxService.addInTx(tx, this.cacheService.invalidateEffect(keys))`. `execute` opens `OutboxService.withTransaction` and calls `setInactiveInTx(tx, id)`.
 - **First failing spec:** `country.set-inactive.use-case.spec.ts`: `execute` opens `OutboxService.withTransaction` and never calls `CacheService.invalidate`.
@@ -34,7 +34,7 @@ New names in this example, not in the checkout: the `country-inactive` feature f
 
 ## Rules
 
-- Coverage has one row per rule file the dispatch pasted, one per decision record it named, one for the spec, and one per endpoint and job the change adds or changes. A flow row names the sibling flow it was read beside.
+- Coverage has one row per rule file the dispatch pasted, one per decision entry it named, one for the spec, and one per endpoint and job the change adds or changes. A flow row names the sibling flow it was read beside.
 - A row reads `pass` or the finding numbers. A rule file that was not read whole has no `pass`.
 - A finding is numbered and labelled Critical, Important, or Minor. Its five lines are all present.
 - **Change** names files, classes, methods, and the shape of the result. Where two fixes would work, the reviewer picks one and says which; `coder` reads no option.

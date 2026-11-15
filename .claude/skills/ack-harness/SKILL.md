@@ -1,8 +1,8 @@
 ---
 name: ack-harness
 description: >-
-    Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision records in docs/decisions/, and docs/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
-blurb: '.claude, AGENTS.md, copilot digest, decision records'
+    Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision entries in .claude/decisions/, and docs/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
+blurb: '.claude, AGENTS.md, copilot digest, decision entries'
 disable-model-invocation: true
 argument-hint: '<the change: files, what changes, expected outcome> | <a .scratch/ plan or requirement path> | diagnose [session id | last]'
 ---
@@ -32,8 +32,8 @@ With `diagnose`:
 ## 2. Write
 
 - Verify every path, class, script, and flag against the checkout before writing it: `package.json`, `vitest.config.ts`, `docker-compose.yml`, `.husky/`, `.commitlintrc`, `eslint.config.mjs`, `knip.json`, the source file itself.
-- A skill, an agent, or a rule: follow `.claude/skills/writing-for-agents/SKILL.md`. Where it and `.claude/rules/authoring.md` differ, the rule wins.
-- A decision record: the shape in `.claude/rules/authoring.md`, Decision records, each claim taken from a source the owner names, and one index line in `docs/decisions/README.md`.
+- A skill, an agent, or a rule: follow `.claude/skills/writing-for-agents/SKILL.md`. Where it and `.claude/rules/authoring.md` or `.claude/rules/harness.md` differ, the rule wins.
+- A decision: `.claude/skills/ack-harness/references/decision-record.md`.
 - A change to the flow, a skill, an agent, or the copied-skill set updates `docs/ai-harness.md` in the same run.
 - A `src/` defect found on the way is one row in `generated/report-src-sweep.md`, not a fix.
 
@@ -51,7 +51,7 @@ bash .claude/hooks/check.sh
 
 ## Boundaries
 
-- No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/decisions/` and `docs/ai-harness.md`, no `.github/**` beyond the Copilot digest.
+- No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/ai-harness.md`, no `.github/**` beyond the Copilot digest.
 - No database or seed command.
 - Commits go through `ask`; propose the subject only.
 

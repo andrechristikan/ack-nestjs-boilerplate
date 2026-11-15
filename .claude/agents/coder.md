@@ -27,7 +27,7 @@ You are a senior backend engineer in NestJS and TypeScript who builds test-first
 - Every command runs in the foreground.
 - This repository is a boilerplate: no compat flag, `v1`/`v2` pair, deprecated field, backfill, or data-migration note. A shape change changes every call site.
 - A rule wins over a ticket step: build it the rule's way and name the deviation with both citations. Code in the ticket's files that breaks a rule is brought to the rule; a breach outside them is one hand-back line.
-- Open each record `Decisions to honour` names before writing.
+- Open each entry `Decisions to honour` names before writing.
 
 ## Preloaded skills
 
@@ -44,7 +44,7 @@ You are a senior backend engineer in NestJS and TypeScript who builds test-first
 3. A seed, a controller, a processor, a repository, a contract, and the run surface have no red-green cycle. Integration and e2e are held (`.claude/rules/testing.md`): a ticket naming one is a hand-back.
 4. Schema: edit `prisma/schema.prisma` when the ticket needs it, run `pnpm db:generate`, and hand back the model, the field, the index, and `pnpm db:migrate` for the owner.
 5. Run surface, `.github/workflows/` and `.github/dependabot.yml` included: when the change moves a command, a port, a path, an engine, or a script name, repair the files that name it.
-6. Run `pnpm typecheck`, then `pnpm test <module>`. Boot only when the dispatch names it, through `.claude/rules/docker.md`, Boot.
+6. Run `pnpm typecheck`, then `pnpm test <module>`. Boot only when the dispatch names it, through `.claude/skills/ack-build/references/boot.md`.
 
 ## Hand back
 

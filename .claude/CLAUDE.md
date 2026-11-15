@@ -8,31 +8,16 @@
 
 ### Skills
 
-The owner types every `/ack-*` skill: each carries `disable-model-invocation: true`. No agent invokes one, and no skill starts another: each ends with a Next line naming the command the owner types. A feature runs the first seven in order, each in a fresh session; the owner commits before `/ack-pr`:
-
-| Skill | Runs in | Does |
-| --- | --- | --- |
-| `/ack-design` | session | question rounds with the owner, the test seams, the spec |
-| `/ack-plan` | session, `reviewer`, `advisor` | tickets, the plan index, harness changes, a cold read, the owner's approval |
-| `/ack-harness` | session | `.claude/**`, `AGENTS.md`, the Copilot digest, decision records |
-| `/ack-build` | session, `coder` | every ticket test-first, gates |
-| `/ack-review` | session, `reviewer`, `coder` | `review.md` against the spec, the rules, and the flow; findings settled with the owner, then fixed |
-| `/ack-doc` | session, `writer` | docs against the code; the code wins |
-| `/ack-pr` | session, `writer` | a pull request, its description, comments, version notes |
-| `/ack-debug` | session, `debugger`, `coder`, `reviewer` | a symptom to its root cause, then the fix |
-| `/ack-spec` | fork, as `tester` | unit specs for code that exists; the code wins |
+The owner types every `/ack-*` skill: each carries `disable-model-invocation: true`. No agent invokes one, and no skill starts another: each ends with a Next line naming the command the owner types. A feature runs seven in order, each in a fresh session: `/ack-design` (question rounds, the spec), `/ack-plan` (tickets, the plan index, the owner's approval), `/ack-harness` (`.claude/**`, `AGENTS.md`, the Copilot digest, decision entries), `/ack-build` (every ticket test-first), `/ack-review` (`review.md`, findings settled and fixed), `/ack-doc` (docs against the code), `/ack-pr` (a pull request and its text); the owner commits before `/ack-pr`. `/ack-debug` takes a symptom to its root cause and the fix; `/ack-spec`, a fork running as `tester`, writes unit specs for code that exists.
 
 - A request for a feature or a cross-module change that arrives without a skill: name `/ack-design` and wait. A question, a lookup, or an edit inside one file needs none.
 - A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
-- `coder` reads the `.claude/skills/ack-build/references/add-<topic>.md` a ticket names: module, status code, queue, seed, notification.
+- `coder` reads the `.claude/skills/ack-build/references/add-<topic>.md` a ticket names: module, status code, queue, seed, notification, upload.
 
 ### Copied skills
 
-The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their licence texts are in `.claude/skills/licenses/`.
+The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their licence texts are in `.claude/skills/licenses/`. Editing and updating them: `.claude/rules/harness.md`.
 
-- They are never edited (`guard-write.sh` denies it). An `ack-*` skill or an agent follows one by path or preloads it, and states its departures.
-- Where a copied skill and a rule, an `ack-*` skill, or an agent file differ, the copied skill loses.
-- `pnpm skills:update` updates them; `/ack-harness` then re-reads each departure.
 - `ponytail` runs at `full` wherever code is written, `ultra` in `/ack-design` and `/ack-harness`. `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
 
 ### Work artifacts
@@ -49,36 +34,21 @@ A platform issue is created only when the owner asks; `gh issue create` is an `a
 
 ### Levels
 
-- `coder` runs on sonnet at an effort set per ticket by `/ack-plan` and per fix by `/ack-review`. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
-- Without `TYPESAFE_API_KEY` in `.env.harness`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; the `/ack-plan` table then gives the effort.
 - No agent runs below its frontmatter `model` and `effort`; `/ack-review` dispatches `reviewer` at opus, high.
 - Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
+- How `coder`'s effort is set: `.claude/rules/harness.md`, Levels.
 
 ### Agents
 
-Skills dispatch the agents in `.claude/agents/`:
-
-- `coder`: builds one ticket or one pin in `src/`, test-first, seeds and the run surface included.
-- `reviewer`: judges a plan, a pin, or the harness; writes a feature's `review.md`; fixes nothing.
-- `advisor`: the last cold-read attempt of `/ack-plan`; edits the spec, plan, and tickets.
-- `debugger`: reproduces a symptom, finds its root cause, reports a pin.
-- `tester`: writes or repairs unit specs under `test/unit/` for code that exists.
-- `writer`: `docs/`, the root people files, `.github/` markdown, PR and version text.
-
-The session locates code with the built-in `Explore` agent. An agent missing something hands the question back; the session asks the owner and dispatches again.
+Skills dispatch the agents in `.claude/agents/`; each agent's `description` states its job. The session locates code with the built-in `Explore` agent. An agent missing something hands the question back; the session asks the owner and dispatches again.
 
 ### Gotchas
 
 - `tsc` aborts on a `tsconfig.json` error and reports zero source errors, and `| grep -c 'error TS'` prints `0` on a crashed runner's empty output. Read the raw output and exit code.
 - The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a file under `src/` or `test/` differs from `HEAD` or is untracked, and blocks the stop on failure. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite; pre-commit always does.
-- `pnpm spell` always exits 0 (`|| true`). Read its output.
-- `pnpm deadcode` is knip: unused files, exports, types, enum members, and dependencies warn and exit 0; unlisted dependencies, unresolved imports, unlisted binaries, and duplicate exports exit 1.
-- A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold is global. Read the `Tests` line and the per-file rows, not the exit code.
-- `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so `.github/workflows/test-integration.yml` and `test-e2e.yml` fail calling those scripts.
-- A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
-- A booted request sends `x-api-key: local_<key>:<secret>`: the seed prefixes the `migration.api-key.data.ts` key with the environment (`ApiKeyCredentialUtil.createKey`). A notification proof passes once the SES or FCM call is made; a sandbox `MessageRejected` for an unverified address is no finding.
 - Claude worktrees live under `.claude/worktrees/` (gitignored).
-- The root `.env`, `.env.harness`, and `.env.docker`, `keys/`, and `generated/vault/` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker compose --env-file .env.docker exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env` or `.env.docker`.
+- A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
+- `pnpm spell` and `pnpm deadcode` exit codes: `.claude/rules/code-style.md`, Lint. `pnpm test` and `pnpm test:cov`: `.claude/rules/testing.md`, Layout and runs. A boot: `.claude/skills/ack-build/references/boot.md`.
 
 ### Etiquette
 
@@ -87,7 +57,7 @@ The session locates code with the built-in `Explore` agent. An agent missing som
 - The working tree on disk is the source, unstaged and untracked files included; list changes with `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
 - Every commit in a series leaves `pre-commit` green (`AGENTS.md`, Commit gates). A commit touching neither `src/` nor `test/` passes `--no-verify`, which skips `commit-msg` (commitlint) too, so check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks, and a red gate is fixed, not skipped.
-- Run every command in the foreground, bounded (`timeout 60` on the boot's log wait, which never ends on its own; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/rules/docker.md`, Boot), which stay up for the next boot. Wait for each Agent hand-back, never poll.
+- Run every command in the foreground, bounded (`timeout 60` on the boot's log wait, which never ends on its own; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/skills/ack-build/references/boot.md`), which stay up for the next boot. Wait for each Agent hand-back, never poll.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on; ask when two readings would produce different work.
 

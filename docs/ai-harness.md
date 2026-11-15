@@ -16,7 +16,8 @@
 
 - [Project Structure Documentation][ref-doc-project-structure]: the module layout the rules describe
 - [Installation Documentation][ref-doc-installation]: the local stack a boot check runs against
-- [Decision records][ref-doc-decisions]: the closed choices every design honours
+- [Architecture decisions][ref-doc-decisions-architecture]: why the alternatives to an architecture rule were rejected
+- [Security decisions][ref-doc-decisions-security]: why the alternatives to a security rule were rejected
 
 ## Table of Contents
 
@@ -48,7 +49,7 @@ flowchart LR
     D -->|spec.md| P["/ack-plan"]
     P -->|tickets and plan.md| H["/ack-harness"]
     P -->|no harness change| B["/ack-build"]
-    H -->|rules and records| B
+    H -->|rules and decisions| B
     B -->|working tree| V["/ack-review"]
     V -->|review.md and fixes| DOC["/ack-doc"]
     DOC --> C[Owner commits]
@@ -61,10 +62,10 @@ Each command runs in a fresh session, so it starts from the files the previous o
 
 `/ack-design <the feature in one sentence>` runs in the session.
 
-1. It reads the code, the rules binding it, and the decision records the request touches.
+1. It reads the code, the rules binding it, and the decision entries the request touches.
 2. It asks the owner rounds of multiple-choice questions until no decision is left open. It looks up facts itself.
 3. It agrees the test seams with the owner: the public boundaries the unit specs assert at.
-4. It writes `.scratch/<feature>/spec.md`, with the rule changes and decision records the design needs, and asks for approval.
+4. It writes `.scratch/<feature>/spec.md`, with the rule changes and decision entries the design needs, and asks for approval.
 
 ### Plan
 
@@ -81,7 +82,7 @@ Each command runs in a fresh session, so it starts from the files the previous o
 
 `/ack-harness .scratch/<feature>/plan.md` runs in the session when the plan lists a harness change.
 
-1. It applies each rule change and decision record the plan lists.
+1. It applies each rule change and decision entry the plan lists.
 2. It ticks each one in `plan.md`. `/ack-build` does not start while one is open.
 
 ### Build
@@ -101,7 +102,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 `/ack-review .scratch/<feature>/plan.md` runs in the session on every feature, once.
 
 1. One `reviewer` on opus at high effort checks three things: every acceptance criterion of the spec, every rule binding the changed files, and each changed endpoint and job traced end to end beside the nearest flow of the same kind.
-2. It writes `.scratch/<feature>/review.md`: a coverage table with a row per rule file, decision record, and flow, and one section per finding with the exact change to make.
+2. It writes `.scratch/<feature>/review.md`: a coverage table with a row per rule file, decision entry, and flow, and one section per finding with the exact change to make.
 3. The session puts each finding to the owner, one at a time. The owner keeps it, drops it, or changes it.
 4. The session writes the fix list into `review.md` and the owner approves it.
 5. `coder` applies each kept finding as written. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature to the sweep log.
@@ -116,7 +117,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; defects are logged, not fixed |
 | `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins |
 | `/ack-pr <mode>` | a branch is settled and needs a pull request or release notes | every claim traces to the diff |
-| `/ack-harness <change>` | the harness, a decision record, or this page changes | the checkout wins |
+| `/ack-harness <change>` | the harness, a decision entry, or this page changes | the checkout wins |
 
 ## Agents
 
@@ -247,7 +248,7 @@ The harness describes this boilerplate. A project built from it changes these fi
 1. The first paragraph of `AGENTS.md` says no backward compatibility, backfill, or data-migration note. A product with clients and stored data replaces it, and the matching lines in `.claude/agents/coder.md`, `.claude/agents/reviewer.md`, `/ack-design`, and `/ack-plan`.
 2. The `deny` list in `.claude/settings.json` keeps every command that writes to a database for the owner. Loosen it only for a database that is safe to lose.
 3. `repository` in `.claude/hooks/jev.json` describes the application to Jev.
-4. `docs/decisions/` holds this boilerplate's choices. Keep the records that still bind, and add one through `/ack-harness` when a design rejects a named alternative.
+4. `.claude/decisions/` holds the reasons this boilerplate's rejected alternatives lost. Keep the entries whose rule you keep, and add one through `/ack-harness` when a design rejects a named alternative.
 5. The Stack, Layout, and Commands sections of `AGENTS.md` follow the code as it changes.
 
 ## Checking the Harness
@@ -259,7 +260,7 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 | Skill | Scenario | Expected |
 | --- | --- | --- |
 | `/ack-design` | a one-sentence field addition | asks about the route scope and nullability, reads the module itself, writes a spec with seams |
-| `/ack-design` | a request a decision record rejects | names the record and offers no option it rejects |
+| `/ack-design` | a request a decision entry rejects | names the entry and offers no option it rejects |
 | `/ack-design` | the owner answers "you decide" | decides and lists the assumption in the spec |
 | `/ack-plan` | a spec that adds a status code | the ticket names the status-code procedure |
 | `/ack-plan` | a spec with an unnamed message key | the cold read asks for it, the ticket is fixed, a fresh reviewer reads again |
@@ -279,7 +280,8 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 
 [ref-doc-project-structure]: project-structure.md
 [ref-doc-installation]: installation.md
-[ref-doc-decisions]: decisions/README.md
+[ref-doc-decisions-architecture]: ../.claude/decisions/architecture.md
+[ref-doc-decisions-security]: ../.claude/decisions/security.md
 [ref-skills-cli]: https://github.com/vercel-labs/skills
 [ref-uv]: https://docs.astral.sh/uv/
 [ref-mattpocock-skills]: https://github.com/mattpocock/skills
