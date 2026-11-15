@@ -67,6 +67,7 @@
         "PTTL",
         "QUDRX",
         "randexp",
+        "reauthentication",
         "stringbool",
         "requestid",
         "resendable",

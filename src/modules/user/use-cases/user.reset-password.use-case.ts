@@ -10,6 +10,7 @@ import {
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -21,6 +22,7 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -29,6 +31,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, UserForgotPasswordResetRequestDto],
     IResponseReturn<void>
 > {
+    private readonly appName: string;
+
     constructor(
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
@@ -36,11 +40,15 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.appName = this.configService.get<string>('app.name')!;
+    }
 
     async execute(
         requestContext: IRequestContext,
@@ -68,6 +76,13 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     method: method ?? null,
                 }
             );
+        const contextWords = this.authPasswordUtil.createContextWords(
+            this.appName,
+            reset.user.email,
+            reset.user.username,
+            reset.user.name
+        );
+        await this.authPasswordService.assertAllowed(newPassword, contextWords);
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
 

@@ -4,7 +4,12 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import {
+    EnumActivityLogAction,
+    EnumUserReauthenticationAction,
+    EnumVerificationType,
+} from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -13,19 +18,28 @@ import { NotificationService } from '@modules/notification/services/notification
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
+import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IUserVerificationEmailTarget } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserVerificationEmailTarget,
+    IUserVerificationReauthenticationCreate,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserVerificationService {
+    private readonly verificationOtpLength: number;
+    private readonly verificationExpiredInMinutes: number;
+
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
@@ -35,9 +49,46 @@ export class UserVerificationService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService,
+        private readonly configService: ConfigService,
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil
-    ) {}
+    ) {
+        this.verificationOtpLength = this.configService.get<number>(
+            'verification.otpLength'
+        )!;
+        this.verificationExpiredInMinutes = this.configService.get<number>(
+            'verification.expiredInMinutes'
+        )!;
+    }
+
+    private createReauthentication(
+        email: string,
+        action: EnumUserReauthenticationAction
+    ): IUserVerificationReauthenticationCreate {
+        const otp = this.helperNumberService.randomDigits(
+            this.verificationOtpLength
+        );
+        const token = this.helperHashService.sha256Hash(otp);
+        const reference = this.userVerificationUtil.createReference();
+        const expiredAt = this.userVerificationUtil.createExpiredAt();
+
+        return {
+            verification: {
+                reference,
+                token,
+                type: EnumVerificationType.reauthentication,
+                action,
+                to: email,
+                expiredAt,
+                verifiedAt: null,
+                isUsed: false,
+            },
+            otp,
+            action,
+            expiredInMinutes: this.verificationExpiredInMinutes,
+        };
+    }
 
     /** Resolves the unused, unexpired email verification of a raw token for an active user, with that user; throws when none matches or the user is already verified. */
     async getOneActiveByEmailToken(
@@ -219,6 +270,93 @@ export class UserVerificationService {
             context
         );
         await this.outboxService.addInTx(tx, effect);
+    }
+
+    /** Resolves the unused, unexpired reauthentication row of the user, action, and code; throws when none matches, writing nothing. */
+    async getOneActiveReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction,
+        otp: string
+    ): Promise<Verification> {
+        const hashedOtp = this.helperHashService.sha256Hash(otp);
+        const verification =
+            await this.userVerificationRepository.findOneActiveReauthentication(
+                userId,
+                action,
+                hashedOtp
+            );
+        if (!verification) {
+            throw new UserReauthenticationOtpInvalidException();
+        }
+
+        return verification;
+    }
+
+    /** Throws when the latest code of the user and action, used or not, was created inside the resend window. */
+    async assertReauthenticationResendable(
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void> {
+        const lastVerification =
+            await this.userVerificationRepository.findOneLatestReauthentication(
+                userId,
+                action
+            );
+        if (!lastVerification) {
+            return;
+        }
+
+        const isInsideResendWindow = this.userUtil.isInsideResendWindow(
+            lastVerification.createdAt,
+            this.userVerificationUtil.verificationResendInMinutes
+        );
+        if (isInsideResendWindow) {
+            throw new UserReauthenticationOtpResendLimitException();
+        }
+    }
+
+    /** Marks the user's unused codes of the action used, creates the new code row, and adds the reauthenticationOtp effect on the caller's transaction. */
+    async sendReauthenticationInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        email: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void> {
+        const created = this.createReauthentication(email, action);
+
+        await this.userVerificationRepository.markUnusedReauthenticationUsedInTx(
+            tx,
+            userId,
+            action
+        );
+        const verification = await this.userVerificationRepository.createInTx(
+            tx,
+            userId,
+            created.verification,
+            userId
+        );
+        const effect = this.notificationService.notify(
+            EnumNotificationKind.reauthenticationOtp,
+            {
+                userId,
+                proceedBy: userId,
+                verificationId: verification.id,
+                otp: created.otp,
+                action: created.action,
+                expiredInMinutes: created.expiredInMinutes,
+            }
+        );
+        await this.outboxService.addInTx(tx, effect);
+    }
+
+    /** Marks the verification used now; false when it was used or expired first. */
+    async markUsedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<boolean> {
+        const verifiedAt = this.helperDateService.create();
+
+        return this.userVerificationRepository.markUsedInTx(tx, id, verifiedAt);
     }
 
     async createInTx(

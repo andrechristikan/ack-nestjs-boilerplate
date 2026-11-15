@@ -16,10 +16,6 @@
         "invalidKey": "{property} contains a key that is not allowed.",
         "invalidElement": "{property} contains an element that is not allowed.",
         "custom": "{property} failed a validation rule.",
-        "isPassword": {
-            "required": "{property} password is required.",
-            "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
-        },
         "isAfterNow": {
             "invalid": "{property} must be a future date."
         },

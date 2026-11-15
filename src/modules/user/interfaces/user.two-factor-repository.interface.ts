@@ -27,13 +27,6 @@ export interface IUserTwoFactorRepository {
         userId: string,
         pendingSecretEncrypted: string
     ): Promise<TwoFactor>;
-    setupTwoFactorConsumingBackupCodeInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        pendingSecretEncrypted: string,
-        verified: IUserTwoFactorVerifyResult,
-        currentBackupCodes: string[]
-    ): Promise<boolean>;
     enableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

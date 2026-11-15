@@ -167,32 +167,29 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         this.userService.assertEmailAvailable(emailExist);
         this.userService.assertUsernameAvailable(usernameCheck);
 
-        const { input, passwordString } =
+        const { input, password, passwordString } =
             await this.userService.prepareCreateByAdmin(
                 { countryId, email, name: name ?? null, roleId, username },
                 authContext.userId,
                 role
             );
-        const effects: IOutboxEffect[] = [];
-        if (input.password) {
-            const passwordCreatedAt = this.helperDateService.formatToIso(
-                input.password.passwordCreated
-            );
-            const passwordExpiredAt = this.helperDateService.formatToIso(
-                input.password.passwordExpired
-            );
-            const welcome = this.notificationService.notify(
-                EnumNotificationKind.welcomeByAdmin,
-                {
-                    userId: input.userId,
-                    proceedBy: authContext.userId,
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                }
-            );
-            effects.push(welcome);
-        }
+        const passwordCreatedAt = this.helperDateService.formatToIso(
+            password.passwordCreated
+        );
+        const passwordExpiredAt = this.helperDateService.formatToIso(
+            password.passwordExpired
+        );
+        const welcome = this.notificationService.notify(
+            EnumNotificationKind.welcomeByAdmin,
+            {
+                userId: input.userId,
+                proceedBy: authContext.userId,
+                password: passwordString,
+                passwordCreatedAt,
+                passwordExpiredAt,
+            }
+        );
+        const effects: IOutboxEffect[] = [welcome];
 
         const users = await this.createAdminUsers(
             requestContext,

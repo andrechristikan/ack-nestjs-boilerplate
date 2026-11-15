@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type {
     IAuthPassword,
     IAuthPasswordOptions,
+    IAuthPasswordTemporary,
 } from '@modules/auth/interfaces/auth.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -11,9 +12,7 @@ import type { PasswordHistory } from '@generated/prisma-client/client';
 
 @Injectable()
 export class AuthPasswordUtil {
-    private readonly passwordExpiredInMs: number;
     private readonly passwordExpiredTemporaryInMs: number;
-    private readonly passwordSaltLength: number;
     private readonly passwordPeriodInDays: number;
     private readonly passwordTemporaryLength: number;
 
@@ -23,14 +22,8 @@ export class AuthPasswordUtil {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.passwordExpiredInMs = this.configService.get<number>(
-            'auth.password.expiredInMs'
-        )!;
         this.passwordExpiredTemporaryInMs = this.configService.get<number>(
             'auth.password.expiredTemporaryInMs'
-        )!;
-        this.passwordSaltLength = this.configService.get<number>(
-            'auth.password.saltLength'
         )!;
         this.passwordPeriodInDays = this.configService.get<number>(
             'auth.password.periodInDays'
@@ -44,7 +37,7 @@ export class AuthPasswordUtil {
         passwordString: string,
         passwordHash: string
     ): Promise<boolean> {
-        return this.helperHashService.bcryptCompare(
+        return this.helperHashService.argon2Compare(
             passwordString,
             passwordHash
         );
@@ -52,25 +45,26 @@ export class AuthPasswordUtil {
 
     async createPassword(
         password: string,
+        options: IAuthPasswordOptions
+    ): Promise<IAuthPasswordTemporary>;
+    async createPassword(password: string): Promise<IAuthPassword>;
+    async createPassword(
+        password: string,
         options?: IAuthPasswordOptions
     ): Promise<IAuthPassword> {
         const today = this.helperDateService.create();
-        const salt: string = await this.helperHashService.bcryptGenerateSalt(
-            this.passwordSaltLength
-        );
-        const passwordExpiredDuration = this.helperDateService.createDuration({
-            milliseconds: options?.temporary
-                ? this.passwordExpiredTemporaryInMs
-                : this.passwordExpiredInMs,
-        });
-        const passwordExpired: Date = this.helperDateService.forward(
-            today,
-            passwordExpiredDuration
-        );
-        const passwordHash = await this.helperHashService.bcryptHash(
-            password,
-            salt
-        );
+        let passwordExpired: Date | null = null;
+        if (options?.temporary) {
+            const passwordExpiredDuration =
+                this.helperDateService.createDuration({
+                    milliseconds: this.passwordExpiredTemporaryInMs,
+                });
+            passwordExpired = this.helperDateService.forward(
+                today,
+                passwordExpiredDuration
+            );
+        }
+        const passwordHash = await this.helperHashService.argon2Hash(password);
         const passwordPeriodDuration = this.helperDateService.createDuration({
             days: this.passwordPeriodInDays,
         });
@@ -106,14 +100,36 @@ export class AuthPasswordUtil {
         histories: PasswordHistory[],
         password: string
     ): Promise<PasswordHistory | null> {
-        const matches = await Promise.all(
-            histories.map(history =>
-                this.helperHashService.bcryptCompare(password, history.password)
-            )
-        );
-        const matchIndex = matches.indexOf(true);
+        // Sequential by design: an argon2id compare holds helper.argon2 memory, one at a time, stopping at the first match.
+        for (const history of histories) {
+            const matched = await this.helperHashService.argon2Compare(
+                password,
+                history.password
+            );
+            if (matched) {
+                return history;
+            }
+        }
 
-        return matchIndex === -1 ? null : histories[matchIndex]!;
+        return null;
+    }
+
+    createContextWords(
+        appName: string,
+        email: string,
+        username: string | null,
+        name: string | null
+    ): string[] {
+        const localPart = email.slice(0, email.indexOf('@'));
+        const words = [appName, localPart];
+        if (username !== null) {
+            words.push(username);
+        }
+        if (name !== null) {
+            words.push(name);
+        }
+
+        return words;
     }
 
     getPasswordPeriodInDays(): number {

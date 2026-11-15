@@ -814,7 +814,7 @@ describe('UserTwoFactorService', () => {
                 userTwoFactorRepository.incrementAttemptInTx.mockResolvedValue(
                     false
                 );
-                authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+                authTwoFactorUtil.verifyBackupCode.mockResolvedValue({
                     isValid: false,
                     index: -1,
                 });
@@ -836,7 +836,7 @@ describe('UserTwoFactorService', () => {
         });
 
         it('answers the stored backup codes without the matched one for a backup code and no step', async () => {
-            authTwoFactorUtil.verifyBackupCode.mockReturnValue({
+            authTwoFactorUtil.verifyBackupCode.mockResolvedValue({
                 isValid: true,
                 index: 0,
             });
@@ -1279,97 +1279,6 @@ describe('UserTwoFactorService', () => {
         });
     });
 
-    describe('saveSetupConsumingBackupCodeInTx', () => {
-        beforeEach(() => {
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-        });
-
-        it('stores the pending secret, consumes the verified backup code, and adds the setup entry on the given tx without opening one', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
-                true
-            );
-
-            await service.saveSetupConsumingBackupCodeInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                baseUser,
-                'encrypted-secret',
-                verifiedResult
-            );
-
-            expect(
-                userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                'encrypted-secret',
-                verifiedResult,
-                baseTwoFactor.backupCodes
-            );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSetupTwoFactor,
-                    userId: 'user-quartz',
-                    createdBy: 'user-quartz',
-                }
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws AuthTwoFactorInvalidException and adds no entry when the backup code was already consumed', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
-                false
-            );
-
-            await expect(
-                service.saveSetupConsumingBackupCodeInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    baseUser,
-                    'encrypted-secret',
-                    verifiedResult
-                )
-            ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                messagePath: 'auth.error.twoFactorInvalid',
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('falls back to an empty backup-code list when the user carries no two-factor row', async () => {
-            userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx.mockResolvedValue(
-                true
-            );
-
-            await service.saveSetupConsumingBackupCodeInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                { ...baseUser, twoFactor: null },
-                'encrypted-secret',
-                verifiedResult
-            );
-
-            expect(
-                userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                'encrypted-secret',
-                verifiedResult,
-                []
-            );
-        });
-    });
-
     describe('getPendingSecret', () => {
         it('returns the pending secret', () => {
             const user = {
@@ -1423,7 +1332,7 @@ describe('UserTwoFactorService', () => {
     describe('enableTwoFactorInTx', () => {
         beforeEach(() => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+            authTwoFactorUtil.generateBackupCodes.mockResolvedValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
@@ -1493,7 +1402,7 @@ describe('UserTwoFactorService', () => {
         });
 
         it('replaces the backup codes, adds the regenerate entry on the given tx without opening one, and returns the plain ones', async () => {
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+            authTwoFactorUtil.generateBackupCodes.mockResolvedValue({
                 codes: ['CODE1', 'CODE2'],
                 hashes: ['hash1', 'hash2'],
             });
@@ -1526,7 +1435,7 @@ describe('UserTwoFactorService', () => {
         });
 
         it('throws AuthTwoFactorNotEnabledException and adds no entry when the guarded write misses', async () => {
-            authTwoFactorUtil.generateBackupCodes.mockReturnValue({
+            authTwoFactorUtil.generateBackupCodes.mockResolvedValue({
                 codes: ['CODE1'],
                 hashes: ['hash1'],
             });
@@ -1779,43 +1688,6 @@ describe('UserTwoFactorService', () => {
             ).toThrow(
                 expect.objectContaining({
                     statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                })
-            );
-        });
-    });
-
-    describe('getBackupCodeForSetup', () => {
-        it('returns null when two-factor is not enabled', () => {
-            expect(
-                service.getBackupCodeForSetup(
-                    { ...baseUser, twoFactor: null },
-                    'backup-code'
-                )
-            ).toBeNull();
-        });
-
-        it('returns the backup code when two-factor is enabled', () => {
-            expect(service.getBackupCodeForSetup(baseUser, 'backup-code')).toBe(
-                'backup-code'
-            );
-        });
-
-        it('throws AuthTwoFactorBackupCodeRequiredException when two-factor is enabled and no backup code is given', () => {
-            expect(() => service.getBackupCodeForSetup(baseUser, null)).toThrow(
-                expect.objectContaining({
-                    module: 'auth',
-                    statusCode:
-                        EnumAuthStatusCodeError.twoFactorBackupCodeRequired,
-                    messagePath: 'auth.error.twoFactorBackupCodeRequired',
-                })
-            );
-        });
-
-        it('throws AuthTwoFactorBackupCodeRequiredException when the backup code is blank', () => {
-            expect(() => service.getBackupCodeForSetup(baseUser, '')).toThrow(
-                expect.objectContaining({
-                    statusCode:
-                        EnumAuthStatusCodeError.twoFactorBackupCodeRequired,
                 })
             );
         });

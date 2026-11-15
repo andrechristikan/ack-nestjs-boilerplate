@@ -48,13 +48,6 @@ export interface IAnalyticLockoutMetrics {
     maxAttempt: number;
 }
 
-export interface IAnalyticPasswordExpiry {
-    expired: number;
-    total: number;
-    compliant: number;
-    rate: number;
-}
-
 export interface IAnalyticForgotPasswordConversion {
     created: number;
     used: number;

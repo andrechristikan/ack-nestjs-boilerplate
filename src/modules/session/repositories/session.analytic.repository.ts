@@ -17,11 +17,13 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     private buildActiveWhere(
         startDate: Date | null,
         endDate: Date | null,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Prisma.SessionWhereInput {
         return {
             isRevoked: false,
             expiredAt: { gt: now },
+            lastActiveAt: { gte: idleSince },
             ...(startDate &&
                 endDate && { createdAt: { gte: startDate, lt: endDate } }),
         };
@@ -30,9 +32,10 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     async findActiveInRange(
         startDate: Date | null,
         endDate: Date | null,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<ISessionAnalyticSession[]> {
-        const where = this.buildActiveWhere(startDate, endDate, now);
+        const where = this.buildActiveWhere(startDate, endDate, now, idleSince);
 
         return this.databaseService.client.session.findMany({
             where,
@@ -47,9 +50,15 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     async findActiveWithGeoInRange(
         startDate: Date | null,
         endDate: Date | null,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<ISessionAnalyticSession[]> {
-        const activeWhere = this.buildActiveWhere(startDate, endDate, now);
+        const activeWhere = this.buildActiveWhere(
+            startDate,
+            endDate,
+            now,
+            idleSince
+        );
 
         return this.databaseService.client.session.findMany({
             where: {
@@ -64,10 +73,17 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         });
     }
 
-    async countActiveByUser(now: Date): Promise<ISessionAnalyticUserCount[]> {
+    async countActiveByUser(
+        now: Date,
+        idleSince: Date
+    ): Promise<ISessionAnalyticUserCount[]> {
         const rows = await this.databaseService.client.session.groupBy({
             by: ['userId'],
-            where: { isRevoked: false, expiredAt: { gt: now } },
+            where: {
+                isRevoked: false,
+                expiredAt: { gt: now },
+                lastActiveAt: { gte: idleSince },
+            },
             _count: { _all: true },
         });
         return rows.map(r => ({ userId: r.userId, count: r._count._all }));
@@ -76,12 +92,14 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     async groupByCountry(
         startDate: Date | null,
         endDate: Date | null,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<IAnalyticCountBucket[]> {
         const sessions = await this.findActiveWithGeoInRange(
             startDate,
             endDate,
-            now
+            now,
+            idleSince
         );
         const map = new Map<string, number>();
         for (const s of sessions) {
@@ -95,9 +113,13 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         return this.databaseService.client.session.count();
     }
 
-    async countActive(now: Date): Promise<number> {
+    async countActive(now: Date, idleSince: Date): Promise<number> {
         return this.databaseService.client.session.count({
-            where: { isRevoked: false, expiredAt: { gt: now } },
+            where: {
+                isRevoked: false,
+                expiredAt: { gt: now },
+                lastActiveAt: { gte: idleSince },
+            },
         });
     }
 }

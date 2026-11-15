@@ -49,6 +49,10 @@ import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/use
 import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserDeleteMobileNumberRequestSchema } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
+import type { UserDeleteMobileNumberRequestDto } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
+import { UserReauthenticationSendRequestSchema } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
+import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
@@ -91,6 +95,7 @@ import { UserEnableTwoFactorUseCase } from '@modules/user/use-cases/user.enable-
 import { UserDisableTwoFactorUseCase } from '@modules/user/use-cases/user.disable-two-factor.use-case';
 import { UserRegenerateTwoFactorBackupCodesUseCase } from '@modules/user/use-cases/user.regenerate-two-factor-backup-codes.use-case';
 import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
+import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user.send-reauthentication-otp.use-case';
 import {
     Body,
     Controller,
@@ -130,7 +135,8 @@ export class UserSharedController {
         private readonly userEnableTwoFactorUseCase: UserEnableTwoFactorUseCase,
         private readonly userDisableTwoFactorUseCase: UserDisableTwoFactorUseCase,
         private readonly userRegenerateTwoFactorBackupCodesUseCase: UserRegenerateTwoFactorBackupCodesUseCase,
-        private readonly userLogoutUseCase: UserLogoutUseCase
+        private readonly userLogoutUseCase: UserLogoutUseCase,
+        private readonly userSendReauthenticationOtpUseCase: UserSendReauthenticationOtpUseCase
     ) {}
 
     @Doc({ summary: 'refresh token' })
@@ -310,6 +316,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserAddMobileNumberRequestSchema })
         body: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
@@ -317,6 +324,7 @@ export class UserSharedController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             body
         );
     }
@@ -327,7 +335,7 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/mobile-number/:mobileNumberId/update')
@@ -335,6 +343,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
@@ -344,6 +353,7 @@ export class UserSharedController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             mobileNumberId,
             body
         );
@@ -355,7 +365,7 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/mobile-number/:mobileNumberId/delete')
@@ -363,14 +373,48 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('mobileNumberId', { schema: RequestMongoIdSchema })
-        mobileNumberId: string
+        mobileNumberId: string,
+        @Body({ schema: UserDeleteMobileNumberRequestSchema })
+        body: UserDeleteMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userDeleteMobileNumberUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
-            mobileNumberId
+            userContext,
+            mobileNumberId,
+            body
+        );
+    }
+
+    @Doc({
+        summary:
+            'send a one-time code by email for one sensitive action; for an account with no password and no two-factor',
+    })
+    @Response('user.sendReauthenticationOtp')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/reauthentication/send')
+    async sendReauthenticationOtp(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
+        @Body({ schema: UserReauthenticationSendRequestSchema })
+        body: UserReauthenticationSendRequestDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userSendReauthenticationOtpUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
         );
     }
 

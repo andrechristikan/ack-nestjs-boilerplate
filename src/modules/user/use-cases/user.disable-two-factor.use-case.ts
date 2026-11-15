@@ -6,11 +6,15 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumUserReauthenticationAction,
+} from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -31,6 +35,7 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly userAuthService: UserAuthService,
         private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
@@ -43,28 +48,40 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto
+        {
+            password,
+            code,
+            backupCode,
+            method,
+            otp,
+        }: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         this.userTwoFactorService.assertEnabled(user);
-        const checked = await this.userTwoFactorService.check(
+        const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,
             user,
             {
+                action: EnumUserReauthenticationAction.twoFactorDisable,
+                password: password ?? null,
+                method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
-                method,
+                otp: otp ?? null,
             }
         );
 
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
-                await this.userTwoFactorService.verifyInTx(
+                await this.userAuthService.completeReauthenticationInTx(
                     tx,
-                    authContext.userId,
-                    checked
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    user,
+                    check
                 );
                 await this.userTwoFactorService.disableInTx(
                     tx,

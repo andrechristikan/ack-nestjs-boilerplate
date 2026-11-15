@@ -1,6 +1,7 @@
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import {
     RequestContext,
     RequestThrottle,
@@ -25,13 +26,19 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
+import { DeviceRemoveRequestSchema } from '@modules/device/dtos/request/device.remove.request.dto';
+import type { DeviceRemoveRequestDto } from '@modules/device/dtos/request/device.remove.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
 import { DeviceRefreshUseCase } from '@modules/device/use-cases/device.refresh.use-case';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import {
     Body,
     Controller,
@@ -105,7 +112,7 @@ export class DeviceSharedController {
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/remove/:deviceOwnershipId')
@@ -113,14 +120,19 @@ export class DeviceSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
-        deviceOwnershipId: string
+        deviceOwnershipId: string,
+        @Body({ schema: DeviceRemoveRequestSchema })
+        body: DeviceRemoveRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.deviceRemoveUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
-            deviceOwnershipId
+            userContext,
+            deviceOwnershipId,
+            body
         );
     }
 }

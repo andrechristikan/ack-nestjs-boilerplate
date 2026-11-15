@@ -1,5 +1,8 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { Verification } from '@generated/prisma-client/client';
+import type {
+    EnumUserReauthenticationAction,
+    Verification,
+} from '@generated/prisma-client/client';
 import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
@@ -10,6 +13,20 @@ export interface IUserVerificationRepository {
     findOneLatestByVerificationEmail(
         userId: string
     ): Promise<Verification | null>;
+    findOneLatestReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<Verification | null>;
+    findOneActiveReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction,
+        token: string
+    ): Promise<Verification | null>;
+    markUnusedReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void>;
     markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
@@ -22,6 +39,7 @@ export interface IUserVerificationRepository {
             reference,
             token,
             type,
+            action,
             to,
             expiredAt,
             verifiedAt,

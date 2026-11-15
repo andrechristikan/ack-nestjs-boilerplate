@@ -27,7 +27,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
@@ -143,7 +143,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         type: EnumRoleType.user,
         isImmutable: false,
     };
-    const password: IAuthPassword = {
+    const password: IAuthPasswordTemporary = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
@@ -173,6 +173,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             reference: 'VRF-bramble',
             token: 'hashed-token',
             type: EnumVerificationType.email,
+            action: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: new Date('2026-01-01T00:00:00.000Z'),

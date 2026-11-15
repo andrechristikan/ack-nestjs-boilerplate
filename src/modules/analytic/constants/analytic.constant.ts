@@ -26,7 +26,6 @@ import type {
     IAnalyticMetricCount,
     IAnalyticMetricRate,
     IAnalyticMobileChurn,
-    IAnalyticPasswordExpiry,
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
     IAnalyticSessionDeviceRatio,
@@ -96,14 +95,6 @@ export const AnalyticLockoutMetricsCacheSchema = z.object({
     failed: z.number(),
     maxAttempt: z.number(),
 }) satisfies z.ZodType<IAnalyticLockoutMetrics>;
-
-/** @public */
-export const AnalyticPasswordExpiryCacheSchema = z.object({
-    expired: z.number(),
-    total: z.number(),
-    compliant: z.number(),
-    rate: z.number(),
-}) satisfies z.ZodType<IAnalyticPasswordExpiry>;
 
 /** @public */
 export const AnalyticForgotPasswordConversionCacheSchema = z.object({

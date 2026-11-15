@@ -28,11 +28,10 @@ export interface IConfigAuth {
     password: {
         maxAttempt: number;
         lockDurationInMs: number;
-        saltLength: number;
-        expiredInMs: number;
         expiredTemporaryInMs: number;
         periodInDays: number;
         temporaryLength: number;
+        contextWordMinLength: number;
     };
     apple: {
         clientId: string | null;
@@ -109,11 +108,10 @@ export default registerAs('auth', (): IConfigAuth => {
         password: {
             maxAttempt: 5,
             lockDurationInMs: ms('15m'),
-            saltLength: 12,
-            expiredInMs: ms('182d'),
             expiredTemporaryInMs: ms('3d'),
             periodInDays: ms('90d') / ms('1d'),
             temporaryLength: 10,
+            contextWordMinLength: 4,
         },
 
         apple: {

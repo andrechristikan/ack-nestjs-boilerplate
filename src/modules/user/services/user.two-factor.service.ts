@@ -28,7 +28,6 @@ import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { UserTwoFactorChallengeEncryptionPurpose } from '@modules/user/constants/user.constant';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
-import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
@@ -159,11 +158,11 @@ export class UserTwoFactorService {
         }
     }
 
-    private checkCode(
+    private async checkCode(
         twoFactor: TwoFactor,
         method: EnumAuthTwoFactorMethod,
         { code, backupCode }: IUserTwoFactorVerifyInput
-    ): IUserTwoFactorCheck | null {
+    ): Promise<IUserTwoFactorCheck | null> {
         const normalizedCode =
             method === EnumAuthTwoFactorMethod.code
                 ? code?.trim()
@@ -189,7 +188,7 @@ export class UserTwoFactorService {
             return null;
         }
 
-        const backupValidation = this.authTwoFactorUtil.verifyBackupCode(
+        const backupValidation = await this.authTwoFactorUtil.verifyBackupCode(
             twoFactor.backupCodes,
             normalizedCode
         );
@@ -432,7 +431,7 @@ export class UserTwoFactorService {
         this.assertAttemptAvailable(user);
         const twoFactor = this.getEnabledTwoFactor(user);
 
-        const checked = this.checkCode(twoFactor, method, input);
+        const checked = await this.checkCode(twoFactor, method, input);
         if (!checked) {
             const isLocked = await this.countFailedAttempt(
                 requestContext,
@@ -562,41 +561,6 @@ export class UserTwoFactorService {
         await this.outboxService.addInTx(tx, entry);
     }
 
-    /** Stores the pending secret and consumes the verified backup code, adding the setup entry, on the caller's transaction; the code is consumed only while the stored codes are still the ones it was verified against, otherwise the setup is rejected. */
-    async saveSetupConsumingBackupCodeInTx(
-        tx: IDatabaseTransactionClient,
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser,
-        encryptedSecret: string,
-        verified: IUserTwoFactorVerifyResult
-    ): Promise<void> {
-        const isSetUp =
-            await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx(
-                tx,
-                user.id,
-                encryptedSecret,
-                verified,
-                user.twoFactor?.backupCodes ?? []
-            );
-        if (!isSetUp) {
-            throw new AuthTwoFactorInvalidException();
-        }
-
-        const entry = this.activityLogService.recordEffect(
-            requestContext,
-            apiKeyContext,
-            null,
-            null,
-            {
-                action: EnumActivityLogAction.userSetupTwoFactor,
-                userId: user.id,
-                createdBy: user.id,
-            }
-        );
-        await this.outboxService.addInTx(tx, entry);
-    }
-
     getPendingSecret(user: IUser): string {
         const pendingSecret = user.twoFactor?.pendingSecret;
         if (!pendingSecret && user.twoFactor?.enabled) {
@@ -616,7 +580,7 @@ export class UserTwoFactorService {
         userId: string,
         pendingSecret: string
     ): Promise<string[]> {
-        const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+        const backupCodes = await this.authTwoFactorUtil.generateBackupCodes();
         const isEnabled =
             await this.userTwoFactorRepository.enableTwoFactorInTx(
                 tx,
@@ -648,21 +612,6 @@ export class UserTwoFactorService {
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
         }
-    }
-
-    getBackupCodeForSetup(
-        user: IUser,
-        backupCode: string | null
-    ): string | null {
-        if (!user.twoFactor?.enabled) {
-            return null;
-        }
-
-        if (!backupCode) {
-            throw new AuthTwoFactorBackupCodeRequiredException();
-        }
-
-        return backupCode;
     }
 
     async disableInTx(
@@ -727,7 +676,7 @@ export class UserTwoFactorService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext
     ): Promise<string[]> {
-        const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+        const backupCodes = await this.authTwoFactorUtil.generateBackupCodes();
         const isRegenerated =
             await this.userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx(
                 tx,

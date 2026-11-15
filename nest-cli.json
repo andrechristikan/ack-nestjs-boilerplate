@@ -25,6 +25,10 @@
                 "outDir": "dist"
             },
             {
+                "include": "migration/data/*.json",
+                "outDir": "dist"
+            },
+            {
                 "include": "generated/prisma-client/*.node",
                 "outDir": "dist"
             }

@@ -3,6 +3,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
+    EnumUserReauthenticationAction,
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
@@ -58,6 +59,61 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
+    async findOneLatestReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<Verification | null> {
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async findOneActiveReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction,
+        token: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async markUnusedReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void> {
+        await tx.verification.updateMany({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+                isUsed: false,
+            },
+            data: {
+                isUsed: true,
+            },
+        });
+    }
+
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
@@ -81,6 +137,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             reference,
             token,
             type,
+            action,
             to,
             expiredAt,
             verifiedAt,
@@ -94,6 +151,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 reference,
                 token,
                 type,
+                action,
                 to,
                 expiredAt,
                 verifiedAt,
@@ -136,6 +194,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 reference,
                 token: hashedToken,
                 type,
+                action: null,
                 to: userEmail,
                 createdBy: userId,
                 createdAt,

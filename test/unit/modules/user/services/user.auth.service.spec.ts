@@ -8,16 +8,19 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
+    EnumUserReauthenticationAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type {
     DeviceOwnership,
     TwoFactor,
     User,
+    Verification,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -28,8 +31,12 @@ import {
 import {
     buildRequestContext,
     buildApiKeyContext,
+    buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -63,8 +70,13 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
+import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
+import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
 import type {
     IUser,
+    IUserReauthenticationCheck,
+    IUserReauthenticationInput,
+    IUserTwoFactorCheck,
     IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -1569,6 +1581,669 @@ describe('UserAuthService', () => {
 
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
             expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('assertReauthentication', () => {
+        const credential = {
+            user: baseUser,
+            hashedPassword: 'hashed-password',
+        };
+        const twoFactorUser: IUser = {
+            ...baseUser,
+            twoFactor: {
+                id: 'two-factor-halcyon',
+                userId: 'user-halcyon',
+                secret: 'encrypted-secret',
+                pendingSecret: null,
+                backupCodes: [],
+                enabled: true,
+                requiredSetup: false,
+                confirmedAt: null,
+                lastUsedAt: null,
+                lastUsedStep: null,
+                attempt: 0,
+                lockedUntil: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            },
+        };
+        const input: IUserReauthenticationInput = {
+            action: EnumUserReauthenticationAction.deleteSelf,
+            password: 'plain-password',
+            method: EnumAuthTwoFactorMethod.code,
+            code: '123456',
+            backupCode: null,
+            otp: null,
+        };
+        const twoFactorCheck: IUserTwoFactorCheck = {
+            verified: {
+                method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
+            },
+            totpStep: 7,
+        };
+        const reauthenticationVerification: Verification = {
+            id: 'verification-halcyon',
+            userId: 'user-halcyon',
+            mobileNumberId: null,
+            to: 'halcyon@example.com',
+            type: EnumVerificationType.reauthentication,
+            action: EnumUserReauthenticationAction.mobileNumberAdd,
+            token: 'hashed-otp',
+            expiredAt: new Date('2026-03-01T00:05:00.000Z'),
+            verifiedAt: null,
+            isUsed: false,
+            reference: 'VER-halcyon',
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            createdBy: 'user-halcyon',
+        };
+
+        it('throws AuthTwoFactorInvalidException counted by the two-factor check when the method is code and the code is missing', async () => {
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: twoFactorUser,
+            });
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorService.check.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    { ...input, code: null }
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                messagePath: 'auth.error.twoFactorInvalid',
+            });
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                twoFactorUser,
+                {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: null,
+                    backupCode: null,
+                }
+            );
+        });
+
+        it('checks the password and writes nothing for an account with a password and no two-factor', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    input
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                twoFactor: null,
+                verificationId: null,
+            });
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+                'plain-password',
+                'hashed-password'
+            );
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
+        });
+
+        it('checks the password then the two-factor proof for an account with both', async () => {
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: twoFactorUser,
+            });
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorService.check.mockResolvedValue(twoFactorCheck);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    input
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                twoFactor: twoFactorCheck,
+                verificationId: null,
+            });
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                twoFactorUser,
+                {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                    backupCode: null,
+                }
+            );
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('checks only the two-factor proof for an account with no password', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorService.check.mockResolvedValue(twoFactorCheck);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    { ...twoFactorUser, password: null },
+                    { ...input, password: null }
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: false,
+                twoFactor: twoFactorCheck,
+                verificationId: null,
+            });
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+        });
+
+        it('checks only the password when an admin reset leaves the two-factor unverified', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    input
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                twoFactor: null,
+                verificationId: null,
+            });
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+        });
+
+        it('throws UserReauthenticationOtpRequiredException for an account with neither proof and no code', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    { ...baseUser, password: null },
+                    { ...input, password: null }
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.reauthenticationOtpRequired,
+                messagePath: 'user.error.reauthenticationOtpRequired',
+            });
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).not.toHaveBeenCalled();
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+        });
+
+        it('throws UserReauthenticationOtpInvalidException and writes nothing for a wrong, expired, or other-action code', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+            userVerificationService.getOneActiveReauthentication.mockRejectedValue(
+                new UserReauthenticationOtpInvalidException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    { ...baseUser, password: null },
+                    { ...input, password: null, otp: '000000' }
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
+                messagePath: 'user.error.reauthenticationOtpInvalid',
+            });
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).toHaveBeenCalledWith(
+                'user-halcyon',
+                EnumUserReauthenticationAction.deleteSelf,
+                '000000'
+            );
+            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('checks the code of the action and returns its verification id for an account with neither proof', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+            userVerificationService.getOneActiveReauthentication.mockResolvedValue(
+                { ...reauthenticationVerification, id: 'verification-halcyon' }
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    { ...baseUser, password: null },
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.mobileNumberAdd,
+                        password: null,
+                        otp: '123456',
+                    }
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: false,
+                twoFactor: null,
+                verificationId: 'verification-halcyon',
+            });
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).toHaveBeenCalledWith(
+                'user-halcyon',
+                EnumUserReauthenticationAction.mobileNumberAdd,
+                '123456'
+            );
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+        });
+
+        it('checks no code for an account with a password', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            await service.assertReauthentication(
+                userRequestContext,
+                userApiKeyContext,
+                baseUser,
+                { ...input, otp: '123456' }
+            );
+
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).not.toHaveBeenCalled();
+        });
+
+        it('checks no two-factor proof for the twoFactorEnable action', async () => {
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: twoFactorUser,
+            });
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.twoFactorEnable,
+                        method: null,
+                        code: null,
+                    }
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                twoFactor: null,
+                verificationId: null,
+            });
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordNotMatchException on a wrong password and checks no two-factor proof', async () => {
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: twoFactorUser,
+            });
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+                false
+            );
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    { ...input, password: 'wrong' }
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                messagePath: 'user.error.passwordNotMatch',
+            });
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                twoFactorUser
+            );
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorMethodRequiredException uncounted when the method is missing', async () => {
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: twoFactorUser,
+            });
+            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            userTwoFactorService.check.mockRejectedValue(
+                new AuthTwoFactorMethodRequiredException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    twoFactorUser,
+                    { ...input, method: null }
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                messagePath: 'auth.error.twoFactorMethodRequired',
+            });
+            expect(
+                userTwoFactorService.countFailedAttempt
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('assertReauthenticationOtpAllowed', () => {
+        it('passes an account with no password and no two-factor requiring verification', () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            expect(() =>
+                service.assertReauthenticationOtpAllowed({
+                    ...baseUser,
+                    password: null,
+                })
+            ).not.toThrow();
+        });
+
+        it('throws UserReauthenticationOtpNotAllowedException for an account with a password', () => {
+            userPasswordService.getCredential.mockReturnValue({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+            });
+            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+
+            expect(() =>
+                service.assertReauthenticationOtpAllowed(baseUser)
+            ).toThrow(UserReauthenticationOtpNotAllowedException);
+        });
+
+        it('throws UserReauthenticationOtpNotAllowedException for an account with two-factor requiring verification', () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+
+            expect(() =>
+                service.assertReauthenticationOtpAllowed({
+                    ...baseUser,
+                    password: null,
+                })
+            ).toThrow(UserReauthenticationOtpNotAllowedException);
+        });
+    });
+
+    describe('completeReauthenticationInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const authContext = buildAuthJwtAccessContext('user-halcyon');
+        const twoFactorCheck: IUserTwoFactorCheck = {
+            verified: {
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                newBackupCodes: ['kept-hash'],
+            },
+            totpStep: null,
+        };
+        const passwordOnly: IUserReauthenticationCheck = {
+            isPasswordChecked: true,
+            twoFactor: null,
+            verificationId: null,
+        };
+        const both: IUserReauthenticationCheck = {
+            isPasswordChecked: true,
+            twoFactor: twoFactorCheck,
+            verificationId: null,
+        };
+
+        it('resets only the password counter for a password proof', async () => {
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    baseUser,
+                    passwordOnly
+                )
+            ).resolves.toBeUndefined();
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-halcyon');
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorService.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('completes only the two-factor proof for an account with no password', async () => {
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+
+            await service.completeReauthenticationInTx(
+                tx,
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                baseUser,
+                { ...both, isPasswordChecked: false }
+            );
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-halcyon',
+                twoFactorCheck
+            );
+            expect(
+                userTwoFactorService.recordVerificationInTx
+            ).toHaveBeenCalledWith(tx, baseUser, twoFactorCheck.verified);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    userId: 'user-halcyon',
+                    createdBy: 'user-halcyon',
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+        });
+
+        it('runs the password reset, the step accept, the verification record, then the entry in order', async () => {
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+
+            await service.completeReauthenticationInTx(
+                tx,
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                baseUser,
+                both
+            );
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledBefore(userTwoFactorService.verifyInTx);
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledBefore(
+                userTwoFactorService.recordVerificationInTx
+            );
+            expect(
+                userTwoFactorService.recordVerificationInTx
+            ).toHaveBeenCalledBefore(outboxService.addInTx);
+        });
+
+        it('writes nothing for an account with neither proof', async () => {
+            await service.completeReauthenticationInTx(
+                tx,
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                baseUser,
+                {
+                    isPasswordChecked: false,
+                    twoFactor: null,
+                    verificationId: null,
+                }
+            );
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException for a replayed TOTP step and records nothing after it', async () => {
+            userTwoFactorService.verifyInTx.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    baseUser,
+                    both
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                messagePath: 'auth.error.twoFactorInvalid',
+            });
+            expect(
+                userTwoFactorService.recordVerificationInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('marks the code verification used after the other proofs for an account with neither proof', async () => {
+            userVerificationService.markUsedInTx.mockResolvedValue(true);
+
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    baseUser,
+                    {
+                        isPasswordChecked: false,
+                        twoFactor: null,
+                        verificationId: 'verification-halcyon',
+                    }
+                )
+            ).resolves.toBeUndefined();
+
+            expect(userVerificationService.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'verification-halcyon'
+            );
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws UserReauthenticationOtpInvalidException when the code was used first', async () => {
+            userVerificationService.markUsedInTx.mockResolvedValue(false);
+
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    baseUser,
+                    {
+                        isPasswordChecked: false,
+                        twoFactor: null,
+                        verificationId: 'verification-halcyon',
+                    }
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
+                messagePath: 'user.error.reauthenticationOtpInvalid',
+            });
+        });
+
+        it('marks no code used for a password or two-factor proof', async () => {
+            await service.completeReauthenticationInTx(
+                tx,
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                baseUser,
+                passwordOnly
+            );
+
+            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthTwoFactorInvalidException for a backup code used twice and adds no entry', async () => {
+            userTwoFactorService.recordVerificationInTx.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    baseUser,
+                    both
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                messagePath: 'auth.error.twoFactorInvalid',
+            });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 

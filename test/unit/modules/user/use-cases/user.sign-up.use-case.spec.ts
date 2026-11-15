@@ -30,7 +30,10 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryService } from '@modules/country/services/country.service';
+import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
@@ -84,6 +87,10 @@ import {
 
 describe('UserSignUpUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>();
@@ -110,11 +117,13 @@ describe('UserSignUpUseCase', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const configValues: Record<string, unknown> = {
+        'app.name': 'ACK Boilerplate',
         'user.default.role': 'user',
         'user.default.country': 'ID',
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
+    const contextWords = ['ACK Boilerplate', 'bramble', 'Bramble Fox'];
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const activityEntry = buildActivityLogCreateManyEffect('activity-entry');
@@ -233,7 +242,7 @@ describe('UserSignUpUseCase', () => {
     };
     const password: IAuthPassword = {
         passwordHash: 'hashed',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+        passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
@@ -255,6 +264,7 @@ describe('UserSignUpUseCase', () => {
             reference: 'VRF-bramble',
             token: 'hashed-token',
             type: EnumVerificationType.email,
+            action: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: null,
@@ -348,11 +358,14 @@ describe('UserSignUpUseCase', () => {
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
+        authPasswordUtil.createContextWords.mockReturnValue(contextWords);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSignUpUseCase,
                 { provide: UserService, useValue: userService },
+                { provide: AuthPasswordService, useValue: authPasswordService },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
@@ -487,6 +500,33 @@ describe('UserSignUpUseCase', () => {
                 welcomeEffect,
                 verificationEffect,
             ]);
+        });
+
+        it('refuses a disallowed password with the application name, the email local part, the username, and the name before it prepares the user', async () => {
+            const refused = new AuthPasswordCommonException();
+            authPasswordService.assertAllowed.mockRejectedValue(refused);
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, {
+                    ...dto,
+                    name: 'Bramble Fox',
+                })
+            ).rejects.toBe(refused);
+
+            expect(authPasswordUtil.createContextWords).toHaveBeenCalledWith(
+                'ACK Boilerplate',
+                'bramble@example.com',
+                'bramble2fox',
+                'Bramble Fox'
+            );
+            expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
+                'plainPassword123!',
+                contextWords
+            );
+            expect(
+                userRegistrationService.prepareSignUp
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds the effects after the last write and before the commit returns', async () => {

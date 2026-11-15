@@ -3,11 +3,10 @@ import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/reques
 import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 
 /** @public */
-export const UserLoginSetupTwoFactorRequestSchema =
-    UserTwoFactorEnableRequestSchema.omit({ password: true }).extend({
-        challengeToken:
-            UserLoginVerifyTwoFactorRequestSchema.shape.challengeToken,
-    });
+export const UserLoginSetupTwoFactorRequestSchema = z.strictObject({
+    code: UserTwoFactorEnableRequestSchema.shape.code,
+    challengeToken: UserLoginVerifyTwoFactorRequestSchema.shape.challengeToken,
+});
 
 /** @public */
 export type UserLoginSetupTwoFactorRequestDto = z.infer<

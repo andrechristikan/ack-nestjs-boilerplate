@@ -30,11 +30,13 @@ export interface ISessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findLoginById(
         userId: string,
-        sessionId: string
+        sessionId: string,
+        idleSince: Date
     ): Promise<ISessionLogin | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
@@ -49,7 +51,8 @@ export interface ISessionRepository {
         tx: IDatabaseTransactionClient,
         sessionId: string,
         oldJtiDigest: string,
-        newJtiDigest: string
+        newJtiDigest: string,
+        idleSince: Date
     ): Promise<boolean>;
     revokeInTx(
         tx: IDatabaseTransactionClient,
@@ -57,6 +60,14 @@ export interface ISessionRepository {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
+    ): Promise<boolean>;
+    revokeLiveInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        sessionId: string,
+        revokedBy: string,
+        revokedAt: Date,
+        idleSince: Date
     ): Promise<boolean>;
     revokeByAdminInTx(
         tx: IDatabaseTransactionClient,

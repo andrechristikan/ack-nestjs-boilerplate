@@ -28,11 +28,34 @@ describe('UserSignUpRequestSchema', () => {
         expect(result).toEqual(rest);
     });
 
-    it('rejects a password failing the strength regex', () => {
+    it('accepts an all-lowercase 8-character password', () => {
+        const result = UserSignUpRequestSchema.parse({
+            ...payload,
+            password: 'abcdefgh',
+        });
+
+        expect(result.password).toBe('abcdefgh');
+    });
+
+    it('accepts a 64-character password', () => {
+        const password = 'a'.repeat(64);
+
+        const result = UserSignUpRequestSchema.parse({ ...payload, password });
+
+        expect(result.password).toBe(password);
+    });
+
+    it('rejects a 7-character password', () => {
+        expect(() =>
+            UserSignUpRequestSchema.parse({ ...payload, password: 'abcdefg' })
+        ).toThrow();
+    });
+
+    it('rejects a 65-character password', () => {
         expect(() =>
             UserSignUpRequestSchema.parse({
                 ...payload,
-                password: 'lowercase12345',
+                password: 'a'.repeat(65),
             })
         ).toThrow();
     });

@@ -3,18 +3,32 @@ import { UserTwoFactorDisableRequestSchema } from '@modules/user/dtos/request/us
 
 describe('UserTwoFactorDisableRequestSchema', () => {
     const payload = {
+        password: 'Current-pass1',
         method: EnumAuthTwoFactorMethod.code,
         code: '654321',
         backupCode: 'ABCD1234EF',
+        otp: '123456',
     };
 
-    it('parses a payload into exactly the declared fields', () => {
+    it('parses the re-authentication fields into exactly the declared fields', () => {
         const result = UserTwoFactorDisableRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
     });
 
-    it('rejects a challengeToken as an undeclared key', () => {
+    it('accepts an empty payload', () => {
+        const result = UserTwoFactorDisableRequestSchema.parse({});
+
+        expect(result).toEqual({});
+    });
+
+    it('rejects an empty password', () => {
+        expect(() =>
+            UserTwoFactorDisableRequestSchema.parse({ password: '' })
+        ).toThrow();
+    });
+
+    it('rejects an undeclared key', () => {
         expect(() =>
             UserTwoFactorDisableRequestSchema.parse({
                 ...payload,

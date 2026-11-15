@@ -35,6 +35,44 @@ describe('UserForgotPasswordResetRequestSchema', () => {
         ).toThrow();
     });
 
+    it('accepts an all-lowercase 8-character newPassword', () => {
+        const result = UserForgotPasswordResetRequestSchema.parse({
+            ...payload,
+            newPassword: 'abcdefgh',
+        });
+
+        expect(result.newPassword).toBe('abcdefgh');
+    });
+
+    it('accepts a 64-character newPassword', () => {
+        const newPassword = 'a'.repeat(64);
+
+        const result = UserForgotPasswordResetRequestSchema.parse({
+            ...payload,
+            newPassword,
+        });
+
+        expect(result.newPassword).toBe(newPassword);
+    });
+
+    it('rejects a 7-character newPassword', () => {
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                newPassword: 'abcdefg',
+            })
+        ).toThrow();
+    });
+
+    it('rejects a 65-character newPassword', () => {
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                newPassword: 'a'.repeat(65),
+            })
+        ).toThrow();
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             UserForgotPasswordResetRequestSchema.parse({

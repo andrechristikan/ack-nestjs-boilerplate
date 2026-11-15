@@ -108,22 +108,6 @@ describe('HelperStringService', () => {
         });
     });
 
-    describe('checkPasswordStrength', () => {
-        it('returns true for a password meeting the default length and strength', () => {
-            expect(service.checkPasswordStrength('Password1')).toBe(true);
-        });
-
-        it('returns false for a password shorter than the given length', () => {
-            expect(service.checkPasswordStrength('Pw0', { length: 8 })).toBe(
-                false
-            );
-        });
-
-        it('returns false for a password missing a required character class', () => {
-            expect(service.checkPasswordStrength('password1')).toBe(false);
-        });
-    });
-
     describe('checkUrlMatchesPatterns', () => {
         it('returns false when the url is empty', () => {
             expect(service.checkUrlMatchesPatterns('', ['/a'])).toBe(false);

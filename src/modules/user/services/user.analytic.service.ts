@@ -109,10 +109,6 @@ export class UserAnalyticService {
         return { count: verified, total, rate };
     }
 
-    async getCountPasswordExpired(now: Date): Promise<number> {
-        return await this.userAnalyticRepository.countPasswordExpired(now);
-    }
-
     async getCountActive(): Promise<number> {
         return await this.userAnalyticRepository.countActive();
     }

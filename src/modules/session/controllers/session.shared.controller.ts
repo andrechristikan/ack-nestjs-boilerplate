@@ -1,6 +1,7 @@
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import {
     RequestContext,
     RequestThrottle,
@@ -23,13 +24,19 @@ import {
     AuthJwtAccessContext,
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { SessionRevokeRequestSchema } from '@modules/session/dtos/request/session.revoke.request.dto';
+import type { SessionRevokeRequestDto } from '@modules/session/dtos/request/session.revoke.request.dto';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -65,7 +72,7 @@ export class SessionSharedController {
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
@@ -73,14 +80,19 @@ export class SessionSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('sessionId', { schema: RequestMongoIdSchema })
-        sessionId: string
+        sessionId: string,
+        @Body({ schema: SessionRevokeRequestSchema })
+        body: SessionRevokeRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.sessionRevokeUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
-            sessionId
+            userContext,
+            sessionId,
+            body
         );
     }
 }

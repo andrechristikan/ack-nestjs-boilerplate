@@ -34,3 +34,7 @@ export const HelperEncryptionPayloadSeparator = '.';
 
 /** @public */
 export const HelperStringPatternTokenRegex = /\{(\w+)\}/g;
+
+/** @public */
+export const HelperHashArgon2PhcRegex =
+    /^\$argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9+/]+)\$([A-Za-z0-9+/]+)$/;

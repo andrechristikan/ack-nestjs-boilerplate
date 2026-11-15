@@ -30,9 +30,7 @@ describe('AuthPasswordUtil', () => {
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, boolean | number> = {
-                'auth.password.expiredInMs': 86400000,
                 'auth.password.expiredTemporaryInMs': 3600000,
-                'auth.password.saltLength': 12,
                 'auth.password.periodInDays': 90,
                 'auth.password.temporaryLength': 14,
             };
@@ -56,13 +54,13 @@ describe('AuthPasswordUtil', () => {
     });
 
     describe('validatePassword', () => {
-        it('delegates to the bcrypt compare', async () => {
-            helperHashService.bcryptCompare.mockResolvedValue(true);
+        it('delegates to the argon2 compare', async () => {
+            helperHashService.argon2Compare.mockResolvedValue(true);
 
             const result = await util.validatePassword('plain', 'hash');
 
             expect(result).toBe(true);
-            expect(helperHashService.bcryptCompare).toHaveBeenCalledWith(
+            expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
                 'plain',
                 'hash'
             );
@@ -70,15 +68,44 @@ describe('AuthPasswordUtil', () => {
     });
 
     describe('createPassword', () => {
-        it('builds the hash, expiry and period dates using the default duration', async () => {
+        it('answers a null expiry for a regular password', async () => {
             const today = new Date('2026-01-01T00:00:00.000Z');
-            const expired = new Date('2026-01-02T00:00:00.000Z');
             const periodExpired = new Date('2026-04-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(today);
-            helperHashService.bcryptGenerateSalt.mockResolvedValue('salt');
-            helperHashService.bcryptHash.mockResolvedValue('hashed-password');
+            helperHashService.argon2Hash.mockResolvedValue(
+                '$argon2id$hashed-password'
+            );
+            const periodDuration = Duration.fromObject({ days: 90 });
+            helperDateService.createDuration.mockReturnValue(periodDuration);
+            helperDateService.forward.mockReturnValue(periodExpired);
+
+            const result = await util.createPassword('plain-password');
+
+            expect(result).toEqual({
+                passwordHash: '$argon2id$hashed-password',
+                passwordExpired: null,
+                passwordCreated: today,
+                passwordPeriodExpired: periodExpired,
+            });
+            expect(helperHashService.argon2Hash).toHaveBeenCalledWith(
+                'plain-password'
+            );
+            expect(helperDateService.createDuration).toHaveBeenCalledTimes(1);
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                days: 90,
+            });
+        });
+
+        it('sets the temporary expiry ahead of today when temporary is set', async () => {
+            const today = new Date('2026-01-01T00:00:00.000Z');
+            const expired = new Date('2026-01-01T01:00:00.000Z');
+            const periodExpired = new Date('2026-04-01T00:00:00.000Z');
+            helperDateService.create.mockReturnValue(today);
+            helperHashService.argon2Hash.mockResolvedValue(
+                '$argon2id$hashed-password'
+            );
             const expiredDuration = Duration.fromObject({
-                milliseconds: 86400000,
+                milliseconds: 3600000,
             });
             const periodDuration = Duration.fromObject({ days: 90 });
             helperDateService.createDuration.mockImplementation(input =>
@@ -88,38 +115,11 @@ describe('AuthPasswordUtil', () => {
                 duration === expiredDuration ? expired : periodExpired
             );
 
-            const result = await util.createPassword('plain-password');
-
-            expect(result).toEqual({
-                passwordHash: 'hashed-password',
-                passwordExpired: expired,
-                passwordCreated: today,
-                passwordPeriodExpired: periodExpired,
+            const result = await util.createPassword('plain-password', {
+                temporary: true,
             });
-            expect(helperHashService.bcryptGenerateSalt).toHaveBeenCalledWith(
-                12
-            );
-            expect(helperHashService.bcryptHash).toHaveBeenCalledWith(
-                'plain-password',
-                'salt'
-            );
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 86400000,
-            });
-        });
 
-        it('uses the temporary expiry duration when temporary is set', async () => {
-            const today = new Date('2026-01-01T00:00:00.000Z');
-            helperDateService.create.mockReturnValue(today);
-            helperHashService.bcryptGenerateSalt.mockResolvedValue('salt');
-            helperHashService.bcryptHash.mockResolvedValue('hashed-password');
-            helperDateService.createDuration.mockReturnValue(
-                Duration.fromObject({ milliseconds: 3600000 })
-            );
-            helperDateService.forward.mockReturnValue(today);
-
-            await util.createPassword('plain-password', { temporary: true });
-
+            expect(result.passwordExpired).toBe(expired);
             expect(helperDateService.createDuration).toHaveBeenCalledWith({
                 milliseconds: 3600000,
             });
@@ -180,7 +180,7 @@ describe('AuthPasswordUtil', () => {
 
         it('returns the matching history record when the password was used before', async () => {
             const match = { ...history, id: 'history-2' };
-            helperHashService.bcryptCompare
+            helperHashService.argon2Compare
                 .mockResolvedValueOnce(false)
                 .mockResolvedValueOnce(true);
 
@@ -192,8 +192,25 @@ describe('AuthPasswordUtil', () => {
             expect(result).toBe(match);
         });
 
+        it('stops at the first matching history row', async () => {
+            const [first, second] = [
+                { ...history, id: 'history-1' },
+                { ...history, id: 'history-2' },
+            ];
+            const third = { ...history, id: 'history-3' };
+            helperHashService.argon2Compare.mockResolvedValueOnce(true);
+
+            const result = await util.checkPasswordPeriod(
+                [first, second, third],
+                'plain-password'
+            );
+
+            expect(result).toBe(first);
+            expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(1);
+        });
+
         it('returns null when the password was never used before', async () => {
-            helperHashService.bcryptCompare.mockResolvedValue(false);
+            helperHashService.argon2Compare.mockResolvedValue(false);
 
             const result = await util.checkPasswordPeriod(
                 [history],
@@ -207,6 +224,30 @@ describe('AuthPasswordUtil', () => {
             const result = await util.checkPasswordPeriod([], 'plain-password');
 
             expect(result).toBeNull();
+        });
+    });
+
+    describe('createContextWords', () => {
+        it('returns the application name, the email local part, the username, and the name', () => {
+            expect(
+                util.createContextWords(
+                    'ACK Boilerplate',
+                    'john.doe@example.com',
+                    'johnny',
+                    'John Doe'
+                )
+            ).toEqual(['ACK Boilerplate', 'john.doe', 'johnny', 'John Doe']);
+        });
+
+        it('skips a null username and a null name', () => {
+            expect(
+                util.createContextWords(
+                    'ACK Boilerplate',
+                    'john.doe@example.com',
+                    null,
+                    null
+                )
+            ).toEqual(['ACK Boilerplate', 'john.doe']);
         });
     });
 

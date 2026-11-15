@@ -27,6 +27,7 @@ import AnalyticConfig from '@configs/analytic.config';
 import ActivityLogConfig from '@configs/activity-log.config';
 import OutboxConfig from '@configs/outbox.config';
 import RoleConfig from '@configs/role.config';
+import HelperConfig from '@configs/helper.config';
 
 export default [
     AppConfig,
@@ -58,4 +59,5 @@ export default [
     ActivityLogConfig,
     OutboxConfig,
     RoleConfig,
+    HelperConfig,
 ];

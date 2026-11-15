@@ -5,6 +5,8 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -38,11 +40,13 @@ export class UserSignUpUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, UserSignUpRequestDto],
     IResponseReturn<void>
 > {
+    private readonly appName: string;
     private readonly userRoleName: string;
     private readonly createTimeoutInMs: number;
 
     constructor(
         private readonly userService: UserService,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
@@ -52,6 +56,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly countryService: CountryService,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationService: NotificationService,
+        private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
@@ -59,6 +64,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
+        this.appName = this.configService.get<string>('app.name')!;
         this.userRoleName =
             this.configService.get<string>('user.default.role')!;
         this.createTimeoutInMs = this.configService.get<number>(
@@ -224,11 +230,21 @@ export class UserSignUpUseCase implements IAppUseCase<
                 invite,
                 signUp.username
             );
+        const contextWords = this.authPasswordUtil.createContextWords(
+            this.appName,
+            signUp.email,
+            signUp.username,
+            signUp.name
+        );
         const [role, emailExist, usernameCheck] = await Promise.all([
             this.roleService.getByName(this.userRoleName),
             this.userService.existsByEmail(signUp.email),
             this.userService.checkUsername(signUp.username),
             this.countryService.getOne(signUp.countryId),
+            this.authPasswordService.assertAllowed(
+                signUp.password,
+                contextWords
+            ),
         ]);
         this.userService.assertEmailAvailable(emailExist);
         this.userService.assertUsernameAvailable(usernameCheck);

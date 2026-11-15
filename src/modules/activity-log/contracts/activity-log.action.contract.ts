@@ -97,6 +97,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userSendReauthenticationOtp]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userReachMaxPasswordAttempt]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,

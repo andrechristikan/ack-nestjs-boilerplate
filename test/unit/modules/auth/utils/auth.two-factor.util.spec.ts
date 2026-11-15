@@ -95,13 +95,25 @@ describe('AuthTwoFactorUtil', () => {
             expect(result).toBe('otpauth://totp/uri');
             expect(generateURI).toHaveBeenCalledWith({
                 issuer: 'AckBoilerplate',
-                label: 'AckBoilerplate:jane@example.com',
+                label: 'jane@example.com',
                 secret: 'secret',
                 digits: 6,
                 period: 30,
                 strategy: 'totp',
                 algorithm: 'sha1',
             });
+        });
+
+        it('puts the issuer once before the email in the otpauth path', async () => {
+            const actual =
+                await vi.importActual<typeof import('otplib')>('otplib');
+            vi.mocked(generateURI).mockImplementation(actual.generateURI);
+
+            const result = util.createKeyUri('jane@example.com', 'secret');
+
+            expect(new URL(result).pathname).toBe(
+                '/AckBoilerplate:jane%40example.com'
+            );
         });
     });
 
@@ -149,27 +161,27 @@ describe('AuthTwoFactorUtil', () => {
     });
 
     describe('generateBackupCodes', () => {
-        it('generates the configured number of codes with their SHA-256 hashes', () => {
+        it('generates the configured number of codes, each with its own argon2id hash', async () => {
             helperStringService.randomUppercase
                 .mockReturnValueOnce('CODE1')
                 .mockReturnValueOnce('CODE2')
                 .mockReturnValueOnce('CODE3')
                 .mockReturnValueOnce('CODE4')
                 .mockReturnValueOnce('CODE5');
-            helperHashService.sha256Hash.mockImplementation(
-                code => `hash-${code}`
+            helperHashService.argon2Hash.mockImplementation(
+                async code => `$argon2id$hash-${code}`
             );
 
-            const result = util.generateBackupCodes();
+            const result = await util.generateBackupCodes();
 
             expect(result).toEqual({
                 codes: ['CODE1', 'CODE2', 'CODE3', 'CODE4', 'CODE5'],
                 hashes: [
-                    'hash-CODE1',
-                    'hash-CODE2',
-                    'hash-CODE3',
-                    'hash-CODE4',
-                    'hash-CODE5',
+                    '$argon2id$hash-CODE1',
+                    '$argon2id$hash-CODE2',
+                    '$argon2id$hash-CODE3',
+                    '$argon2id$hash-CODE4',
+                    '$argon2id$hash-CODE5',
                 ],
             });
             expect(helperStringService.randomUppercase).toHaveBeenCalledTimes(
@@ -178,17 +190,35 @@ describe('AuthTwoFactorUtil', () => {
             expect(helperStringService.randomUppercase).toHaveBeenCalledWith(
                 10
             );
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+        });
+
+        it('hashes one code at a time', async () => {
+            let running = 0;
+            let peak = 0;
+            helperStringService.randomUppercase.mockReturnValue('CODE');
+            helperHashService.argon2Hash.mockImplementation(async () => {
+                running += 1;
+                peak = Math.max(peak, running);
+                await Promise.resolve();
+                running -= 1;
+
+                return '$argon2id$hash';
+            });
+
+            await util.generateBackupCodes();
+
+            expect(peak).toBe(1);
         });
     });
 
     describe('verifyBackupCode', () => {
-        it('returns the matched index when a stored hash matches', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockImplementation(
-                hash => hash === 'hash-2'
+        it('returns the matched index when a stored hash matches', async () => {
+            helperHashService.argon2Compare.mockImplementation(
+                async (_value, hash) => hash === 'hash-2'
             );
 
-            const result = util.verifyBackupCode(
+            const result = await util.verifyBackupCode(
                 ['hash-1', 'hash-2', 'hash-3'],
                 'input-code'
             );
@@ -196,16 +226,28 @@ describe('AuthTwoFactorUtil', () => {
             expect(result).toEqual({ isValid: true, index: 1 });
         });
 
-        it('returns isValid false and index -1 when no hash matches', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-of-input');
-            helperHashService.sha256Compare.mockReturnValue(false);
+        it('stops comparing at the first match', async () => {
+            helperHashService.argon2Compare.mockResolvedValue(true);
 
-            const result = util.verifyBackupCode(
+            await util.verifyBackupCode(['hash-1', 'hash-2'], 'input-code');
+
+            expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(1);
+            expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
+                'input-code',
+                'hash-1'
+            );
+        });
+
+        it('returns isValid false and index -1 when no hash matches', async () => {
+            helperHashService.argon2Compare.mockResolvedValue(false);
+
+            const result = await util.verifyBackupCode(
                 ['hash-1', 'hash-2'],
                 'input-code'
             );
 
             expect(result).toEqual({ isValid: false, index: -1 });
+            expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(2);
         });
     });
 

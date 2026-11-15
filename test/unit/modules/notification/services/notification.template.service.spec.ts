@@ -81,6 +81,11 @@ describe('NotificationTemplateService', () => {
             subject: 'Reset Two Factor By Admin',
         },
         {
+            name: EnumNotificationKind.reauthenticationOtp,
+            file: 'notification.reauthentication-otp.template.hbs',
+            subject: 'Confirmation Code',
+        },
+        {
             name: EnumNotificationKind.loginLocked,
             file: 'notification.login-locked.template.hbs',
             subject: 'Login Locked',

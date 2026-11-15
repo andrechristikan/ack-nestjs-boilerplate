@@ -64,7 +64,8 @@ export class SessionRepository implements ISessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const now = this.helperDateService.create();
 
@@ -77,6 +78,7 @@ export class SessionRepository implements ISessionRepository {
                     userId,
                     isRevoked: false,
                     expiredAt: { gte: now },
+                    lastActiveAt: { gte: idleSince },
                 },
                 select: SessionListSelect,
             }
@@ -85,7 +87,8 @@ export class SessionRepository implements ISessionRepository {
 
     async findLoginById(
         userId: string,
-        sessionId: string
+        sessionId: string,
+        idleSince: Date
     ): Promise<ISessionLogin | null> {
         const now = this.helperDateService.create();
 
@@ -95,6 +98,7 @@ export class SessionRepository implements ISessionRepository {
                 userId,
                 isRevoked: false,
                 expiredAt: { gte: now },
+                lastActiveAt: { gte: idleSince },
             },
             select: SessionLoginSelect,
         });
@@ -111,6 +115,7 @@ export class SessionRepository implements ISessionRepository {
     ): Promise<Session> {
         const plainUserAgent = this.databaseUtil.toPlainObject(userAgent);
         const plainGeoLocation = this.databaseUtil.toPlainObject(geoLocation);
+        const now = this.helperDateService.create();
 
         return tx.session.create({
             data: {
@@ -118,6 +123,7 @@ export class SessionRepository implements ISessionRepository {
                 userId,
                 jtiDigest,
                 expiredAt,
+                lastActiveAt: now,
                 isRevoked: false,
                 ipAddress,
                 deviceOwnershipId,
@@ -132,7 +138,8 @@ export class SessionRepository implements ISessionRepository {
         tx: IDatabaseTransactionClient,
         sessionId: string,
         oldJtiDigest: string,
-        newJtiDigest: string
+        newJtiDigest: string,
+        idleSince: Date
     ): Promise<boolean> {
         const now = this.helperDateService.create();
         const { count } = await tx.session.updateMany({
@@ -143,8 +150,9 @@ export class SessionRepository implements ISessionRepository {
                 expiredAt: {
                     gte: now,
                 },
+                lastActiveAt: { gte: idleSince },
             },
-            data: { jtiDigest: newJtiDigest },
+            data: { jtiDigest: newJtiDigest, lastActiveAt: now },
         });
 
         return count > 0;
@@ -162,6 +170,32 @@ export class SessionRepository implements ISessionRepository {
                 id: sessionId,
                 userId,
                 isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+            },
+        });
+
+        return count > 0;
+    }
+
+    async revokeLiveInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        sessionId: string,
+        revokedBy: string,
+        revokedAt: Date,
+        idleSince: Date
+    ): Promise<boolean> {
+        const { count } = await tx.session.updateMany({
+            where: {
+                id: sessionId,
+                userId,
+                isRevoked: false,
+                expiredAt: { gte: revokedAt },
+                lastActiveAt: { gte: idleSince },
             },
             data: {
                 isRevoked: true,

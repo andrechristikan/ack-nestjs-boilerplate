@@ -1,5 +1,3 @@
-import type { IHelperPasswordOptions } from '@common/helper/interfaces/helper.interface';
-import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import {
     HelperStringAlphanumericCharacters,
     HelperStringPatternTokenRegex,
@@ -99,16 +97,6 @@ export class HelperStringService {
 
         const stringCensor = '*'.repeat(10);
         return `${text.slice(0, 3)}${stringCensor}${text.slice(-4)}`;
-    }
-
-    checkPasswordStrength(
-        password: string,
-        options?: IHelperPasswordOptions
-    ): boolean {
-        return (
-            password.length >= (options?.length ?? 8) &&
-            RequestPasswordStrengthRegex.test(password)
-        );
     }
 
     checkUrlMatchesPatterns(url: string, patterns: string[]): boolean {

@@ -1,5 +1,7 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { Duration } from 'luxon';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -57,7 +59,15 @@ describe('DeviceService', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
+    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const idleTimeoutInMs = 604800000;
+    const idleDuration = Duration.fromObject({ milliseconds: idleTimeoutInMs });
+
     const now: Date = new Date('2026-01-01T00:00:00.000Z');
+    const idleSince: Date = new Date('2025-12-25T00:00:00.000Z');
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const device: Device = {
         id: 'device-1',
@@ -112,10 +122,13 @@ describe('DeviceService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue(idleTimeoutInMs);
+        helperDateService.backward.mockReturnValue(idleSince);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceService,
+                { provide: ConfigService, useValue: configService },
                 {
                     provide: DeviceOwnershipRepository,
                     useValue: deviceOwnershipRepository,
@@ -144,6 +157,7 @@ describe('DeviceService', () => {
                 totalPage: 1,
                 data: [deviceOwnershipDetail],
             };
+            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
                 page
             );
@@ -157,9 +171,16 @@ describe('DeviceService', () => {
             expect(result).toBe(page);
             expect(
                 deviceOwnershipRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith('user-1', pagination, {
-                isRevoked: { equals: true },
-            });
+            ).toHaveBeenCalledWith(
+                'user-1',
+                pagination,
+                { isRevoked: { equals: true } },
+                idleSince
+            );
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                idleDuration
+            );
         });
 
         it('passes a null revoked filter when none is given', async () => {
@@ -187,7 +208,7 @@ describe('DeviceService', () => {
             expect(result).toBe(page);
             expect(
                 deviceOwnershipRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith('user-1', pagination, null);
+            ).toHaveBeenCalledWith('user-1', pagination, null, idleSince);
         });
     });
 
@@ -204,6 +225,7 @@ describe('DeviceService', () => {
                 hasNext: false,
                 data: [{ ...deviceOwnershipDetail, sessions: [] }],
             };
+            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.findActiveWithPaginationCursor.mockResolvedValue(
                 page
             );
@@ -217,7 +239,16 @@ describe('DeviceService', () => {
             expect(result).toBe(page);
             expect(
                 deviceOwnershipRepository.findActiveWithPaginationCursor
-            ).toHaveBeenCalledWith('user-1', 'session-1', pagination);
+            ).toHaveBeenCalledWith(
+                'user-1',
+                'session-1',
+                pagination,
+                idleSince
+            );
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                idleDuration
+            );
         });
     });
 
@@ -235,7 +266,7 @@ describe('DeviceService', () => {
             expect(result).toEqual(['a', 'b']);
             expect(
                 deviceOwnershipRepository.findTokensByUserId
-            ).toHaveBeenCalledWith('user-1', now);
+            ).toHaveBeenCalledWith('user-1', now, idleSince);
         });
     });
 
@@ -249,7 +280,11 @@ describe('DeviceService', () => {
 
             expect(
                 deviceOwnershipRepository.clearTokensWithoutLiveSession
-            ).toHaveBeenCalledWith('user-1', now);
+            ).toHaveBeenCalledWith('user-1', now, idleSince);
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                idleDuration
+            );
         });
     });
 
@@ -915,7 +950,12 @@ describe('DeviceService', () => {
                 'user-1',
                 'device-ownership-1',
                 'admin-1',
-                now
+                now,
+                idleSince
+            );
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                idleDuration
             );
         });
 

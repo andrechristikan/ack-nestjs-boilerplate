@@ -238,10 +238,11 @@ export class MigrationUserSeed
                     for (const row of rows) {
                         const {
                             passwordCreated,
-                            passwordExpired,
                             passwordHash,
+                            passwordPeriodExpired,
                         } = row.password;
-                        const { reference, token, type } = row.verification;
+                        const { reference, token, type, action } =
+                            row.verification;
 
                         await tx.user.upsert({
                             where: {
@@ -255,7 +256,7 @@ export class MigrationUserSeed
                                 roleId: row.roleId,
                                 password: passwordHash,
                                 passwordCreated,
-                                passwordExpired,
+                                passwordExpired: null,
                                 passwordAttempt: 0,
                                 signUpAt: today,
                                 isVerified: true,
@@ -271,7 +272,7 @@ export class MigrationUserSeed
                                     create: {
                                         password: passwordHash,
                                         type: EnumPasswordHistoryType.admin,
-                                        expiredAt: passwordExpired,
+                                        expiredAt: passwordPeriodExpired,
                                         createdAt: passwordCreated,
                                         createdBy: MigrationUserSuperAdminId,
                                     },
@@ -283,6 +284,7 @@ export class MigrationUserSeed
                                         reference,
                                         token,
                                         type,
+                                        action,
                                         createdBy: MigrationUserSuperAdminId,
                                         to: row.user.email,
                                         isUsed: true,

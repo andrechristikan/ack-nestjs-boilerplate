@@ -59,6 +59,7 @@ export class MigrationTemplateEmailNotificationSeed
             workspaceJoinRequestEmail,
             workspaceJoinAcceptedEmail,
             workspaceJoinRejectedEmail,
+            reauthenticationOtpEmail,
         ] = await Promise.all([
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.changePassword
@@ -116,6 +117,9 @@ export class MigrationTemplateEmailNotificationSeed
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.workspaceJoinRejected
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.reauthenticationOtp
             ),
         ]);
 
@@ -327,6 +331,17 @@ export class MigrationTemplateEmailNotificationSeed
             promises.push(workspaceJoinRejectedEmailImport);
         }
 
+        if (!reauthenticationOtpEmail) {
+            this.logger.log(
+                'Reauthentication Otp Email template missing, importing...'
+            );
+            const reauthenticationOtpEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.reauthenticationOtp
+                );
+            promises.push(reauthenticationOtpEmailImport);
+        }
+
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
@@ -404,6 +419,9 @@ export class MigrationTemplateEmailNotificationSeed
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.workspaceJoinRejected
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.reauthenticationOtp
                 ),
             ]);
         } catch (error: unknown) {

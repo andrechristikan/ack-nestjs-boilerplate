@@ -5,9 +5,9 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -31,7 +31,6 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
     constructor(
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userAuthService: UserAuthService,
-        private readonly userPasswordService: UserPasswordService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -41,15 +40,22 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
-        { code, password }: UserTwoFactorEnableRequestDto
+        { code, password, otp }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const { user } = userContext;
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.userAuthService.assertCurrentPassword(
+        const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,
             user,
-            password ?? null
+            {
+                action: EnumUserReauthenticationAction.twoFactorEnable,
+                password: password ?? null,
+                method: null,
+                code: null,
+                backupCode: null,
+                otp: otp ?? null,
+            }
         );
         const pendingSecret = this.userTwoFactorService.getPendingSecret(user);
         const totpStep = await this.userTwoFactorService.checkSetupCode(
@@ -63,9 +69,13 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
         try {
             const backupCodes = await this.outboxService.withTransaction(
                 async tx => {
-                    await this.userPasswordService.resetPasswordAttemptInTx(
+                    await this.userAuthService.completeReauthenticationInTx(
                         tx,
-                        authContext.userId
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        user,
+                        check
                     );
                     await this.userTwoFactorService.verifySetupCodeInTx(
                         tx,

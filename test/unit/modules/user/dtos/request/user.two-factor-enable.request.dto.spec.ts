@@ -9,6 +9,22 @@ describe('UserTwoFactorEnableRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
+    it('parses the password and email code beside the code', () => {
+        const full = { ...payload, otp: '123456' };
+
+        const result = UserTwoFactorEnableRequestSchema.parse(full);
+
+        expect(result).toEqual(full);
+    });
+
+    it('rejects a payload without the code of the new authenticator', () => {
+        expect(() =>
+            UserTwoFactorEnableRequestSchema.parse({
+                password: 'Current-pass1',
+            })
+        ).toThrow();
+    });
+
     it('rejects a code with a non-digit character', () => {
         expect(() =>
             UserTwoFactorEnableRequestSchema.parse({
@@ -35,11 +51,23 @@ describe('UserTwoFactorEnableRequestSchema', () => {
         ).toThrow();
     });
 
+    it.each([
+        ['method', 'code'],
+        ['backupCode', 'ABCD1234EF'],
+    ])('rejects the discarded %s field', (key, value) => {
+        expect(() =>
+            UserTwoFactorEnableRequestSchema.parse({
+                ...payload,
+                [key]: value,
+            })
+        ).toThrow();
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             UserTwoFactorEnableRequestSchema.parse({
                 ...payload,
-                backupCode: 'ABCD1234EF',
+                username: 'johnSmith123',
             })
         ).toThrow();
     });

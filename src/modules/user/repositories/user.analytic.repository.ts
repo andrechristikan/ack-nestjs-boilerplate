@@ -174,15 +174,6 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async countPasswordExpired(now: Date): Promise<number> {
-        return this.databaseService.client.user.count({
-            where: {
-                deletedAt: null,
-                passwordExpired: { lt: now },
-            },
-        });
-    }
-
     async findNearLockout(
         minAttempt: number,
         now: Date,

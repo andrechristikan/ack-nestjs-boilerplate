@@ -188,17 +188,6 @@ describe('UserAnalyticService', () => {
         });
     });
 
-    describe('getCountPasswordExpired', () => {
-        it('delegates to the repository', async () => {
-            userAnalyticRepository.countPasswordExpired.mockResolvedValue(1);
-
-            await expect(service.getCountPasswordExpired(now)).resolves.toBe(1);
-            expect(
-                userAnalyticRepository.countPasswordExpired
-            ).toHaveBeenCalledWith(now);
-        });
-    });
-
     describe('getCountActive', () => {
         it('delegates to the repository', async () => {
             userAnalyticRepository.countActive.mockResolvedValue(9);

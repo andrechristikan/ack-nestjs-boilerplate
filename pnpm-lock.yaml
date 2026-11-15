@@ -226,9 +226,6 @@ importers:
       '@smithy/types':
         specifier: ^4.18.0
         version: 4.18.0
-      bcryptjs:
-        specifier: ^3.0.3
-        version: 3.0.3
       body-parser:
         specifier: ^2.3.0
         version: 2.3.0(supports-color@10.2.2)
@@ -3105,10 +3102,6 @@ packages:
 
   baseline-browser-mapping@2.9.5:
     resolution: {integrity: sha512-D5vIoztZOq1XM54LUdttJVc96ggEsIfju2JBvht06pSzpckp3C7HReun67Bghzrtdsq9XdMGbSSB3v3GhMNmAA==}
-    hasBin: true
-
-  bcryptjs@3.0.3:
-    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
 
   bignumber.js@9.3.1:
@@ -8919,8 +8912,6 @@ snapshots:
 
   baseline-browser-mapping@2.9.5:
     optional: true
-
-  bcryptjs@3.0.3: {}
 
   bignumber.js@9.3.1: {}
 

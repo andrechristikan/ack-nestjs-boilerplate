@@ -12,6 +12,7 @@ import {
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserReauthenticationAction,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
     Prisma,
@@ -59,6 +60,13 @@ export interface INotificationVerificationLinkContext extends INotificationConte
     link: string;
     reference: string;
     expiredAt: string;
+    expiredInMinutes: number;
+}
+
+export interface INotificationReauthenticationOtpContext extends INotificationContextBase {
+    verificationId: string;
+    otp: string;
+    action: EnumUserReauthenticationAction;
     expiredInMinutes: number;
 }
 
@@ -141,6 +149,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.welcomeSocial]: INotificationContextBase;
     [EnumNotificationKind.welcomeByAdmin]: INotificationPasswordContext;
     [EnumNotificationKind.verificationEmail]: INotificationVerificationLinkContext;
+    [EnumNotificationKind.reauthenticationOtp]: INotificationReauthenticationOtpContext;
     [EnumNotificationKind.verifiedEmail]: INotificationReferenceContext;
     [EnumNotificationKind.verifiedMobileNumber]: INotificationVerifiedMobileNumberContext;
     [EnumNotificationKind.temporaryPasswordByAdmin]: INotificationTemporaryPasswordContext;

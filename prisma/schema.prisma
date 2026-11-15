@@ -188,15 +188,16 @@ model User {
 }
 
 model Verification {
-  id             String               @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String               @db.ObjectId
-  mobileNumberId String?              @db.ObjectId
+  id             String                          @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String                          @db.ObjectId
+  mobileNumberId String?                         @db.ObjectId
   to             String
   type           EnumVerificationType
+  action         EnumUserReauthenticationAction?
   token          String
   expiredAt      DateTime
   verifiedAt     DateTime?
-  isUsed         Boolean              @default(false)
+  isUsed         Boolean                         @default(false)
   reference      String
 
   createdAt DateTime @default(now())
@@ -208,6 +209,7 @@ model Verification {
   @@unique(fields: [reference])
   @@index(fields: [token])
   @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [userId, type, action, createdAt(sort: Desc)])
   @@index(fields: [mobileNumberId])
   @@index(fields: [type, createdAt])
   @@map("Verifications")
@@ -229,6 +231,16 @@ model PasswordHistory {
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [type, createdAt(sort: Desc)])
   @@map("PasswordHistories")
+}
+
+model CommonPassword {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  value String @unique
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+
+  @@map("CommonPasswords")
 }
 
 model ActivityLog {
@@ -265,6 +277,7 @@ model Session {
   userAgent         UserAgent
   geoLocation       GeoLocation?
   expiredAt         DateTime
+  lastActiveAt      DateTime     @default(now())
   revokedAt         DateTime?
   isRevoked         Boolean      @default(false)
   revokedById       String?      @db.ObjectId
@@ -893,6 +906,21 @@ enum EnumTermPolicyStatus {
 enum EnumVerificationType {
   mobileNumber
   email
+  reauthentication
+}
+
+enum EnumUserReauthenticationAction {
+  deleteSelf
+  changePassword
+  twoFactorSetup
+  twoFactorEnable
+  twoFactorDisable
+  backupCodeRegenerate
+  mobileNumberAdd
+  mobileNumberUpdate
+  mobileNumberDelete
+  sessionRevoke
+  deviceRemove
 }
 
 enum EnumPasswordHistoryType {
@@ -923,6 +951,7 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userSendReauthenticationOtp
   userSignedUp
   userResetPassword
   userRevokeSession

@@ -67,7 +67,7 @@ describe('UserRegistrationService', () => {
     const tx = {} as IDatabaseTransactionClient;
     const password: IAuthPassword = {
         passwordHash: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+        passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
@@ -324,7 +324,7 @@ describe('UserRegistrationService', () => {
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
             authPasswordUtil.createPassword.mockResolvedValue({
                 passwordHash: 'hashed',
-                passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+                passwordExpired: null,
                 passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
                 passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
             });

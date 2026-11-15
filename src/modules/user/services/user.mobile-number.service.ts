@@ -1,12 +1,8 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
@@ -27,8 +23,7 @@ export class UserMobileNumberService {
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userService: UserService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly activityLogService: ActivityLogService
     ) {}
 
     private checkMobileNumber(
@@ -50,7 +45,9 @@ export class UserMobileNumberService {
         );
     }
 
-    async addMobileNumber(
+    /** Adds the mobile number, touches the user, and adds the entry on the caller's transaction; an invalid phone code or a duplicate throws before any write. */
+    async addMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -71,46 +68,29 @@ export class UserMobileNumberService {
             throw new UserMobileNumberExistException();
         }
 
-        try {
-            const row = await this.outboxService.withTransaction(async tx => {
-                const mobileNumber =
-                    await this.userMobileNumberRepository.addInTx(tx, userId, {
-                        number,
-                        countryId,
-                        phoneCode,
-                    });
-                await this.userService.touchUpdatedByInTx(tx, userId);
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userAddMobileNumber,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return mobileNumber;
-            });
-
-            return row;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+        const mobileNumber = await this.userMobileNumberRepository.addInTx(
+            tx,
+            userId,
+            {
+                number,
+                countryId,
+                phoneCode,
             }
+        );
+        await this.userService.touchUpdatedByInTx(tx, userId);
 
-            const isDuplicate = this.databaseUtil.isUniqueCollision(
-                err,
-                'number'
-            );
-            if (isDuplicate) {
-                throw new UserMobileNumberExistException();
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userAddMobileNumber,
             }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-            throw new AppUnknownException(err);
-        }
+        return mobileNumber;
     }
 
     async getOneMobileNumber(
@@ -129,7 +109,9 @@ export class UserMobileNumberService {
         return mobileNumber;
     }
 
-    async updateMobileNumber(
+    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification; a duplicate or an invalid phone code throws before any write. */
+    async updateMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -156,103 +138,63 @@ export class UserMobileNumberService {
                 ? current.isVerified
                 : false;
 
-        try {
-            const row = await this.outboxService.withTransaction(async tx => {
-                const mobileNumber =
-                    await this.userMobileNumberRepository.updateInTx(
-                        tx,
-                        current.id,
-                        {
-                            number,
-                            countryId,
-                            phoneCode,
-                        },
-                        isVerified
-                    );
-                await this.userService.touchUpdatedByInTx(tx, userId);
+        const mobileNumber = await this.userMobileNumberRepository.updateInTx(
+            tx,
+            current.id,
+            {
+                number,
+                countryId,
+                phoneCode,
+            },
+            isVerified
+        );
+        await this.userService.touchUpdatedByInTx(tx, userId);
 
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userUpdateMobileNumber,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return mobileNumber;
-            });
-
-            return row;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userUpdateMobileNumber,
             }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-            const isDuplicate = this.databaseUtil.isUniqueCollision(
-                err,
-                'number'
-            );
-            if (isDuplicate) {
-                throw new UserMobileNumberExistException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return mobileNumber;
     }
 
-    async deleteMobileNumber(
+    /** Deletes the mobile number, touches the user, and adds the entry on the caller's transaction; a guarded delete that matches no row throws UserMobileNumberNotFoundException. */
+    async deleteMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
-        // Sequential by design: gate before the work it guards
-        await this.getOneMobileNumber(userId, mobileNumberId);
-
-        try {
-            const row = await this.outboxService.withTransaction(async tx => {
-                const mobileNumber =
-                    await this.userMobileNumberRepository.deleteInTx(
-                        tx,
-                        mobileNumberId
-                    );
-                if (!mobileNumber) {
-                    throw new UserMobileNumberNotFoundException();
-                }
-
-                await this.userService.touchUpdatedByInTx(tx, userId);
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userDeleteMobileNumber,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return mobileNumber;
-            });
-
-            return row;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserMobileNumberNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
+        const mobileNumber = await this.userMobileNumberRepository.deleteInTx(
+            tx,
+            mobileNumberId
+        );
+        if (!mobileNumber) {
+            throw new UserMobileNumberNotFoundException();
         }
+
+        await this.userService.touchUpdatedByInTx(tx, userId);
+
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userDeleteMobileNumber,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+
+        return mobileNumber;
     }
 
     async removeByUserInTx(

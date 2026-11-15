@@ -17,7 +17,6 @@ import {
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
     AnalyticMobileChurnCacheSchema,
-    AnalyticPasswordExpiryCacheSchema,
     AnalyticProjectCountPageCacheSchema,
     AnalyticProjectCreationCacheSchema,
     AnalyticSessionDeviceRatioCacheSchema,
@@ -41,7 +40,6 @@ import type {
     IAnalyticMetricCount,
     IAnalyticMetricRate,
     IAnalyticMobileChurn,
-    IAnalyticPasswordExpiry,
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
     IAnalyticSessionDeviceRatio,
@@ -67,7 +65,6 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
-import { UserPasswordAnalyticService } from '@modules/user/services/user.password.analytic.service';
 import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
@@ -98,7 +95,6 @@ export class AnalyticDashboardService {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly userAnalyticService: UserAnalyticService,
-        private readonly userPasswordAnalyticService: UserPasswordAnalyticService,
         private readonly userForgotPasswordAnalyticService: UserForgotPasswordAnalyticService,
         private readonly userTwoFactorAnalyticService: UserTwoFactorAnalyticService,
         private readonly userVerificationAnalyticService: UserVerificationAnalyticService,
@@ -746,28 +742,6 @@ export class AnalyticDashboardService {
                 ]);
 
                 return { email, mobile };
-            }
-        );
-    }
-
-    async authPasswordExpiry(): Promise<IAnalyticPasswordExpiry> {
-        const metric = EnumAnalyticDashboardMetric.authPasswordExpiry;
-        const key = this.dashboardKey(metric, null, null);
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticPasswordExpiryCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const [activeUserCount, expired] = await Promise.all([
-                    this.userAnalyticService.getCountActive(),
-                    this.userPasswordAnalyticService.getExpiredCount(),
-                ]);
-
-                return this.userPasswordAnalyticService.mapExpiryCompliance(
-                    expired,
-                    activeUserCount
-                );
             }
         );
     }

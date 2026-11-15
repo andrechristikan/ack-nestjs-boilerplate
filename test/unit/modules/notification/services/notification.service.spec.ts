@@ -22,6 +22,7 @@ import {
     EnumNotificationPriority,
     EnumNotificationType,
     EnumTermPolicyType,
+    EnumUserReauthenticationAction,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -209,6 +210,48 @@ describe('NotificationService', () => {
             });
             expect(helperStringService.fillPattern).not.toHaveBeenCalled();
             expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
+        });
+
+        it('returns the reauthentication code effect with the code sealed against the recipient and no idempotency key', () => {
+            notificationUtil.toSealedField.mockReturnValue('encryptedOtp');
+            notificationUtil.encryptPayload.mockReturnValue('encrypted-otp');
+
+            const result = service.notify(
+                EnumNotificationKind.reauthenticationOtp,
+                {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    verificationId: 'verification-id',
+                    otp: '482913',
+                    action: EnumUserReauthenticationAction.deleteSelf,
+                    expiredInMinutes: 5,
+                }
+            );
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notification,
+                name: EnumNotificationProcess.notify,
+                data: {
+                    kind: EnumNotificationKind.reauthenticationOtp,
+                    context: {
+                        userId: 'user-id',
+                        proceedBy: 'user-id',
+                        verificationId: 'verification-id',
+                        encryptedOtp: 'encrypted-otp',
+                        action: EnumUserReauthenticationAction.deleteSelf,
+                        expiredInMinutes: 5,
+                    },
+                    recipient: null,
+                    notificationId: null,
+                },
+                priority: EnumQueuePriority.high,
+                idempotencyKey: null,
+            });
+            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+                '482913',
+                'user-id'
+            );
+            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
         });
 
         it('returns the login locked effect with the context and no idempotency key', () => {

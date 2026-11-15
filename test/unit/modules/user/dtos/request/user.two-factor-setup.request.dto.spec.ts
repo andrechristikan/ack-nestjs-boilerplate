@@ -1,39 +1,37 @@
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserTwoFactorSetupRequestSchema } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 
 describe('UserTwoFactorSetupRequestSchema', () => {
-    const payload = { password: 'Current-pass1', backupCode: 'ABCD1234EF' };
+    const payload = {
+        password: 'Current-pass1',
+        backupCode: 'ABCD1234EF',
+        otp: '123456',
+    };
 
-    it('parses a payload into exactly the declared fields', () => {
+    it('parses the password, backup code, and email code into exactly the declared fields', () => {
         const result = UserTwoFactorSetupRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
     });
 
-    it('parses a payload without a backup code', () => {
-        const result = UserTwoFactorSetupRequestSchema.parse({
-            password: 'Current-pass1',
-        });
+    it('accepts an empty payload', () => {
+        const result = UserTwoFactorSetupRequestSchema.parse({});
 
-        expect(result).toEqual({ password: 'Current-pass1' });
+        expect(result).toEqual({});
     });
 
-    it('accepts a payload without password', () => {
-        const result = UserTwoFactorSetupRequestSchema.parse({
-            backupCode: 'ABCD1234EF',
-        });
-
-        expect(result).toEqual({ backupCode: 'ABCD1234EF' });
-    });
-
-    it('rejects an empty current password', () => {
+    it('rejects an empty password', () => {
         expect(() =>
             UserTwoFactorSetupRequestSchema.parse({ password: '' })
         ).toThrow();
     });
 
-    it('rejects a missing body', () => {
+    it.each([
+        ['method', EnumAuthTwoFactorMethod.code],
+        ['code', '654321'],
+    ])('rejects the discarded %s field', (key, value) => {
         expect(() =>
-            UserTwoFactorSetupRequestSchema.parse(undefined)
+            UserTwoFactorSetupRequestSchema.parse({ ...payload, [key]: value })
         ).toThrow();
     });
 
@@ -41,7 +39,7 @@ describe('UserTwoFactorSetupRequestSchema', () => {
         expect(() =>
             UserTwoFactorSetupRequestSchema.parse({
                 ...payload,
-                code: '654321',
+                challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
             })
         ).toThrow();
     });

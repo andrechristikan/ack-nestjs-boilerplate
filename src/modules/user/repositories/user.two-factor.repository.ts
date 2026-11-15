@@ -109,32 +109,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    async setupTwoFactorConsumingBackupCodeInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        pendingSecretEncrypted: string,
-        verified: IUserTwoFactorVerifyResult,
-        currentBackupCodes: string[]
-    ): Promise<boolean> {
-        const verifyArgs = this.buildVerifyTwoFactorArgs(
-            userId,
-            verified,
-            currentBackupCodes
-        );
-        const { count } = await tx.twoFactor.updateMany(verifyArgs);
-        if (count === 0) {
-            return false;
-        }
-
-        const setupData = this.buildSetupTwoFactorData(pendingSecretEncrypted);
-        await tx.twoFactor.update({
-            where: { userId },
-            data: setupData,
-        });
-
-        return true;
-    }
-
     async enableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

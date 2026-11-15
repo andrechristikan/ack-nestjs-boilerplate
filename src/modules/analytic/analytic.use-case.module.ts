@@ -33,7 +33,6 @@ import { AnalyticAuthSessionsUserAgentUseCase } from '@modules/analytic/use-case
 import { AnalyticAuthRefreshTokenVolumeUseCase } from '@modules/analytic/use-cases/analytic.auth-refresh-token-volume.use-case';
 import { AnalyticAuthLogoutRateUseCase } from '@modules/analytic/use-cases/analytic.auth-logout-rate.use-case';
 import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cases/analytic.auth-verification-funnel.use-case';
-import { AnalyticAuthPasswordExpiryUseCase } from '@modules/analytic/use-cases/analytic.auth-password-expiry.use-case';
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthAdminForcePasswordUseCase } from '@modules/analytic/use-cases/analytic.auth-admin-force-password.use-case';
@@ -128,7 +127,6 @@ import { Module } from '@nestjs/common';
         AnalyticAuthRefreshTokenVolumeUseCase,
         AnalyticAuthLogoutRateUseCase,
         AnalyticAuthVerificationFunnelUseCase,
-        AnalyticAuthPasswordExpiryUseCase,
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthAdminForcePasswordUseCase,
@@ -220,7 +218,6 @@ import { Module } from '@nestjs/common';
         AnalyticAuthRefreshTokenVolumeUseCase,
         AnalyticAuthLogoutRateUseCase,
         AnalyticAuthVerificationFunnelUseCase,
-        AnalyticAuthPasswordExpiryUseCase,
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthAdminForcePasswordUseCase,

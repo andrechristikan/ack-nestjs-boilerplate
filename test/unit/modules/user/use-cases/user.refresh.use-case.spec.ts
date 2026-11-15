@@ -272,7 +272,7 @@ describe('UserRefreshUseCase', () => {
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 tokens
             );
-            expect(sessionService.revokeIfActiveInTx).not.toHaveBeenCalled();
+            expect(sessionService.revokeReusedInTx).not.toHaveBeenCalled();
             expect(deviceService.touchOwnershipInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
@@ -317,7 +317,7 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActiveInTx.mockResolvedValue(true);
+            sessionService.revokeReusedInTx.mockResolvedValue(true);
 
             await expectSessionRevoked(
                 useCase.execute(
@@ -329,7 +329,7 @@ describe('UserRefreshUseCase', () => {
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(sessionService.revokeIfActiveInTx).toHaveBeenCalledWith(
+            expect(sessionService.revokeReusedInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
                 'session-bramble',
@@ -351,7 +351,7 @@ describe('UserRefreshUseCase', () => {
             expect(deviceService.touchOwnershipInTx).not.toHaveBeenCalled();
         });
 
-        it('adds no entry and answers revoked when the rotation matches no row of an already revoked session', async () => {
+        it('adds no entry and answers revoked when the rotation matches no row of a revoked, expired, or idle session', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -361,7 +361,7 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             sessionService.updateJtiInTx.mockResolvedValue(false);
-            sessionService.revokeIfActiveInTx.mockResolvedValue(false);
+            sessionService.revokeReusedInTx.mockResolvedValue(false);
 
             await expectSessionRevoked(
                 useCase.execute(
@@ -372,7 +372,7 @@ describe('UserRefreshUseCase', () => {
                 )
             );
 
-            expect(sessionService.revokeIfActiveInTx).toHaveBeenCalledTimes(1);
+            expect(sessionService.revokeReusedInTx).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(

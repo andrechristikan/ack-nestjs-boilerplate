@@ -66,6 +66,17 @@ export class NotificationTemplateService {
                         'utf8'
                     ),
                 };
+            case EnumNotificationKind.reauthenticationOtp:
+                return {
+                    subject: 'Confirmation Code',
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.reauthentication-otp.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
             case EnumNotificationKind.verifiedEmail:
                 return {
                     subject: 'Email Verified',

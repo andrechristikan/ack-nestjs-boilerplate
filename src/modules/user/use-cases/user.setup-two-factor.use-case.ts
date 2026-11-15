@@ -3,16 +3,15 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import type {
     IUserContext,
-    IUserTwoFactorCheck,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -36,7 +35,6 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userAuthService: UserAuthService,
         private readonly outboxService: OutboxService,
-        private readonly userPasswordService: UserPasswordService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -45,61 +43,36 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
-        { backupCode, password }: UserTwoFactorSetupRequestDto
+        { backupCode, password, otp }: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
         const { user } = userContext;
         // Sequential by design: gate before the work it guards
-        await this.userAuthService.assertCurrentPassword(
+        const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,
             user,
-            password ?? null
+            {
+                action: EnumUserReauthenticationAction.twoFactorSetup,
+                password: password ?? null,
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                code: null,
+                backupCode: backupCode ?? null,
+                otp: otp ?? null,
+            }
         );
-        const backupCodeForSetup =
-            this.userTwoFactorService.getBackupCodeForSetup(
-                user,
-                backupCode ?? null
-            );
-        let backupCodeChecked: IUserTwoFactorCheck | null = null;
-        if (backupCodeForSetup !== null) {
-            backupCodeChecked = await this.userTwoFactorService.check(
-                requestContext,
-                apiKeyContext,
-                user,
-                {
-                    method: EnumAuthTwoFactorMethod.backupCodes,
-                    code: null,
-                    backupCode: backupCodeForSetup,
-                }
-            );
-        }
 
         const { encryptedSecret, otpauthUrl, secret } =
             await this.userTwoFactorService.setup(user);
         try {
             await this.outboxService.withTransaction(async tx => {
-                await this.userPasswordService.resetPasswordAttemptInTx(
+                await this.userAuthService.completeReauthenticationInTx(
                     tx,
-                    authContext.userId
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    user,
+                    check
                 );
-                if (backupCodeChecked) {
-                    await this.userTwoFactorService.verifyInTx(
-                        tx,
-                        authContext.userId,
-                        backupCodeChecked
-                    );
-                    await this.userTwoFactorService.saveSetupConsumingBackupCodeInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        user,
-                        encryptedSecret,
-                        backupCodeChecked.verified
-                    );
-
-                    return;
-                }
-
                 await this.userTwoFactorService.saveSetupInTx(
                     tx,
                     requestContext,
@@ -115,7 +88,7 @@ export class UserSetupTwoFactorUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                backupCodeChecked &&
+                check.twoFactor !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new AuthTwoFactorInvalidException();

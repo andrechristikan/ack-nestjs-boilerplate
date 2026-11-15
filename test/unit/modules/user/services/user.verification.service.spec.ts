@@ -2,11 +2,13 @@ import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.a
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumRoleType,
+    EnumUserReauthenticationAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -19,6 +21,7 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumNotificationKind,
@@ -32,9 +35,14 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationReauthenticationOtpContext,
+    INotificationVerificationLinkContext,
+} from '@modules/notification/interfaces/notification.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
+import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
 import type {
     IUser,
     IUserVerificationEmailCreate,
@@ -63,6 +71,12 @@ describe('UserVerificationService', () => {
         mock<HelperHashService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
+    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
         mock<UserVerificationUtil>({ verificationResendInMinutes: 7 });
@@ -125,6 +139,7 @@ describe('UserVerificationService', () => {
         mobileNumberId: null,
         to: 'flint@example.com',
         type: EnumVerificationType.email,
+        action: null,
         token: 'hashed-token',
         expiredAt: new Date('2026-03-05T00:00:00.000Z'),
         verifiedAt: null,
@@ -159,6 +174,13 @@ describe('UserVerificationService', () => {
             async fn => fn(tx) as never
         );
         helperDateService.create.mockReturnValue(now);
+        configGet.mockImplementation(
+            key =>
+                ({
+                    'verification.otpLength': 6,
+                    'verification.expiredInMinutes': 5,
+                })[key]
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -174,6 +196,8 @@ describe('UserVerificationService', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperNumberService, useValue: helperNumberService },
+                { provide: ConfigService, useValue: configService },
                 { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationUtil,
@@ -664,12 +688,218 @@ describe('UserVerificationService', () => {
         });
     });
 
+    describe('getOneActiveReauthentication', () => {
+        const reauthentication: Verification = {
+            ...verification,
+            type: EnumVerificationType.reauthentication,
+            action: EnumUserReauthenticationAction.mobileNumberAdd,
+        };
+
+        it('returns the unused unexpired row of the user, action, and hashed code', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationRepository.findOneActiveReauthentication.mockResolvedValue(
+                reauthentication
+            );
+
+            await expect(
+                service.getOneActiveReauthentication(
+                    'user-flint',
+                    EnumUserReauthenticationAction.mobileNumberAdd,
+                    '123456'
+                )
+            ).resolves.toBe(reauthentication);
+
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
+            expect(
+                userVerificationRepository.findOneActiveReauthentication
+            ).toHaveBeenCalledWith(
+                'user-flint',
+                EnumUserReauthenticationAction.mobileNumberAdd,
+                'hashed-otp'
+            );
+        });
+
+        it('throws UserReauthenticationOtpInvalidException when no row matches', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationRepository.findOneActiveReauthentication.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getOneActiveReauthentication(
+                    'user-flint',
+                    EnumUserReauthenticationAction.mobileNumberAdd,
+                    '000000'
+                )
+            ).rejects.toBeInstanceOf(UserReauthenticationOtpInvalidException);
+        });
+    });
+
+    describe('assertReauthenticationResendable', () => {
+        it('resolves when the action has no earlier code', async () => {
+            userVerificationRepository.findOneLatestReauthentication.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.assertReauthenticationResendable(
+                    'user-flint',
+                    EnumUserReauthenticationAction.deleteSelf
+                )
+            ).resolves.toBeUndefined();
+
+            expect(
+                userVerificationRepository.findOneLatestReauthentication
+            ).toHaveBeenCalledWith(
+                'user-flint',
+                EnumUserReauthenticationAction.deleteSelf
+            );
+            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
+        });
+
+        it('resolves when the latest code of the action is outside the resend window', async () => {
+            userVerificationRepository.findOneLatestReauthentication.mockResolvedValue(
+                verification
+            );
+            userUtil.isInsideResendWindow.mockReturnValue(false);
+
+            await expect(
+                service.assertReauthenticationResendable(
+                    'user-flint',
+                    EnumUserReauthenticationAction.deleteSelf
+                )
+            ).resolves.toBeUndefined();
+
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
+                verification.createdAt,
+                7
+            );
+        });
+
+        it('throws UserReauthenticationOtpResendLimitException inside the resend window, used or not', async () => {
+            userVerificationRepository.findOneLatestReauthentication.mockResolvedValue(
+                { ...verification, isUsed: true }
+            );
+            userUtil.isInsideResendWindow.mockReturnValue(true);
+
+            await expect(
+                service.assertReauthenticationResendable(
+                    'user-flint',
+                    EnumUserReauthenticationAction.deleteSelf
+                )
+            ).rejects.toBeInstanceOf(
+                UserReauthenticationOtpResendLimitException
+            );
+        });
+    });
+
+    describe('sendReauthenticationInTx', () => {
+        const expiredAt = new Date('2026-03-01T00:05:00.000Z');
+        const context: INotificationReauthenticationOtpContext = {
+            userId: 'user-flint',
+            proceedBy: 'user-flint',
+            verificationId: 'verification-reauth',
+            otp: '123456',
+            action: EnumUserReauthenticationAction.mobileNumberAdd,
+            expiredInMinutes: 5,
+        };
+
+        beforeEach(() => {
+            helperNumberService.randomDigits.mockReturnValue('123456');
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationUtil.createReference.mockReturnValue('VRF-reauth');
+            userVerificationUtil.createExpiredAt.mockReturnValue(expiredAt);
+        });
+
+        it('marks the unused codes of the action used, creates the row holding only the code hash, and adds the reauthenticationOtp effect on the given tx', async () => {
+            userVerificationRepository.createInTx.mockResolvedValue({
+                ...verification,
+                id: 'verification-reauth',
+            });
+
+            await service.sendReauthenticationInTx(
+                tx,
+                'user-flint',
+                'flint@example.com',
+                EnumUserReauthenticationAction.mobileNumberAdd
+            );
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
+            expect(
+                userVerificationRepository.markUnusedReauthenticationUsedInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-flint',
+                EnumUserReauthenticationAction.mobileNumberAdd
+            );
+            expect(
+                userVerificationRepository.markUnusedReauthenticationUsedInTx
+            ).toHaveBeenCalledBefore(userVerificationRepository.createInTx);
+            expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-flint',
+                {
+                    reference: 'VRF-reauth',
+                    token: 'hashed-otp',
+                    type: EnumVerificationType.reauthentication,
+                    action: EnumUserReauthenticationAction.mobileNumberAdd,
+                    to: 'flint@example.com',
+                    expiredAt,
+                    verifiedAt: null,
+                    isUsed: false,
+                },
+                'user-flint'
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.reauthenticationOtp,
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
+            );
+        });
+
+        it('adds no effect when the row write throws', async () => {
+            userVerificationRepository.createInTx.mockRejectedValue(
+                new Error('boom')
+            );
+
+            await expect(
+                service.sendReauthenticationInTx(
+                    tx,
+                    'user-flint',
+                    'flint@example.com',
+                    EnumUserReauthenticationAction.mobileNumberAdd
+                )
+            ).rejects.toThrow('boom');
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('markUsedInTx', () => {
+        it('marks the verification used at now and returns whether the guard held', async () => {
+            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+
+            await expect(
+                service.markUsedInTx(tx, 'verification-flint')
+            ).resolves.toBe(false);
+
+            expect(
+                userVerificationRepository.markUsedInTx
+            ).toHaveBeenCalledWith(tx, 'verification-flint', now);
+        });
+    });
+
     describe('createInTx', () => {
         it('delegates to the repository', async () => {
             const createVerification: IUserCreateVerification = {
                 reference: 'VRF-create',
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
+                action: null,
                 to: 'flint@example.com',
                 expiredAt: new Date('2026-03-05T00:00:00.000Z'),
                 verifiedAt: null,

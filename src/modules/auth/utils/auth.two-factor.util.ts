@@ -61,7 +61,7 @@ export class AuthTwoFactorUtil {
     createKeyUri(email: string, secret: string): string {
         return generateURI({
             issuer: this.issuer,
-            label: `${this.issuer}:${email}`,
+            label: email,
             secret,
             digits: this.digits,
             period: this.periodInSeconds,
@@ -95,31 +95,38 @@ export class AuthTwoFactorUtil {
         return verified.timeStep;
     }
 
-    generateBackupCodes(): IAuthTwoFactorBackupCodes {
+    async generateBackupCodes(): Promise<IAuthTwoFactorBackupCodes> {
         const codes = Array.from({ length: this.backupCodesCount }, () =>
             this.helperStringService.randomUppercase(this.backupCodesLength)
         );
+        const hashes: string[] = [];
 
-        return {
-            codes,
-            hashes: codes.map(code => this.helperHashService.sha256Hash(code)),
-        };
+        // Sequential by design: argon2id hashes hold helper.argon2 memory per call, one at a time
+        for (const code of codes) {
+            const hash = await this.helperHashService.argon2Hash(code);
+            hashes.push(hash);
+        }
+
+        return { codes, hashes };
     }
 
-    /** Compares the SHA-256 hash of the input with the stored hashes; index is -1 when none matches. */
-    verifyBackupCode(
+    /** Compares the input with each stored argon2id hash in turn, stopping at the first match; index is -1 when none matches. */
+    async verifyBackupCode(
         backupCodes: string[],
         input: string
-    ): IAuthTwoFactorBackupCodesVerifyResult {
-        const codeHash = this.helperHashService.sha256Hash(input);
-        const index = backupCodes.findIndex(hash =>
-            this.helperHashService.sha256Compare(hash, codeHash)
-        );
+    ): Promise<IAuthTwoFactorBackupCodesVerifyResult> {
+        // Sequential by design: argon2id compares hold helper.argon2 memory per call, one at a time, stopping at the first match
+        for (const [index, hash] of backupCodes.entries()) {
+            const isMatch = await this.helperHashService.argon2Compare(
+                input,
+                hash
+            );
+            if (isMatch) {
+                return { isValid: true, index };
+            }
+        }
 
-        return {
-            isValid: index > -1,
-            index,
-        };
+        return { isValid: false, index: -1 };
     }
 
     encryptSecret(secret: string, userId: string): string {

@@ -25,6 +25,7 @@ import type { TwoFactor, User } from '@generated/prisma-client/client';
 import type {
     IAuthJwtAccessContext,
     IAuthPassword,
+    IAuthPasswordTemporary,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type { IUserImportByAdminEffect } from '@modules/user/interfaces/user.interface';
@@ -330,7 +331,7 @@ export class UserService {
     ): Promise<IUserCreateByAdminPrepared> {
         const userId = this.databaseUtil.createId();
         const passwordString = this.authPasswordUtil.createPasswordRandom();
-        const password: IAuthPassword =
+        const password: IAuthPasswordTemporary =
             await this.authPasswordUtil.createPassword(passwordString, {
                 temporary: true,
             });
@@ -361,6 +362,7 @@ export class UserService {
                 workspaceContext,
                 createdBy,
             },
+            password,
             passwordString,
         };
     }

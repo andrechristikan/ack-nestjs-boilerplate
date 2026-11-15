@@ -6,10 +6,6 @@ import { EnumRequestStatusCodeError } from '@common/request/enums/request.status
 export const RequestIdRegex = /^[A-Za-z0-9._-]{1,128}$/;
 
 /** @public */
-export const RequestPasswordStrengthRegex =
-    /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])/;
-
-/** @public */
 export const RequestCustomTimeoutMetaKey = 'RequestCustomTimeoutMetaKey';
 
 /** @public */

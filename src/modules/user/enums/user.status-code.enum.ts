@@ -28,4 +28,8 @@ export enum EnumUserStatusCodeError {
     photoSizeExceeded = 51025,
     credentialInvalid = 51026,
     deleteSelfForbidden = 51027,
+    reauthenticationOtpNotAllowed = 51028,
+    reauthenticationOtpResendLimit = 51029,
+    reauthenticationOtpRequired = 51030,
+    reauthenticationOtpInvalid = 51031,
 }

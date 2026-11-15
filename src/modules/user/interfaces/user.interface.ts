@@ -20,6 +20,7 @@ import {
 import type { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type {
     Country,
+    EnumUserReauthenticationAction,
     ForgotPassword,
     Prisma,
     TwoFactor,
@@ -37,6 +38,7 @@ import type {
 } from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
+    IAuthPasswordTemporary,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -129,6 +131,13 @@ export interface IUserVerificationEmailCreate {
     link: string;
 }
 
+export interface IUserVerificationReauthenticationCreate {
+    verification: IUserCreateVerification;
+    otp: string;
+    action: EnumUserReauthenticationAction;
+    expiredInMinutes: number;
+}
+
 export interface IUserVerificationEmailTarget {
     verification: Verification;
     user: User;
@@ -216,6 +225,7 @@ export interface IUserCreateByAdmin {
 
 export interface IUserCreateByAdminPrepared {
     input: IUserCreateWithWorkspaceInput;
+    password: IAuthPasswordTemporary;
     passwordString: string;
 }
 
@@ -227,7 +237,7 @@ export interface IUserImport {
 
 export interface IUserImportPrepared {
     inputs: IUserCreateWithWorkspaceInput[];
-    passwordHasheds: IAuthPassword[];
+    passwordHasheds: IAuthPasswordTemporary[];
     passwordStrings: string[];
 }
 
@@ -291,7 +301,7 @@ export interface IUserSignUp {
 }
 
 export interface IUserPasswordTemporary {
-    password: IAuthPassword;
+    password: IAuthPasswordTemporary;
     passwordString: string;
 }
 
@@ -340,6 +350,21 @@ export interface IUserTwoFactorVerifyResult {
 export interface IUserTwoFactorCheck {
     verified: IUserTwoFactorVerifyResult;
     totpStep: number | null;
+}
+
+export interface IUserReauthenticationInput {
+    action: EnumUserReauthenticationAction;
+    password: string | null;
+    method: EnumAuthTwoFactorMethod | null;
+    code: string | null;
+    backupCode: string | null;
+    otp: string | null;
+}
+
+export interface IUserReauthenticationCheck {
+    isPasswordChecked: boolean;
+    twoFactor: IUserTwoFactorCheck | null;
+    verificationId: string | null;
 }
 
 export interface IUserTwoFactorChallengeCreate {

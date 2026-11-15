@@ -1,5 +1,6 @@
 import type {
     EnumActivityLogAction,
+    EnumUserReauthenticationAction,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -16,6 +17,7 @@ export interface IUserCreateVerification {
     reference: string;
     token: string;
     type: EnumVerificationType;
+    action: EnumUserReauthenticationAction | null;
     to: string;
     expiredAt: Date;
     verifiedAt: Date | null;

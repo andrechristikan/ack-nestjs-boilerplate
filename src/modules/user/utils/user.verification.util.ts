@@ -47,7 +47,11 @@ export class UserVerificationUtil {
         )!;
     }
 
-    private createReference(): string {
+    private createToken(): string {
+        return this.helperStringService.random(this.verificationTokenLength);
+    }
+
+    createReference(): string {
         const random = this.helperStringService.random(
             this.verificationReferenceLength
         );
@@ -55,11 +59,7 @@ export class UserVerificationUtil {
         return `${this.verificationReferencePrefix}-${random}`;
     }
 
-    private createToken(): string {
-        return this.helperStringService.random(this.verificationTokenLength);
-    }
-
-    private createExpiredAt(): Date {
+    createExpiredAt(): Date {
         const now = this.helperDateService.create();
 
         return this.helperDateService.forward(
@@ -119,6 +119,7 @@ export class UserVerificationUtil {
             reference,
             token: hashedToken,
             type: EnumVerificationType.email,
+            action: null,
             to: email,
             expiredAt,
             verifiedAt,

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import { EnumUserSignUpFrom } from '@generated/prisma-client/client';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 
@@ -11,10 +10,7 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
     password: z
         .string()
         .min(8)
-        .max(50)
-        .regex(RequestPasswordStrengthRegex, {
-            error: () => 'request.error.isPassword.strong',
-        })
+        .max(64)
         .meta({
             description: 'string password',
             example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string

@@ -7,6 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumRoleType,
+    EnumUserReauthenticationAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -26,7 +27,6 @@ import {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -43,7 +43,11 @@ import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserReauthenticationCheck,
+} from '@modules/user/interfaces/user.interface';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import {
@@ -64,8 +68,6 @@ describe('UserDeleteSelfUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const userPasswordService: MockProxy<UserPasswordService> =
-        mock<UserPasswordService>();
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
@@ -158,7 +160,6 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: UserPasswordService, useValue: userPasswordService },
                 {
                     provide: UserTwoFactorService,
                     useValue: userTwoFactorService,
@@ -208,6 +209,12 @@ describe('UserDeleteSelfUseCase', () => {
 
         const revoked: ISessionRef[] = [{ id: 'session-one' }];
 
+        const check: IUserReauthenticationCheck = {
+            isPasswordChecked: true,
+            twoFactor: null,
+            verificationId: null,
+        };
+
         const photo = {
             bucket: 'bucket',
             key: 'photo-profile/user-cinder/current.png',
@@ -220,6 +227,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         beforeEach(() => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
+            userAuthService.assertReauthentication.mockResolvedValue(check);
             workspaceService.softDeleteOwnedByUserInTx.mockResolvedValue([]);
             userService.deleteSelfInTx.mockResolvedValue({
                 ...baseUser,
@@ -252,7 +260,7 @@ describe('UserDeleteSelfUseCase', () => {
                 superAdmin
             );
             expect(
-                userAuthService.assertCurrentPassword
+                userAuthService.assertReauthentication
             ).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -266,9 +274,11 @@ describe('UserDeleteSelfUseCase', () => {
 
                 return value as never;
             });
-            userAuthService.assertCurrentPassword.mockImplementation(
+            userAuthService.assertReauthentication.mockImplementation(
                 async () => {
                     calls.push('verifyPassword');
+
+                    return check;
                 }
             );
             outboxService.addManyInTx.mockImplementation(async () => {
@@ -276,7 +286,7 @@ describe('UserDeleteSelfUseCase', () => {
 
                 return ['outbox-id'];
             });
-            userPasswordService.resetPasswordAttemptInTx.mockImplementation(
+            userAuthService.completeReauthenticationInTx.mockImplementation(
                 async () => {
                     calls.push('resetPasswordAttempt');
                 }
@@ -366,11 +376,18 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                'plain-password'
+                {
+                    action: EnumUserReauthenticationAction.deleteSelf,
+                    password: 'plain-password',
+                    method: null,
+                    code: null,
+                    backupCode: null,
+                    otp: null,
+                }
             );
             expect(
                 workspaceService.softDeleteOwnedByUserInTx
@@ -464,7 +481,7 @@ describe('UserDeleteSelfUseCase', () => {
             ]);
         });
 
-        it('resets the password counter on the flow transaction', async () => {
+        it('completes the re-authentication first on the flow transaction', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -474,11 +491,23 @@ describe('UserDeleteSelfUseCase', () => {
             );
 
             expect(
-                userPasswordService.resetPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
+                userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseUser,
+                check
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                workspaceService.assertOwnedHasNoOtherMembersInTx
+            );
         });
 
-        it('resets no counter outside the transaction when the main step fails after a correct password', async () => {
+        it('completes nothing outside the transaction when the main step fails after a correct proof', async () => {
             outboxService.withTransaction.mockRejectedValue(
                 new Error('write conflict')
             );
@@ -500,7 +529,7 @@ describe('UserDeleteSelfUseCase', () => {
             });
 
             expect(
-                userPasswordService.resetPasswordAttemptInTx
+                userAuthService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -721,6 +750,36 @@ describe('UserDeleteSelfUseCase', () => {
             ).toHaveBeenCalledTimes(1);
         });
 
+        it('passes the two-factor and email-code fields of the request on', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                {
+                    ...dto,
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    backupCode: 'BACKUP1',
+                    code: '654321',
+                    otp: '123456',
+                }
+            );
+
+            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                baseUser,
+                {
+                    action: EnumUserReauthenticationAction.deleteSelf,
+                    password: 'plain-password',
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: '654321',
+                    backupCode: 'BACKUP1',
+                    otp: '123456',
+                }
+            );
+        });
+
         it('passes a null password for an absent one', async () => {
             await expect(
                 useCase.execute(
@@ -732,17 +791,17 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.assertCurrentPassword).toHaveBeenCalledWith(
+            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                null
+                expect.objectContaining({ password: null })
             );
             expect(userService.deleteSelfInTx).toHaveBeenCalledTimes(1);
         });
 
         it('throws UserPasswordNotMatchException and deletes nothing when the password is absent', async () => {
-            userAuthService.assertCurrentPassword.mockRejectedValue(
+            userAuthService.assertReauthentication.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
 
@@ -770,7 +829,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('rejects an expired password after a match', async () => {
             const failure = new UserPasswordExpiredException();
-            userAuthService.assertCurrentPassword.mockRejectedValue(failure);
+            userAuthService.assertReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(

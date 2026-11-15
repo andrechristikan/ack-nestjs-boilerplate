@@ -35,7 +35,10 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    private ownershipInclude(today: Date): Prisma.DeviceOwnershipInclude {
+    private ownershipInclude(
+        today: Date,
+        idleSince: Date
+    ): Prisma.DeviceOwnershipInclude {
         return {
             device: true,
             user: {
@@ -52,6 +55,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                             expiredAt: {
                                 gt: today,
                             },
+                            lastActiveAt: { gte: idleSince },
                         },
                     },
                 },
@@ -136,7 +140,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         userId: string,
         deviceOwnershipId: string,
         removedBy: string,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<IDeviceOwnership | null> {
         const { count } = await tx.deviceOwnership.updateMany({
             where: {
@@ -156,7 +161,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             return null;
         }
 
-        const ownershipInclude = this.ownershipInclude(now);
+        const ownershipInclude = this.ownershipInclude(now, idleSince);
 
         return tx.deviceOwnership.findUnique({
             where: { id: deviceOwnershipId },
@@ -192,10 +197,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked: Record<string, IPaginationEqual> | null
+        isRevoked: Record<string, IPaginationEqual> | null,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
-        const ownershipInclude = this.ownershipInclude(today);
+        const ownershipInclude = this.ownershipInclude(today, idleSince);
 
         return this.paginationService.offset(
             this.databaseService.client.deviceOwnership,
@@ -217,10 +223,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const today = this.helperDateService.create();
-        const ownershipInclude = this.ownershipInclude(today);
+        const ownershipInclude = this.ownershipInclude(today, idleSince);
 
         return this.paginationService.cursor(
             this.databaseService.client.deviceOwnership,
@@ -245,7 +252,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         );
     }
 
-    async findTokensByUserId(userId: string, now: Date): Promise<string[]> {
+    async findTokensByUserId(
+        userId: string,
+        now: Date,
+        idleSince: Date
+    ): Promise<string[]> {
         const rows = await this.databaseService.client.deviceOwnership.findMany(
             {
                 where: {
@@ -253,7 +264,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                     isRevoked: false,
                     notificationToken: { not: null },
                     sessions: {
-                        some: { isRevoked: false, expiredAt: { gt: now } },
+                        some: {
+                            isRevoked: false,
+                            expiredAt: { gt: now },
+                            lastActiveAt: { gte: idleSince },
+                        },
                     },
                 },
                 select: DeviceOwnershipNotificationTokenSelect,
@@ -377,7 +392,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
 
     async clearTokensWithoutLiveSession(
         userId: string,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<Prisma.BatchPayload> {
         return this.databaseService.client.deviceOwnership.updateMany({
             where: {
@@ -385,7 +401,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 isRevoked: false,
                 notificationToken: { not: null },
                 sessions: {
-                    none: { isRevoked: false, expiredAt: { gt: now } },
+                    none: {
+                        isRevoked: false,
+                        expiredAt: { gt: now },
+                        lastActiveAt: { gte: idleSince },
+                    },
                 },
             },
             data: {

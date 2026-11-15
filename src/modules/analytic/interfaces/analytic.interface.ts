@@ -9,7 +9,6 @@ export type {
     IAnalyticMetricRate,
     IAnalyticBlockedUsers,
     IAnalyticLockoutMetrics,
-    IAnalyticPasswordExpiry,
     IAnalyticForgotPasswordConversion,
     IAnalyticTwoFactorAdoption,
     IAnalyticTwoFactorAttemptSnapshot,

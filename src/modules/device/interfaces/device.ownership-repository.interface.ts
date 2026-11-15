@@ -37,7 +37,8 @@ export interface IDeviceOwnershipRepository {
         userId: string,
         deviceOwnershipId: string,
         removedBy: string,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<IDeviceOwnership | null>;
     revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
@@ -51,7 +52,8 @@ export interface IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked: Record<string, IPaginationEqual> | null
+        isRevoked: Record<string, IPaginationEqual> | null,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,
@@ -59,9 +61,14 @@ export interface IDeviceOwnershipRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
-    findTokensByUserId(userId: string, now: Date): Promise<string[]>;
+    findTokensByUserId(
+        userId: string,
+        now: Date,
+        idleSince: Date
+    ): Promise<string[]>;
     refreshInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -89,7 +96,8 @@ export interface IDeviceOwnershipRepository {
     clearTokens(userId: string, tokens: string[]): Promise<Prisma.BatchPayload>;
     clearTokensWithoutLiveSession(
         userId: string,
-        now: Date
+        now: Date,
+        idleSince: Date
     ): Promise<Prisma.BatchPayload>;
     clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
 }

@@ -306,6 +306,7 @@ describe('UserLoginWithSocialUseCase', () => {
             reference: 'VRF-bramble',
             token: 'hashed-token',
             type: EnumVerificationType.email,
+            action: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: null,

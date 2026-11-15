@@ -23,7 +23,6 @@
     "authRefreshTokenVolume": "Refresh-token volume retrieved successfully.",
     "authLogoutRate": "Logout rate metrics retrieved successfully.",
     "authVerificationFunnel": "Verification funnel metrics retrieved successfully.",
-    "authPasswordExpiry": "Password expiry metrics retrieved successfully.",
     "authPasswordChange": "Password change metrics retrieved successfully.",
     "authForgotPasswordConversion": "Forgot-password conversion retrieved successfully.",
     "authAdminForcePassword": "Admin force-password metrics retrieved successfully.",

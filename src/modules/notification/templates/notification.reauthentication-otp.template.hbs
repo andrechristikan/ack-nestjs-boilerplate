@@ -1,0 +1,25 @@
+<html>
+<body style="font-family: Arial, sans-serif; color: #333; background-color: #ffffff;">
+<p>Hi {{username}},</p>
+<br/>
+<p>Use this one-time code to confirm a sensitive action on your account. Do not share it with anyone.</p>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th style="text-align: left;">Field</th>
+      <th style="text-align: left;">Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Code</td><td>{{otp}}</td></tr>
+    <tr><td>Action</td><td>{{action}}</td></tr>
+    <tr><td>Valid For</td><td>{{expiredInMinutes}} minutes</td></tr>
+    <tr><td>Support Email</td><td>{{supportEmail}}</td></tr>
+    <tr><td>Website</td><td>{{homeUrl}}</td></tr>
+  </tbody>
+</table>
+<br/>
+<p>If you did not request this code, someone may be using your signed-in session: sign out of your other sessions and contact support at {{supportEmail}}.</p>
+<p>By: {{homeName}}.</p>
+</body>
+</html>

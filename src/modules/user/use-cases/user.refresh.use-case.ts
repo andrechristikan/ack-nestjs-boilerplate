@@ -97,7 +97,7 @@ export class UserRefreshUseCase implements IAppUseCase<
                     return tokens;
                 }
 
-                const isRevoked = await this.sessionService.revokeIfActiveInTx(
+                const isRevoked = await this.sessionService.revokeReusedInTx(
                     tx,
                     userId,
                     sessionId,

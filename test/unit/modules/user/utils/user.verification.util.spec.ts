@@ -33,6 +33,7 @@ describe('UserVerificationUtil', () => {
         'verification.reference.prefix': 'VRF',
         'verification.reference.length': 8,
         'verification.expiredInMinutes': 15,
+        'verification.otpLength': 6,
         'verification.tokenLength': 32,
         'verification.resendInMinutes': 5,
         'verification.linkPattern': '{homeUrl}/verify?token={token}',
@@ -127,6 +128,7 @@ describe('UserVerificationUtil', () => {
                 reference: 'VRF-random-token',
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
+                action: null,
                 to: 'cobalt@example.com',
                 expiredAt,
                 verifiedAt: now,
@@ -142,7 +144,7 @@ describe('UserVerificationUtil', () => {
         it('builds a prefixed random reference', () => {
             helperStringService.random.mockReturnValue('random-ref');
 
-            expect(util['createReference']()).toBe('VRF-random-ref');
+            expect(util.createReference()).toBe('VRF-random-ref');
             expect(helperStringService.random).toHaveBeenCalledWith(8);
         });
     });
@@ -158,7 +160,7 @@ describe('UserVerificationUtil', () => {
 
     describe('createExpiredAt', () => {
         it('forwards now by the configured expiry', () => {
-            expect(util['createExpiredAt']()).toEqual(expiredAt);
+            expect(util.createExpiredAt()).toEqual(expiredAt);
         });
     });
 });

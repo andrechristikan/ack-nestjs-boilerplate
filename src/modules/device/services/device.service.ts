@@ -31,21 +31,29 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class DeviceService {
     private readonly logger = new Logger(DeviceService.name);
+    private readonly idleTimeoutInMs: number;
 
     constructor(
+        private readonly configService: ConfigService,
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService
-    ) {}
+    ) {
+        this.idleTimeoutInMs = this.configService.get<number>(
+            'session.idleTimeoutInMs'
+        )!;
+    }
 
     private resolveNotificationProvider(
         platform: EnumDevicePlatform,
@@ -71,10 +79,17 @@ export class DeviceService {
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked ?? null
+            isRevoked ?? null,
+            idleSince
         );
     }
 
@@ -83,26 +98,47 @@ export class DeviceService {
         sessionId: string,
         pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
         return this.deviceOwnershipRepository.findActiveWithPaginationCursor(
             userId,
             sessionId,
-            pagination
+            pagination,
+            idleSince
         );
     }
 
     async getNotificationTokens(userId: string): Promise<string[]> {
         const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
 
-        return this.deviceOwnershipRepository.findTokensByUserId(userId, now);
+        return this.deviceOwnershipRepository.findTokensByUserId(
+            userId,
+            now,
+            idleSince
+        );
     }
 
     async clearNotificationsWithoutLiveSession(
         userId: string,
         now: Date
     ): Promise<void> {
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
         await this.deviceOwnershipRepository.clearTokensWithoutLiveSession(
             userId,
-            now
+            now,
+            idleSince
         );
     }
 
@@ -242,13 +278,18 @@ export class DeviceService {
         removedBy: string,
         now: Date
     ): Promise<IDeviceOwnership> {
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
         const deviceOwnership =
             await this.deviceOwnershipRepository.removeOwnershipInTx(
                 tx,
                 userId,
                 deviceOwnershipId,
                 removedBy,
-                now
+                now,
+                idleSince
             );
         if (deviceOwnership === null) {
             throw new DeviceNotFoundException();

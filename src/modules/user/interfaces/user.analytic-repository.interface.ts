@@ -43,7 +43,6 @@ export interface IUserAnalyticRepository {
         endDate: Date | null
     ): Promise<number>;
     countActive(): Promise<number>;
-    countPasswordExpired(now: Date): Promise<number>;
     findNearLockout(
         minAttempt: number,
         now: Date,

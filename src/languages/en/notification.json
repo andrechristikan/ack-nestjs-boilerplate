@@ -21,6 +21,10 @@
             "title": "Email Verification",
             "body": "Hi {username}, please verify your email address to activate your account."
         },
+        "reauthenticationOtp": {
+            "title": "Confirmation Code",
+            "body": "Hi {username}, a one-time code was sent to confirm a sensitive action on your account."
+        },
         "verifiedEmail": {
             "title": "Email Verified",
             "body": "Hi {username}, your email address has been verified successfully."

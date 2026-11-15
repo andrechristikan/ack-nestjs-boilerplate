@@ -8,9 +8,11 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
+    EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -19,9 +21,9 @@ import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -38,19 +40,24 @@ export class UserChangePasswordUseCase implements IAppUseCase<
     ],
     IResponseReturn<void>
 > {
+    private readonly appName: string;
+
     constructor(
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userAuthService: UserAuthService,
-        private readonly userTwoFactorService: UserTwoFactorService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.appName = this.configService.get<string>('app.name')!;
+    }
 
     async execute(
         requestContext: IRequestContext,
@@ -59,57 +66,55 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         userContext: IUserContext,
         {
             newPassword,
-            oldPassword,
+            password: currentPassword,
             backupCode,
             code,
             method,
+            otp,
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
-        const credential = this.userPasswordService.getCredential(user);
-        if (credential !== null) {
-            // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-            await this.userAuthService.assertPasswordAttempt(
-                requestContext,
-                apiKeyContext,
-                credential,
-                oldPassword ?? null
-            );
+        // Sequential by design: gate before the work it guards
+        const check = await this.userAuthService.assertReauthentication(
+            requestContext,
+            apiKeyContext,
+            user,
+            {
+                action: EnumUserReauthenticationAction.changePassword,
+                password: currentPassword ?? null,
+                method: method ?? null,
+                code: code ?? null,
+                backupCode: backupCode ?? null,
+                otp: otp ?? null,
+            }
+        );
+        if (check.isPasswordChecked) {
             await this.passwordHistoryService.assertNew(
                 authContext.userId,
                 newPassword
             );
         }
 
-        const twoFactorChecked =
-            await this.userTwoFactorService.checkIfRequired(
-                requestContext,
-                apiKeyContext,
-                user,
-                {
-                    code: code ?? null,
-                    backupCode: backupCode ?? null,
-                    method: method ?? null,
-                }
-            );
+        const contextWords = this.authPasswordUtil.createContextWords(
+            this.appName,
+            user.email,
+            user.username,
+            user.name
+        );
+        await this.authPasswordService.assertAllowed(newPassword, contextWords);
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
 
         try {
             await this.outboxService.withTransaction(async tx => {
-                if (credential !== null) {
-                    await this.userPasswordService.resetPasswordAttemptInTx(
-                        tx,
-                        authContext.userId
-                    );
-                }
-                if (twoFactorChecked) {
-                    await this.userTwoFactorService.verifyInTx(
-                        tx,
-                        authContext.userId,
-                        twoFactorChecked
-                    );
-                }
+                await this.userAuthService.completeReauthenticationInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    user,
+                    check
+                );
                 await this.userService.updatePasswordInTx(
                     tx,
                     authContext.userId,
@@ -136,36 +141,15 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     authContext.userId,
                     password.passwordCreated
                 );
-                const entries = [
-                    this.activityLogService.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userChangePassword,
-                        }
-                    ),
-                ];
-                if (twoFactorChecked) {
-                    await this.userTwoFactorService.recordVerificationInTx(
-                        tx,
-                        user,
-                        twoFactorChecked.verified
-                    );
-                    const verifyEntry = this.activityLogService.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userVerifyTwoFactor,
-                            userId: authContext.userId,
-                            createdBy: authContext.userId,
-                        }
-                    );
-                    entries.push(verifyEntry);
-                }
+                const entry = this.activityLogService.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userChangePassword,
+                    }
+                );
                 const effect = this.notificationService.notify(
                     EnumNotificationKind.changePassword,
                     {
@@ -173,7 +157,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         proceedBy: authContext.userId,
                     }
                 );
-                await this.outboxService.addManyInTx(tx, [...entries, effect]);
+                await this.outboxService.addManyInTx(tx, [entry, effect]);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -182,7 +166,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                twoFactorChecked &&
+                check.twoFactor !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new AuthTwoFactorInvalidException();

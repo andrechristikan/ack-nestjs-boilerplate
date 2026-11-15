@@ -7,7 +7,10 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumUserReauthenticationAction,
+} from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -17,7 +20,6 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -47,7 +49,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
-        private readonly userPasswordService: UserPasswordService,
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly workspaceService: WorkspaceService,
@@ -98,7 +99,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
-        { password }: UserDeleteSelfRequestDto
+        { password, method, code, backupCode, otp }: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         this.userService.assertSelfDeletable(user);
@@ -106,20 +107,31 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         const userId = authContext.userId;
 
         // Sequential by design: gate before the work it guards
-        await this.userAuthService.assertCurrentPassword(
+        const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,
             user,
-            password ?? null
+            {
+                action: EnumUserReauthenticationAction.deleteSelf,
+                password: password ?? null,
+                method: method ?? null,
+                code: code ?? null,
+                backupCode: backupCode ?? null,
+                otp: otp ?? null,
+            }
         );
 
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(
                 async tx => {
-                    await this.userPasswordService.resetPasswordAttemptInTx(
+                    await this.userAuthService.completeReauthenticationInTx(
                         tx,
-                        userId
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        user,
+                        check
                     );
                     await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
                         tx,

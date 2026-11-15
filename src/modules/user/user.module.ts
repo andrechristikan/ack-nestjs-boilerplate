@@ -19,7 +19,6 @@ import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.f
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
-import { UserPasswordAnalyticService } from '@modules/user/services/user.password.analytic.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -62,7 +61,6 @@ import { Module } from '@nestjs/common';
         UserCreateUtil,
         UserVerificationUtil,
         UserAnalyticService,
-        UserPasswordAnalyticService,
         UserForgotPasswordAnalyticService,
         UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,
@@ -82,7 +80,6 @@ import { Module } from '@nestjs/common';
         UserUtil,
         UserVerificationUtil,
         UserAnalyticService,
-        UserPasswordAnalyticService,
         UserForgotPasswordAnalyticService,
         UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,

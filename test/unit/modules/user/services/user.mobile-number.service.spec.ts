@@ -4,8 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Country } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
     buildUser,
@@ -17,7 +15,6 @@ import {
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserService } from '@modules/user/services/user.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -39,7 +36,6 @@ describe('UserMobileNumberService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = buildActivityLogCreateManyEffect('activityLog');
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let service: UserMobileNumberService;
 
@@ -90,7 +86,6 @@ describe('UserMobileNumberService', () => {
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         service = module.get(UserMobileNumberService);
@@ -130,19 +125,22 @@ describe('UserMobileNumberService', () => {
         });
     });
 
-    describe('addMobileNumber', () => {
-        it('adds the mobile number', async () => {
+    describe('addMobileNumberInTx', () => {
+        const input = {
+            number: '5551234',
+            countryId: country.id,
+            phoneCode: '+1',
+        };
+
+        it('adds the mobile number, touches the user, and adds the entry on the given tx', async () => {
             userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
 
-            const result = await service.addMobileNumber(
+            const result = await service.addMobileNumberInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                },
+                input,
                 country.phoneCode,
                 false
             );
@@ -151,11 +149,7 @@ describe('UserMobileNumberService', () => {
             expect(userMobileNumberRepository.addInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin',
-                {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                }
+                input
             );
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
@@ -169,141 +163,41 @@ describe('UserMobileNumberService', () => {
                 { action: EnumActivityLogAction.userAddMobileNumber }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
             await expect(
-                service.addMobileNumber(
+                service.addMobileNumberInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    {
-                        number: '5551234',
-                        countryId: country.id,
-                        phoneCode: '+9',
-                    },
+                    { ...input, phoneCode: '+99' },
                     country.phoneCode,
                     false
                 )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberInvalid
-                    ],
-                messagePath: 'user.error.mobileNumberInvalid',
             });
+            expect(userMobileNumberRepository.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberExistException when the mobile number already exists', async () => {
             await expect(
-                service.addMobileNumber(
+                service.addMobileNumberInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    {
-                        number: '5551234',
-                        countryId: country.id,
-                        phoneCode: '+1',
-                    },
+                    input,
                     country.phoneCode,
                     true
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberExist
-                    ],
-                messagePath: 'user.error.mobileNumberExist',
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            const error = new UserMobileNumberExistException();
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.addMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberExist
-                    ],
-                messagePath: 'user.error.mobileNumberExist',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            const error = new Error('boom');
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.addMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-
-        it('maps a unique collision to UserMobileNumberExistException', async () => {
-            const collision = new Error('unique');
-            outboxService.withTransaction.mockRejectedValueOnce(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            const call = service.addMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    number: '5551234',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                messagePath: 'user.error.mobileNumberExist',
-            });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'number'
-            );
+            ).rejects.toBeInstanceOf(UserMobileNumberExistException);
+            expect(userMobileNumberRepository.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -340,21 +234,24 @@ describe('UserMobileNumberService', () => {
         });
     });
 
-    describe('updateMobileNumber', () => {
-        it('updates the mobile number, keeping verification when number and phone code are unchanged', async () => {
+    describe('updateMobileNumberInTx', () => {
+        const input = {
+            number: mobileNumber.number,
+            countryId: country.id,
+            phoneCode: mobileNumber.phoneCode,
+        };
+
+        it('updates the mobile number keeping verification when number and phone code are unchanged', async () => {
             const verified = { ...mobileNumber, isVerified: true };
             userMobileNumberRepository.updateInTx.mockResolvedValue(verified);
 
-            const result = await service.updateMobileNumber(
+            const result = await service.updateMobileNumberInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 verified,
-                {
-                    number: mobileNumber.number,
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
+                input,
                 country.phoneCode,
                 false
             );
@@ -363,12 +260,12 @@ describe('UserMobileNumberService', () => {
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
                 mobileNumber.id,
-                {
-                    number: mobileNumber.number,
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
+                input,
                 true
+            );
+            expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marlin'
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -378,6 +275,7 @@ describe('UserMobileNumberService', () => {
                 { action: EnumActivityLogAction.userUpdateMobileNumber }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('resets verification when the number changes', async () => {
@@ -385,19 +283,13 @@ describe('UserMobileNumberService', () => {
                 mobileNumber
             );
 
-            await service.updateMobileNumber(
+            await service.updateMobileNumberInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                {
-                    ...mobileNumber,
-                    isVerified: true,
-                },
-                {
-                    number: '5559999',
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
+                { ...mobileNumber, isVerified: true },
+                { ...input, number: '5559999' },
                 country.phoneCode,
                 false
             );
@@ -405,166 +297,59 @@ describe('UserMobileNumberService', () => {
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
                 mobileNumber.id,
-                {
-                    number: '5559999',
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
+                { ...input, number: '5559999' },
                 false
             );
         });
 
         it('throws UserMobileNumberExistException when another row already has the number', async () => {
-            const call = service.updateMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber,
-                {
-                    number: '5559999',
-                    countryId: country.id,
-                    phoneCode: '+1',
-                },
-                country.phoneCode,
-                true
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberExist
-                    ],
-                messagePath: 'user.error.mobileNumberExist',
-            });
+            await expect(
+                service.updateMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber,
+                    input,
+                    country.phoneCode,
+                    true
+                )
+            ).rejects.toBeInstanceOf(UserMobileNumberExistException);
+            expect(
+                userMobileNumberRepository.updateInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            const call = service.updateMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber,
-                {
-                    number: '5559999',
-                    countryId: country.id,
-                    phoneCode: '+9',
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.updateMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber,
+                    { ...input, phoneCode: '+99' },
+                    country.phoneCode,
+                    false
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberInvalid
-                    ],
-                messagePath: 'user.error.mobileNumberInvalid',
             });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            const error = new UserMobileNumberExistException();
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.updateMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber,
-                {
-                    number: mobileNumber.number,
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberExist
-                    ],
-                messagePath: 'user.error.mobileNumberExist',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            const error = new Error('boom');
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.updateMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber,
-                {
-                    number: mobileNumber.number,
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
-        });
-
-        it('maps a unique collision to UserMobileNumberExistException', async () => {
-            const collision = new Error('unique');
-            outboxService.withTransaction.mockRejectedValueOnce(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            const call = service.updateMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber,
-                {
-                    number: '5559999',
-                    countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
-                },
-                country.phoneCode,
-                false
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                messagePath: 'user.error.mobileNumberExist',
-            });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'number'
-            );
+            expect(
+                userMobileNumberRepository.updateInTx
+            ).not.toHaveBeenCalled();
         });
     });
 
-    describe('deleteMobileNumber', () => {
-        it('deletes the mobile number', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
+    describe('deleteMobileNumberInTx', () => {
+        it('deletes the mobile number, touches the user, and adds the entry on the given tx', async () => {
             userMobileNumberRepository.deleteInTx.mockResolvedValue(
                 mobileNumber
             );
 
-            const result = await service.deleteMobileNumber(
+            const result = await service.deleteMobileNumberInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -588,133 +373,26 @@ describe('UserMobileNumberService', () => {
                 { action: EnumActivityLogAction.userDeleteMobileNumber }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
-        });
-
-        it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                null
-            );
-
-            const call = service.deleteMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'missing'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberNotFound
-                    ],
-                messagePath: 'user.error.mobileNumberNotFound',
-            });
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberNotFoundException when the guarded delete misses', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
             userMobileNumberRepository.deleteInTx.mockResolvedValue(null);
 
-            const call = service.deleteMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber.id
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.deleteMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber.id
+                )
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberNotFound
-                    ],
-                messagePath: 'user.error.mobileNumberNotFound',
             });
             expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws UserMobileNumberNotFoundException on a write conflict', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            const conflict = new Error('write-conflict');
-            outboxService.withTransaction.mockRejectedValueOnce(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            const call = service.deleteMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber.id
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberNotFound
-                    ],
-                messagePath: 'user.error.mobileNumberNotFound',
-            });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            const error = new UserMobileNumberExistException();
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.deleteMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber.id
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberExist
-                    ],
-                messagePath: 'user.error.mobileNumberExist',
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
-                mobileNumber
-            );
-            const error = new Error('boom');
-            outboxService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.deleteMobileNumber(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber.id
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                rawError: error,
-            });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 

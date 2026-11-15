@@ -19,7 +19,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import {
     EnumNotificationKind,
@@ -118,7 +118,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(admin);
     const authContext = buildAuthJwtAccessContext(admin.id);
-    const password: IAuthPassword = {
+    const password: IAuthPasswordTemporary = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),

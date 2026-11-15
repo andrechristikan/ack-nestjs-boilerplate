@@ -66,7 +66,6 @@ import type {
     IAnalyticMetricRate,
     IAnalyticMobileChurn,
     IAnalyticNearLockout,
-    IAnalyticPasswordExpiry,
     IAnalyticPasswordResetEnumeration,
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
@@ -96,7 +95,6 @@ import { AnalyticLockoutResponseSchema } from '@modules/analytic/dtos/response/a
 import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
 import { AnalyticMetricRateResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-rate.response.dto';
 import { AnalyticMobileChurnResponseSchema } from '@modules/analytic/dtos/response/analytic.mobile-churn.response.dto';
-import { AnalyticPasswordExpiryResponseSchema } from '@modules/analytic/dtos/response/analytic.password-expiry.response.dto';
 import { AnalyticProjectCountResponseSchema } from '@modules/analytic/dtos/response/analytic.project-count.response.dto';
 import { AnalyticProjectCreationResponseSchema } from '@modules/analytic/dtos/response/analytic.project-creation.response.dto';
 import { AnalyticSessionDeviceRatioResponseSchema } from '@modules/analytic/dtos/response/analytic.session-device-ratio.response.dto';
@@ -176,7 +174,6 @@ import { AnalyticAuthSessionsUserAgentUseCase } from '@modules/analytic/use-case
 import { AnalyticAuthRefreshTokenVolumeUseCase } from '@modules/analytic/use-cases/analytic.auth-refresh-token-volume.use-case';
 import { AnalyticAuthLogoutRateUseCase } from '@modules/analytic/use-cases/analytic.auth-logout-rate.use-case';
 import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cases/analytic.auth-verification-funnel.use-case';
-import { AnalyticAuthPasswordExpiryUseCase } from '@modules/analytic/use-cases/analytic.auth-password-expiry.use-case';
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthAdminForcePasswordUseCase } from '@modules/analytic/use-cases/analytic.auth-admin-force-password.use-case';
@@ -269,7 +266,6 @@ export class AnalyticAdminController {
         private readonly analyticAuthRefreshTokenVolumeUseCase: AnalyticAuthRefreshTokenVolumeUseCase,
         private readonly analyticAuthLogoutRateUseCase: AnalyticAuthLogoutRateUseCase,
         private readonly analyticAuthVerificationFunnelUseCase: AnalyticAuthVerificationFunnelUseCase,
-        private readonly analyticAuthPasswordExpiryUseCase: AnalyticAuthPasswordExpiryUseCase,
         private readonly analyticAuthPasswordChangeUseCase: AnalyticAuthPasswordChangeUseCase,
         private readonly analyticAuthForgotPasswordConversionUseCase: AnalyticAuthForgotPasswordConversionUseCase,
         private readonly analyticAuthAdminForcePasswordUseCase: AnalyticAuthAdminForcePasswordUseCase,
@@ -857,27 +853,6 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticVerificationFunnels>> {
         return this.analyticAuthVerificationFunnelUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get password expiry snapshot' })
-    @Response('analytic.authPasswordExpiry', {
-        schema: AnalyticPasswordExpiryResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/password-expiry')
-    async authPasswordExpiry(): Promise<
-        IResponseReturn<IAnalyticPasswordExpiry>
-    > {
-        return this.analyticAuthPasswordExpiryUseCase.execute();
     }
 
     @Doc({ summary: 'admin get password change count by date range' })

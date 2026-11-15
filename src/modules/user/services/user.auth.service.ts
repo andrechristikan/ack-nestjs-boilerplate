@@ -12,6 +12,7 @@ import {
     EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserReauthenticationAction,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { UserAgent } from '@generated/prisma-client/client';
@@ -30,10 +31,16 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
+import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
+import { UserReauthenticationOtpRequiredException } from '@modules/user/exceptions/user.reauthentication-otp-required.exception';
 import type {
     IUser,
     IUserCredential,
     IUserLoginTwoFactorChallenge,
+    IUserReauthenticationCheck,
+    IUserReauthenticationInput,
+    IUserTwoFactorCheck,
     IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
@@ -46,6 +53,7 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class UserAuthService {
@@ -159,6 +167,128 @@ export class UserAuthService {
             credential,
             plainPassword
         );
+    }
+
+    /** Throws when the account holds a password or two-factor requiring verification, the stronger proofs the email code never replaces. */
+    assertReauthenticationOtpAllowed(user: IUser): void {
+        const credential = this.userPasswordService.getCredential(user);
+        const isTwoFactorRequired =
+            this.userUtil.requiresTwoFactorVerification(user);
+        if (credential !== null || isTwoFactorRequired) {
+            throw new UserReauthenticationOtpNotAllowedException();
+        }
+    }
+
+    /** Asserts the current password when the account has one, a two-factor proof when two-factor requires verification except for the twoFactorEnable action, and the email code of the action for an account with neither, writing nothing on a match. */
+    async assertReauthentication(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        user: IUser,
+        {
+            action,
+            password,
+            method,
+            code,
+            backupCode,
+            otp,
+        }: IUserReauthenticationInput
+    ): Promise<IUserReauthenticationCheck> {
+        const credential = this.userPasswordService.getCredential(user);
+        const isPasswordChecked = credential !== null;
+        // Sequential by design: a failed password counts no two-factor failure
+        await this.assertCurrentPassword(
+            requestContext,
+            apiKeyContext,
+            user,
+            password
+        );
+
+        const isTwoFactorRequired =
+            this.userUtil.requiresTwoFactorVerification(user);
+        const requiresTwoFactor =
+            isTwoFactorRequired &&
+            action !== EnumUserReauthenticationAction.twoFactorEnable;
+        let twoFactor: IUserTwoFactorCheck | null = null;
+        if (requiresTwoFactor) {
+            twoFactor = await this.userTwoFactorService.check(
+                requestContext,
+                apiKeyContext,
+                user,
+                { method, code, backupCode }
+            );
+        }
+
+        let verificationId: string | null = null;
+        if (!isPasswordChecked && !isTwoFactorRequired) {
+            if (otp === null) {
+                throw new UserReauthenticationOtpRequiredException();
+            }
+
+            const verification =
+                await this.userVerificationService.getOneActiveReauthentication(
+                    user.id,
+                    action,
+                    otp
+                );
+            verificationId = verification.id;
+        }
+
+        return { isPasswordChecked, twoFactor, verificationId };
+    }
+
+    /** Completes the proofs assertReauthentication checked on the caller's transaction: the password counter reset, the TOTP step accept with the two-factor counter reset, the verification record consuming a backup code, then the verify entry, and the email code marked used, throwing when it was used first. */
+    async completeReauthenticationInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        user: IUser,
+        {
+            isPasswordChecked,
+            twoFactor,
+            verificationId,
+        }: IUserReauthenticationCheck
+    ): Promise<void> {
+        if (isPasswordChecked) {
+            await this.userPasswordService.resetPasswordAttemptInTx(
+                tx,
+                authContext.userId
+            );
+        }
+        if (twoFactor !== null) {
+            await this.userTwoFactorService.verifyInTx(
+                tx,
+                authContext.userId,
+                twoFactor
+            );
+            await this.userTwoFactorService.recordVerificationInTx(
+                tx,
+                user,
+                twoFactor.verified
+            );
+            const entry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                }
+            );
+            await this.outboxService.addInTx(tx, entry);
+        }
+        if (verificationId !== null) {
+            const isMarkedUsed =
+                await this.userVerificationService.markUsedInTx(
+                    tx,
+                    verificationId
+                );
+            if (!isMarkedUsed) {
+                throw new UserReauthenticationOtpInvalidException();
+            }
+        }
     }
 
     assertPasswordNotExpired(user: IUser): void {

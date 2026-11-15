@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserReauthenticationRequestSchema } from '@modules/user/dtos/request/user.reauthentication.request.dto';
 
-/** @public */
+/** @alias */
 export const UserTwoFactorRegenerateBackupCodeRequestSchema =
-    UserTwoFactorEnableRequestSchema.omit({ password: true });
+    UserReauthenticationRequestSchema;
 
 /** @public */
 export type UserTwoFactorRegenerateBackupCodeRequestDto = z.infer<

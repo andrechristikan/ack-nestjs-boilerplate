@@ -158,6 +158,7 @@ describe('UserImportService', () => {
             reference: 'ref-one',
             token: 'hashed-token-one',
             type: EnumVerificationType.email,
+            action: null,
             to: 'thistle@example.com',
             expiredAt: new Date('2026-02-01T00:00:00.000Z'),
             verifiedAt: new Date('2026-01-01T00:00:00.000Z'),

@@ -42,6 +42,7 @@ import { UserRegenerateTwoFactorBackupCodesUseCase } from '@modules/user/use-cas
 import { UserResetTwoFactorByAdminUseCase } from '@modules/user/use-cases/user.reset-two-factor-by-admin.use-case';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
 import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
+import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user.send-reauthentication-otp.use-case';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
@@ -87,6 +88,7 @@ import { Module } from '@nestjs/common';
         UserResetTwoFactorByAdminUseCase,
         UserVerifyEmailUseCase,
         UserSendVerificationEmailUseCase,
+        UserSendReauthenticationOtpUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
     ],
@@ -128,6 +130,7 @@ import { Module } from '@nestjs/common';
         UserResetTwoFactorByAdminUseCase,
         UserVerifyEmailUseCase,
         UserSendVerificationEmailUseCase,
+        UserSendReauthenticationOtpUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
     ],

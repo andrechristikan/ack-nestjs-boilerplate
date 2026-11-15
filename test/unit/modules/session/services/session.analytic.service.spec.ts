@@ -1,7 +1,10 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { Duration } from 'luxon';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
 import { SessionAnalyticRepository } from '@modules/session/repositories/session.analytic.repository';
 import type {
@@ -14,13 +17,26 @@ describe('SessionAnalyticService', () => {
     const now = new Date('2026-03-01T00:00:00.000Z');
     const sessionAnalyticRepository: MockProxy<SessionAnalyticRepository> =
         mock<SessionAnalyticRepository>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configGet = vi.fn<(key: string) => number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const idleTimeoutInMs = 604800000;
+    const idleDuration = Duration.fromObject({ milliseconds: idleTimeoutInMs });
+    const idleSince = new Date('2026-02-22T00:00:00.000Z');
     let service: SessionAnalyticService;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue(idleTimeoutInMs);
+        helperDateService.backward.mockReturnValue(idleSince);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionAnalyticService,
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: SessionAnalyticRepository,
                     useValue: sessionAnalyticRepository,
@@ -64,7 +80,7 @@ describe('SessionAnalyticService', () => {
             expect(result).toBe(rows);
             expect(
                 sessionAnalyticRepository.findActiveWithGeoInRange
-            ).toHaveBeenCalledWith(startDate, endDate, now);
+            ).toHaveBeenCalledWith(startDate, endDate, now, idleSince);
         });
 
         it('delegates with no date range', async () => {
@@ -76,7 +92,7 @@ describe('SessionAnalyticService', () => {
 
             expect(
                 sessionAnalyticRepository.findActiveWithGeoInRange
-            ).toHaveBeenCalledWith(null, null, now);
+            ).toHaveBeenCalledWith(null, null, now, idleSince);
         });
     });
 
@@ -112,7 +128,7 @@ describe('SessionAnalyticService', () => {
             expect(result).toBe(rows);
             expect(
                 sessionAnalyticRepository.findActiveInRange
-            ).toHaveBeenCalledWith(startDate, endDate, now);
+            ).toHaveBeenCalledWith(startDate, endDate, now, idleSince);
         });
     });
 
@@ -128,7 +144,7 @@ describe('SessionAnalyticService', () => {
             expect(result).toBe(rows);
             expect(
                 sessionAnalyticRepository.countActiveByUser
-            ).toHaveBeenCalledWith(now);
+            ).toHaveBeenCalledWith(now, idleSince);
         });
     });
 
@@ -148,7 +164,7 @@ describe('SessionAnalyticService', () => {
             expect(result).toBe(buckets);
             expect(
                 sessionAnalyticRepository.groupByCountry
-            ).toHaveBeenCalledWith(startDate, endDate, now);
+            ).toHaveBeenCalledWith(startDate, endDate, now, idleSince);
         });
     });
 
@@ -170,7 +186,12 @@ describe('SessionAnalyticService', () => {
 
             expect(result).toBe(4);
             expect(sessionAnalyticRepository.countActive).toHaveBeenCalledWith(
-                now
+                now,
+                idleSince
+            );
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                idleDuration
             );
         });
     });

@@ -3,6 +3,7 @@ import type { INotificationNotifyEffect } from '@modules/notification/interfaces
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -22,6 +23,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -33,6 +35,8 @@ import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import {
@@ -74,6 +78,8 @@ describe('UserResetPasswordUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -133,7 +139,7 @@ describe('UserResetPasswordUseCase', () => {
     };
     const password: IAuthPassword = {
         passwordHash: 'hashed',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+        passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
@@ -233,6 +239,10 @@ describe('UserResetPasswordUseCase', () => {
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
         userTwoFactorService.checkIfRequired.mockResolvedValue(null);
+        authPasswordUtil.createContextWords.mockReturnValue([
+            'ACK Boilerplate',
+            'linden',
+        ]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -252,7 +262,14 @@ describe('UserResetPasswordUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
+                { provide: AuthPasswordService, useValue: authPasswordService },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        'app.name': 'ACK Boilerplate',
+                    }),
+                },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -280,6 +297,28 @@ describe('UserResetPasswordUseCase', () => {
                 passwordHistory
             );
             sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
+        });
+
+        it('refuses a disallowed new password with the application name, the email local part, the username, and the name before it hashes', async () => {
+            const refused = new AuthPasswordCommonException();
+            authPasswordService.assertAllowed.mockRejectedValue(refused);
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(refused);
+
+            expect(authPasswordUtil.createContextWords).toHaveBeenCalledWith(
+                'ACK Boilerplate',
+                'linden@example.com',
+                'lindenFrost',
+                'Linden Frost'
+            );
+            expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
+                'new-password',
+                ['ACK Boilerplate', 'linden']
+            );
+            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks the history, hashes, and writes the reset, its entry, and the notification on one transaction', async () => {

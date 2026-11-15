@@ -18,7 +18,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Country, TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
@@ -192,7 +192,7 @@ describe('UserCreateByAdminUseCase', () => {
         slugCandidates: ['w-bramble', 'w-bramble-b'],
         name: "bramble2fox's Workspace",
     };
-    const password: IAuthPassword = {
+    const password: IAuthPasswordTemporary = {
         passwordHash: 'hashed',
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
@@ -216,6 +216,7 @@ describe('UserCreateByAdminUseCase', () => {
             reference: 'VRF-bramble',
             token: 'hashed-token',
             type: EnumVerificationType.email,
+            action: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: null,
@@ -320,6 +321,7 @@ describe('UserCreateByAdminUseCase', () => {
             userService.checkUsername.mockResolvedValue(clearUsername);
             userService.prepareCreateByAdmin.mockResolvedValue({
                 input,
+                password,
                 passwordString: 'random-password',
             });
             userRegistrationService.buildCreateByAdminStages.mockReturnValue([
@@ -413,26 +415,6 @@ describe('UserCreateByAdminUseCase', () => {
                 EnumNotificationKind.welcomeByAdmin,
                 expect.objectContaining({ proceedBy: 'actor-bramble' })
             );
-        });
-
-        it('adds no welcome effect when the created account carries no password', async () => {
-            userService.prepareCreateByAdmin.mockResolvedValue({
-                input: { ...input, password: null, passwordHistoryType: null },
-                passwordString: 'random-password',
-            });
-
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(notificationService.notify).not.toHaveBeenCalled();
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                activityEntry,
-            ]);
         });
 
         it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {

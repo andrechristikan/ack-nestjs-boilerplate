@@ -30,7 +30,6 @@ import {
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
     AnalyticMobileChurnCacheSchema,
-    AnalyticPasswordExpiryCacheSchema,
     AnalyticProjectCountPageCacheSchema,
     AnalyticProjectCreationCacheSchema,
     AnalyticSessionDeviceRatioCacheSchema,
@@ -57,7 +56,6 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
-import { UserPasswordAnalyticService } from '@modules/user/services/user.password.analytic.service';
 import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
@@ -86,8 +84,6 @@ describe('AnalyticDashboardService', () => {
         mock<HelperStringService>();
     const userAnalyticService: MockProxy<UserAnalyticService> =
         mock<UserAnalyticService>();
-    const userPasswordAnalyticService: MockProxy<UserPasswordAnalyticService> =
-        mock<UserPasswordAnalyticService>();
     const userForgotPasswordAnalyticService: MockProxy<UserForgotPasswordAnalyticService> =
         mock<UserForgotPasswordAnalyticService>();
     const userTwoFactorAnalyticService: MockProxy<UserTwoFactorAnalyticService> =
@@ -181,10 +177,6 @@ describe('AnalyticDashboardService', () => {
                     useValue: passwordHistoryAnalyticService,
                 },
                 { provide: UserAnalyticService, useValue: userAnalyticService },
-                {
-                    provide: UserPasswordAnalyticService,
-                    useValue: userPasswordAnalyticService,
-                },
                 {
                     provide: UserForgotPasswordAnalyticService,
                     useValue: userForgotPasswordAnalyticService,
@@ -1134,52 +1126,6 @@ describe('AnalyticDashboardService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.authVerificationFunnel}:${startToken}:${endToken}`,
                 AnalyticVerificationFunnelsCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authPasswordExpiry', () => {
-        it('reads the active and expired counts together, then maps the compliance', async () => {
-            const expiry = {
-                expired: 2,
-                total: 10,
-                compliant: 8,
-                rate: 0.8,
-            };
-            const deferredActive = buildDeferred<number>();
-            userAnalyticService.getCountActive.mockReturnValue(
-                deferredActive.promise
-            );
-            userPasswordAnalyticService.getExpiredCount.mockImplementation(
-                async () => {
-                    deferredActive.resolve(10);
-
-                    return 2;
-                }
-            );
-            userPasswordAnalyticService.mapExpiryCompliance.mockReturnValue(
-                expiry
-            );
-
-            const result = await service.authPasswordExpiry();
-
-            expect(result).toEqual(expiry);
-            expect(
-                userPasswordAnalyticService.mapExpiryCompliance
-            ).toHaveBeenCalledWith(2, 10);
-        });
-
-        it('reads through with the dashboard key, AnalyticPasswordExpiryCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authPasswordExpiry();
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authPasswordExpiry}:_:_`,
-                AnalyticPasswordExpiryCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );

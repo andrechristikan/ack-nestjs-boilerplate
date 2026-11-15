@@ -45,6 +45,8 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -54,7 +56,10 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 
 @Injectable()
 export class SessionService {
+    private readonly idleTimeoutInMs: number;
+
     constructor(
+        private readonly configService: ConfigService,
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
         private readonly cacheService: CacheService,
@@ -65,7 +70,11 @@ export class SessionService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly sessionUtil: SessionUtil
-    ) {}
+    ) {
+        this.idleTimeoutInMs = this.configService.get<number>(
+            'session.idleTimeoutInMs'
+        )!;
+    }
 
     private purgeLoginsEffect(
         userId: string,
@@ -101,37 +110,23 @@ export class SessionService {
         sessionId: string,
         key: string
     ): Promise<ISessionLogin | null> {
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
         return this.cacheService.readThrough(
             key,
             SessionLoginCacheSchema,
             this.sessionCache.loginTtlInMs,
-            () => this.sessionRepository.findLoginById(userId, sessionId)
+            () =>
+                this.sessionRepository.findLoginById(
+                    userId,
+                    sessionId,
+                    idleSince
+                )
         );
-    }
-
-    private async removeDeviceOwnershipInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        deviceOwnershipId: string,
-        removedBy: string,
-        now: Date
-    ): Promise<IDeviceRemoveResult> {
-        const revokedSessions = await this.revokeByDeviceOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            removedBy,
-            now
-        );
-        const deviceOwnership = await this.deviceService.removeOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            removedBy,
-            now
-        );
-
-        return { deviceOwnership, revokedSessions };
     }
 
     private mapActivityLogActorMetadata(
@@ -196,9 +191,16 @@ export class SessionService {
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>> {
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
         return this.sessionRepository.findActiveWithPaginationCursor(
             userId,
-            pagination
+            pagination,
+            idleSince
         );
     }
 
@@ -281,29 +283,40 @@ export class SessionService {
     ): Promise<boolean> {
         const oldJtiDigest = this.helperHashService.sha256Hash(oldJti);
         const newJtiDigest = this.helperHashService.sha256Hash(newJti);
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
 
         return this.sessionRepository.updateJtiInTx(
             tx,
             sessionId,
             oldJtiDigest,
-            newJtiDigest
+            newJtiDigest,
+            idleSince
         );
     }
 
-    /** Revokes the session on the caller's transaction and adds its cache purge row; false when no live row matched. */
-    async revokeIfActiveInTx(
+    /** Revokes a session still inside its expiry and idle bounds on the caller's transaction and adds its cache purge row; false when no live row matched. */
+    async revokeReusedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<boolean> {
-        const isRevoked = await this.sessionRepository.revokeInTx(
+        const idleSince = this.helperDateService.backward(
+            revokedAt,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+        const isRevoked = await this.sessionRepository.revokeLiveInTx(
             tx,
             userId,
             sessionId,
             revokedBy,
-            revokedAt
+            revokedAt,
+            idleSince
         );
         if (!isRevoked) {
             return false;
@@ -323,7 +336,7 @@ export class SessionService {
         revokedBy: string,
         revokedAt: Date
     ): Promise<void> {
-        const isRevoked = await this.revokeIfActiveInTx(
+        const isRevoked = await this.sessionRepository.revokeInTx(
             tx,
             userId,
             sessionId,
@@ -333,6 +346,9 @@ export class SessionService {
         if (!isRevoked) {
             throw new SessionNotFoundException();
         }
+
+        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
+        await this.outboxService.addInTx(tx, effect);
     }
 
     /** Revokes the user's active sessions on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
@@ -435,43 +451,30 @@ export class SessionService {
         return grouped;
     }
 
-    /** Revokes the session as its own user with its cache purge row and activity entry in one transaction; a write conflict throws SessionNotFoundException. */
-    async revoke(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        sessionId: string
-    ): Promise<void> {
-        const userId = authContext.userId;
-        const revokedAt = this.helperDateService.create();
+    /** Revokes the live sessions of a device ownership with their cache purge row, then removes the ownership, on the caller's transaction; returns the removed ownership and the revoked refs. */
+    async removeDeviceOwnershipInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        removedBy: string,
+        now: Date
+    ): Promise<IDeviceRemoveResult> {
+        const revokedSessions = await this.revokeByDeviceOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now
+        );
+        const deviceOwnership = await this.deviceService.removeOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now
+        );
 
-        try {
-            await this.outboxService.withTransaction(async tx => {
-                await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userRevokeSession,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new SessionNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { deviceOwnership, revokedSessions };
     }
 
     /** Revokes the session as an admin with its cache purge row and activity entries in one transaction; a write conflict throws SessionNotFoundException. */
@@ -629,59 +632,6 @@ export class SessionService {
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
                 throw new SessionNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
-    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as its own user, adding the activity entry, in one transaction; a write conflict throws DeviceNotFoundException. */
-    async removeDeviceOwnership(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        const userId = authContext.userId;
-        const now = this.helperDateService.create();
-
-        try {
-            await this.outboxService.withTransaction(async tx => {
-                const { deviceOwnership, revokedSessions } =
-                    await this.removeDeviceOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        userId,
-                        now
-                    );
-
-                const metadata = this.deviceService.mapActivityLogMetadata(
-                    deviceOwnership,
-                    revokedSessions.length
-                );
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userRemoveDevice,
-                        userId,
-                        createdBy: userId,
-                        metadata,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new DeviceNotFoundException();
             }
 
             throw new AppUnknownException(err);

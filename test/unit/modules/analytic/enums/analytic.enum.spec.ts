@@ -80,7 +80,6 @@ describe('analytic enums', () => {
             authRefresh: 'auth.refresh',
             authLogout: 'auth.logout',
             authVerificationFunnel: 'auth.verificationFunnel',
-            authPasswordExpiry: 'auth.passwordExpiry',
             authPasswordChange: 'auth.passwordChange',
             authForgotConversion: 'auth.forgotConversion',
             authAdminForcePassword: 'auth.adminForcePassword',

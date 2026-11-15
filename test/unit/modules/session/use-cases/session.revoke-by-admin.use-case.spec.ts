@@ -58,6 +58,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         },
         geoLocation: null,
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+        lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
         revokedAt: null,
         isRevoked: false,
         revokedById: null,

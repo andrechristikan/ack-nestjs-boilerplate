@@ -14,13 +14,17 @@ export interface IAuthToken {
 
 export interface IAuthPassword {
     passwordHash: string;
-    passwordExpired: Date;
+    passwordExpired: Date | null;
     passwordCreated: Date;
     passwordPeriodExpired: Date;
 }
 
+export interface IAuthPasswordTemporary extends IAuthPassword {
+    passwordExpired: Date;
+}
+
 export interface IAuthPasswordOptions {
-    temporary: boolean;
+    temporary: true;
 }
 
 export interface IAuthJwtAccessTokenPayload {

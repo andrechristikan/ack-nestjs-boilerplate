@@ -4,6 +4,7 @@ import { AwsModule } from '@common/aws/aws.module';
 import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
+import { MigrationCommonPasswordSeed } from '@migration/seeds/migration.common-password.seed';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { MigrationPolicySeed } from '@migration/seeds/migration.policy.seed';
@@ -19,6 +20,7 @@ import { UserModule } from '@modules/user/user.module';
     controllers: [],
     providers: [
         MigrationApiKeySeed,
+        MigrationCommonPasswordSeed,
         MigrationCountrySeed,
         MigrationFeatureFlagSeed,
         MigrationPolicySeed,

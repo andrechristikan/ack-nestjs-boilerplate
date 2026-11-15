@@ -1,3 +1,4 @@
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 
 describe('UserAddMobileNumberRequestSchema', () => {
@@ -11,6 +12,21 @@ describe('UserAddMobileNumberRequestSchema', () => {
         const result = UserAddMobileNumberRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
+    });
+
+    it('parses the re-authentication fields beside the number', () => {
+        const full = {
+            ...payload,
+            password: 'Current-pass1',
+            method: EnumAuthTwoFactorMethod.code,
+            code: '654321',
+            backupCode: 'ABCD1234EF',
+            otp: '123456',
+        };
+
+        const result = UserAddMobileNumberRequestSchema.parse(full);
+
+        expect(result).toEqual(full);
     });
 
     it('rejects a number shorter than 8 characters', () => {
@@ -36,6 +52,15 @@ describe('UserAddMobileNumberRequestSchema', () => {
             UserAddMobileNumberRequestSchema.parse({
                 ...payload,
                 phoneCode: '+62',
+            })
+        ).toThrow();
+    });
+
+    it('rejects an empty password', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                password: '',
             })
         ).toThrow();
     });
