@@ -40,7 +40,7 @@ A bulk email follows `publishTermPolicy` (`.claude/rules/notification.md`, Term-
 
 1. The publishing transaction adds the publish effect; the resend adds its own with a fresh nonce through `OutboxService.add`.
 2. `NotificationProcessPublishTermPolicyUseCase` (`src/modules/notification/use-cases/notification.process-publish-term-policy.use-case.ts`) pages active recipients up to the bound (`UserService.getListActiveRecipientCursor`, `email.batchSize` per page) and passes each page to `NotificationTermPolicyService`; `UserService.getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
-3. Markers and batches: `NotificationRepository.createTermPolicyRecipients`, one transaction per batch, its batch row added on the same `tx`; a pending batch is re-added with only its sendable rows (`NotificationTermPolicyRecipientSendWhere`).
+3. Markers and batches: `NotificationRepository.createTermPolicyRecipientsInTx`, one transaction per batch, its batch row added on the same `tx`; a pending batch is re-added with only its sendable rows (`NotificationTermPolicyRecipientSendWhere`).
 4. Send: `NotificationEmailTermPolicyService.processPublishTermPolicy` (`src/modules/notification/services/notification.email.term-policy.service.ts`) claims, sends in bulk, and marks each success sent.
 
 ## 8. Verify

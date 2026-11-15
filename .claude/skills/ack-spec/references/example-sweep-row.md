@@ -12,11 +12,11 @@ Each row sits under its heading in `generated/report-src-sweep.md`, in the row s
 ```markdown
 ## CHANGE
 
-- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:10`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/use-cases/user.sign-up.use-case.ts:220`), so a sign-up naming an unknown country answers 404.
+- [ ] `src/modules/country/exceptions/country.not-found.exception.ts:10`: `CountryNotFoundException` answers HTTP 404, and `getOne` throws it for the `countryId` a sign-up body carries (`src/modules/user/use-cases/user.sign-up.use-case.ts:243`), so a sign-up naming an unknown country answers 404.
 
 ## DELETE
 
-- [ ] `src/modules/country/services/country.service.ts:22`: the `countryId === null` branch of `getIdByAlpha2Code` throws `CountryNotFoundException`, and its one caller (`src/modules/user/use-cases/user.import-by-admin.use-case.ts:166`) passes `user.default.country`, the constant `'ID'` (`src/configs/user.config.ts:41`) that the country seed writes (`src/migration/data/migration.country.data.ts:7`).
+- [ ] `src/modules/country/services/country.service.ts:22`: the `countryId === null` branch of `getIdByAlpha2Code` throws `CountryNotFoundException`, and its one caller (`src/modules/user/use-cases/user.process-import-by-admin.use-case.ts:169`) passes `user.default.country`, the constant `'ID'` (`src/configs/user.config.ts:38`) that the country seed writes (`src/migration/data/migration.country.data.ts:7`).
 ```
 
 At the end of the run, each row is re-read against the file it names (`sweep-log.md`, the state table): a fixed defect deletes its row, a moved line updates its `file:line`.

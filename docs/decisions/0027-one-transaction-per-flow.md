@@ -19,4 +19,5 @@ A write flow is one Mongo transaction, crossing modules when the flow spans them
 
 ## Consequences
 
-`loginVerifyTwoFactor`, `rotateSession`, and `loginWithSocial` each run in one transaction.
+- `UserLoginVerifyTwoFactorUseCase`, `UserLoginWithSocialUseCase`, and the rotation in `UserRefreshUseCase` each run in one transaction.
+- Each re-authenticated flow opens one transaction in its use case, the re-authentication completion first in it (`credential-policy.md`).

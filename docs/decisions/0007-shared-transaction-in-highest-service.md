@@ -20,4 +20,4 @@ When two or more use cases run the same cross-module sequence and its subject is
 
 ## Consequences
 
-`UserCreateByAdminUseCase` and `UserImportByAdminUseCase` each sequence `UserRegistrationService.createInTx`, `WorkspaceService.createOwnedForUsersInTx`, and the term-policy acceptance in their own transaction. The login tail stays in `UserAuthService`, and device removal stays in `SessionService.removeDeviceOwnership`: its subject is the session, since the transaction revokes the device's sessions and then drops the ownership. `service.md`, `use-case.md`, `cross-module.md`, and `database.md` carry the rule.
+`UserCreateByAdminUseCase` and `UserImportByAdminUseCase` each sequence `UserRegistrationService.createInTx`, `WorkspaceService.createOwnedForUsersInTx`, and the term-policy acceptance in their own transaction. The login tail stays in `UserAuthService`, and device removal stays in `SessionService.removeDeviceOwnershipInTx`, which the user's and the admin's flows join: its subject is the session, since the transaction revokes the device's sessions and then drops the ownership. `service.md`, `use-case.md`, `cross-module.md`, and `database.md` carry the rule.
