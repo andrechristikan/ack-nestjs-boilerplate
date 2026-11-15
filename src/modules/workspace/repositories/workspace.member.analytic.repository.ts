@@ -8,7 +8,6 @@ import type {
     IAnalyticRoleCount,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceMemberAnalyticRepository } from '@modules/workspace/interfaces/workspace.member-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -26,7 +25,7 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
             by: ['role'],
             where: {
                 ...(workspaceId !== null && { workspaceId }),
-                workspace: { OR: WorkspaceActiveFilter },
+                workspace: { deletedAt: null },
             },
             _count: { _all: true },
         });
@@ -45,7 +44,7 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
         const { where, skip, limit } = params;
         const scopedWhere: Prisma.WorkspaceMemberWhereInput = {
             ...where,
-            workspace: { OR: WorkspaceActiveFilter },
+            workspace: { deletedAt: null },
         };
 
         const [rows, groups] = await Promise.all([

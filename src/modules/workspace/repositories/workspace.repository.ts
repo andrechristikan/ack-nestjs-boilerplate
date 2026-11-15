@@ -14,10 +14,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import {
-    WorkspaceActiveFilter,
-    WorkspaceDeletedSlugPattern,
-} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceDeletedSlugPattern } from '@modules/workspace/constants/workspace.constant';
 import type {
     IWorkspaceCreate,
     IWorkspaceUpdate,
@@ -42,7 +39,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                OR: WorkspaceActiveFilter,
+                deletedAt: null,
             },
         });
     }
@@ -52,7 +49,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                OR: WorkspaceActiveFilter,
+                deletedAt: null,
             },
         });
     }
@@ -69,7 +66,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     ): Promise<number> {
         return tx.workspace.count({
             where: {
-                OR: WorkspaceActiveFilter,
+                deletedAt: null,
                 members: {
                     some: { userId, role: EnumWorkspaceMemberRole.owner },
                 },
@@ -91,7 +88,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 where: {
                     AND: [
                         where ?? {},
-                        { OR: WorkspaceActiveFilter },
+                        { deletedAt: null },
                         { members: { some: { userId } } },
                     ],
                 },
@@ -184,7 +181,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         const { count } = await tx.workspace.updateMany({
             where: {
                 id: workspaceId,
-                OR: WorkspaceActiveFilter,
+                deletedAt: null,
             },
             data: {
                 slug: WorkspaceDeletedSlugPattern.replace(
@@ -205,7 +202,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     ): Promise<boolean> {
         const workspace = await tx.workspace.findFirst({
             where: {
-                OR: WorkspaceActiveFilter,
+                deletedAt: null,
                 AND: [
                     {
                         members: {
@@ -230,7 +227,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         deletedAt: Date
     ): Promise<string[]> {
         const where: Prisma.WorkspaceWhereInput = {
-            OR: WorkspaceActiveFilter,
+            deletedAt: null,
             members: {
                 some: { userId, role: EnumWorkspaceMemberRole.owner },
             },
@@ -243,7 +240,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
         for (const workspaceId of workspaceIds) {
             await tx.workspace.updateMany({
-                where: { id: workspaceId, OR: WorkspaceActiveFilter },
+                where: { id: workspaceId, deletedAt: null },
                 data: {
                     slug: WorkspaceDeletedSlugPattern.replace(
                         '{id}',

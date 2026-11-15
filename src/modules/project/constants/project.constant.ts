@@ -4,19 +4,12 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import type { IProjectActiveFilter } from '@modules/project/interfaces/project.interface';
 
 /** @public */
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /** @public */
 export const ProjectContextStoreKey = 'ProjectContextStoreKey';
-
-/** @public */
-export const ProjectActiveFilter: IProjectActiveFilter = [
-    { deletedAt: null },
-    { deletedAt: { isSet: false } },
-];
 
 /** @public */
 export const ProjectDeletedSlugPattern = 'deleted-{id}';

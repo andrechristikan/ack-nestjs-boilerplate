@@ -9,10 +9,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import {
-    ProjectActiveFilter,
-    ProjectDeletedSlugPattern,
-} from '@modules/project/constants/project.constant';
+import { ProjectDeletedSlugPattern } from '@modules/project/constants/project.constant';
 import type {
     IProjectCreate,
     IProjectUpdate,
@@ -41,7 +38,7 @@ export class ProjectRepository implements IProjectRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                OR: ProjectActiveFilter,
+                deletedAt: null,
             },
         });
     }
@@ -68,7 +65,7 @@ export class ProjectRepository implements IProjectRepository {
                     AND: [
                         where ?? {},
                         { workspaceId },
-                        { OR: ProjectActiveFilter },
+                        { deletedAt: null },
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),
@@ -147,7 +144,7 @@ export class ProjectRepository implements IProjectRepository {
         const { count } = await tx.project.updateMany({
             where: {
                 id: projectId,
-                OR: ProjectActiveFilter,
+                deletedAt: null,
             },
             data: {
                 slug: ProjectDeletedSlugPattern.replace(
@@ -171,14 +168,14 @@ export class ProjectRepository implements IProjectRepository {
         const projects = await tx.project.findMany({
             where: {
                 workspaceId,
-                OR: ProjectActiveFilter,
+                deletedAt: null,
             },
             select: { id: true },
         });
 
         for (const { id } of projects) {
             await tx.project.updateMany({
-                where: { id, OR: ProjectActiveFilter },
+                where: { id, deletedAt: null },
                 data: {
                     slug: ProjectDeletedSlugPattern.replace('{id}', () => id),
                     deletedAt,

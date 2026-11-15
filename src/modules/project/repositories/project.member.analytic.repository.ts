@@ -8,7 +8,6 @@ import type {
     IAnalyticProjectCount,
     IAnalyticRoleCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IProjectMemberAnalyticRepository } from '@modules/project/interfaces/project.member-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -25,7 +24,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
         const { where, skip, limit } = params;
         const scopedWhere: Prisma.ProjectMemberWhereInput = {
             ...where,
-            project: { OR: ProjectActiveFilter },
+            project: { deletedAt: null },
         };
 
         const [rows, groups] = await Promise.all([
@@ -64,7 +63,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
     async groupByRole(): Promise<IAnalyticRoleCount[]> {
         const rows = await this.databaseService.client.projectMember.groupBy({
             by: ['role'],
-            where: { project: { OR: ProjectActiveFilter } },
+            where: { project: { deletedAt: null } },
             _count: { _all: true },
         });
         return rows.map(r => ({ role: r.role, count: r._count._all }));

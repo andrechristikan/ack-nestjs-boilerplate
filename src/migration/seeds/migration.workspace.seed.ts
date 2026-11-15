@@ -14,7 +14,6 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -86,6 +85,7 @@ export class MigrationWorkspaceSeed
                             data: {
                                 name: `${user.username}'s Workspace`,
                                 slug,
+                                deletedAt: null,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
@@ -158,7 +158,7 @@ export class MigrationWorkspaceSeed
                                     userId: user.id,
                                     role: EnumWorkspaceMemberRole.owner,
                                     workspace: {
-                                        OR: WorkspaceActiveFilter,
+                                        deletedAt: null,
                                     },
                                 },
                             }

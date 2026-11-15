@@ -1,8 +1,4 @@
-import type {
-    Prisma,
-    Project,
-    ProjectMember,
-} from '@generated/prisma-client/client';
+import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
@@ -31,5 +27,3 @@ export interface IProjectUpdate {
     name: string;
     description: string | null;
 }
-
-export type IProjectActiveFilter = NonNullable<Prisma.ProjectWhereInput['OR']>;

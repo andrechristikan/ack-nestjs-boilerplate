@@ -119,7 +119,3 @@ export interface IWorkspaceJoinRequestCreateData {
     expiredAt: Date;
     nonce: string;
 }
-
-export type IWorkspaceActiveFilter = NonNullable<
-    Prisma.WorkspaceWhereInput['OR']
->;

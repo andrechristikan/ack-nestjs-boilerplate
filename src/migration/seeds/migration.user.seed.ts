@@ -326,6 +326,7 @@ export class MigrationUserSeed
                                 twoFactor: {
                                     create: {
                                         enabled: false,
+                                        lastUsedStep: null,
                                         createdBy: MigrationUserSuperAdminId,
                                         updatedBy: MigrationUserSuperAdminId,
                                     },

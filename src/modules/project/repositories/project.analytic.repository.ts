@@ -1,7 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
-import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IProjectAnalyticRepository } from '@modules/project/interfaces/project.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -12,7 +11,7 @@ export class ProjectAnalyticRepository implements IProjectAnalyticRepository {
     async countCreated(startDate: Date, endDate: Date): Promise<number> {
         return this.databaseService.client.project.count({
             where: {
-                OR: ProjectActiveFilter,
+                deletedAt: null,
                 createdAt: { gte: startDate, lt: endDate },
             },
         });
@@ -20,7 +19,7 @@ export class ProjectAnalyticRepository implements IProjectAnalyticRepository {
 
     async countByWorkspace(workspaceId: string): Promise<number> {
         return this.databaseService.client.project.count({
-            where: { workspaceId, OR: ProjectActiveFilter },
+            where: { workspaceId, deletedAt: null },
         });
     }
 
@@ -32,7 +31,7 @@ export class ProjectAnalyticRepository implements IProjectAnalyticRepository {
         const rows = await this.databaseService.client.project.groupBy({
             by: ['workspaceId'],
             where: {
-                OR: ProjectActiveFilter,
+                deletedAt: null,
                 createdAt: { gte: startDate, lt: endDate },
             },
             _count: { _all: true },

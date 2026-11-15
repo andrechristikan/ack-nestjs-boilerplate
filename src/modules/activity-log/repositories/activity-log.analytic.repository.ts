@@ -20,7 +20,6 @@ import type {
     IActivityLogUserGroup,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 
@@ -232,7 +231,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         const { skip, limit } = params;
         const scopedWhere: Prisma.ActivityLogWhereInput = {
             workspaceId: { not: null },
-            workspace: { OR: WorkspaceActiveFilter },
+            workspace: { deletedAt: null },
             action: { notIn: excludedActions },
             createdAt: { gte: startDate, lt: endDate },
         };

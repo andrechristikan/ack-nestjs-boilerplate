@@ -74,6 +74,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 userId,
                 enabled: false,
                 requiredSetup: false,
+                lastUsedStep: null,
                 createdBy,
             },
         });
@@ -232,11 +233,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         const { count } = await tx.twoFactor.updateMany({
             where: {
                 userId,
-                OR: [
-                    { lastUsedStep: { isSet: false } },
-                    { lastUsedStep: null },
-                    { lastUsedStep: { lt: step } },
-                ],
+                OR: [{ lastUsedStep: null }, { lastUsedStep: { lt: step } }],
             },
             data: { lastUsedStep: step },
         });

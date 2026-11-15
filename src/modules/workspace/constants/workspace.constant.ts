@@ -3,7 +3,6 @@ import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import type { IWorkspaceActiveFilter } from '@modules/workspace/interfaces/workspace.interface';
 
 /** @public */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
@@ -13,12 +12,6 @@ export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
 
 /** @public */
 export const WorkspaceContextStoreKey = 'WorkspaceContextStoreKey';
-
-/** @public */
-export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
-    { deletedAt: null },
-    { deletedAt: { isSet: false } },
-];
 
 /** @public */
 export const WorkspaceDeletedSlugPattern = 'deleted-{id}';

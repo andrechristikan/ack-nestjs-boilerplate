@@ -13,10 +13,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import {
-    WorkspaceActiveFilter,
-    WorkspaceInviteUserListSelect,
-} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
@@ -214,7 +211,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                     gt: today,
                 },
                 workspace: {
-                    OR: WorkspaceActiveFilter,
+                    deletedAt: null,
                 },
             },
         });
