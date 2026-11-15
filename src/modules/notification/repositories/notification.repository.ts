@@ -66,7 +66,11 @@ export class NotificationRepository implements INotificationRepository {
                     data: [
                         ...pendingChannels
                             .filter(channel => channels.includes(channel))
-                            .map(channel => ({ channel })),
+                            .map(channel => ({
+                                channel,
+                                processedAt: null,
+                                sentAt: null,
+                            })),
                         ...deliveredChannels
                             .filter(channel => channels.includes(channel))
                             .map(channel => ({

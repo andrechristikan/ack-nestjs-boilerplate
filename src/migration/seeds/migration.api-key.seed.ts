@@ -77,6 +77,8 @@ export class MigrationApiKeySeed
                                 type: row.type,
                                 name: row.name,
                                 isActive: true,
+                                startAt: null,
+                                endAt: null,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
