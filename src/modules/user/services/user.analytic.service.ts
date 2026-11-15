@@ -119,20 +119,31 @@ export class UserAnalyticService {
 
     async getNearLockout(
         minAttempt: number,
+        now: Date,
         limit: number
     ): Promise<IAnalyticNearLockout[]> {
         return await this.userAnalyticRepository.findNearLockout(
             minAttempt,
+            now,
             limit
         );
     }
 
-    async getCountNearLockout(minAttempt: number): Promise<number> {
-        return await this.userAnalyticRepository.countNearLockout(minAttempt);
+    async getCountNearLockout(minAttempt: number, now: Date): Promise<number> {
+        return await this.userAnalyticRepository.countNearLockout(
+            minAttempt,
+            now
+        );
     }
 
-    async getGroupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
-        return await this.userAnalyticRepository.groupPasswordAttemptBuckets();
+    async getGroupPasswordAttemptBuckets(
+        maxAttempt: number,
+        now: Date
+    ): Promise<IAnalyticCountBucket[]> {
+        return await this.userAnalyticRepository.groupPasswordAttemptBuckets(
+            maxAttempt,
+            now
+        );
     }
 
     async getOneById(id: string): Promise<IUserAnalyticRef | null> {
@@ -145,10 +156,12 @@ export class UserAnalyticService {
 
     async getListNearLockoutOffset(
         minAttempt: number,
+        now: Date,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         return await this.userAnalyticRepository.findNearLockoutOffset(
             minAttempt,
+            now,
             params
         );
     }

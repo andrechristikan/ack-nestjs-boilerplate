@@ -538,6 +538,36 @@ describe('DeviceService', () => {
         });
     });
 
+    describe('touchOwnershipInTx', () => {
+        it('stamps the ownership, then its device, on the given tx', async () => {
+            deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
+
+            await service.touchOwnershipInTx(tx, 'user-1', 'ownership-1', now);
+
+            expect(deviceOwnershipRepository.touchInTx).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'ownership-1',
+                now
+            );
+            expect(deviceRepository.touchInTx).toHaveBeenCalledWith(
+                tx,
+                'device-1',
+                now
+            );
+        });
+
+        it('stamps no device and throws nothing when the ownership touch matches no live ownership', async () => {
+            deviceOwnershipRepository.touchInTx.mockResolvedValue(null);
+
+            await expect(
+                service.touchOwnershipInTx(tx, 'user-1', 'ownership-1', now)
+            ).resolves.toBeUndefined();
+
+            expect(deviceRepository.touchInTx).not.toHaveBeenCalled();
+        });
+    });
+
     describe('refresh', () => {
         const requestContext: IRequestContext = {
             requestLog: {

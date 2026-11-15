@@ -3,6 +3,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyRoleTypeInvalidException } from '@modules/policy/exceptions/policy.role-type-invalid.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
@@ -42,6 +43,12 @@ export class PolicyService {
         }
 
         return true;
+    }
+
+    assertRoleTypeAllowed(roleType: EnumRoleType): void {
+        if (roleType === EnumRoleType.user) {
+            throw new PolicyRoleTypeInvalidException();
+        }
     }
 
     async getManyByRole(roleId: string): Promise<Policy[]> {

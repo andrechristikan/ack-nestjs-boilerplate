@@ -26,22 +26,19 @@ import {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
-import type {
-    IAuthToken,
-    IAuthTwoFactorChallengeCache,
-} from '@modules/auth/interfaces/auth.interface';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type {
     IUser,
+    IUserTwoFactorCheck,
+    IUserTwoFactorChallenge,
     IUserTwoFactorEnabled,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
@@ -57,9 +54,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const authTwoFactorService: MockProxy<AuthTwoFactorService> =
-        mock<AuthTwoFactorService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -73,7 +67,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
     let setupUseCase: UserLoginSetupTwoFactorUseCase;
 
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const loginAt = new Date('2026-03-01T00:05:00.000Z');
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
         roleType: EnumRoleType.user,
@@ -106,6 +99,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -123,6 +117,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -164,13 +159,19 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
     const session: IUserLoginSession = {
         tokens,
         sessionId: 'session-bramble',
-        jti: 'jti-bramble',
     };
-    const challenge: IAuthTwoFactorChallengeCache = {
+    const challenge: IUserTwoFactorChallenge = {
         userId: 'user-bramble',
         device: deviceIdentity,
         loginFrom: EnumUserLoginFrom.website,
         loginWith: EnumUserLoginWith.credential,
+    };
+    const checked: IUserTwoFactorCheck = {
+        verified: {
+            method: EnumAuthTwoFactorMethod.code,
+            newBackupCodes: null,
+        },
+        totpStep: 58123456,
     };
     const verified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
@@ -185,7 +186,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.createTokenAndSession.mockResolvedValue(session);
+        userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -196,11 +197,6 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                     useValue: userTwoFactorService,
                 },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: SessionService, useValue: sessionService },
-                {
-                    provide: AuthTwoFactorService,
-                    useValue: authTwoFactorService,
-                },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -219,31 +215,27 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         };
 
         beforeEach(() => {
-            authTwoFactorService.getChallenge.mockResolvedValue(challenge);
-            authTwoFactorService.consumeChallenge.mockResolvedValue(challenge);
+            userTwoFactorService.getChallenge.mockResolvedValue(challenge);
+            userTwoFactorService.consumeChallengeInTx.mockResolvedValue();
             userTwoFactorService.getOneForLoginVerify.mockResolvedValue(
                 twoFactorUser
             );
-            userTwoFactorService.verify.mockResolvedValue(verified);
+            userTwoFactorService.check.mockResolvedValue(checked);
         });
 
-        it('verifies the challenge user, claims the challenge, records the verification with its entry on one tx, and issues the session', async () => {
+        it('checks the code before the transaction, then claims the challenge, verifies, records the verification with its entry, and issues the session on one tx', async () => {
             const callOrder: string[] = [];
-            userTwoFactorService.assertAttemptCounted.mockImplementation(
-                async () => {
-                    callOrder.push('assertAttemptCounted');
-                }
-            );
-            userTwoFactorService.verify.mockImplementation(async () => {
-                callOrder.push('verify');
+            userTwoFactorService.check.mockImplementation(async () => {
+                callOrder.push('check');
 
-                return verified;
+                return checked;
             });
-            authTwoFactorService.consumeChallenge.mockImplementation(
+            userTwoFactorService.verifyInTx.mockImplementation(async () => {
+                callOrder.push('verifyInTx');
+            });
+            userTwoFactorService.consumeChallengeInTx.mockImplementation(
                 async () => {
-                    callOrder.push('consumeChallenge');
-
-                    return challenge;
+                    callOrder.push('consumeChallengeInTx');
                 }
             );
             userTwoFactorService.recordVerificationInTx.mockImplementation(
@@ -256,9 +248,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
 
                 return 'outbox-id';
             });
-            userAuthService.createTokenAndSession.mockImplementation(
+            userAuthService.createTokenAndSessionInTx.mockImplementation(
                 async () => {
-                    callOrder.push('createTokenAndSession');
+                    callOrder.push('createTokenAndSessionInTx');
 
                     return session;
                 }
@@ -270,26 +262,26 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 data: tokens,
             });
 
-            expect(authTwoFactorService.getChallenge).toHaveBeenCalledWith(
+            expect(userTwoFactorService.getChallenge).toHaveBeenCalledWith(
                 'challenge-token'
             );
             expect(
                 userTwoFactorService.getOneForLoginVerify
             ).toHaveBeenCalledWith('user-bramble');
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                twoFactorUser
-            );
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(
                 twoFactorUser,
                 {
                     code: '123456',
                     backupCode: null,
                     method: EnumAuthTwoFactorMethod.code,
                 }
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                checked
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
@@ -306,7 +298,10 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
-            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
+            expect(
+                userAuthService.createTokenAndSessionInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 twoFactorUser,
@@ -315,16 +310,16 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 EnumUserLoginWith.credential,
                 now
             );
-            expect(authTwoFactorService.consumeChallenge).toHaveBeenCalledWith(
-                'challenge-token'
-            );
+            expect(
+                userTwoFactorService.consumeChallengeInTx
+            ).toHaveBeenCalledWith(tx, 'challenge-token');
             expect(callOrder).toEqual([
-                'assertAttemptCounted',
-                'verify',
-                'consumeChallenge',
+                'check',
+                'consumeChallengeInTx',
+                'verifyInTx',
                 'recordVerificationInTx',
                 'addInTx',
-                'createTokenAndSession',
+                'createTokenAndSessionInTx',
             ]);
         });
 
@@ -333,7 +328,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 user: twoFactorUser,
                 pendingSecret: 'pending-secret',
             });
-            userTwoFactorService.enableTwoFactor.mockResolvedValue([
+            userTwoFactorService.enableTwoFactorInTx.mockResolvedValue([
                 'backup-one',
             ]);
 
@@ -343,7 +338,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             });
 
             expect(
-                authTwoFactorService.consumeChallenge
+                userTwoFactorService.consumeChallengeInTx
             ).not.toHaveBeenCalled();
 
             await expect(
@@ -352,10 +347,10 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 data: tokens,
             });
 
-            expect(authTwoFactorService.getChallenge).toHaveBeenCalledTimes(2);
-            expect(authTwoFactorService.consumeChallenge).toHaveBeenCalledTimes(
-                1
-            );
+            expect(userTwoFactorService.getChallenge).toHaveBeenCalledTimes(2);
+            expect(
+                userTwoFactorService.consumeChallengeInTx
+            ).toHaveBeenCalledTimes(1);
         });
 
         it('forwards the backup code', async () => {
@@ -365,7 +360,9 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 backupCode: 'backup-code',
             });
 
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
                 twoFactorUser,
                 {
                     code: null,
@@ -376,7 +373,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
         });
 
         it('throws AuthTwoFactorChallengeInvalidException without reading the user when the challenge is missing', async () => {
-            authTwoFactorService.getChallenge.mockRejectedValue(
+            userTwoFactorService.getChallenge.mockRejectedValue(
                 new AuthTwoFactorChallengeInvalidException()
             );
 
@@ -391,8 +388,8 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('answers the two-factor attempt limit of a spent count and verifies nothing', async () => {
-            userTwoFactorService.assertAttemptCounted.mockRejectedValue(
+        it('answers the two-factor attempt limit of the check and writes nothing', async () => {
+            userTwoFactorService.check.mockRejectedValue(
                 new AuthTwoFactorAttemptMaxException()
             );
 
@@ -409,17 +406,17 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             });
 
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
-                authTwoFactorService.consumeChallenge
+                userTwoFactorService.consumeChallengeInTx
             ).not.toHaveBeenCalled();
         });
 
         it('issues nothing and adds no entry when the verification fails', async () => {
             const failure = new Error('invalid code');
-            userTwoFactorService.verify.mockRejectedValue(failure);
+            userTwoFactorService.check.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -429,13 +426,13 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('leaves the challenge claimable when the code is wrong', async () => {
-            userTwoFactorService.verify.mockRejectedValue(
+            userTwoFactorService.check.mockRejectedValue(
                 new Error('invalid code')
             );
 
@@ -444,13 +441,15 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             ).rejects.toThrow('invalid code');
 
             expect(
-                authTwoFactorService.consumeChallenge
+                userTwoFactorService.consumeChallengeInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('creates no session when the challenge claim fails', async () => {
-            const failure = new Error('redis down');
-            authTwoFactorService.consumeChallenge.mockRejectedValue(failure);
+        it('creates no session when the challenge claim is lost', async () => {
+            const failure = new AuthTwoFactorChallengeInvalidException();
+            userTwoFactorService.consumeChallengeInTx.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -460,7 +459,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -476,11 +475,11 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('throws AuthTwoFactorInvalidException on a write conflict, adds no entry, and issues nothing', async () => {
+        it('throws AuthTwoFactorChallengeInvalidException on a write conflict, adds no entry, and issues nothing', async () => {
             const conflict = new Error('write conflict');
             userTwoFactorService.recordVerificationInTx.mockRejectedValue(
                 conflict
@@ -493,14 +492,14 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
                 module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                messagePath: 'auth.error.twoFactorInvalid',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+                messagePath: 'auth.error.twoFactorChallengeInvalid',
             });
 
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -521,73 +520,41 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTokenAndSession
+                userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('rejects with the session start failure', async () => {
+        it('wraps the session start failure of the one transaction', async () => {
             const failure = new Error('tx failed');
-            userAuthService.createTokenAndSession.mockRejectedValue(failure);
+            userAuthService.createTokenAndSessionInTx.mockRejectedValue(
+                failure
+            );
+            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toBe(failure);
-        });
-    });
-
-    describe('startSession', () => {
-        const startArgs = [
-            requestContext,
-            apiKeyContext,
-            twoFactorUser,
-            deviceIdentity,
-            EnumUserLoginFrom.website,
-            EnumUserLoginWith.credential,
-            loginAt,
-        ] as const;
-
-        it('starts the session through createTokenAndSession with the passed context', async () => {
-            await useCase['startSession'](...startArgs);
-
-            expect(userAuthService.createTokenAndSession).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                twoFactorUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
         });
 
-        it('sets the login after the service call', async () => {
-            await useCase['startSession'](...startArgs);
-
-            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledWith(
-                'user-bramble',
-                'session-bramble',
-                'jti-bramble'
+        it('throws AuthTwoFactorChallengeInvalidException when the session write conflicts', async () => {
+            const conflict = new Error('write conflict');
+            userAuthService.createTokenAndSessionInTx.mockRejectedValue(
+                conflict
             );
-            expect(sessionService.setLoginOrRevoke).toHaveBeenCalledAfter(
-                userAuthService.createTokenAndSession
-            );
-        });
-
-        it('returns the session tokens', async () => {
-            await expect(useCase['startSession'](...startArgs)).resolves.toBe(
-                tokens
-            );
-        });
-
-        it('sets no login when createTokenAndSession rejects', async () => {
-            const failure = new Error('tx failed');
-            userAuthService.createTokenAndSession.mockRejectedValue(failure);
-
-            await expect(useCase['startSession'](...startArgs)).rejects.toBe(
-                failure
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
             );
 
-            expect(sessionService.setLoginOrRevoke).not.toHaveBeenCalled();
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+            });
         });
     });
 });

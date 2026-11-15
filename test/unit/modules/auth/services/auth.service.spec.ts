@@ -6,7 +6,6 @@ import type { TokenPayload } from 'google-auth-library';
 import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthSocialService } from '@modules/auth/services/auth.social.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
@@ -31,8 +30,6 @@ import {
 describe('AuthService', () => {
     const authSocialService: MockProxy<AuthSocialService> =
         mock<AuthSocialService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     let service: AuthService;
 
     const accessPayload: IAuthJwtAccessTokenPayload = {
@@ -65,7 +62,6 @@ describe('AuthService', () => {
             providers: [
                 AuthService,
                 { provide: AuthSocialService, useValue: authSocialService },
-                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
         service = module.get(AuthService);
@@ -108,10 +104,10 @@ describe('AuthService', () => {
             jti: 'jti-value',
         };
 
-        it('throws SessionRevokedException when no session jti is stored', () => {
+        it('throws SessionRevokedException when the session is not active', () => {
             let thrown: unknown;
             try {
-                service.validateJwtAccessSession(identified, null);
+                service.validateJwtAccessSession(identified, false);
             } catch (error) {
                 thrown = error;
             }
@@ -125,46 +121,10 @@ describe('AuthService', () => {
                     ],
                 messagePath: 'session.error.revoked',
             });
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
-        it('throws SessionRevokedException when the cached jti does not match', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-jti-value');
-            helperHashService.sha256Compare.mockReturnValue(false);
-
-            let thrown: unknown;
-            try {
-                service.validateJwtAccessSession(identified, 'different-jti');
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
-            });
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'jti-value'
-            );
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'different-jti',
-                'hash-jti-value'
-            );
-        });
-
-        it('returns the payload when the stored jti matches', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-jti-value');
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            const result = service.validateJwtAccessSession(
-                identified,
-                'jti-value'
-            );
+        it('returns the payload when the session is active', () => {
+            const result = service.validateJwtAccessSession(identified, true);
 
             expect(result).toBe(identified);
         });
@@ -661,36 +621,6 @@ describe('AuthService', () => {
                     jti: 1 as unknown as string,
                 })
             ).toBe(false);
-        });
-    });
-
-    describe('isJtiMatch', () => {
-        it('compares the stored jti digest with the SHA-256 hash of the token jti', () => {
-            helperHashService.sha256Hash.mockImplementation(
-                value => `hash-${value}`
-            );
-            helperHashService.sha256Compare.mockReturnValue(true);
-
-            const result = service['isJtiMatch']('hash-token-jti', 'token-jti');
-
-            expect(result).toBe(true);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledTimes(1);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'token-jti'
-            );
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'hash-token-jti',
-                'hash-token-jti'
-            );
-        });
-
-        it('returns false when the digests differ', () => {
-            helperHashService.sha256Hash.mockReturnValue('hash');
-            helperHashService.sha256Compare.mockReturnValue(false);
-
-            expect(service['isJtiMatch']('stored-digest', 'token-jti')).toBe(
-                false
-            );
         });
     });
 

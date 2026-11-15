@@ -128,7 +128,8 @@ model User {
   password               String?
   passwordExpired        DateTime?
   passwordCreated        DateTime?
-  passwordAttempt        Int?
+  passwordAttempt        Int                @default(0)
+  passwordLockedUntil    DateTime?
   signUpAt               DateTime           @default(now())
   signUpFrom             EnumUserSignUpFrom
   signUpWith             EnumUserSignUpWith
@@ -160,6 +161,7 @@ model User {
   acceptances             TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
   forgotPasswords         ForgotPassword[]           @relation("UserForgotPassword")
   twoFactor               TwoFactor?                 @relation("UserTwoFactor")
+  twoFactorChallenges     TwoFactorChallenge[]       @relation("UserTwoFactorChallenges")
   notifications           Notification[]             @relation("UserNotifications")
   notificationSettings    NotificationUserSetting[]  @relation("UserNotificationSettings")
   deviceOwnerships        DeviceOwnership[]          @relation("DeviceOwnershipUser")
@@ -180,6 +182,7 @@ model User {
   @@index(fields: [signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, passwordAttempt])
+  @@index(fields: [deletedAt, passwordLockedUntil])
   @@index(fields: [deletedAt, lastLoginAt(sort: Desc)])
   @@map("Users")
 }
@@ -257,7 +260,7 @@ model Session {
   id                String       @id @default(auto()) @map("_id") @db.ObjectId
   userId            String       @db.ObjectId
   deviceOwnershipId String       @db.ObjectId
-  jti               String
+  jtiDigest         String
   ipAddress         String?
   userAgent         UserAgent
   geoLocation       GeoLocation?
@@ -275,7 +278,7 @@ model Session {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  @@unique(fields: [userId, jti])
+  @@unique(fields: [userId, jtiDigest])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, isRevoked, expiredAt])
   @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
@@ -352,6 +355,7 @@ model TwoFactor {
   lastUsedAt    DateTime?
   lastUsedStep  Int?
   attempt       Int       @default(0)
+  lockedUntil   DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -362,6 +366,25 @@ model TwoFactor {
 
   @@unique(fields: [userId])
   @@map("TwoFactors")
+}
+
+model TwoFactorChallenge {
+  id         String                   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String                   @db.ObjectId
+  tokenHash  String
+  device     TwoFactorChallengeDevice
+  loginFrom  EnumUserLoginFrom
+  loginWith  EnumUserLoginWith
+  expiredAt  DateTime
+  consumedAt DateTime?
+
+  user User @relation("UserTwoFactorChallenges", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+
+  @@unique(fields: [tokenHash])
+  @@map("TwoFactorChallenges")
 }
 
 model TermPolicy {
@@ -709,6 +732,13 @@ model Outbox {
   @@index(fields: [status, createdAt])
   @@index(fields: [status, enqueuedAt])
   @@map("Outboxes")
+}
+
+type TwoFactorChallengeDevice {
+  fingerprint                String
+  name                       String?
+  platform                   EnumDevicePlatform
+  encryptedNotificationToken String?
 }
 
 type UserPhoto {

@@ -220,9 +220,12 @@ describe('UserAnalyticService', () => {
             ];
             userAnalyticRepository.findNearLockout.mockResolvedValue(rows);
 
-            await expect(service.getNearLockout(4, 100)).resolves.toBe(rows);
+            await expect(service.getNearLockout(4, now, 100)).resolves.toBe(
+                rows
+            );
             expect(userAnalyticRepository.findNearLockout).toHaveBeenCalledWith(
                 4,
+                now,
                 100
             );
         });
@@ -232,10 +235,10 @@ describe('UserAnalyticService', () => {
         it('delegates to the repository count', async () => {
             userAnalyticRepository.countNearLockout.mockResolvedValue(7);
 
-            await expect(service.getCountNearLockout(4)).resolves.toBe(7);
+            await expect(service.getCountNearLockout(4, now)).resolves.toBe(7);
             expect(
                 userAnalyticRepository.countNearLockout
-            ).toHaveBeenCalledWith(4);
+            ).toHaveBeenCalledWith(4, now);
         });
     });
 
@@ -247,8 +250,11 @@ describe('UserAnalyticService', () => {
             );
 
             await expect(
-                service.getGroupPasswordAttemptBuckets()
+                service.getGroupPasswordAttemptBuckets(5, now)
             ).resolves.toBe(rows);
+            expect(
+                userAnalyticRepository.groupPasswordAttemptBuckets
+            ).toHaveBeenCalledWith(5, now);
         });
     });
 
@@ -258,6 +264,7 @@ describe('UserAnalyticService', () => {
                 id: 'user-1',
                 email: 'user1@example.com',
                 passwordAttempt: 0,
+                passwordLockedUntil: null,
             };
             userAnalyticRepository.findOneById.mockResolvedValue(row);
 
@@ -291,11 +298,11 @@ describe('UserAnalyticService', () => {
             );
 
             await expect(
-                service.getListNearLockoutOffset(4, params)
+                service.getListNearLockoutOffset(4, now, params)
             ).resolves.toBe(response);
             expect(
                 userAnalyticRepository.findNearLockoutOffset
-            ).toHaveBeenCalledWith(4, params);
+            ).toHaveBeenCalledWith(4, now, params);
         });
     });
 
@@ -320,6 +327,7 @@ describe('UserAnalyticService', () => {
                     id: 'user-1',
                     email: 'user1@example.com',
                     passwordAttempt: 2,
+                    passwordLockedUntil: null,
                 },
             ];
             userAnalyticRepository.findManyByIds.mockResolvedValue(rows);

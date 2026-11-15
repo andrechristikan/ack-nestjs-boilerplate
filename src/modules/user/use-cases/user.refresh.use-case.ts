@@ -14,8 +14,8 @@ import type {
     IAuthJwtRefreshTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -33,6 +33,7 @@ export class UserRefreshUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly sessionService: SessionService,
+        private readonly deviceService: DeviceService,
         private readonly authJwtService: AuthJwtService,
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
@@ -53,45 +54,68 @@ export class UserRefreshUseCase implements IAppUseCase<
                 refreshToken
             );
         const oldJti = this.authJwtService.getRefreshJti(payload);
-        const { sessionId, userId, loginWith } = authContext;
+        const { sessionId, userId, loginWith, deviceOwnershipId } = authContext;
         const { loginFrom } = payload;
         const { jti: newJti, tokens } = this.authJwtService.refreshToken(
             user,
             refreshToken
         );
-        let isRotated: boolean;
         try {
             // Sequential by design: write must not run if an earlier step throws
-            isRotated = await this.outboxService.withTransaction(async tx => {
+            return await this.outboxService.withTransaction(async tx => {
                 const isJtiUpdated = await this.sessionService.updateJtiInTx(
                     tx,
                     sessionId,
                     oldJti,
                     newJti
                 );
-                if (!isJtiUpdated) {
-                    return false;
+                const now = this.helperDateService.create();
+                if (isJtiUpdated) {
+                    await this.userService.updateLoginInTx(
+                        tx,
+                        userId,
+                        loginFrom,
+                        loginWith,
+                        requestLog.ipAddress,
+                        now
+                    );
+                    await this.deviceService.touchOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        now
+                    );
+                    const entry = this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
+                        { action: EnumActivityLogAction.userRefreshToken }
+                    );
+                    await this.outboxService.addInTx(tx, entry);
+
+                    return tokens;
                 }
 
-                const now = this.helperDateService.create();
-                await this.userService.updateLoginInTx(
+                const isRevoked = await this.sessionService.revokeIfActiveInTx(
                     tx,
                     userId,
-                    loginFrom,
-                    loginWith,
-                    requestLog.ipAddress,
+                    sessionId,
+                    userId,
                     now
                 );
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    { action: EnumActivityLogAction.userRefreshToken }
-                );
-                await this.outboxService.addInTx(tx, entry);
+                if (isRevoked) {
+                    const revokeEntry = this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
+                        { action: EnumActivityLogAction.userRevokeSession }
+                    );
+                    await this.outboxService.addInTx(tx, revokeEntry);
+                }
 
-                return true;
+                return null;
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -105,56 +129,6 @@ export class UserRefreshUseCase implements IAppUseCase<
 
             throw new AppUnknownException(err);
         }
-
-        if (!isRotated) {
-            const revokeEntry = this.activityLogService.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                { action: EnumActivityLogAction.userRevokeSession }
-            );
-            await this.sessionService.revokeIfActive(
-                userId,
-                sessionId,
-                revokeEntry
-            );
-
-            return null;
-        }
-
-        const cacheUpdate = await this.sessionService.updateLogin(
-            userId,
-            sessionId,
-            oldJti,
-            newJti
-        );
-        if (cacheUpdate === EnumSessionCacheUpdate.mismatch) {
-            const revokeEntry = this.activityLogService.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                { action: EnumActivityLogAction.userRevokeSession }
-            );
-            await this.sessionService.revokeIfActive(
-                userId,
-                sessionId,
-                revokeEntry
-            );
-
-            return null;
-        }
-
-        if (cacheUpdate === EnumSessionCacheUpdate.absent) {
-            await this.sessionService.setLoginOrRevoke(
-                userId,
-                sessionId,
-                newJti
-            );
-        }
-
-        return tokens;
     }
 
     async execute(

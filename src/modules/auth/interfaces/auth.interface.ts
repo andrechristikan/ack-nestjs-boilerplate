@@ -1,4 +1,3 @@
-import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
@@ -93,16 +92,4 @@ export interface IAuthTwoFactorBackupCodes {
 export interface IAuthTwoFactorBackupCodesVerifyResult {
     isValid: boolean;
     index: number;
-}
-
-export interface IAuthTwoFactorChallenge {
-    challengeToken: string;
-    expiresInMs: number;
-}
-
-export interface IAuthTwoFactorChallengeCache {
-    userId: string;
-    device: IDeviceIdentity;
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
 }

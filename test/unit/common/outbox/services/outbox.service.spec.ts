@@ -472,12 +472,12 @@ describe('OutboxService', () => {
     });
 
     describe('dispatch', () => {
-        const lockoutRow: Outbox = {
+        const userRow: Outbox = {
             ...purgeRow,
             id: 'outbox-2',
             queue: EnumUserQueue.user,
-            name: EnumUserProcess.lockout,
-            data: { userId: 'user-1' },
+            name: EnumUserProcess.deletePhoto,
+            data: { userId: 'user-1', key: 'photo-key', access: 'private' },
             idempotencyKey: 'outbox-2',
         };
 
@@ -491,7 +491,7 @@ describe('OutboxService', () => {
             );
             outboxRepository.findManyPendingByIds.mockResolvedValue([
                 purgeRow,
-                lockoutRow,
+                userRow,
             ]);
             sessionQueue.addBulk.mockResolvedValue([
                 { data: { outboxId: 'outbox-1' } } as Job<IOutboxJobPayload>,
@@ -519,7 +519,7 @@ describe('OutboxService', () => {
             ]);
             expect(userQueue.addBulk).toHaveBeenCalledWith([
                 {
-                    name: EnumUserProcess.lockout,
+                    name: EnumUserProcess.deletePhoto,
                     data: { outboxId: 'outbox-2' },
                     opts: {
                         jobId: 'outbox-2',
@@ -561,7 +561,7 @@ describe('OutboxService', () => {
             );
             outboxRepository.findManyPendingByIds.mockResolvedValue([
                 purgeRow,
-                lockoutRow,
+                userRow,
             ]);
             sessionQueue.addBulk.mockRejectedValue(error);
             userQueue.addBulk.mockResolvedValue([

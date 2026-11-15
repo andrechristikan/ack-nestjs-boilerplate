@@ -468,7 +468,10 @@ describe('AnalyticAnomalyService', () => {
             });
             expect(
                 userAnalyticService.getCountNearLockout
-            ).toHaveBeenCalledWith(4);
+            ).toHaveBeenCalledWith(4, now);
+            expect(
+                userAnalyticService.getGroupPasswordAttemptBuckets
+            ).toHaveBeenCalledWith(5, now);
         });
     });
 
@@ -483,7 +486,7 @@ describe('AnalyticAnomalyService', () => {
             expect(result).toEqual(offsetPage);
             expect(
                 userAnalyticService.getListNearLockoutOffset
-            ).toHaveBeenCalledWith(4, pagination);
+            ).toHaveBeenCalledWith(4, now, pagination);
         });
 
         it('takes the near-lockout min attempt from the fraud util for the password max attempt', async () => {
@@ -500,7 +503,7 @@ describe('AnalyticAnomalyService', () => {
             );
             expect(
                 userAnalyticService.getListNearLockoutOffset
-            ).toHaveBeenCalledWith(1, pagination);
+            ).toHaveBeenCalledWith(1, now, pagination);
         });
     });
 

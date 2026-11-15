@@ -11,6 +11,10 @@ export const UserContextStoreKey = 'UserContextStoreKey';
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /** @public */
+export const UserTwoFactorChallengeEncryptionPurpose =
+    'user.twoFactorChallenge.notificationToken';
+
+/** @public */
 export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
 
 /** @public */

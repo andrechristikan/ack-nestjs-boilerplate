@@ -81,6 +81,11 @@ describe('NotificationTemplateService', () => {
             subject: 'Reset Two Factor By Admin',
         },
         {
+            name: EnumNotificationKind.loginLocked,
+            file: 'notification.login-locked.template.hbs',
+            subject: 'Login Locked',
+        },
+        {
             name: EnumNotificationKind.newDeviceLogin,
             file: 'notification.new-device-login.template.hbs',
             subject: 'Device Login',

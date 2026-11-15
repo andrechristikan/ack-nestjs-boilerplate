@@ -57,8 +57,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.passwordHistoryService.assertNew(reset.userId, newPassword);
 
-        const twoFactorVerified =
-            await this.userTwoFactorService.verifyIfRequired(
+        const twoFactorChecked =
+            await this.userTwoFactorService.checkIfRequired(
                 requestContext,
                 apiKeyContext,
                 reset.user,
@@ -73,6 +73,13 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
         try {
             await this.outboxService.withTransaction(async tx => {
+                if (twoFactorChecked) {
+                    await this.userTwoFactorService.verifyInTx(
+                        tx,
+                        reset.userId,
+                        twoFactorChecked
+                    );
+                }
                 const [snapshot] = await Promise.all([
                     this.notificationService.getSnapshot(reset.user),
                     this.userService.updatePasswordInTx(
@@ -119,11 +126,11 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         }
                     ),
                 ];
-                if (twoFactorVerified) {
+                if (twoFactorChecked) {
                     await this.userTwoFactorService.recordVerificationInTx(
                         tx,
                         reset.user,
-                        twoFactorVerified
+                        twoFactorChecked.verified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
                         requestContext,

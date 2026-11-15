@@ -107,6 +107,16 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
+    async findOneWithPolicyCountByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRoleWithPolicyCount | null> {
+        return tx.role.findUnique({
+            where: { id },
+            include: { _count: { select: { policies: true } } },
+        });
+    }
+
     async createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,

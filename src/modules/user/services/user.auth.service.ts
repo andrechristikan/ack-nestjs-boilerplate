@@ -1,5 +1,6 @@
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -15,7 +16,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { UserAgent } from '@generated/prisma-client/client';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -28,10 +28,11 @@ import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.ema
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type {
     IUser,
-    IUserCredentialAttempt,
+    IUserCredential,
     IUserLoginTwoFactorChallenge,
     IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
@@ -58,7 +59,6 @@ export class UserAuthService {
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
         private readonly authJwtService: AuthJwtService,
-        private readonly authTwoFactorService: AuthTwoFactorService,
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly outboxService: OutboxService,
@@ -85,80 +85,80 @@ export class UserAuthService {
         return user.twoFactor.requiredSetup;
     }
 
-    /** Resolves the active credential user of an email and counts one password attempt, adding the lockout row and entries when the budget is spent; isAttemptCounted false on a spent budget, and an unknown, inactive, or passwordless account throws the credential error. */
-    async countCredentialAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        email: string
-    ): Promise<IUserCredentialAttempt> {
+    /** Resolves the active credential user of an email, counting nothing; an unknown, inactive, or passwordless account throws the credential error. */
+    async getOneForCredentialLogin(email: string): Promise<IUserCredential> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user || user.status !== EnumUserStatus.active) {
             throw new UserCredentialInvalidException();
         }
 
-        const attempt = await this.userPasswordService.countPasswordAttempt(
-            requestContext,
-            apiKeyContext,
-            user
-        );
-        if (!attempt) {
+        const credential = this.userPasswordService.getCredential(user);
+        if (!credential) {
             throw new UserCredentialInvalidException();
         }
 
-        return attempt;
+        return credential;
     }
 
-    /** Checks the password of a counted attempt and resets the counter on a match; false on a mismatch or a null password, so the caller records the failure before asserting it. */
-    async verifyCredential(
-        { user, hashedPassword }: IUserCredentialAttempt,
+    /** Compares the password with the credential and writes nothing; false on a mismatch or a null password. */
+    async isCredentialMatch(
+        { hashedPassword }: IUserCredential,
         plainPassword: string | null
     ): Promise<boolean> {
         if (plainPassword === null) {
             return false;
         }
 
-        const isPasswordValid = await this.authPasswordUtil.validatePassword(
+        return this.authPasswordUtil.validatePassword(
             plainPassword,
             hashedPassword
         );
-        if (!isPasswordValid) {
-            return false;
-        }
-
-        await this.userPasswordService.resetPasswordAttempt(user.id);
-
-        return true;
     }
 
-    /** Asserts the password of a counted attempt: a spent budget throws the max-attempt error, a match resets the counter, a mismatch or a null password throws not-match, and an expired password throws after a match. */
+    /** Asserts the password of a credential: a lock throws the max-attempt error before the compare, a mismatch or a null password counts the failure and throws the max-attempt error when it locked, else not-match, and an expired password throws after a match. */
     async assertPasswordAttempt(
-        attempt: IUserCredentialAttempt,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        credential: IUserCredential,
         plainPassword: string | null
     ): Promise<void> {
-        this.userPasswordService.assertAttemptCounted(attempt.isAttemptCounted);
+        const { user } = credential;
+        this.userPasswordService.assertPasswordAttemptAvailable(user);
 
-        const isMatch = await this.verifyCredential(attempt, plainPassword);
+        const isMatch = await this.isCredentialMatch(credential, plainPassword);
+        if (!isMatch) {
+            const isLocked =
+                await this.userPasswordService.countFailedPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    user
+                );
+            if (isLocked) {
+                throw new UserPasswordAttemptMaxException();
+            }
+        }
         this.assertPasswordMatched(isMatch);
-        this.assertPasswordNotExpired(attempt.user);
+        this.assertPasswordNotExpired(user);
     }
 
-    /** Counts one password attempt of an account holding a password, then asserts the password; returns at once for an account with no password. */
+    /** Asserts the password of an account holding one, counting a failure; returns at once for an account with no password. */
     async assertCurrentPassword(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUser,
         plainPassword: string | null
     ): Promise<void> {
-        const attempt = await this.userPasswordService.countPasswordAttempt(
-            requestContext,
-            apiKeyContext,
-            user
-        );
-        if (attempt === null) {
+        const credential = this.userPasswordService.getCredential(user);
+        if (credential === null) {
             return;
         }
 
-        await this.assertPasswordAttempt(attempt, plainPassword);
+        await this.assertPasswordAttempt(
+            requestContext,
+            apiKeyContext,
+            credential,
+            plainPassword
+        );
     }
 
     assertPasswordNotExpired(user: IUser): void {
@@ -201,33 +201,29 @@ export class UserAuthService {
         return user;
     }
 
-    /** Marks the user verified by the provider-verified email, clearing its password, and adds the verified entry in the same transaction. */
-    async verifyEmailBySocial(
+    /** Marks the user verified by the provider-verified email, clearing its password, and adds the verified entry on the caller's transaction. */
+    async verifyEmailBySocialInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUser
     ): Promise<IUser> {
-        const row = await this.outboxService.withTransaction(async tx => {
-            const marked =
-                await this.userVerificationService.markVerifiedBySocialInTx(
-                    tx,
-                    user.id
-                );
-            const entry = this.activityLogService.recordEffect(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: user.id,
-                    createdBy: user.id,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
-
-            return marked;
-        });
+        const row = await this.userVerificationService.markVerifiedBySocialInTx(
+            tx,
+            user.id
+        );
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userVerifiedEmail,
+                userId: user.id,
+                createdBy: user.id,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
         return { ...user, ...row };
     }
@@ -238,8 +234,9 @@ export class UserAuthService {
         }
     }
 
-    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, stamps the login, and adds the login and revoke entries in one transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens. */
-    async createTokenAndSession(
+    /** Upserts the device, revokes the user's earlier sessions on it and every other user's live sessions on the device, creates the session, stamps the login, and adds the login and revoke entries on the caller's transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens signed after the writes. */
+    async createTokenAndSessionInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUser,
@@ -260,124 +257,116 @@ export class UserAuthService {
         const now = this.helperDateService.create();
         const loginAction =
             this.userUtil.resolveLoginActivityLogAction(loginWith);
-        const deviceOwnershipId = await this.outboxService.withTransaction(
-            async tx => {
-                const upserted = await this.deviceService.upsertForLoginInTx(
+        const upserted = await this.deviceService.upsertForLoginInTx(
+            tx,
+            user.id,
+            device,
+            now
+        );
+        if (!upserted.isNewDevice) {
+            await this.sessionService.revokeByDeviceOwnershipInTx(
+                tx,
+                user.id,
+                upserted.deviceOwnership.id,
+                user.id,
+                now
+            );
+        }
+        const otherOwnershipIds =
+            await this.deviceService.getOtherOwnershipIdsByDeviceInTx(
+                tx,
+                upserted.device.id,
+                user.id
+            );
+        let affectedSessions: ISessionPurgeLoginsPayload[] = [];
+        if (otherOwnershipIds.length > 0) {
+            affectedSessions =
+                await this.sessionService.revokeByDeviceOwnershipIdsInTx(
                     tx,
+                    otherOwnershipIds,
                     user.id,
-                    device,
                     now
                 );
-                if (!upserted.isNewDevice) {
-                    await this.sessionService.revokeByDeviceOwnershipInTx(
-                        tx,
-                        user.id,
-                        upserted.deviceOwnership.id,
-                        user.id,
-                        now
-                    );
-                }
-                const otherOwnershipIds =
-                    await this.deviceService.getOtherOwnershipIdsByDeviceInTx(
-                        tx,
-                        upserted.device.id,
-                        user.id
-                    );
-                let affectedSessions: ISessionPurgeLoginsPayload[] = [];
-                if (otherOwnershipIds.length > 0) {
-                    affectedSessions =
-                        await this.sessionService.revokeByDeviceOwnershipIdsInTx(
-                            tx,
-                            otherOwnershipIds,
-                            user.id,
-                            now
-                        );
-                }
-                await this.sessionService.createInTx(
-                    tx,
-                    user.id,
-                    sessionId,
-                    upserted.deviceOwnership.id,
-                    jti,
-                    expiredAt,
-                    requestLog
-                );
-                await this.userService.updateLoginInTx(
-                    tx,
-                    user.id,
-                    loginFrom,
-                    loginWith,
-                    requestLog.ipAddress,
-                    now
-                );
-
-                const effects: IOutboxEffect[] = [
-                    this.activityLogService.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        null,
-                        null,
-                        {
-                            action: loginAction,
-                            userId: user.id,
-                            createdBy: user.id,
-                        }
-                    ),
-                ];
-                for (const { userId, sessions } of affectedSessions) {
-                    const metadata =
-                        this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                            user.id,
-                            sessions.length
-                        );
-                    const revokeEntry = this.activityLogService.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        null,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                            userId,
-                            createdBy: user.id,
-                            metadata,
-                        }
-                    );
-                    effects.push(revokeEntry);
-                }
-                if (upserted.isNewDevice) {
-                    const loginAtIso =
-                        this.helperDateService.formatToIso(loginAt);
-                    const deviceName = this.requestContextService.resolveDevice(
-                        requestLog.userAgent
-                    );
-                    const city = this.requestContextService.resolveCity(
-                        requestLog.geoLocation
-                    );
-                    const display = this.toUserAgentDisplay(
-                        requestLog.userAgent
-                    );
-                    const newDevice = this.notificationService.notify(
-                        EnumNotificationKind.newDeviceLogin,
-                        {
-                            userId: user.id,
-                            proceedBy: user.id,
-                            loginFrom,
-                            loginWith,
-                            loginAt: loginAtIso,
-                            device: deviceName,
-                            city,
-                            ...display,
-                            ipAddress: requestLog.ipAddress ?? '',
-                        }
-                    );
-                    effects.push(newDevice);
-                }
-                await this.outboxService.addManyInTx(tx, effects);
-
-                return upserted.deviceOwnership.id;
-            }
+        }
+        await this.sessionService.createInTx(
+            tx,
+            user.id,
+            sessionId,
+            upserted.deviceOwnership.id,
+            jti,
+            expiredAt,
+            requestLog
+        );
+        await this.userService.updateLoginInTx(
+            tx,
+            user.id,
+            loginFrom,
+            loginWith,
+            requestLog.ipAddress,
+            now
         );
 
+        const effects: IOutboxEffect[] = [
+            this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: loginAction,
+                    userId: user.id,
+                    createdBy: user.id,
+                }
+            ),
+        ];
+        for (const { userId, sessions } of affectedSessions) {
+            const metadata =
+                this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                    user.id,
+                    sessions.length
+                );
+            const revokeEntry = this.activityLogService.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
+                    userId,
+                    createdBy: user.id,
+                    metadata,
+                }
+            );
+            effects.push(revokeEntry);
+        }
+        if (upserted.isNewDevice) {
+            const loginAtIso = this.helperDateService.formatToIso(loginAt);
+            const deviceName = this.requestContextService.resolveDevice(
+                requestLog.userAgent
+            );
+            const city = this.requestContextService.resolveCity(
+                requestLog.geoLocation
+            );
+            const display = this.toUserAgentDisplay(requestLog.userAgent);
+            const newDevice = this.notificationService.notify(
+                EnumNotificationKind.newDeviceLogin,
+                {
+                    userId: user.id,
+                    proceedBy: user.id,
+                    loginFrom,
+                    loginWith,
+                    loginAt: loginAtIso,
+                    device: deviceName,
+                    city,
+                    ...display,
+                    ipAddress: requestLog.ipAddress ?? '',
+                }
+            );
+            effects.push(newDevice);
+        }
+        await this.outboxService.addManyInTx(tx, effects);
+
+        const deviceOwnershipId = upserted.deviceOwnership.id;
         const tokens = this.authJwtService.createTokens(
             user,
             { sessionId, jti, deviceOwnershipId, loginAt },
@@ -385,11 +374,12 @@ export class UserAuthService {
             loginWith
         );
 
-        return { tokens, sessionId, jti };
+        return { tokens, sessionId };
     }
 
-    /** Creates the login challenge; when setup is required, also generates and saves a pending authenticator secret with its setup entry. */
-    async createTwoFactorChallenge(
+    /** Creates the login challenge on the caller's transaction; when setup is required, also generates and saves a pending authenticator secret with its setup entry. */
+    async createTwoFactorChallengeInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUserTwoFactorEnabled,
@@ -397,12 +387,13 @@ export class UserAuthService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
     ): Promise<IUserLoginTwoFactorChallenge> {
-        const challengePromise = this.authTwoFactorService.createChallenge({
-            userId: user.id,
+        const challengePromise = this.userTwoFactorService.createChallengeInTx(
+            tx,
+            user.id,
             device,
             loginFrom,
-            loginWith,
-        });
+            loginWith
+        );
         const requiresSetup = this.requiresTwoFactorSetup(user);
         if (requiresSetup) {
             const [
@@ -412,7 +403,8 @@ export class UserAuthService {
                 challengePromise,
                 this.userTwoFactorService.setup(user),
             ]);
-            await this.userTwoFactorService.saveSetup(
+            await this.userTwoFactorService.saveSetupInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 user.id,

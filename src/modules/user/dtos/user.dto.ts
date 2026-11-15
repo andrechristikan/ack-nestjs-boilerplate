@@ -50,7 +50,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'When the current password was created',
         example: faker.date.past(),
     }),
-    passwordAttempt: z.number().min(0).nullable().meta({
+    passwordAttempt: z.number().min(0).meta({
         description: 'Count of consecutive failed password attempts',
         example: 0,
     }),

@@ -56,7 +56,8 @@ import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.pas
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type {
     IUser,
-    IUserCredentialAttempt,
+    IUserCredential,
+    IUserTwoFactorCheck,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
@@ -100,6 +101,7 @@ describe('UserChangePasswordUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -180,6 +182,7 @@ describe('UserChangePasswordUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -194,6 +197,10 @@ describe('UserChangePasswordUseCase', () => {
     const twoFactorVerified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
+    };
+    const twoFactorChecked: IUserTwoFactorCheck = {
+        verified: twoFactorVerified,
+        totpStep: 58123456,
     };
     const updatedRow = {
         id: 'user-linden',
@@ -218,7 +225,7 @@ describe('UserChangePasswordUseCase', () => {
             async fn => fn(tx) as never
         );
         notificationService.notify.mockReturnValue(notifyEffect);
-        userTwoFactorService.verifyIfRequired.mockResolvedValue(null);
+        userTwoFactorService.checkIfRequired.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -254,10 +261,9 @@ describe('UserChangePasswordUseCase', () => {
             oldPassword: 'old-password',
         };
 
-        const passwordAttempt: IUserCredentialAttempt = {
+        const credential: IUserCredential = {
             user,
             hashedPassword: 'hashed-password',
-            isAttemptCounted: true,
         };
 
         beforeEach(() => {
@@ -266,10 +272,10 @@ describe('UserChangePasswordUseCase', () => {
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
             );
-            sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
-            userPasswordService.countPasswordAttempt.mockResolvedValue(
-                passwordAttempt
+            sessionService.revokeActiveByUserExceptInTx.mockResolvedValue(
+                revoked
             );
+            userPasswordService.getCredential.mockReturnValue(credential);
         });
 
         it('verifies the old password and history, hashes, and writes the change, its entry, and the notification on one transaction', async () => {
@@ -281,6 +287,11 @@ describe('UserChangePasswordUseCase', () => {
 
                 return value as never;
             });
+            userPasswordService.resetPasswordAttemptInTx.mockImplementation(
+                async () => {
+                    calls.push('resetPasswordAttempt');
+                }
+            );
             userService.updatePasswordInTx.mockImplementation(async () => {
                 calls.push('updatePassword');
 
@@ -296,7 +307,7 @@ describe('UserChangePasswordUseCase', () => {
                     calls.push('markUnusedResetsUsed');
                 }
             );
-            sessionService.revokeActiveByUserInTx.mockImplementation(
+            sessionService.revokeActiveByUserExceptInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
 
@@ -319,11 +330,13 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, user);
+            expect(userPasswordService.getCredential).toHaveBeenCalledWith(
+                user
+            );
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
-                passwordAttempt,
+                requestContext,
+                apiKeyContext,
+                credential,
                 'old-password'
             );
             expect(passwordHistoryService.assertNew).toHaveBeenCalledWith(
@@ -336,7 +349,7 @@ describe('UserChangePasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 user,
@@ -361,6 +374,9 @@ describe('UserChangePasswordUseCase', () => {
                 changeEntry,
                 notifyEffect,
             ]);
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden');
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -379,17 +395,24 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userPasswordService.markUnusedResetsUsedInTx
             ).toHaveBeenCalledWith(tx, 'user-linden');
-            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+            expect(
+                sessionService.revokeActiveByUserExceptInTx
+            ).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
+                'session-1',
                 'user-linden',
                 password.passwordCreated
             );
+            expect(
+                sessionService.revokeActiveByUserInTx
+            ).not.toHaveBeenCalled();
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
             expect(calls).toEqual([
                 'begin',
+                'resetPasswordAttempt',
                 'updatePassword',
                 'createHistory',
                 'markUnusedResetsUsed',
@@ -421,9 +444,12 @@ describe('UserChangePasswordUseCase', () => {
             expect(
                 userPasswordService.markUnusedResetsUsedInTx
             ).toHaveBeenCalledWith(tx, 'actor-other');
-            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+            expect(
+                sessionService.revokeActiveByUserExceptInTx
+            ).toHaveBeenCalledWith(
                 tx,
                 'actor-other',
+                'session-1',
                 'actor-other',
                 password.passwordCreated
             );
@@ -435,7 +461,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('skips the password check for a passwordless account', async () => {
             const passwordless: IUser = { ...user, password: null };
-            userPasswordService.countPasswordAttempt.mockResolvedValue(null);
+            userPasswordService.getCredential.mockReturnValue(null);
 
             const passwordlessRequestContext = buildRequestContext();
             const passwordlessApiKeyContext = buildApiKeyContext();
@@ -454,21 +480,20 @@ describe('UserChangePasswordUseCase', () => {
                 }
             );
 
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(
-                passwordlessRequestContext,
-                passwordlessApiKeyContext,
+            expect(userPasswordService.getCredential).toHaveBeenCalledWith(
                 passwordless
             );
             expect(
                 userAuthService.assertPasswordAttempt
             ).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
-        it('counts an attempt and throws UserPasswordNotMatchException when the password is absent', async () => {
+        it('throws UserPasswordNotMatchException when the password is absent', async () => {
             userAuthService.assertPasswordAttempt.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
@@ -493,11 +518,10 @@ describe('UserChangePasswordUseCase', () => {
                 messagePath: 'user.error.passwordNotMatch',
             });
 
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledTimes(1);
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
-                passwordAttempt,
+                requestContext,
+                apiKeyContext,
+                credential,
                 null
             );
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
@@ -523,8 +547,8 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('verifies two-factor before hashing, records the verification on the transaction, and adds the verify entry when two-factor was verified', async () => {
-            userTwoFactorService.verifyIfRequired.mockResolvedValue(
-                twoFactorVerified
+            userTwoFactorService.checkIfRequired.mockResolvedValue(
+                twoFactorChecked
             );
 
             const twoFactorRequestContext = buildRequestContext();
@@ -546,7 +570,7 @@ describe('UserChangePasswordUseCase', () => {
                 }
             );
 
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 twoFactorRequestContext,
                 twoFactorApiKeyContext,
                 twoFactorUser,
@@ -556,9 +580,14 @@ describe('UserChangePasswordUseCase', () => {
                     backupCode: null,
                 }
             );
-            expect(
-                userTwoFactorService.verifyIfRequired
-            ).toHaveBeenCalledBefore(authPasswordUtil.createPassword);
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledBefore(
+                authPasswordUtil.createPassword
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                twoFactorChecked
+            );
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
@@ -598,12 +627,13 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 setupRequestContext,
                 setupApiKeyContext,
                 twoFactorSetupUser,
                 { code: null, backupCode: null, method: null }
             );
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
@@ -626,7 +656,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('writes nothing when the two-factor check rejects', async () => {
             const failure = new Error('invalid');
-            userTwoFactorService.verifyIfRequired.mockRejectedValue(failure);
+            userTwoFactorService.checkIfRequired.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -645,7 +675,7 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('throws the method-required exception and writes nothing', async () => {
-            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+            userTwoFactorService.checkIfRequired.mockRejectedValue(
                 new AuthTwoFactorMethodRequiredException()
             );
 
@@ -674,7 +704,7 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('throws AuthTwoFactorAttemptMaxException and writes nothing when the two-factor budget is spent', async () => {
-            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+            userTwoFactorService.checkIfRequired.mockRejectedValue(
                 new AuthTwoFactorAttemptMaxException()
             );
 
@@ -721,7 +751,7 @@ describe('UserChangePasswordUseCase', () => {
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotMatchException on a wrong password under the max and keeps the attempt', async () => {
+        it('throws UserPasswordNotMatchException on a wrong password under the max and resets nothing', async () => {
             userAuthService.assertPasswordAttempt.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
@@ -744,17 +774,12 @@ describe('UserChangePasswordUseCase', () => {
                 messagePath: 'user.error.passwordNotMatch',
             });
             expect(
-                userPasswordService.resetPasswordAttempt
+                userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordAttemptMaxException at the max attempt and writes nothing', async () => {
-            const spent: IUserCredentialAttempt = {
-                ...passwordAttempt,
-                isAttemptCounted: false,
-            };
-            userPasswordService.countPasswordAttempt.mockResolvedValue(spent);
             userAuthService.assertPasswordAttempt.mockRejectedValue(
                 new UserPasswordAttemptMaxException()
             );
@@ -779,11 +804,34 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userAuthService.assertPasswordAttempt).toHaveBeenCalledWith(
-                spent,
+                requestContext,
+                apiKeyContext,
+                credential,
                 'old-password'
             );
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
+        });
+
+        it('resets no counter outside the transaction when the main step fails after a correct password', async () => {
+            outboxService.withTransaction.mockRejectedValue(
+                new Error('database exploded')
+            );
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toThrow(AppUnknownException);
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('adds no effect when the transaction fails', async () => {
@@ -805,8 +853,8 @@ describe('UserChangePasswordUseCase', () => {
 
         it('throws AuthTwoFactorInvalidException when a verified two-factor loses a write conflict', async () => {
             const cause = new Error('write conflict');
-            userTwoFactorService.verifyIfRequired.mockResolvedValue(
-                twoFactorVerified
+            userTwoFactorService.checkIfRequired.mockResolvedValue(
+                twoFactorChecked
             );
             outboxService.withTransaction.mockRejectedValue(cause);
             databaseUtil.toException.mockReturnValue(

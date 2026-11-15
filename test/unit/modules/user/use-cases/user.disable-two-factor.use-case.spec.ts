@@ -32,6 +32,7 @@ import { UserTwoFactorService } from '@modules/user/services/user.two-factor.ser
 import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import type {
     IUser,
+    IUserTwoFactorCheck,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
@@ -68,6 +69,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -85,6 +87,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -136,6 +139,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
     };
+    const checked: IUserTwoFactorCheck = { verified, totpStep: 58123456 };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -144,7 +148,7 @@ describe('UserDisableTwoFactorUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userTwoFactorService.verify.mockResolvedValue(verified);
+        userTwoFactorService.check.mockResolvedValue(checked);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -169,17 +173,15 @@ describe('UserDisableTwoFactorUseCase', () => {
             code: '123456',
         };
 
-        it('counts the attempt, verifies, then disables, revokes, and adds the disable entry on one transaction', async () => {
+        it('checks the code before the transaction, then verifies, disables, revokes, and adds the disable entry on one tx', async () => {
             const calls: string[] = [];
-            userTwoFactorService.assertAttemptCounted.mockImplementation(
-                async () => {
-                    calls.push('assertAttemptCounted');
-                }
-            );
-            userTwoFactorService.verify.mockImplementation(async () => {
-                calls.push('verify');
+            userTwoFactorService.check.mockImplementation(async () => {
+                calls.push('check');
 
-                return verified;
+                return checked;
+            });
+            userTwoFactorService.verifyInTx.mockImplementation(async () => {
+                calls.push('verifyInTx');
             });
             outboxService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
@@ -217,14 +219,21 @@ describe('UserDisableTwoFactorUseCase', () => {
             expect(userTwoFactorService.assertEnabled).toHaveBeenCalledWith(
                 user
             );
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, user);
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
-                method: EnumAuthTwoFactorMethod.code,
-                code: '123456',
-                backupCode: null,
-            });
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                user,
+                {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                    backupCode: null,
+                }
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marten',
+                checked
+            );
             expect(userTwoFactorService.disableInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marten'
@@ -244,9 +253,9 @@ describe('UserDisableTwoFactorUseCase', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(calls).toEqual([
-                'assertAttemptCounted',
-                'verify',
+                'check',
                 'begin',
+                'verifyInTx',
                 'disableInTx',
                 'revokeSessions',
                 'addInTx',
@@ -289,16 +298,21 @@ describe('UserDisableTwoFactorUseCase', () => {
                 }
             );
 
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
-                method: EnumAuthTwoFactorMethod.backupCodes,
-                code: null,
-                backupCode: 'BACKUP1',
-            });
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                user,
+                {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
+                    backupCode: 'BACKUP1',
+                }
+            );
         });
 
-        it('opens no transaction when the verification rejects', async () => {
+        it('opens no transaction when the check rejects', async () => {
             const failure = new Error('invalid');
-            userTwoFactorService.verify.mockRejectedValue(failure);
+            userTwoFactorService.check.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -379,8 +393,8 @@ describe('UserDisableTwoFactorUseCase', () => {
             });
         });
 
-        it('answers the attempt limit before disable verifies the code', async () => {
-            userTwoFactorService.assertAttemptCounted.mockRejectedValue(
+        it('answers the attempt limit from the check and writes nothing', async () => {
+            userTwoFactorService.check.mockRejectedValue(
                 new AuthTwoFactorAttemptMaxException()
             );
 
@@ -402,7 +416,7 @@ describe('UserDisableTwoFactorUseCase', () => {
                 messagePath: 'auth.error.twoFactorAttemptMax',
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
             expect(userTwoFactorService.disableInTx).not.toHaveBeenCalled();
         });
     });

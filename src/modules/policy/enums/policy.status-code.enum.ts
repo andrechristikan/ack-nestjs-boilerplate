@@ -4,4 +4,5 @@ export enum EnumPolicyStatusCodeError {
     notFound = 51101,
     exist = 51102,
     guardMissing = 51103,
+    roleTypeInvalid = 51104,
 }

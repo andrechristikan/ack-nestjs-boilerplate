@@ -32,7 +32,6 @@ import {
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { DeviceService } from '@modules/device/services/device.service';
 import type {
@@ -86,8 +85,6 @@ describe('UserAuthService', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    const authTwoFactorService: MockProxy<AuthTwoFactorService> =
-        mock<AuthTwoFactorService>();
     const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -126,6 +123,7 @@ describe('UserAuthService', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -184,10 +182,6 @@ describe('UserAuthService', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
-                {
-                    provide: AuthTwoFactorService,
-                    useValue: authTwoFactorService,
-                },
                 { provide: AuthUtil, useValue: authUtil },
                 { provide: SessionUtil, useValue: sessionUtil },
                 { provide: OutboxService, useValue: outboxService },
@@ -210,58 +204,33 @@ describe('UserAuthService', () => {
         service = module.get(UserAuthService);
     });
 
-    describe('countCredentialAttempt', () => {
-        it('returns the counted attempt of the active user', async () => {
-            const counted = {
+    describe('getOneForCredentialLogin', () => {
+        it('returns the credential of the active user holding a password', async () => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+            userPasswordService.getCredential.mockReturnValue({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
-                isAttemptCounted: true,
-            };
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-            userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
+            });
 
             await expect(
-                service.countCredentialAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser.email
-                )
-            ).resolves.toEqual(counted);
+                service.getOneForCredentialLogin(baseUser.email)
+            ).resolves.toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+            });
             expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
                 baseUser.email
             );
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
-        });
-
-        it('returns the attempt with a spent budget', async () => {
-            const spent = {
-                user: baseUser,
-                hashedPassword: 'hashed-password',
-                isAttemptCounted: false,
-            };
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-            userPasswordService.countPasswordAttempt.mockResolvedValue(spent);
-
-            await expect(
-                service.countCredentialAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser.email
-                )
-            ).resolves.toEqual(spent);
+            expect(userPasswordService.getCredential).toHaveBeenCalledWith(
+                baseUser
+            );
         });
 
         it('throws UserCredentialInvalidException when the user does not exist', async () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
 
             await expect(
-                service.countCredentialAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'missing@example.com'
-                )
+                service.getOneForCredentialLogin('missing@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
@@ -271,9 +240,7 @@ describe('UserAuthService', () => {
                     ],
                 messagePath: 'user.error.credentialInvalid',
             });
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).not.toHaveBeenCalled();
+            expect(userPasswordService.getCredential).not.toHaveBeenCalled();
         });
 
         it('throws UserCredentialInvalidException when the user is not active', async () => {
@@ -283,19 +250,13 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.countCredentialAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'halcyon@example.com'
-                )
+                service.getOneForCredentialLogin('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
                 messagePath: 'user.error.credentialInvalid',
             });
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).not.toHaveBeenCalled();
+            expect(userPasswordService.getCredential).not.toHaveBeenCalled();
         });
 
         it('throws UserCredentialInvalidException when the user has no password', async () => {
@@ -303,116 +264,102 @@ describe('UserAuthService', () => {
             userRepository.findOneWithRoleByEmail.mockResolvedValue(
                 passwordless
             );
-            userPasswordService.countPasswordAttempt.mockResolvedValue(null);
+            userPasswordService.getCredential.mockReturnValue(null);
 
             await expect(
-                service.countCredentialAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'halcyon@example.com'
-                )
+                service.getOneForCredentialLogin('halcyon@example.com')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
                 messagePath: 'user.error.credentialInvalid',
             });
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, passwordless);
+            expect(userPasswordService.getCredential).toHaveBeenCalledWith(
+                passwordless
+            );
         });
     });
 
-    describe('verifyCredential', () => {
-        const counted = {
+    describe('isCredentialMatch', () => {
+        const credential = {
             user: baseUser,
             hashedPassword: 'hashed-password',
-            isAttemptCounted: true,
         };
 
-        it('returns true and resets the attempt counter when the credentials are valid', async () => {
+        it('returns true for the right password and writes nothing', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
-                service.verifyCredential(counted, 'plain-password')
+                service.isCredentialMatch(credential, 'plain-password')
             ).resolves.toBe(true);
             expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
-            expect(
-                userPasswordService.resetPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser.id);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
         });
 
-        it('returns false without resetting the counter on a wrong password', async () => {
+        it('returns false on a wrong password', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(false);
 
             await expect(
-                service.verifyCredential(counted, 'wrong-password')
+                service.isCredentialMatch(credential, 'wrong-password')
             ).resolves.toBe(false);
-            expect(
-                userPasswordService.resetPasswordAttempt
-            ).not.toHaveBeenCalled();
         });
 
         it('returns false for a null password without comparing', async () => {
-            await expect(service.verifyCredential(counted, null)).resolves.toBe(
-                false
-            );
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
-            expect(
-                userPasswordService.resetPasswordAttempt
-            ).not.toHaveBeenCalled();
-        });
-
-        it('returns true and resets the attempt counter when the matched password has expired', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
-
             await expect(
-                service.verifyCredential(counted, 'plain-password')
-            ).resolves.toBe(true);
-            expect(
-                userPasswordService.resetPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser.id);
+                service.isCredentialMatch(credential, null)
+            ).resolves.toBe(false);
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
     });
 
     describe('assertPasswordAttempt', () => {
-        const counted = {
+        const credential = {
             user: baseUser,
             hashedPassword: 'hashed-password',
-            isAttemptCounted: true,
         };
 
-        it('resolves and resets the attempt counter when the password matches', async () => {
+        it('resolves and writes nothing when the password matches', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
-                service.assertPasswordAttempt(counted, 'plain-password')
+                service.assertPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    credential,
+                    'plain-password'
+                )
             ).resolves.toBeUndefined();
             expect(
-                userPasswordService.assertAttemptCounted
-            ).toHaveBeenCalledWith(true);
+                userPasswordService.assertPasswordAttemptAvailable
+            ).toHaveBeenCalledWith(baseUser);
             expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
+            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+                baseUser.passwordExpired
+            );
             expect(
-                userPasswordService.resetPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser.id);
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordAttemptMaxException without comparing when the budget is spent', async () => {
-            userPasswordService.assertAttemptCounted.mockImplementation(() => {
-                throw new UserPasswordAttemptMaxException();
-            });
+        it('throws UserPasswordAttemptMaxException without comparing when the account is locked', async () => {
+            userPasswordService.assertPasswordAttemptAvailable.mockImplementation(
+                () => {
+                    throw new UserPasswordAttemptMaxException();
+                }
+            );
 
             await expect(
                 service.assertPasswordAttempt(
-                    { ...counted, isAttemptCounted: false },
+                    requestContext,
+                    apiKeyContext,
+                    credential,
                     'plain-password'
                 )
             ).rejects.toMatchObject({
@@ -424,17 +371,25 @@ describe('UserAuthService', () => {
                     ],
                 messagePath: 'user.error.passwordAttemptMax',
             });
-            expect(
-                userPasswordService.assertAttemptCounted
-            ).toHaveBeenCalledWith(false);
             expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotMatchException on a wrong password', async () => {
+        it('counts the failure then throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
             authPasswordUtil.validatePassword.mockResolvedValue(false);
+            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+                false
+            );
 
             await expect(
-                service.assertPasswordAttempt(counted, 'wrong-password')
+                service.assertPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    credential,
+                    'wrong-password'
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
@@ -445,22 +400,54 @@ describe('UserAuthService', () => {
                 messagePath: 'user.error.passwordNotMatch',
             });
             expect(
-                userPasswordService.resetPasswordAttempt
-            ).not.toHaveBeenCalled();
+                userPasswordService.countFailedPasswordAttempt
+            ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
             expect(
                 authPasswordUtil.checkPasswordExpired
             ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotMatchException for a null password without comparing', async () => {
+        it('throws UserPasswordAttemptMaxException when the counted failure locked the account', async () => {
+            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+                true
+            );
+
             await expect(
-                service.assertPasswordAttempt(counted, null)
+                service.assertPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    credential,
+                    'wrong-password'
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                messagePath: 'user.error.passwordAttemptMax',
+            });
+        });
+
+        it('counts the failure and throws UserPasswordNotMatchException for a null password without comparing', async () => {
+            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.assertPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    credential,
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 messagePath: 'user.error.passwordNotMatch',
             });
             expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
         });
 
         it('throws UserPasswordExpiredException when the matched password has expired', async () => {
@@ -468,7 +455,12 @@ describe('UserAuthService', () => {
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             await expect(
-                service.assertPasswordAttempt(counted, 'plain-password')
+                service.assertPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    credential,
+                    'plain-password'
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordExpired,
@@ -479,23 +471,19 @@ describe('UserAuthService', () => {
                 messagePath: 'user.error.passwordExpired',
             });
             expect(
-                userPasswordService.resetPasswordAttempt
-            ).toHaveBeenCalledWith(baseUser.id);
-            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
-                baseUser.passwordExpired
-            );
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
         });
     });
 
     describe('assertCurrentPassword', () => {
-        const counted = {
+        const credential = {
             user: baseUser,
             hashedPassword: 'hashed-password',
-            isAttemptCounted: true,
         };
 
-        it('counts the attempt with the context, then asserts the password of the counted attempt', async () => {
-            userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
+        it('writes nothing and returns when the correct password is given', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
             authPasswordUtil.validatePassword.mockResolvedValue(true);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
@@ -507,21 +495,25 @@ describe('UserAuthService', () => {
                     'plain-password'
                 )
             ).resolves.toBeUndefined();
-            expect(
-                userPasswordService.countPasswordAttempt
-            ).toHaveBeenCalledWith(
-                userRequestContext,
-                userApiKeyContext,
+            expect(userPasswordService.getCredential).toHaveBeenCalledWith(
                 baseUser
             );
+            expect(
+                userPasswordService.assertPasswordAttemptAvailable
+            ).toHaveBeenCalledWith(baseUser);
             expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
         });
 
         it('returns without comparing when the account has no password', async () => {
-            userPasswordService.countPasswordAttempt.mockResolvedValue(null);
+            userPasswordService.getCredential.mockReturnValue(null);
 
             await expect(
                 service.assertCurrentPassword(
@@ -532,11 +524,17 @@ describe('UserAuthService', () => {
                 )
             ).resolves.toBeUndefined();
             expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.assertPasswordAttemptAvailable
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotMatchException on a wrong password', async () => {
-            userPasswordService.countPasswordAttempt.mockResolvedValue(counted);
+        it('counts the failure and throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
             authPasswordUtil.validatePassword.mockResolvedValue(false);
+            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+                false
+            );
 
             await expect(
                 service.assertCurrentPassword(
@@ -550,16 +548,22 @@ describe('UserAuthService', () => {
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 messagePath: 'user.error.passwordNotMatch',
             });
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                baseUser
+            );
         });
 
-        it('throws the max-attempt exception without comparing when the budget is spent', async () => {
-            userPasswordService.countPasswordAttempt.mockResolvedValue({
-                ...counted,
-                isAttemptCounted: false,
-            });
-            userPasswordService.assertAttemptCounted.mockImplementation(() => {
-                throw new UserPasswordAttemptMaxException();
-            });
+        it('throws the max-attempt exception without comparing when the account is locked', async () => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            userPasswordService.assertPasswordAttemptAvailable.mockImplementation(
+                () => {
+                    throw new UserPasswordAttemptMaxException();
+                }
+            );
 
             await expect(
                 service.assertCurrentPassword(
@@ -721,8 +725,8 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('verifyEmailBySocial', () => {
-        it('returns the user merged with the row written on one tx with the verified entry', async () => {
+    describe('verifyEmailBySocialInTx', () => {
+        it('returns the user merged with the row written on the given tx with the verified entry', async () => {
             const user = { ...baseUser, isVerified: false, verifiedAt: null };
             const writtenRow: User = {
                 id: 'user-halcyon',
@@ -736,6 +740,7 @@ describe('UserAuthService', () => {
                 passwordExpired: null,
                 passwordCreated: null,
                 passwordAttempt: 0,
+                passwordLockedUntil: null,
                 signUpAt: new Date('2026-01-01T00:00:00.000Z'),
                 signUpFrom: EnumUserSignUpFrom.website,
                 signUpWith: EnumUserSignUpWith.credential,
@@ -757,16 +762,18 @@ describe('UserAuthService', () => {
                 deletedBy: null,
             };
             const tx = {} as IDatabaseTransactionClient;
-            outboxService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             userVerificationService.markVerifiedBySocialInTx.mockResolvedValue(
                 writtenRow
             );
             activityLogService.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
-                service.verifyEmailBySocial(requestContext, apiKeyContext, user)
+                service.verifyEmailBySocialInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    user
+                )
             ).resolves.toEqual({
                 ...writtenRow,
                 role: user.role,
@@ -808,7 +815,7 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('createTokenAndSession', () => {
+    describe('createTokenAndSessionInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const now = new Date('2026-03-01T00:00:00.000Z');
         const loginAt = new Date('2026-03-01T00:05:00.000Z');
@@ -922,9 +929,6 @@ describe('UserAuthService', () => {
         };
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             notificationService.notify.mockReturnValue(newDeviceEffect);
             requestContextService.resolveDevice.mockReturnValue(
                 'Linux Desktop'
@@ -968,8 +972,9 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('upserts the device, creates the session, and stamps the login on one tx', async () => {
-            await service.createTokenAndSession(
+        it('upserts the device, creates the session, and stamps the login on the given tx without opening one', async () => {
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -979,7 +984,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
@@ -1006,7 +1011,8 @@ describe('UserAuthService', () => {
         });
 
         it('adds the newDeviceLogin effect on the transaction after the writes when the device is new', async () => {
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1052,7 +1058,8 @@ describe('UserAuthService', () => {
         });
 
         it('sends empty display parts and address when the request log has none', async () => {
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 {
                     ...requestContext,
                     requestLog: {
@@ -1086,7 +1093,8 @@ describe('UserAuthService', () => {
         });
 
         it('sends empty parts inside a parsed user agent that lacks some fields', async () => {
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 {
                     ...requestContext,
                     requestLog: {
@@ -1128,7 +1136,8 @@ describe('UserAuthService', () => {
                 isNewDevice: false,
             });
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1151,7 +1160,8 @@ describe('UserAuthService', () => {
                 revokedRef
             );
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1170,7 +1180,8 @@ describe('UserAuthService', () => {
                 isNewDevice: false,
             });
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1192,7 +1203,8 @@ describe('UserAuthService', () => {
         });
 
         it("revokes other users' sessions only when other ownerships exist", async () => {
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1213,7 +1225,8 @@ describe('UserAuthService', () => {
                 affected
             );
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1235,7 +1248,8 @@ describe('UserAuthService', () => {
             const expiredAt = new Date('2026-03-31T00:05:00.000Z');
             helperDateService.forward.mockReturnValue(expiredAt);
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1261,7 +1275,8 @@ describe('UserAuthService', () => {
         });
 
         it('builds the tokens from sessionId, jti, deviceOwnershipId, and loginAt', async () => {
-            const result = await service.createTokenAndSession(
+            const result = await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1282,10 +1297,9 @@ describe('UserAuthService', () => {
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential
             );
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 tokens,
                 sessionId: 'session-halcyon',
-                jti: 'jti-halcyon',
             });
         });
 
@@ -1300,7 +1314,8 @@ describe('UserAuthService', () => {
                 .mockReturnValueOnce(thistleMetadata)
                 .mockReturnValueOnce(cloverMetadata);
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1361,7 +1376,8 @@ describe('UserAuthService', () => {
                 EnumActivityLogAction.userLoginGoogle
             );
 
-            await service.createTokenAndSession(
+            await service.createTokenAndSessionInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
@@ -1387,12 +1403,31 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('signs no tokens when the transaction fails', async () => {
+        it('signs the tokens after the writes and opens no transaction', async () => {
+            await service.createTokenAndSessionInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledBefore(
+                authJwtService.createTokens
+            );
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('signs no tokens when a write fails', async () => {
             const failure = new RedisUnavailableException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            sessionService.createInTx.mockRejectedValue(failure);
 
             await expect(
-                service.createTokenAndSession(
+                service.createTokenAndSessionInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     baseUser,
@@ -1406,7 +1441,7 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('createTwoFactorChallenge', () => {
+    describe('createTwoFactorChallengeInTx', () => {
         const deviceIdentity: IDeviceIdentity = {
             fingerprint: 'device-halcyon',
             name: null,
@@ -1425,6 +1460,7 @@ describe('UserAuthService', () => {
             lastUsedAt: null,
             lastUsedStep: null,
             attempt: 0,
+            lockedUntil: null,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -1436,14 +1472,16 @@ describe('UserAuthService', () => {
             twoFactor: { ...twoFactor, requiredSetup: true },
         };
 
+        const tx = {} as IDatabaseTransactionClient;
+
         beforeEach(() => {
-            authTwoFactorService.createChallenge.mockResolvedValue({
+            userTwoFactorService.createChallengeInTx.mockResolvedValue({
                 challengeToken: 'challenge-token',
                 expiresInMs: 60000,
             });
         });
 
-        it('returns the setup challenge after saving the pending secret when setup is required', async () => {
+        it('returns the setup challenge after saving the pending secret on the given tx when setup is required', async () => {
             userTwoFactorService.setup.mockResolvedValue({
                 encryptedSecret: 'encrypted-secret',
                 otpauthUrl: 'otpauth://totp/secret',
@@ -1451,7 +1489,8 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.createTwoFactorChallenge(
+                service.createTwoFactorChallengeInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     setupUser,
@@ -1468,14 +1507,18 @@ describe('UserAuthService', () => {
                 secret: 'secret',
             });
 
-            expect(authTwoFactorService.createChallenge).toHaveBeenCalledWith({
-                userId: 'user-halcyon',
-                device: deviceIdentity,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-            });
+            expect(
+                userTwoFactorService.createChallengeInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-halcyon',
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential
+            );
             expect(userTwoFactorService.setup).toHaveBeenCalledWith(setupUser);
-            expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
+            expect(userTwoFactorService.saveSetupInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'user-halcyon',
@@ -1485,7 +1528,7 @@ describe('UserAuthService', () => {
 
         it('writes no secret when the challenge fails during setup', async () => {
             const failure = new Error('challenge failed');
-            authTwoFactorService.createChallenge.mockRejectedValue(failure);
+            userTwoFactorService.createChallengeInTx.mockRejectedValue(failure);
             userTwoFactorService.setup.mockResolvedValue({
                 encryptedSecret: 'encrypted-secret',
                 otpauthUrl: 'otpauth://totp/secret',
@@ -1493,7 +1536,8 @@ describe('UserAuthService', () => {
             });
 
             await expect(
-                service.createTwoFactorChallenge(
+                service.createTwoFactorChallengeInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     setupUser,
@@ -1502,12 +1546,13 @@ describe('UserAuthService', () => {
                     EnumUserLoginWith.credential
                 )
             ).rejects.toBe(failure);
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
 
         it('returns the verify challenge without a setup when setup is not required', async () => {
             await expect(
-                service.createTwoFactorChallenge(
+                service.createTwoFactorChallengeInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     twoFactorUser,
@@ -1523,7 +1568,7 @@ describe('UserAuthService', () => {
             });
 
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -1540,6 +1585,7 @@ describe('UserAuthService', () => {
             lastUsedAt: null,
             lastUsedStep: null,
             attempt: 0,
+            lockedUntil: null,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
             updatedAt: new Date('2026-01-01T00:00:00.000Z'),

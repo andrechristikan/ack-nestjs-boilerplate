@@ -18,4 +18,9 @@ export interface IDeviceRepository {
         { name, platform }: IDeviceRefresh,
         now: Date
     ): Promise<void>;
+    touchInTx(
+        tx: IDatabaseTransactionClient,
+        deviceId: string,
+        now: Date
+    ): Promise<void>;
 }

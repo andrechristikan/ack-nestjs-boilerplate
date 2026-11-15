@@ -10,10 +10,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type {
-    IAuthSocialContext,
-    IAuthToken,
-} from '@modules/auth/interfaces/auth.interface';
+import type { IAuthSocialContext } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -22,7 +19,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
-import { SessionService } from '@modules/session/services/session.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -36,6 +32,7 @@ import type {
     IUserLoginOutcome,
     IUserLoginSocial,
 } from '@modules/user/interfaces/user.interface';
+import type { IUserLoginSignUp } from '@modules/user/interfaces/user.login.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -73,7 +70,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
@@ -94,21 +90,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     private async signUpWithSocial(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthSocialContext,
+        normalizedEmail: string,
         loginWith: EnumUserLoginWith,
-        loginSocial: IUserLoginSocial
-    ): Promise<void> {
-        const normalizedEmail = authContext.email.trim().toLowerCase();
-        // Sequential by design: gate before the work it guards
-        const isAllowed =
-            await this.userRegistrationService.isSocialSignUpAllowed(
-                normalizedEmail,
-                loginWith
-            );
-        if (!isAllowed) {
-            return;
-        }
-
+        loginSocial: IUserLoginSocial,
+        loginAt: Date
+    ): Promise<IUserLoginSignUp> {
         const invite = await this.workspaceInviteService.getSignUpInvite(
             loginSocial.inviteToken,
             normalizedEmail
@@ -139,7 +125,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                await this.outboxService.withTransaction(
+                return await this.outboxService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -211,11 +197,24 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             welcome,
                             ...entries,
                         ]);
+
+                        const user = created[0]!;
+                        const { tokens } =
+                            await this.userAuthService.createTokenAndSessionInTx(
+                                tx,
+                                requestContext,
+                                apiKeyContext,
+                                user,
+                                loginSocial.device,
+                                loginSocial.from,
+                                loginWith,
+                                loginAt
+                            );
+
+                        return { user, tokens };
                     },
                     { timeout: this.createTimeoutInMs }
                 );
-
-                return;
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
                     error,
@@ -237,33 +236,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    private async startSession(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser,
-        device: IDeviceIdentity,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        loginAt: Date
-    ): Promise<IAuthToken> {
-        const session = await this.userAuthService.createTokenAndSession(
-            requestContext,
-            apiKeyContext,
-            user,
-            device,
-            loginFrom,
-            loginWith,
-            loginAt
-        );
-        await this.sessionService.setLoginOrRevoke(
-            user.id,
-            session.sessionId,
-            session.jti
-        );
-
-        return session.tokens;
-    }
-
     private async resolveLoginOutcome(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
@@ -280,41 +252,61 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 user.id,
                 user.lastWorkspaceId
             );
+        const isUnverified = this.userUtil.isUnverified(user);
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
-        if (!isTwoFactorEnabled) {
-            const tokens = await this.startSession(
-                requestContext,
-                apiKeyContext,
-                user,
-                device,
-                loginFrom,
-                loginWith,
-                loginAt
-            );
 
-            return {
-                isTwoFactorEnable: false,
-                lastWorkspaceId,
-                lastWorkspaceChangedAt,
-                tokens,
-            };
-        }
+        return this.outboxService.withTransaction(
+            async (tx): Promise<IUserLoginOutcome> => {
+                let loginUser = user;
+                if (isUnverified) {
+                    loginUser =
+                        await this.userAuthService.verifyEmailBySocialInTx(
+                            tx,
+                            requestContext,
+                            apiKeyContext,
+                            user
+                        );
+                }
+                if (!isTwoFactorEnabled) {
+                    const { tokens } =
+                        await this.userAuthService.createTokenAndSessionInTx(
+                            tx,
+                            requestContext,
+                            apiKeyContext,
+                            loginUser,
+                            device,
+                            loginFrom,
+                            loginWith,
+                            loginAt
+                        );
 
-        const twoFactor = await this.userAuthService.createTwoFactorChallenge(
-            requestContext,
-            apiKeyContext,
-            user,
-            device,
-            loginFrom,
-            loginWith
+                    return {
+                        isTwoFactorEnable: false,
+                        lastWorkspaceId,
+                        lastWorkspaceChangedAt,
+                        tokens,
+                    };
+                }
+
+                const twoFactor =
+                    await this.userAuthService.createTwoFactorChallengeInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        user,
+                        device,
+                        loginFrom,
+                        loginWith
+                    );
+
+                return {
+                    isTwoFactorEnable: true,
+                    lastWorkspaceId,
+                    lastWorkspaceChangedAt,
+                    twoFactor,
+                };
+            }
         );
-
-        return {
-            isTwoFactorEnable: true,
-            lastWorkspaceId,
-            lastWorkspaceChangedAt,
-            twoFactor,
-        };
     }
 
     async execute(
@@ -344,28 +336,42 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        await this.signUpWithSocial(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            loginWith,
-            loginSocial
-        );
-
-        let user = await this.userAuthService.getOneForSocialLogin(
-            authContext.email
-        );
-        const isUnverified = this.userUtil.isUnverified(user);
-        if (isUnverified) {
-            user = await this.userAuthService.verifyEmailBySocial(
+        const normalizedEmail = authContext.email.trim().toLowerCase();
+        // Sequential by design: gate before the work it guards
+        const isSignUpAllowed =
+            await this.userRegistrationService.isSocialSignUpAllowed(
+                normalizedEmail,
+                loginWith
+            );
+        const loginAt = this.helperDateService.create();
+        if (isSignUpAllowed) {
+            const { user, tokens } = await this.signUpWithSocial(
                 requestContext,
                 apiKeyContext,
-                user
+                normalizedEmail,
+                loginWith,
+                loginSocial,
+                loginAt
             );
+            const lastWorkspaceId =
+                await this.workspaceMemberService.resolveLastWorkspaceId(
+                    user.id,
+                    user.lastWorkspaceId
+                );
+
+            return {
+                data: {
+                    isTwoFactorEnable: false,
+                    lastWorkspaceId,
+                    lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
+                    tokens,
+                },
+            };
         }
 
-        // Sequential by design: write must not run if an earlier step throws
-        const loginAt = this.helperDateService.create();
+        const user = await this.userAuthService.getOneForSocialLogin(
+            authContext.email
+        );
         const outcome = await this.resolveLoginOutcome(
             requestContext,
             apiKeyContext,

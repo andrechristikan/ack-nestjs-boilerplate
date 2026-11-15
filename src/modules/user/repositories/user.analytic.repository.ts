@@ -185,56 +185,90 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
 
     async findNearLockout(
         minAttempt: number,
+        now: Date,
         limit: number
     ): Promise<IAnalyticNearLockout[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 deletedAt: null,
-                passwordAttempt: { gte: minAttempt },
+                OR: [
+                    { passwordAttempt: { gte: minAttempt } },
+                    { passwordLockedUntil: { gt: now } },
+                ],
             },
             select: UserAdminNearLockoutSelect,
-            orderBy: { passwordAttempt: EnumPaginationOrderDirectionType.desc },
+            orderBy: [
+                { passwordLockedUntil: EnumPaginationOrderDirectionType.desc },
+                { passwordAttempt: EnumPaginationOrderDirectionType.desc },
+            ],
             take: limit,
         });
     }
 
-    async countNearLockout(minAttempt: number): Promise<number> {
+    async countNearLockout(minAttempt: number, now: Date): Promise<number> {
         return this.databaseService.client.user.count({
             where: {
                 deletedAt: null,
-                passwordAttempt: { gte: minAttempt },
+                OR: [
+                    { passwordAttempt: { gte: minAttempt } },
+                    { passwordLockedUntil: { gt: now } },
+                ],
             },
         });
     }
 
-    async groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
-        const rows = await this.databaseService.client.user.groupBy({
-            by: ['passwordAttempt'],
-            where: { deletedAt: null, passwordAttempt: { gt: 0 } },
-            _count: { _all: true },
-        });
-        return rows.map(row => ({
+    async groupPasswordAttemptBuckets(
+        maxAttempt: number,
+        now: Date
+    ): Promise<IAnalyticCountBucket[]> {
+        const [rows, locked] = await Promise.all([
+            this.databaseService.client.user.groupBy({
+                by: ['passwordAttempt'],
+                where: { deletedAt: null, passwordAttempt: { gt: 0 } },
+                _count: { _all: true },
+            }),
+            this.databaseService.client.user.count({
+                where: { deletedAt: null, passwordLockedUntil: { gt: now } },
+            }),
+        ]);
+        const buckets = rows.map(row => ({
             key: String(row.passwordAttempt),
             count: row._count._all,
         }));
+        if (locked > 0) {
+            buckets.push({ key: String(maxAttempt), count: locked });
+        }
+
+        return buckets;
     }
 
     async findOneById(id: string): Promise<IUserAnalyticRef | null> {
         return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
-            select: { id: true, email: true, passwordAttempt: true },
+            select: {
+                id: true,
+                email: true,
+                passwordAttempt: true,
+                passwordLockedUntil: true,
+            },
         });
     }
 
     async findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
         return this.databaseService.client.user.findMany({
             where: { id: { in: ids }, deletedAt: null },
-            select: { id: true, email: true, passwordAttempt: true },
+            select: {
+                id: true,
+                email: true,
+                passwordAttempt: true,
+                passwordLockedUntil: true,
+            },
         });
     }
 
     async findNearLockoutOffset(
         minAttempt: number,
+        now: Date,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { where, ...rest } = params;
@@ -244,7 +278,12 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
                 AND: [
                     ...(where ? [where] : []),
                     { deletedAt: null },
-                    { passwordAttempt: { gte: minAttempt } },
+                    {
+                        OR: [
+                            { passwordAttempt: { gte: minAttempt } },
+                            { passwordLockedUntil: { gt: now } },
+                        ],
+                    },
                 ],
             },
             select: UserAdminNearLockoutSelect,

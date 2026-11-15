@@ -46,14 +46,19 @@ export interface IUserAnalyticRepository {
     countPasswordExpired(now: Date): Promise<number>;
     findNearLockout(
         minAttempt: number,
+        now: Date,
         limit: number
     ): Promise<IAnalyticNearLockout[]>;
-    countNearLockout(minAttempt: number): Promise<number>;
-    groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]>;
+    countNearLockout(minAttempt: number, now: Date): Promise<number>;
+    groupPasswordAttemptBuckets(
+        maxAttempt: number,
+        now: Date
+    ): Promise<IAnalyticCountBucket[]>;
     findOneById(id: string): Promise<IUserAnalyticRef | null>;
     findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]>;
     findNearLockoutOffset(
         minAttempt: number,
+        now: Date,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>>;
 }

@@ -1,6 +1,13 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -23,7 +30,10 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly userTwoFactorService: UserTwoFactorService,
-        private readonly userAuthService: UserAuthService
+        private readonly userAuthService: UserAuthService,
+        private readonly userPasswordService: UserPasswordService,
+        private readonly outboxService: OutboxService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async execute(
@@ -34,7 +44,7 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
         { code, password }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.userAuthService.assertCurrentPassword(
             requestContext,
             apiKeyContext,
@@ -42,23 +52,49 @@ export class UserEnableTwoFactorUseCase implements IAppUseCase<
             password ?? null
         );
         const pendingSecret = this.userTwoFactorService.getPendingSecret(user);
-        await this.userTwoFactorService.assertAttemptCounted(
+        const totpStep = await this.userTwoFactorService.checkSetupCode(
             requestContext,
             apiKeyContext,
-            user
-        );
-        await this.userTwoFactorService.verifySetupCode(
             user,
             pendingSecret,
             code
         );
-        const backupCodes = await this.userTwoFactorService.enableTwoFactor(
-            requestContext,
-            apiKeyContext,
-            authContext.userId,
-            pendingSecret
-        );
 
-        return { data: { backupCodes } };
+        try {
+            const backupCodes = await this.outboxService.withTransaction(
+                async tx => {
+                    await this.userPasswordService.resetPasswordAttemptInTx(
+                        tx,
+                        authContext.userId
+                    );
+                    await this.userTwoFactorService.verifySetupCodeInTx(
+                        tx,
+                        authContext.userId,
+                        totpStep
+                    );
+
+                    return this.userTwoFactorService.enableTwoFactorInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
+                        pendingSecret
+                    );
+                }
+            );
+
+            return { data: { backupCodes } };
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            const mapped = this.databaseUtil.toException(err);
+            if (mapped instanceof DatabaseWriteConflictException) {
+                throw new AuthTwoFactorSetupRequiredException();
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 }

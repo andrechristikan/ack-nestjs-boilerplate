@@ -26,7 +26,6 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -35,6 +34,12 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
+import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -74,6 +79,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
         passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -131,11 +137,20 @@ describe('PolicyDeleteByAdminUseCase', () => {
         idempotencyKey: null,
     };
 
+    const roleInvalidateEffect: ICacheInvalidateEffect = {
+        queue: EnumCacheQueue.cache,
+        name: EnumCacheProcess.invalidate,
+        data: { keys: ['Role:role-1', 'Role:Lease:role-1'] },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
+
     let useCase: PolicyDeleteByAdminUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(effect);
+        roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -226,6 +241,26 @@ describe('PolicyDeleteByAdminUseCase', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('adds the role cache invalidate effect for the role id on the same tx', async () => {
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.deleteByAdminInTx.mockResolvedValue(policy);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1'
+            );
+
+            expect(roleService.invalidateEffect).toHaveBeenCalledWith('role-1');
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                roleInvalidateEffect
+            );
         });
 
         it('rethrows a typed exception of the write and adds no entry', async () => {

@@ -12,11 +12,13 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     SessionListSelect,
+    SessionLoginSelect,
     SessionUserRefSelect,
 } from '@modules/session/constants/session.constant';
 import type {
     ISession,
     ISessionList,
+    ISessionLogin,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
@@ -81,16 +83,21 @@ export class SessionRepository implements ISessionRepository {
         );
     }
 
-    async existsActiveById(
+    async findLoginById(
         userId: string,
         sessionId: string
-    ): Promise<boolean> {
-        const session = await this.databaseService.client.session.findFirst({
-            where: { id: sessionId, userId, isRevoked: false },
-            select: { id: true },
-        });
+    ): Promise<ISessionLogin | null> {
+        const now = this.helperDateService.create();
 
-        return session !== null;
+        return this.databaseService.client.session.findFirst({
+            where: {
+                id: sessionId,
+                userId,
+                isRevoked: false,
+                expiredAt: { gte: now },
+            },
+            select: SessionLoginSelect,
+        });
     }
 
     async createInTx(
@@ -98,7 +105,7 @@ export class SessionRepository implements ISessionRepository {
         userId: string,
         sessionId: string,
         deviceOwnershipId: string,
-        jti: string,
+        jtiDigest: string,
         expiredAt: Date,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session> {
@@ -109,7 +116,7 @@ export class SessionRepository implements ISessionRepository {
             data: {
                 id: sessionId,
                 userId,
-                jti,
+                jtiDigest,
                 expiredAt,
                 isRevoked: false,
                 ipAddress,
@@ -124,20 +131,20 @@ export class SessionRepository implements ISessionRepository {
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        oldJti: string,
-        newJti: string
+        oldJtiDigest: string,
+        newJtiDigest: string
     ): Promise<boolean> {
         const now = this.helperDateService.create();
         const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,
-                jti: oldJti,
+                jtiDigest: oldJtiDigest,
                 isRevoked: false,
                 expiredAt: {
                     gte: now,
                 },
             },
-            data: { jti: newJti },
+            data: { jtiDigest: newJtiDigest },
         });
 
         return count > 0;
@@ -205,6 +212,7 @@ export class SessionRepository implements ISessionRepository {
     async revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        exceptSessionId: string | null,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
@@ -212,6 +220,9 @@ export class SessionRepository implements ISessionRepository {
             where: {
                 userId,
                 isRevoked: false,
+                ...(exceptSessionId !== null && {
+                    id: { not: exceptSessionId },
+                }),
             },
             select: { id: true },
         });

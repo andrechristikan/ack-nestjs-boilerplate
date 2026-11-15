@@ -70,6 +70,12 @@ export interface IDeviceOwnershipRepository {
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<string | null>;
+    touchInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        now: Date
+    ): Promise<string | null>;
     clearTokenFromOtherUsersInTx(
         tx: IDatabaseTransactionClient,
         notificationToken: string,

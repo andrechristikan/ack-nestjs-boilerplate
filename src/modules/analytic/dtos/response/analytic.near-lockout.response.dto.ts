@@ -11,13 +11,10 @@ export const AnalyticNearLockoutResponseSchema = z.object({
         description: 'Email address of the user near lockout',
         example: faker.internet.email(),
     }),
-    passwordAttempt: z
-        .number()
-        .nullable()
-        .meta({
-            description: 'Failed password attempts recorded for the user',
-            example: faker.number.int({ min: 0, max: 5 }),
-        }),
+    passwordAttempt: z.number().meta({
+        description: 'Failed password attempts recorded for the user',
+        example: faker.number.int({ min: 0, max: 5 }),
+    }),
     lastLoginAt: z.date().nullable().meta({
         description: 'When the user last logged in',
         example: faker.date.recent(),

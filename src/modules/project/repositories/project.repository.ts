@@ -9,7 +9,10 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
+import {
+    ProjectActiveFilter,
+    ProjectDeletedSlugPattern,
+} from '@modules/project/constants/project.constant';
 import type {
     IProjectCreate,
     IProjectUpdate,
@@ -147,6 +150,10 @@ export class ProjectRepository implements IProjectRepository {
                 OR: ProjectActiveFilter,
             },
             data: {
+                slug: ProjectDeletedSlugPattern.replace(
+                    '{id}',
+                    () => projectId
+                ),
                 deletedAt,
                 deletedBy,
             },
@@ -161,15 +168,23 @@ export class ProjectRepository implements IProjectRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<void> {
-        await tx.project.updateMany({
+        const projects = await tx.project.findMany({
             where: {
                 workspaceId,
                 OR: ProjectActiveFilter,
             },
-            data: {
-                deletedAt,
-                deletedBy,
-            },
+            select: { id: true },
         });
+
+        for (const { id } of projects) {
+            await tx.project.updateMany({
+                where: { id, OR: ProjectActiveFilter },
+                data: {
+                    slug: ProjectDeletedSlugPattern.replace('{id}', () => id),
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+        }
     }
 }

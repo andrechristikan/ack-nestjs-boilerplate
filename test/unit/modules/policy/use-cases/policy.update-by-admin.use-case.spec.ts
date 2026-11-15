@@ -26,7 +26,6 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -35,7 +34,15 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
+import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
+import { PolicyRoleTypeInvalidException } from '@modules/policy/exceptions/policy.role-type-invalid.exception';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -75,6 +82,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
         passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -132,11 +140,28 @@ describe('PolicyUpdateByAdminUseCase', () => {
         idempotencyKey: null,
     };
 
+    const targetRole: IRole = {
+        id: 'role-1',
+        type: EnumRoleType.admin,
+        name: 'Admin',
+        isImmutable: false,
+    };
+
+    const roleInvalidateEffect: ICacheInvalidateEffect = {
+        queue: EnumCacheQueue.cache,
+        name: EnumCacheProcess.invalidate,
+        data: { keys: ['Role:role-1', 'Role:Lease:role-1'] },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
+
     let useCase: PolicyUpdateByAdminUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(effect);
+        roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
+        roleService.getByIdInTx.mockResolvedValue(targetRole);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -182,6 +207,56 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 { roleId: actor.roleId, roleType: actor.role.type }
             );
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('writes nothing when the role is user-type', async () => {
+            const failure = new PolicyRoleTypeInvalidException();
+            roleService.assertWritableByActor.mockResolvedValue();
+            roleService.getByIdInTx.mockResolvedValue({
+                ...targetRole,
+                type: EnumRoleType.user,
+            });
+            policyService.assertRoleTypeAllowed.mockImplementation(() => {
+                throw failure;
+            });
+
+            const promise = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1',
+                body
+            );
+
+            await expect(promise).rejects.toBe(failure);
+            expect(roleService.getByIdInTx).toHaveBeenCalledWith(tx, 'role-1');
+            expect(policyService.assertRoleTypeAllowed).toHaveBeenCalledWith(
+                EnumRoleType.user
+            );
+            expect(policyService.updateByAdminInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('checks the role type of an admin role before the write', async () => {
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.updateByAdminInTx.mockResolvedValue(policy);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1',
+                body
+            );
+
+            expect(roleService.getByIdInTx).toHaveBeenCalledWith(tx, 'role-1');
+            expect(policyService.assertRoleTypeAllowed).toHaveBeenCalledWith(
+                EnumRoleType.admin
+            );
         });
 
         it('updates the policy on the outbox transaction after the role gate and wraps the response', async () => {
@@ -235,6 +310,27 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+        });
+
+        it('adds the role cache invalidate effect for the role id on the same tx', async () => {
+            roleService.assertWritableByActor.mockResolvedValue();
+            policyService.updateByAdminInTx.mockResolvedValue(policy);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'role-1',
+                'policy-1',
+                body
+            );
+
+            expect(roleService.invalidateEffect).toHaveBeenCalledWith('role-1');
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                roleInvalidateEffect
+            );
         });
 
         it('rethrows a typed exception of the write and adds no entry', async () => {

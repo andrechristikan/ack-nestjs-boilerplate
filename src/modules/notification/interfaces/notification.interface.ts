@@ -19,6 +19,7 @@ import {
 import {
     EnumNotificationKeyPattern,
     EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -129,6 +130,12 @@ export interface INotificationWorkspaceJoinRejectedContext extends INotification
     rejectReasonLabel: string;
 }
 
+export interface INotificationLoginLockedContext extends INotificationContextBase {
+    method: EnumNotificationLoginLockedMethod;
+    methodLabel: string;
+    lockedUntil: string;
+}
+
 export interface INotificationContextMap {
     [EnumNotificationKind.welcome]: INotificationContextBase;
     [EnumNotificationKind.welcomeSocial]: INotificationContextBase;
@@ -141,6 +148,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.forgotPassword]: INotificationVerificationLinkContext;
     [EnumNotificationKind.resetPassword]: INotificationSnapshotContext;
     [EnumNotificationKind.resetTwoFactorByAdmin]: INotificationSnapshotContext;
+    [EnumNotificationKind.loginLocked]: INotificationLoginLockedContext;
     [EnumNotificationKind.newDeviceLogin]: INotificationNewDeviceLoginContext;
     [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
     [EnumNotificationKind.userAcceptTermPolicy]: INotificationTermPolicyContext;

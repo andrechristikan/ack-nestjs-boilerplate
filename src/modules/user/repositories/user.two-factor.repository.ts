@@ -4,7 +4,11 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Prisma } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { IUserTwoFactorVerifyResult } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserTwoFactorChallengeCreate,
+    IUserTwoFactorChallengeRow,
+    IUserTwoFactorVerifyResult,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -211,6 +215,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             data: {
                 requiredSetup: true,
                 attempt: 0,
+                lockedUntil: null,
                 backupCodes: [],
                 secret: null,
                 pendingSecret: null,
@@ -219,19 +224,22 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    async markTotpUsed(userId: string, step: number): Promise<boolean> {
-        const { count } =
-            await this.databaseService.client.twoFactor.updateMany({
-                where: {
-                    userId,
-                    OR: [
-                        { lastUsedStep: { isSet: false } },
-                        { lastUsedStep: null },
-                        { lastUsedStep: { lt: step } },
-                    ],
-                },
-                data: { lastUsedStep: step },
-            });
+    async markTotpUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        step: number
+    ): Promise<boolean> {
+        const { count } = await tx.twoFactor.updateMany({
+            where: {
+                userId,
+                OR: [
+                    { lastUsedStep: { isSet: false } },
+                    { lastUsedStep: null },
+                    { lastUsedStep: { lt: step } },
+                ],
+            },
+            data: { lastUsedStep: step },
+        });
 
         return count > 0;
     }
@@ -239,23 +247,24 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async incrementAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        maxAttempt: number
+        maxAttempt: number,
+        lockedUntil: Date
     ): Promise<boolean> {
-        const { count } = await tx.twoFactor.updateMany({
-            where: { userId, attempt: { lt: maxAttempt } },
-            data: { attempt: { increment: 1 } },
-        });
-
-        return count > 0;
-    }
-
-    async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {
-        return this.databaseService.client.twoFactor.update({
+        const { attempt } = await tx.twoFactor.update({
             where: { userId },
-            data: {
-                attempt: 0,
-            },
+            data: { attempt: { increment: 1 } },
+            select: { attempt: true },
         });
+        if (attempt < maxAttempt) {
+            return false;
+        }
+
+        await tx.twoFactor.update({
+            where: { userId },
+            data: { attempt: 0, lockedUntil },
+        });
+
+        return true;
     }
 
     async resetTwoFactorAttemptInTx(
@@ -264,7 +273,38 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     ): Promise<void> {
         await tx.twoFactor.updateMany({
             where: { userId },
-            data: { attempt: 0 },
+            data: { attempt: 0, lockedUntil: null },
         });
+    }
+
+    async createChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        data: IUserTwoFactorChallengeCreate
+    ): Promise<void> {
+        await tx.twoFactorChallenge.create({
+            data: { ...data, createdBy: data.userId, consumedAt: null },
+        });
+    }
+
+    async findActiveChallengeByTokenHash(
+        tokenHash: string,
+        now: Date
+    ): Promise<IUserTwoFactorChallengeRow | null> {
+        return this.databaseService.client.twoFactorChallenge.findFirst({
+            where: { tokenHash, consumedAt: null, expiredAt: { gt: now } },
+        });
+    }
+
+    async consumeChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        tokenHash: string,
+        now: Date
+    ): Promise<boolean> {
+        const { count } = await tx.twoFactorChallenge.updateMany({
+            where: { tokenHash, consumedAt: null, expiredAt: { gt: now } },
+            data: { consumedAt: now },
+        });
+
+        return count > 0;
     }
 }

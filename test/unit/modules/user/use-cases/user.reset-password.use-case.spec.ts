@@ -54,6 +54,7 @@ import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/reque
 import type {
     IUser,
     IUserForgotPassword,
+    IUserTwoFactorCheck,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
@@ -96,6 +97,7 @@ describe('UserResetPasswordUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -181,6 +183,7 @@ describe('UserResetPasswordUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -195,6 +198,10 @@ describe('UserResetPasswordUseCase', () => {
     const twoFactorVerified: IUserTwoFactorVerifyResult = {
         method: EnumAuthTwoFactorMethod.code,
         newBackupCodes: null,
+    };
+    const twoFactorChecked: IUserTwoFactorCheck = {
+        verified: twoFactorVerified,
+        totpStep: 58123456,
     };
     const updatedRow = {
         id: 'user-linden',
@@ -225,7 +232,7 @@ describe('UserResetPasswordUseCase', () => {
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
-        userTwoFactorService.verifyIfRequired.mockResolvedValue(null);
+        userTwoFactorService.checkIfRequired.mockResolvedValue(null);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -336,7 +343,7 @@ describe('UserResetPasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 user,
@@ -399,6 +406,7 @@ describe('UserResetPasswordUseCase', () => {
                 'user-linden',
                 password.passwordCreated
             );
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
             expect(
                 userTwoFactorService.recordVerificationInTx
             ).not.toHaveBeenCalled();
@@ -442,8 +450,8 @@ describe('UserResetPasswordUseCase', () => {
         });
 
         it('verifies two-factor of the reset user, records it on the transaction, and adds the verify entry when two-factor was verified', async () => {
-            userTwoFactorService.verifyIfRequired.mockResolvedValue(
-                twoFactorVerified
+            userTwoFactorService.checkIfRequired.mockResolvedValue(
+                twoFactorChecked
             );
             userPasswordService.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
@@ -455,7 +463,7 @@ describe('UserResetPasswordUseCase', () => {
                 method: EnumAuthTwoFactorMethod.code,
             });
 
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 twoFactorUser,
@@ -464,6 +472,14 @@ describe('UserResetPasswordUseCase', () => {
                     code: '123456',
                     backupCode: null,
                 }
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                twoFactorChecked
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledBefore(
+                userService.updatePasswordInTx
             );
             expect(
                 userTwoFactorService.recordVerificationInTx
@@ -496,7 +512,7 @@ describe('UserResetPasswordUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).resolves.toEqual({});
 
-            expect(userTwoFactorService.verifyIfRequired).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 twoFactorSetupUser,
@@ -527,7 +543,7 @@ describe('UserResetPasswordUseCase', () => {
             userPasswordService.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );
-            userTwoFactorService.verifyIfRequired.mockRejectedValue(limit);
+            userTwoFactorService.checkIfRequired.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, {
@@ -544,7 +560,7 @@ describe('UserResetPasswordUseCase', () => {
             userPasswordService.getOneActiveReset.mockResolvedValue(
                 resetTwoFactorRow
             );
-            userTwoFactorService.verifyIfRequired.mockRejectedValue(
+            userTwoFactorService.checkIfRequired.mockRejectedValue(
                 new AuthTwoFactorMethodRequiredException()
             );
 

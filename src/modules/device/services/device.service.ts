@@ -218,6 +218,23 @@ export class DeviceService {
         );
     }
 
+    async touchOwnershipInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        now: Date
+    ): Promise<void> {
+        const deviceId = await this.deviceOwnershipRepository.touchInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            now
+        );
+        if (deviceId !== null) {
+            await this.deviceRepository.touchInTx(tx, deviceId, now);
+        }
+    }
+
     async removeOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

@@ -7,11 +7,9 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { SessionService } from '@modules/session/services/session.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -36,40 +34,12 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userPasswordService: UserPasswordService,
         private readonly userVerificationService: UserVerificationService,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly sessionService: SessionService,
         private readonly activityLogService: ActivityLogService,
         private readonly userUtil: UserUtil,
         private readonly deviceUtil: DeviceUtil,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
-
-    private async startSession(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser,
-        device: IDeviceIdentity,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        loginAt: Date
-    ): Promise<IAuthToken> {
-        const session = await this.userAuthService.createTokenAndSession(
-            requestContext,
-            apiKeyContext,
-            user,
-            device,
-            loginFrom,
-            loginWith,
-            loginAt
-        );
-        await this.sessionService.setLoginOrRevoke(
-            user.id,
-            session.sessionId,
-            session.jti
-        );
-
-        return session.tokens;
-    }
 
     private async resolveLoginOutcome(
         requestContext: IRequestContext,
@@ -89,14 +59,24 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             );
         const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
         if (!isTwoFactorEnabled) {
-            const tokens = await this.startSession(
-                requestContext,
-                apiKeyContext,
-                user,
-                device,
-                loginFrom,
-                loginWith,
-                loginAt
+            const { tokens } = await this.outboxService.withTransaction(
+                async tx => {
+                    await this.userPasswordService.resetPasswordAttemptInTx(
+                        tx,
+                        user.id
+                    );
+
+                    return this.userAuthService.createTokenAndSessionInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        user,
+                        device,
+                        loginFrom,
+                        loginWith,
+                        loginAt
+                    );
+                }
             );
 
             return {
@@ -107,14 +87,22 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             };
         }
 
-        const twoFactor = await this.userAuthService.createTwoFactorChallenge(
-            requestContext,
-            apiKeyContext,
-            user,
-            device,
-            loginFrom,
-            loginWith
-        );
+        const twoFactor = await this.outboxService.withTransaction(async tx => {
+            await this.userPasswordService.resetPasswordAttemptInTx(
+                tx,
+                user.id
+            );
+
+            return this.userAuthService.createTwoFactorChallengeInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                user,
+                device,
+                loginFrom,
+                loginWith
+            );
+        });
 
         return {
             isTwoFactorEnable: true,
@@ -137,6 +125,10 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         }
 
         await this.outboxService.withTransaction(async tx => {
+            await this.userPasswordService.resetPasswordAttemptInTx(
+                tx,
+                user.id
+            );
             await this.userVerificationService.sendEmailInTx(
                 tx,
                 user.id,
@@ -163,20 +155,23 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         { email, password, from, device }: UserLoginRequestDto
     ): Promise<IResponseReturn<IUserLoginOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
-        const attempt = await this.userAuthService.countCredentialAttempt(
-            requestContext,
-            apiKeyContext,
-            email
-        );
+        const credential =
+            await this.userAuthService.getOneForCredentialLogin(email);
+        const { user } = credential;
+        this.userPasswordService.assertPasswordAttemptAvailable(user);
 
-        this.userPasswordService.assertAttemptCounted(attempt.isAttemptCounted);
-
-        // Sequential by design: gate before the work it guards
-        const isMatch = await this.userAuthService.verifyCredential(
-            attempt,
+        // Sequential by design: gate before the work it guards; write after the gate; the count precedes the failed entry
+        const isMatch = await this.userAuthService.isCredentialMatch(
+            credential,
             password
         );
         if (!isMatch) {
+            const isLocked =
+                await this.userPasswordService.countFailedPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    user
+                );
             const failedEntry = this.activityLogService.recordEffect(
                 requestContext,
                 apiKeyContext,
@@ -184,30 +179,31 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 null,
                 {
                     action: EnumActivityLogAction.userLoginFailed,
-                    userId: attempt.user.id,
-                    createdBy: attempt.user.id,
+                    userId: user.id,
+                    createdBy: user.id,
                 }
             );
             await this.outboxService.add(failedEntry);
+            this.userPasswordService.assertPasswordNotLocked(isLocked);
         }
         this.userAuthService.assertCredentialMatched(isMatch);
 
-        const isUnverified = this.userUtil.isUnverified(attempt.user);
+        const isUnverified = this.userUtil.isUnverified(user);
         if (isUnverified) {
             await this.requestVerificationEmail(
                 requestContext,
                 apiKeyContext,
-                attempt.user
+                user
             );
         }
-        this.userAuthService.assertVerified(attempt.user);
-        this.userAuthService.assertPasswordNotExpired(attempt.user);
+        this.userAuthService.assertVerified(user);
+        this.userAuthService.assertPasswordNotExpired(user);
 
         const loginAt = this.helperDateService.create();
         const outcome = await this.resolveLoginOutcome(
             requestContext,
             apiKeyContext,
-            attempt.user,
+            user,
             deviceIdentity,
             from,
             EnumUserLoginWith.credential,

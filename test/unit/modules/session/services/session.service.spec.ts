@@ -32,20 +32,21 @@ import {
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
-    EnumSessionCacheUpdate,
     EnumSessionProcess,
     EnumSessionQueue,
 } from '@modules/session/enums/session.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     ISession,
-    ISessionCache,
     ISessionList,
     ISessionPurgeLoginsPayload,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
+import { CacheService } from '@common/cache/services/cache.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -62,7 +63,12 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 describe('SessionService', () => {
     const sessionRepository: MockProxy<SessionRepository> =
         mock<SessionRepository>();
-    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>({
+        loginTtlInMs: 900000,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
@@ -95,7 +101,7 @@ describe('SessionService', () => {
         id: 'session-1',
         userId: 'user-1',
         deviceOwnershipId: 'device-ownership-1',
-        jti: 'jti-value',
+        jtiDigest: 'jti-digest',
         ipAddress: '127.0.0.1',
         userAgent: {
             ua: null,
@@ -136,6 +142,8 @@ describe('SessionService', () => {
                 SessionService,
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionCache, useValue: sessionCache },
+                { provide: CacheService, useValue: cacheService },
+                { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -147,64 +155,165 @@ describe('SessionService', () => {
         service = module.get(SessionService);
     });
 
-    describe('deleteLogins', () => {
-        it('deletes exactly the given session logins from the cache', async () => {
-            const sessions: ISessionRef[] = [
-                { id: 'session-1' },
-                { id: 'session-2' },
-            ];
+    describe('isLoginActive', () => {
+        const loginKey = 'User:user-1:Session:session-1';
+        const matching = { jtiDigest: 'digest-of-jti' };
+        const differing = { jtiDigest: 'digest-of-other' };
 
-            await service.deleteLogins('user-1', sessions);
-
-            expect(sessionCache.deleteLogins).toHaveBeenCalledWith(
-                'user-1',
-                sessions
+        beforeEach(() => {
+            sessionCache.buildLoginKey.mockReturnValue(loginKey);
+            helperHashService.sha256Hash.mockReturnValue('digest-of-jti');
+            helperHashService.sha256Compare.mockImplementation(
+                (one, two) => one === two
             );
         });
 
+        it('returns false and invalidates the login key when the cached digest differs and the reloaded row differs too', async () => {
+            cacheService.readThrough.mockResolvedValue(differing);
+
+            const result = await service.isLoginActive(
+                'user-1',
+                'session-1',
+                'jti'
+            );
+
+            expect(result).toBe(false);
+            expect(cacheService.invalidate).toHaveBeenCalledWith([loginKey]);
+            expect(cacheService.readThrough).toHaveBeenCalledTimes(2);
+        });
+
+        it('returns false when the reload after the invalidation finds no live row', async () => {
+            cacheService.readThrough
+                .mockResolvedValueOnce(differing)
+                .mockResolvedValueOnce(null);
+
+            const result = await service.isLoginActive(
+                'user-1',
+                'session-1',
+                'jti'
+            );
+
+            expect(result).toBe(false);
+            expect(cacheService.invalidate).toHaveBeenCalledWith([loginKey]);
+            expect(cacheService.readThrough).toHaveBeenCalledTimes(2);
+        });
+
+        it('returns true with one read-through when the cached digest matches', async () => {
+            cacheService.readThrough.mockResolvedValue(matching);
+
+            const result = await service.isLoginActive(
+                'user-1',
+                'session-1',
+                'jti'
+            );
+
+            expect(result).toBe(true);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('jti');
+            expect(cacheService.readThrough).toHaveBeenCalledTimes(1);
+            expect(cacheService.invalidate).not.toHaveBeenCalled();
+        });
+
+        it('returns true when the reload after the invalidation matches', async () => {
+            cacheService.readThrough
+                .mockResolvedValueOnce(differing)
+                .mockResolvedValueOnce(matching);
+
+            const result = await service.isLoginActive(
+                'user-1',
+                'session-1',
+                'jti'
+            );
+
+            expect(result).toBe(true);
+            expect(cacheService.invalidate).toHaveBeenCalledWith([loginKey]);
+            expect(cacheService.readThrough).toHaveBeenCalledTimes(2);
+        });
+
+        it('returns false with no invalidation when no live row loads', async () => {
+            cacheService.readThrough.mockResolvedValue(null);
+
+            const result = await service.isLoginActive(
+                'user-1',
+                'session-1',
+                'jti'
+            );
+
+            expect(result).toBe(false);
+            expect(cacheService.readThrough).toHaveBeenCalledTimes(1);
+            expect(cacheService.invalidate).not.toHaveBeenCalled();
+        });
+
+        it('reads through the login key, schema, and TTL with the repository read as the loader', async () => {
+            sessionRepository.findLoginById.mockResolvedValue(matching);
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttl, loader) => loader()
+            );
+
+            await service.isLoginActive('user-1', 'session-1', 'jti');
+
+            expect(sessionCache.buildLoginKey).toHaveBeenCalledWith(
+                'user-1',
+                'session-1'
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                loginKey,
+                SessionLoginCacheSchema,
+                900000,
+                expect.any(Function)
+            );
+            expect(sessionRepository.findLoginById).toHaveBeenCalledWith(
+                'user-1',
+                'session-1'
+            );
+        });
+
+        it('rethrows a cache failure', async () => {
+            const failure = new RedisUnavailableException();
+            cacheService.readThrough.mockRejectedValue(failure);
+
+            await expect(
+                service.isLoginActive('user-1', 'session-1', 'jti')
+            ).rejects.toBe(failure);
+        });
+    });
+
+    describe('deleteLogins', () => {
+        it('invalidates the login key of each given session', async () => {
+            sessionCache.buildLoginKey
+                .mockReturnValueOnce('key-1')
+                .mockReturnValueOnce('key-2');
+
+            await service.deleteLogins('user-1', [
+                { id: 'session-1' },
+                { id: 'session-2' },
+            ]);
+
+            expect(sessionCache.buildLoginKey).toHaveBeenNthCalledWith(
+                1,
+                'user-1',
+                'session-1'
+            );
+            expect(sessionCache.buildLoginKey).toHaveBeenNthCalledWith(
+                2,
+                'user-1',
+                'session-2'
+            );
+            expect(cacheService.invalidate).toHaveBeenCalledWith([
+                'key-1',
+                'key-2',
+            ]);
+        });
+
         it('rethrows the cache failure', async () => {
-            const failure = new Error('redis down');
-            sessionCache.deleteLogins.mockRejectedValue(failure);
+            const failure = new RedisUnavailableException();
+            sessionCache.buildLoginKey.mockReturnValue('key-1');
+            cacheService.invalidate.mockRejectedValue(failure);
 
             const rejection = service.deleteLogins('user-1', [
                 { id: 'session-1' },
             ]);
 
             await expect(rejection).rejects.toBe(failure);
-        });
-    });
-
-    describe('getLogin', () => {
-        it('reads the login entry from the cache', async () => {
-            const login: ISessionCache = {
-                userId: 'user-1',
-                sessionId: 'session-1',
-                jtiDigest: 'jti-digest',
-            };
-            sessionCache.getLogin.mockResolvedValue(login);
-
-            const result = await service.getLogin('user-1', 'session-1');
-
-            expect(result).toBe(login);
-            expect(sessionCache.getLogin).toHaveBeenCalledWith(
-                'user-1',
-                'session-1'
-            );
-        });
-
-        it('returns null when no login is cached', async () => {
-            sessionCache.getLogin.mockResolvedValue(null);
-
-            expect(await service.getLogin('user-1', 'session-1')).toBeNull();
-        });
-
-        it('rethrows the cache failure', async () => {
-            const failure = new Error('redis down');
-            sessionCache.getLogin.mockRejectedValue(failure);
-
-            await expect(service.getLogin('user-1', 'session-1')).rejects.toBe(
-                failure
-            );
         });
     });
 
@@ -296,7 +405,7 @@ describe('SessionService', () => {
     });
 
     describe('createInTx', () => {
-        it('delegates to the repository', async () => {
+        it('hashes the jti and passes only the digest to the repository', async () => {
             const requestLog = {
                 userAgent: session.userAgent,
                 ipAddress: '127.0.0.1',
@@ -306,7 +415,7 @@ describe('SessionService', () => {
                 id: 'session-1',
                 userId: 'user-1',
                 deviceOwnershipId: 'device-ownership-1',
-                jti: 'jti-value',
+                jtiDigest: 'jti-digest',
                 ipAddress: '127.0.0.1',
                 userAgent: session.userAgent,
                 geoLocation: null,
@@ -320,6 +429,7 @@ describe('SessionService', () => {
                 updatedBy: null,
             };
             sessionRepository.createInTx.mockResolvedValue(created);
+            helperHashService.sha256Hash.mockReturnValue('jti-digest');
 
             const result = await service.createInTx(
                 tx,
@@ -337,15 +447,24 @@ describe('SessionService', () => {
                 'user-1',
                 'session-1',
                 'device-ownership-1',
-                'jti-value',
+                'jti-digest',
                 session.expiredAt,
                 requestLog
+            );
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'jti-value'
             );
         });
     });
 
     describe('updateJtiInTx', () => {
-        it('answers true when the compare-and-set matches a row', async () => {
+        beforeEach(() => {
+            helperHashService.sha256Hash.mockImplementation(
+                value => `digest-of-${value}`
+            );
+        });
+
+        it('answers true and passes only the digests to the repository when the compare-and-set matches a row', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(true);
 
             await expect(
@@ -354,8 +473,8 @@ describe('SessionService', () => {
             expect(sessionRepository.updateJtiInTx).toHaveBeenCalledWith(
                 tx,
                 'session-1',
-                'old-jti',
-                'new-jti'
+                'digest-of-old-jti',
+                'digest-of-new-jti'
             );
         });
 
@@ -368,84 +487,22 @@ describe('SessionService', () => {
         });
     });
 
-    describe('setLogin', () => {
-        it('stores the login entry in the cache and keeps it while the session row is live', async () => {
-            sessionRepository.existsActiveById.mockResolvedValue(true);
-
-            await service.setLogin('user-1', 'session-1', 'jti-value');
-
-            expect(sessionCache.setLogin).toHaveBeenCalledWith(
-                'user-1',
-                'session-1',
-                'jti-value'
-            );
-            expect(sessionRepository.existsActiveById).toHaveBeenCalledWith(
-                'user-1',
-                'session-1'
-            );
-            expect(sessionCache.setLogin).toHaveBeenCalledBefore(
-                sessionRepository.existsActiveById
-            );
-            expect(sessionCache.deleteLogins).not.toHaveBeenCalled();
-        });
-
-        it('deletes the entry when the session row was revoked before the entry landed', async () => {
-            sessionRepository.existsActiveById.mockResolvedValue(false);
-
-            await service.setLogin('user-1', 'session-1', 'jti-value');
-
-            expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-1', [
-                { id: 'session-1' },
-            ]);
-        });
-
-        it('rethrows the cache failure', async () => {
-            const failure = new Error('redis down');
-            sessionCache.setLogin.mockRejectedValue(failure);
-
-            await expect(
-                service.setLogin('user-1', 'session-1', 'jti-value')
-            ).rejects.toBe(failure);
-            expect(sessionRepository.existsActiveById).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('updateLogin', () => {
-        it('answers the compare-and-set outcome of the cache', async () => {
-            sessionCache.updateLogin.mockResolvedValue(
-                EnumSessionCacheUpdate.mismatch
-            );
-
-            await expect(
-                service.updateLogin('user-1', 'session-1', 'old-jti', 'new-jti')
-            ).resolves.toBe(EnumSessionCacheUpdate.mismatch);
-            expect(sessionCache.updateLogin).toHaveBeenCalledWith(
-                'user-1',
-                'session-1',
-                'old-jti',
-                'new-jti'
-            );
-        });
-    });
-
-    describe('revokeIfActive', () => {
+    describe('revokeIfActiveInTx', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
-        beforeEach(() => {
-            helperDateService.create.mockReturnValue(revokedAt);
-            outboxService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-        });
-
-        it('revokes the session as its own user with its purge row on one outbox tx', async () => {
+        it('answers true and adds the purge row on the given tx when the repository revoked', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
-            ).resolves.toBeUndefined();
+                service.revokeIfActiveInTx(
+                    tx,
+                    'user-1',
+                    'session-1',
+                    'user-1',
+                    revokedAt
+                )
+            ).resolves.toBe(true);
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionRepository.revokeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -462,71 +519,20 @@ describe('SessionService', () => {
             });
         });
 
-        it('adds no entry when none is given', async () => {
-            sessionRepository.revokeInTx.mockResolvedValue(true);
-
-            await service.revokeIfActive('user-1', 'session-1', null);
-
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-        });
-
-        it('adds the given entry after the purge row on the same tx', async () => {
-            sessionRepository.revokeInTx.mockResolvedValue(true);
-
-            await service.revokeIfActive('user-1', 'session-1', actorEffect);
-
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
-            expect(outboxService.addInTx).toHaveBeenLastCalledWith(
-                tx,
-                actorEffect
-            );
-        });
-
-        it('adds no row when the session was already revoked', async () => {
+        it('answers false and adds no row when no live session matched', async () => {
             sessionRepository.revokeInTx.mockResolvedValue(false);
 
             await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
-            ).resolves.toBeUndefined();
+                service.revokeIfActiveInTx(
+                    tx,
+                    'user-1',
+                    'session-1',
+                    'user-1',
+                    revokedAt
+                )
+            ).resolves.toBe(false);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('resolves on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
-            ).resolves.toBeUndefined();
-
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
-        });
-
-        it('rethrows an AppBaseException unchanged', async () => {
-            const failure = new RedisUnavailableException();
-            outboxService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
-            ).rejects.toBe(failure);
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
-
-            await expect(
-                service.revokeIfActive('user-1', 'session-1', null)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 
@@ -637,7 +643,7 @@ describe('SessionService', () => {
             expect(result).toBe(refs);
             expect(
                 sessionRepository.revokeActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', 'admin-1', revokedAt);
+            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.dispatch).not.toHaveBeenCalled();
@@ -650,6 +656,62 @@ describe('SessionService', () => {
                 tx,
                 'user-1',
                 'admin-1',
+                revokedAt
+            );
+
+            expect(result).toEqual([]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('revokeActiveByUserExceptInTx', () => {
+        const revokedAt = new Date('2026-01-05T00:00:00.000Z');
+
+        it('revokes all but the excepted session on the given tx, adds the purge row on it, and returns the refs', async () => {
+            const refs: ISessionRef[] = [
+                { id: 'session-1' },
+                { id: 'session-2' },
+            ];
+            const effect: IOutboxEffect = {
+                queue: EnumSessionQueue.session,
+                name: EnumSessionProcess.purgeLogins,
+                data: { userId: 'user-1', sessions: refs },
+                priority: EnumQueuePriority.high,
+                idempotencyKey: null,
+            };
+            sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
+
+            const result = await service.revokeActiveByUserExceptInTx(
+                tx,
+                'user-1',
+                'session-keep',
+                'user-1',
+                revokedAt
+            );
+
+            expect(result).toBe(refs);
+            expect(
+                sessionRepository.revokeActiveByUserInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'session-keep',
+                'user-1',
+                revokedAt
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.dispatch).not.toHaveBeenCalled();
+        });
+
+        it('adds no row when no other session was revoked', async () => {
+            sessionRepository.revokeActiveByUserInTx.mockResolvedValue([]);
+
+            const result = await service.revokeActiveByUserExceptInTx(
+                tx,
+                'user-1',
+                'session-keep',
+                'user-1',
                 revokedAt
             );
 
@@ -684,7 +746,7 @@ describe('SessionService', () => {
             expect(order).toEqual(['sessions', 'devices']);
             expect(
                 sessionRepository.revokeActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', 'admin-1', revokedAt);
+            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -1271,7 +1333,7 @@ describe('SessionService', () => {
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 sessionRepository.revokeActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', 'admin-1', revokedAt);
+            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
                 queue: EnumSessionQueue.session,
@@ -1349,88 +1411,6 @@ describe('SessionService', () => {
                 constructor: AppUnknownException,
                 rawError: cause,
             });
-        });
-    });
-
-    describe('setLoginOrRevoke', () => {
-        const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-
-        beforeEach(() => {
-            helperDateService.create.mockReturnValue(revokedAt);
-            outboxService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-        });
-
-        it('stores the login entry and revokes nothing', async () => {
-            sessionCache.setLogin.mockResolvedValue();
-            sessionRepository.existsActiveById.mockResolvedValue(true);
-
-            await service.setLoginOrRevoke('user-1', 'session-1', 'jti-1');
-
-            expect(sessionCache.setLogin).toHaveBeenCalledWith(
-                'user-1',
-                'session-1',
-                'jti-1'
-            );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(sessionRepository.revokeInTx).not.toHaveBeenCalled();
-        });
-
-        it('revokes the session with its purge row on one outbox tx and rethrows the AppBaseException when the store write fails', async () => {
-            const failure = new RedisUnavailableException();
-            sessionCache.setLogin.mockRejectedValue(failure);
-            sessionRepository.revokeInTx.mockResolvedValue(true);
-
-            await expect(
-                service.setLoginOrRevoke('user-1', 'session-1', 'jti-1')
-            ).rejects.toBe(failure);
-
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(sessionRepository.revokeInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'session-1',
-                'user-1',
-                revokedAt
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: [{ id: 'session-1' }] },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
-        });
-
-        it('treats a write conflict on the revoke as a miss and rethrows the store failure', async () => {
-            const failure = new RedisUnavailableException();
-            sessionCache.setLogin.mockRejectedValue(failure);
-            outboxService.withTransaction.mockRejectedValue(
-                new Error('write conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
-
-            await expect(
-                service.setLoginOrRevoke('user-1', 'session-1', 'jti-1')
-            ).rejects.toBe(failure);
-        });
-
-        it('wraps any other store failure in AppUnknownException after the revoke', async () => {
-            const failure = new Error('cache exploded');
-            sessionCache.setLogin.mockRejectedValue(failure);
-            sessionRepository.revokeInTx.mockResolvedValue(true);
-
-            await expect(
-                service.setLoginOrRevoke('user-1', 'session-1', 'jti-1')
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: failure,
-            });
-
-            expect(sessionRepository.revokeInTx).toHaveBeenCalledTimes(1);
         });
     });
 

@@ -11,6 +11,7 @@
         "forbidden": "Sorry, your role doesn't grant access to this resource.",
         "rankForbidden": "Sorry, your role doesn't outrank the role you are acting on.",
         "selfForbidden": "Sorry, you cannot modify the role you hold.",
-        "immutable": "This role is protected: it cannot be deleted and its type cannot change."
+        "immutable": "This role is protected: it cannot be deleted and its type cannot change.",
+        "hasPolicies": "This role still holds policies: remove them before changing its type to user."
     }
 }

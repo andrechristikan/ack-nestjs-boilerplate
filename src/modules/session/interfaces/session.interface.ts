@@ -11,6 +11,7 @@ import type {
 } from '@generated/prisma-client/client';
 import type {
     SessionListSelect,
+    SessionLoginSelect,
     SessionUserRefSelect,
 } from '@modules/session/constants/session.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
@@ -35,11 +36,9 @@ export interface ISessionPurgeLoginsPayload {
     sessions: ISessionRef[];
 }
 
-export interface ISessionCache {
-    userId: string;
-    sessionId: string;
-    jtiDigest: string;
-}
+export type ISessionLogin = Prisma.SessionGetPayload<{
+    select: typeof SessionLoginSelect;
+}>;
 
 export interface ISessionAnalyticSession {
     id: string;

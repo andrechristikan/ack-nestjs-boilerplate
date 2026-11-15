@@ -1,6 +1,10 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import type { IUserTwoFactorVerifyResult } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserTwoFactorChallengeCreate,
+    IUserTwoFactorChallengeRow,
+    IUserTwoFactorVerifyResult,
+} from '@modules/user/interfaces/user.interface';
 
 export interface IUserTwoFactorRepository {
     createDisabledInTx(
@@ -49,15 +53,32 @@ export interface IUserTwoFactorRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<TwoFactor>;
-    markTotpUsed(userId: string, step: number): Promise<boolean>;
+    markTotpUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        step: number
+    ): Promise<boolean>;
     incrementAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        maxAttempt: number
+        maxAttempt: number,
+        lockedUntil: Date
     ): Promise<boolean>;
-    resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;
     resetTwoFactorAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void>;
+    createChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        data: IUserTwoFactorChallengeCreate
+    ): Promise<void>;
+    findActiveChallengeByTokenHash(
+        tokenHash: string,
+        now: Date
+    ): Promise<IUserTwoFactorChallengeRow | null>;
+    consumeChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        tokenHash: string,
+        now: Date
+    ): Promise<boolean>;
 }

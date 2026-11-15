@@ -11,6 +11,7 @@ import {
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -22,6 +23,8 @@ import type {
     ForgotPassword,
     Prisma,
     TwoFactor,
+    TwoFactorChallenge,
+    TwoFactorChallengeDevice,
     User,
     UserMobileNumber,
     UserPhoto,
@@ -50,9 +53,12 @@ export interface IUserDeletedIdentity {
     username: string;
 }
 
-export interface IUser extends User {
-    role: IRoleWithPolicies;
+export interface IUserWithTwoFactor extends User {
     twoFactor: TwoFactor | null;
+}
+
+export interface IUser extends IUserWithTwoFactor {
+    role: IRoleWithPolicies;
 }
 
 export interface IUserContext {
@@ -233,7 +239,8 @@ export interface IUserUpdateProfile {
 
 export interface IUserUpdateStatus {
     status: EnumUserStatus;
-    passwordAttempt: number | null;
+    passwordAttempt: number;
+    passwordLockedUntil: Date | null;
 }
 
 export interface IUserGeneratePhotoProfile {
@@ -255,10 +262,9 @@ export interface IUserMobileNumberInput {
     countryId: string;
 }
 
-export interface IUserCredentialAttempt {
+export interface IUserCredential {
     user: IUser;
     hashedPassword: string;
-    isAttemptCounted: boolean;
 }
 
 export interface IUserLoginSocial {
@@ -331,9 +337,32 @@ export interface IUserTwoFactorVerifyResult {
     newBackupCodes: string[] | null;
 }
 
-export interface IUserTwoFactorChecked {
+export interface IUserTwoFactorCheck {
     verified: IUserTwoFactorVerifyResult;
     totpStep: number | null;
+}
+
+export interface IUserTwoFactorChallengeCreate {
+    userId: string;
+    tokenHash: string;
+    device: TwoFactorChallengeDevice;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
+    expiredAt: Date;
+}
+
+export type IUserTwoFactorChallengeRow = TwoFactorChallenge;
+
+export interface IUserTwoFactorChallengeToken {
+    challengeToken: string;
+    expiresInMs: number;
+}
+
+export interface IUserTwoFactorChallenge {
+    userId: string;
+    device: IDeviceIdentity;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
 }
 
 interface IUserLoginTwoFactorChallengeBase {
@@ -383,7 +412,8 @@ export interface IUserAnalyticGroupCount<T extends string = string> {
 export interface IUserAnalyticRef {
     id: string;
     email: string;
-    passwordAttempt: number | null;
+    passwordAttempt: number;
+    passwordLockedUntil: Date | null;
 }
 
 export interface IUserForgotPasswordAnalyticUserCount {
@@ -402,10 +432,6 @@ export interface IUserDeletePhotoPayload {
     access: string;
 }
 
-export interface IUserLockoutPayload {
-    userId: string;
-}
-
 export interface IUserImportByAdminPayload {
     rows: IUserImport[];
     activityLog: IActivityLogActorPayload;
@@ -415,12 +441,6 @@ export interface IUserCreateContracts {
     signUp: IUserCreateContract;
     social: IUserCreateContract;
     admin: IUserCreateContract;
-}
-
-export interface IUserLockoutEffect extends IOutboxEffect {
-    queue: EnumUserQueue.user;
-    name: EnumUserProcess.lockout;
-    data: IUserLockoutPayload;
 }
 
 export interface IUserDeletePhotoEffect extends IOutboxEffect {

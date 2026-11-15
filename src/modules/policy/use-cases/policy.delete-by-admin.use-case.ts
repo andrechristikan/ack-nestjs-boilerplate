@@ -73,6 +73,8 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                     }
                 );
                 await this.outboxService.addInTx(tx, effect);
+                const roleEffect = this.roleService.invalidateEffect(roleId);
+                await this.outboxService.addInTx(tx, roleEffect);
             });
 
             return {};

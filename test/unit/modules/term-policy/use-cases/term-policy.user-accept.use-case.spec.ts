@@ -36,6 +36,7 @@ describe('TermPolicyUserAcceptUseCase', () => {
         passwordExpired: null,
         passwordCreated: timestamp,
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: timestamp,
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,

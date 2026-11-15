@@ -42,7 +42,6 @@
     "logout": "Logged out successfully.",
     "queue": {
         "deletePhoto": "Deleted previous user photo.",
-        "lockout": "Locked out user that spent its attempt budget.",
         "importByAdmin": "Imported users by admin.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",

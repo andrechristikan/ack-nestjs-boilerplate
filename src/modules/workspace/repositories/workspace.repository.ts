@@ -14,7 +14,10 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceActiveFilter,
+    WorkspaceDeletedSlugPattern,
+} from '@modules/workspace/constants/workspace.constant';
 import type {
     IWorkspaceCreate,
     IWorkspaceUpdate,
@@ -184,6 +187,10 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 OR: WorkspaceActiveFilter,
             },
             data: {
+                slug: WorkspaceDeletedSlugPattern.replace(
+                    '{id}',
+                    () => workspaceId
+                ),
                 deletedAt,
                 deletedBy,
             },
@@ -234,10 +241,19 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
         const workspaceIds = workspaces.map(({ id }) => id);
 
-        await tx.workspace.updateMany({
-            where: { id: { in: workspaceIds } },
-            data: { deletedAt, deletedBy: userId },
-        });
+        for (const workspaceId of workspaceIds) {
+            await tx.workspace.updateMany({
+                where: { id: workspaceId, OR: WorkspaceActiveFilter },
+                data: {
+                    slug: WorkspaceDeletedSlugPattern.replace(
+                        '{id}',
+                        () => workspaceId
+                    ),
+                    deletedAt,
+                    deletedBy: userId,
+                },
+            });
+        }
 
         return workspaceIds;
     }

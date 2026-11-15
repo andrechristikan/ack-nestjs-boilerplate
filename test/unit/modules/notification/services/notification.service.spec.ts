@@ -29,6 +29,7 @@ import { NotificationService } from '@modules/notification/services/notification
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
     EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
     EnumNotificationEmailProcess,
     EnumNotificationProcess,
     EnumNotificationPushProcess,
@@ -200,6 +201,36 @@ describe('NotificationService', () => {
                 data: {
                     kind: EnumNotificationKind.changePassword,
                     context: { userId: 'user-id', proceedBy: 'user-id' },
+                    recipient: null,
+                    notificationId: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: null,
+            });
+            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
+            expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
+        });
+
+        it('returns the login locked effect with the context and no idempotency key', () => {
+            const context = {
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                method: EnumNotificationLoginLockedMethod.password,
+                methodLabel: 'Password',
+                lockedUntil: '2026-01-01T00:15:00.000Z',
+            };
+
+            const result = service.notify(
+                EnumNotificationKind.loginLocked,
+                context
+            );
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notification,
+                name: EnumNotificationProcess.notify,
+                data: {
+                    kind: EnumNotificationKind.loginLocked,
+                    context,
                     recipient: null,
                     notificationId: null,
                 },

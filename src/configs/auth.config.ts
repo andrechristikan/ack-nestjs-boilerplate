@@ -26,8 +26,8 @@ export interface IConfigAuth {
         jtiLength: number;
     };
     password: {
-        attempt: boolean;
         maxAttempt: number;
+        lockDurationInMs: number;
         saltLength: number;
         expiredInMs: number;
         expiredTemporaryInMs: number;
@@ -60,8 +60,8 @@ export interface IConfigAuth {
         window: number;
         secretLength: number;
         challengeTtlInMs: number;
-        challengeKeyPattern: string;
         maxAttempt: number;
+        lockDurationInMs: number;
         backupCodes: {
             count: number;
             length: number;
@@ -107,8 +107,8 @@ export default registerAs('auth', (): IConfigAuth => {
         },
 
         password: {
-            attempt: true,
             maxAttempt: 5,
+            lockDurationInMs: ms('15m'),
             saltLength: 12,
             expiredInMs: ms('182d'),
             expiredTemporaryInMs: ms('3d'),
@@ -151,12 +151,12 @@ export default registerAs('auth', (): IConfigAuth => {
             window: 1,
             secretLength: 32,
             challengeTtlInMs: ms('5m'),
-            challengeKeyPattern: 'TwoFactor:Challenge:{token}',
             backupCodes: {
                 count: 8,
                 length: 10,
             },
             maxAttempt: 5,
+            lockDurationInMs: ms('15m'),
             encryption: {
                 key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
             },

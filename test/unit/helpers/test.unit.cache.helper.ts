@@ -10,7 +10,6 @@ export interface IStubCacheClient {
         numKeys: number,
         ...args: string[]
     ) => Promise<unknown>;
-    getdel: (key: string) => Promise<string | null>;
     unlink: (...keys: string[]) => Promise<number>;
     ping: () => Promise<string>;
 }

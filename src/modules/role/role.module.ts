@@ -1,3 +1,4 @@
+import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -12,8 +13,8 @@ export class RoleModule {
         return {
             module: RoleModule,
             controllers: [],
-            providers: [RoleRepository, RoleService, RoleUtil],
-            exports: [RoleService, RoleUtil],
+            providers: [RoleRepository, RoleService, RoleUtil, RoleCache],
+            exports: [RoleService, RoleUtil, RoleCache],
             imports: [],
         };
     }

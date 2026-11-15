@@ -28,6 +28,7 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
+    IUserWithTwoFactor,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -229,6 +230,15 @@ export class UserRepository implements IUserRepository {
         });
     }
 
+    async findOneWithTwoFactorById(
+        id: string
+    ): Promise<IUserWithTwoFactor | null> {
+        return this.databaseService.client.user.findUnique({
+            where: { id, deletedAt: null },
+            include: { twoFactor: true },
+        });
+    }
+
     async findByEmails(emails: string[]): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
             where: {
@@ -323,13 +333,14 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         currentStatus: EnumUserStatus,
-        { status, passwordAttempt }: IUserUpdateStatus
+        { status, passwordAttempt, passwordLockedUntil }: IUserUpdateStatus
     ): Promise<User | null> {
         const { count } = await tx.user.updateMany({
             where: { id, status: currentStatus, deletedAt: null },
             data: {
                 status,
                 passwordAttempt,
+                passwordLockedUntil,
             },
         });
         if (count === 0) {
@@ -440,6 +451,7 @@ export class UserRepository implements IUserRepository {
                 passwordCreated,
                 passwordExpired,
                 passwordAttempt: 0,
+                passwordLockedUntil: null,
                 updatedBy,
             },
         });
@@ -448,46 +460,34 @@ export class UserRepository implements IUserRepository {
     async incrementPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        maxAttempt: number
+        maxAttempt: number,
+        lockedUntil: Date
     ): Promise<boolean> {
-        const { count } = await tx.user.updateMany({
-            where: {
-                id: userId,
-                deletedAt: null,
-                passwordAttempt: { lt: maxAttempt },
-            },
-            data: { passwordAttempt: { increment: 1 } },
-        });
-
-        return count > 0;
-    }
-
-    async resetPasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.client.user.update({
+        const { passwordAttempt } = await tx.user.update({
             where: { id: userId, deletedAt: null },
-            data: {
-                passwordAttempt: 0,
-            },
+            data: { passwordAttempt: { increment: 1 } },
+            select: { passwordAttempt: true },
         });
+        if (passwordAttempt < maxAttempt) {
+            return false;
+        }
+
+        await tx.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { passwordAttempt: 0, passwordLockedUntil: lockedUntil },
+        });
+
+        return true;
     }
 
-    async deactivateForMaxAttemptInTx(
+    async resetPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<boolean> {
-        const { count } = await tx.user.updateMany({
-            where: {
-                id: userId,
-                deletedAt: null,
-                status: EnumUserStatus.active,
-            },
-            data: {
-                status: EnumUserStatus.inactive,
-                updatedBy: userId,
-            },
+    ): Promise<User> {
+        return tx.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { passwordAttempt: 0, passwordLockedUntil: null },
         });
-
-        return count > 0;
     }
 
     async markVerifiedBySocialInTx(

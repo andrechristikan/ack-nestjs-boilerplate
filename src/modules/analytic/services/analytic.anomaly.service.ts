@@ -60,6 +60,7 @@ export class AnalyticAnomalyService {
     private readonly loginTimeAnomalyMinSample: number;
     private readonly loginTimeAnomalyLookbackInMs: number;
     private readonly concurrency: number;
+    private readonly passwordMaxAttempt: number;
     private readonly nearLockoutMinAttempt: number;
     private readonly deviceProliferationZScoreThreshold: number;
 
@@ -109,11 +110,13 @@ export class AnalyticAnomalyService {
         this.concurrency = this.configService.get<number>(
             'analytic.anomaly.concurrency'
         )!;
-        const passwordMaxAttempt = this.configService.get<number>(
+        this.passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
         this.nearLockoutMinAttempt =
-            this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
+            this.analyticFraudUtil.nearLockoutThreshold(
+                this.passwordMaxAttempt
+            );
         this.deviceProliferationZScoreThreshold =
             this.configService.get<number>(
                 'analytic.anomaly.deviceProliferation.zScoreThreshold'
@@ -419,10 +422,15 @@ export class AnalyticAnomalyService {
             AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
             this.analyticCache.anomalySummaryTtlInMs,
             async () => {
+                const now = this.helperDateService.create();
                 const [buckets, nearCount] = await Promise.all([
-                    this.userAnalyticService.getGroupPasswordAttemptBuckets(),
+                    this.userAnalyticService.getGroupPasswordAttemptBuckets(
+                        this.passwordMaxAttempt,
+                        now
+                    ),
                     this.userAnalyticService.getCountNearLockout(
-                        this.nearLockoutMinAttempt
+                        this.nearLockoutMinAttempt,
+                        now
                     ),
                 ]);
 
@@ -441,8 +449,11 @@ export class AnalyticAnomalyService {
     async failedLoginSpikeList(
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
+        const now = this.helperDateService.create();
+
         return this.userAnalyticService.getListNearLockoutOffset(
             this.nearLockoutMinAttempt,
+            now,
             params
         );
     }

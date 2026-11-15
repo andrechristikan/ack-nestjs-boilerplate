@@ -11,7 +11,7 @@ A spec succeeds when it fails on a behaviour change. Load tests are not this sui
 | Type | Subject | Runs against |
 | --- | --- | --- |
 | unit | one class: service, use case, util, cache class, guard, pipe, interceptor, filter, queue class, DTO | nothing; every collaborator doubled |
-| integration (held) | a repository, a service whose invariant needs real storage, a kit adapter against its real store (`AwsS3Service`, `AwsSESService`, `DatabaseService`), the Redis behaviour behind a cache class (expiry, compare-and-set and lease-script atomicity), a queue class | Mongo, Redis, LocalStack; FCM faked |
+| integration (held) | a repository, a service whose invariant needs real storage, a kit adapter against its real store (`AwsS3Service`, `AwsSESService`, `DatabaseService`), the Redis behaviour behind a cache class (expiry, lease-script atomicity), a queue class | Mongo, Redis, LocalStack; FCM faked |
 | e2e (held) | a route or a flow over HTTP, BullMQ workers included | Mongo, Redis, LocalStack, nginx serving JWKS; FCM faked |
 
 Integration and e2e are held: no Vitest project, script, or `test/` folder exists for them. Do not run, write, or dispatch one; a task needing one is a hand-back.

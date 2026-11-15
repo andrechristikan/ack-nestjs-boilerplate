@@ -1,10 +1,12 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationPolicyData } from '@migration/data/migration.policy.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { RoleCache } from '@modules/role/caches/role.cache';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -30,6 +32,8 @@ export class MigrationPolicySeed
 
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly roleCache: RoleCache,
+        private readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
         super();
@@ -96,6 +100,11 @@ export class MigrationPolicySeed
                 },
                 { timeout: this.seedTransactionTimeoutInMs }
             );
+
+            const keys = roles.flatMap(role =>
+                this.roleCache.buildRoleKeys(role.id)
+            );
+            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Seeding policies failed');
         }
@@ -128,6 +137,11 @@ export class MigrationPolicySeed
                     },
                 },
             });
+
+            const keys = roles.flatMap(role =>
+                this.roleCache.buildRoleKeys(role.id)
+            );
+            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Removing policies failed');
         }

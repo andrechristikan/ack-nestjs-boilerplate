@@ -9,6 +9,13 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
@@ -19,6 +26,7 @@ import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/us
 import type {
     IUser,
     IUserTwoFactorSetup,
+    IUserTwoFactorCheck,
     IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
@@ -33,7 +41,11 @@ import {
 describe('UserSetupTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const userPasswordService: MockProxy<UserPasswordService> =
+        mock<UserPasswordService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserSetupTwoFactorUseCase;
 
@@ -49,6 +61,7 @@ describe('UserSetupTwoFactorUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -66,6 +79,7 @@ describe('UserSetupTwoFactorUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -99,18 +113,17 @@ describe('UserSetupTwoFactorUseCase', () => {
         },
         twoFactor,
     };
+    const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
     const userContext = buildUserContext(user);
-    const verified: IUserTwoFactorVerifyResult = {
-        method: EnumAuthTwoFactorMethod.code,
-        newBackupCodes: null,
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        userTwoFactorService.verify.mockResolvedValue(verified);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -120,6 +133,9 @@ describe('UserSetupTwoFactorUseCase', () => {
                     useValue: userTwoFactorService,
                 },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: UserPasswordService, useValue: userPasswordService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         useCase = module.get(UserSetupTwoFactorUseCase);
@@ -166,19 +182,24 @@ describe('UserSetupTwoFactorUseCase', () => {
             expect(
                 userTwoFactorService.getBackupCodeForSetup
             ).toHaveBeenCalledWith(user, null);
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
             expect(userTwoFactorService.setup).toHaveBeenCalledWith(user);
-            expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-marten');
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledBefore(userTwoFactorService.saveSetupInTx);
+            expect(userTwoFactorService.saveSetupInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'user-marten',
                 'encrypted-pending'
             );
             expect(
-                userTwoFactorService.saveSetupConsumingBackupCode
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
             ).not.toHaveBeenCalled();
             expect(
                 userAuthService.assertCurrentPassword
@@ -198,7 +219,8 @@ describe('UserSetupTwoFactorUseCase', () => {
                 setupDto
             );
 
-            expect(userTwoFactorService.saveSetup).toHaveBeenCalledWith(
+            expect(userTwoFactorService.saveSetupInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'actor-other',
@@ -225,7 +247,7 @@ describe('UserSetupTwoFactorUseCase', () => {
             );
         });
 
-        it('counts the attempt, verifies the backup code, then saves the pending secret consuming it when two-factor is enabled', async () => {
+        it('checks the backup code before the transaction, then resets, verifies, and saves the pending secret consuming it on one tx when two-factor is enabled', async () => {
             const dto: UserTwoFactorSetupRequestDto = {
                 ...setupDto,
                 backupCode: 'BACKUP1',
@@ -234,10 +256,14 @@ describe('UserSetupTwoFactorUseCase', () => {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 newBackupCodes: [],
             };
+            const backupChecked: IUserTwoFactorCheck = {
+                verified: backupVerified,
+                totpStep: null,
+            };
             userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
                 'BACKUP1'
             );
-            userTwoFactorService.verify.mockResolvedValue(backupVerified);
+            userTwoFactorService.check.mockResolvedValue(backupChecked);
 
             await expect(
                 useCase.execute(
@@ -254,27 +280,46 @@ describe('UserSetupTwoFactorUseCase', () => {
             expect(
                 userTwoFactorService.getBackupCodeForSetup
             ).toHaveBeenCalledWith(user, 'BACKUP1');
+            expect(userTwoFactorService.check).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                user,
+                {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
+                    backupCode: 'BACKUP1',
+                }
+            );
+            expect(userTwoFactorService.check).toHaveBeenCalledBefore(
+                outboxService.withTransaction
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marten',
+                backupChecked
+            );
+            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledBefore(
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
+            );
             expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, user);
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledBefore(userTwoFactorService.verify);
-            expect(userTwoFactorService.verify).toHaveBeenCalledWith(user, {
-                method: EnumAuthTwoFactorMethod.backupCodes,
-                code: null,
-                backupCode: 'BACKUP1',
-            });
-            expect(
-                userTwoFactorService.saveSetupConsumingBackupCode
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
             ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 user,
                 'encrypted-pending',
                 backupVerified
             );
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-marten');
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledBefore(
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
+            );
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
 
         it('generates and saves nothing when the backup code gate rejects', async () => {
@@ -295,7 +340,7 @@ describe('UserSetupTwoFactorUseCase', () => {
                 )
             ).rejects.toBe(failure);
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
 
         it('saves nothing when the backup code verification rejects', async () => {
@@ -303,7 +348,7 @@ describe('UserSetupTwoFactorUseCase', () => {
             userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
                 'BACKUP1'
             );
-            userTwoFactorService.verify.mockRejectedValue(failure);
+            userTwoFactorService.check.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -319,7 +364,7 @@ describe('UserSetupTwoFactorUseCase', () => {
             ).rejects.toBe(failure);
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
             expect(
-                userTwoFactorService.saveSetupConsumingBackupCode
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -341,7 +386,7 @@ describe('UserSetupTwoFactorUseCase', () => {
                 userTwoFactorService.getBackupCodeForSetup
             ).not.toHaveBeenCalled();
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
 
         it('answers a password mismatch and saves nothing', async () => {
@@ -367,15 +412,15 @@ describe('UserSetupTwoFactorUseCase', () => {
                 messagePath: 'user.error.passwordNotMatch',
             });
 
-            expect(userTwoFactorService.saveSetup).not.toHaveBeenCalled();
+            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
         });
 
-        it('answers the two-factor attempt limit before the backup code of a setup is verified', async () => {
+        it('answers the two-factor attempt limit of the backup code check', async () => {
             const limit = new AuthTwoFactorAttemptMaxException();
             userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
                 'BACKUP1'
             );
-            userTwoFactorService.assertAttemptCounted.mockRejectedValue(limit);
+            userTwoFactorService.check.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(
@@ -390,11 +435,134 @@ describe('UserSetupTwoFactorUseCase', () => {
                 )
             ).rejects.toBe(limit);
 
-            expect(userTwoFactorService.verify).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(userTwoFactorService.setup).not.toHaveBeenCalled();
             expect(
-                userTwoFactorService.saveSetupConsumingBackupCode
+                userTwoFactorService.saveSetupConsumingBackupCodeInTx
             ).not.toHaveBeenCalled();
+        });
+
+        it('resets no password counter and opens no transaction when the backup code verification rejects', async () => {
+            userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
+                'BACKUP1'
+            );
+            userTwoFactorService.check.mockRejectedValue(new Error('invalid'));
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { ...setupDto, backupCode: 'BACKUP1' }
+                )
+            ).rejects.toThrow('invalid');
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('answers AuthTwoFactorInvalidException on a write conflict of the backup code path', async () => {
+            const conflict = new Error('write conflict');
+            userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
+                'BACKUP1'
+            );
+            userTwoFactorService.check.mockResolvedValue({
+                verified: {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    newBackupCodes: [],
+                },
+                totpStep: null,
+            });
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { ...setupDto, backupCode: 'BACKUP1' }
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
+                messagePath: 'auth.error.twoFactorInvalid',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('rethrows an AppBaseException of the transaction as it is', async () => {
+            const failure = new AuthTwoFactorAttemptMaxException();
+            userTwoFactorService.getBackupCodeForSetup.mockReturnValue(null);
+            outboxService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    setupDto
+                )
+            ).rejects.toBe(failure);
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown error of the backup code path in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            userTwoFactorService.getBackupCodeForSetup.mockReturnValue(
+                'BACKUP1'
+            );
+            userTwoFactorService.check.mockResolvedValue({
+                verified: {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    newBackupCodes: [],
+                },
+                totpStep: null,
+            });
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { ...setupDto, backupCode: 'BACKUP1' }
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+        });
+
+        it('wraps a write conflict of the no-backup-code path in AppUnknownException for the filter to map', async () => {
+            const conflict = new Error('write conflict');
+            userTwoFactorService.getBackupCodeForSetup.mockReturnValue(null);
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    setupDto
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: conflict,
+            });
         });
     });
 });

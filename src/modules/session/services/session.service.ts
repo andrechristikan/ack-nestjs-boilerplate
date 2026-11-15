@@ -29,24 +29,25 @@ import {
     EnumSessionProcess,
     EnumSessionQueue,
 } from '@modules/session/enums/session.enum';
-import type { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISession,
-    ISessionCache,
     ISessionList,
+    ISessionLogin,
     ISessionPurgeLoginsPayload,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { CacheService } from '@common/cache/services/cache.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -56,7 +57,9 @@ export class SessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionCache: SessionCache,
+        private readonly cacheService: CacheService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperHashService: HelperHashService,
         private readonly deviceService: DeviceService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
@@ -91,6 +94,19 @@ export class SessionService {
             userId,
             sessions: refs,
         }));
+    }
+
+    private async readLogin(
+        userId: string,
+        sessionId: string,
+        key: string
+    ): Promise<ISessionLogin | null> {
+        return this.cacheService.readThrough(
+            key,
+            SessionLoginCacheSchema,
+            this.sessionCache.loginTtlInMs,
+            () => this.sessionRepository.findLoginById(userId, sessionId)
+        );
     }
 
     private async removeDeviceOwnershipInTx(
@@ -142,6 +158,28 @@ export class SessionService {
         };
     }
 
+    private async revokeActiveInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        exceptSessionId: string | null,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        const sessions = await this.sessionRepository.revokeActiveByUserInTx(
+            tx,
+            userId,
+            exceptSessionId,
+            revokedBy,
+            revokedAt
+        );
+        if (sessions.length > 0) {
+            const effect = this.purgeLoginsEffect(userId, sessions);
+            await this.outboxService.addInTx(tx, effect);
+        }
+
+        return sessions;
+    }
+
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
@@ -164,63 +202,45 @@ export class SessionService {
         );
     }
 
-    /** Reads the cached login entry; a store failure throws, so the caller does not mistake an outage for a revoked session. */
-    async getLogin(
-        userId: string,
-        sessionId: string
-    ): Promise<ISessionCache | null> {
-        return this.sessionCache.getLogin(userId, sessionId);
-    }
-
-    /** Stores the login entry for the access-token lifetime, then re-reads the session row and deletes the entry when the row was revoked meanwhile; a store failure throws. */
-    async setLogin(
+    /** True when the session row is live and holds the token's jti; a differing cached digest is invalidated and the row read once more; a Redis connection error throws. */
+    async isLoginActive(
         userId: string,
         sessionId: string,
         jti: string
-    ): Promise<void> {
-        // Sequential by design: side effects whose order is part of the contract (the re-read follows the write it checks)
-        await this.sessionCache.setLogin(userId, sessionId, jti);
+    ): Promise<boolean> {
+        const key = this.sessionCache.buildLoginKey(userId, sessionId);
+        const jtiDigest = this.helperHashService.sha256Hash(jti);
+        const login = await this.readLogin(userId, sessionId, key);
+        if (login === null) {
+            return false;
+        }
 
-        const isActive = await this.sessionRepository.existsActiveById(
-            userId,
-            sessionId
+        const isMatch = this.helperHashService.sha256Compare(
+            login.jtiDigest,
+            jtiDigest
         );
-        if (!isActive) {
-            await this.sessionCache.deleteLogins(userId, [{ id: sessionId }]);
+        if (isMatch) {
+            return true;
         }
-    }
 
-    /** Stores the login entry; on a store failure revokes the session with its cache purge row and rethrows. */
-    async setLoginOrRevoke(
-        userId: string,
-        sessionId: string,
-        jti: string
-    ): Promise<void> {
-        try {
-            await this.setLogin(userId, sessionId, jti);
-        } catch (error: unknown) {
-            await this.revokeIfActive(userId, sessionId, null);
-
-            if (error instanceof AppBaseException) {
-                throw error;
-            }
-
-            throw new AppUnknownException(error);
+        await this.cacheService.invalidate([key]);
+        const reloaded = await this.readLogin(userId, sessionId, key);
+        if (reloaded === null) {
+            return false;
         }
+
+        return this.helperHashService.sha256Compare(
+            reloaded.jtiDigest,
+            jtiDigest
+        );
     }
 
-    /** Rotates the cached jti by compare-and-set; answers updated, absent, or mismatch. */
-    async updateLogin(
-        userId: string,
-        sessionId: string,
-        oldJti: string,
-        newJti: string
-    ): Promise<EnumSessionCacheUpdate> {
-        return this.sessionCache.updateLogin(userId, sessionId, oldJti, newJti);
-    }
-
+    /** Invalidates the login key of each session; a Redis connection error throws. */
     async deleteLogins(userId: string, sessions: ISessionRef[]): Promise<void> {
-        await this.sessionCache.deleteLogins(userId, sessions);
+        const keys = sessions.map(session =>
+            this.sessionCache.buildLoginKey(userId, session.id)
+        );
+        await this.cacheService.invalidate(keys);
     }
 
     async createInTx(
@@ -232,12 +252,14 @@ export class SessionService {
         expiredAt: Date,
         requestLog: IRequestLog
     ): Promise<Session> {
+        const jtiDigest = this.helperHashService.sha256Hash(jti);
+
         return this.sessionRepository.createInTx(
             tx,
             userId,
             sessionId,
             deviceOwnershipId,
-            jti,
+            jtiDigest,
             expiredAt,
             requestLog
         );
@@ -257,45 +279,40 @@ export class SessionService {
         oldJti: string,
         newJti: string
     ): Promise<boolean> {
+        const oldJtiDigest = this.helperHashService.sha256Hash(oldJti);
+        const newJtiDigest = this.helperHashService.sha256Hash(newJti);
+
         return this.sessionRepository.updateJtiInTx(
             tx,
             sessionId,
-            oldJti,
-            newJti
+            oldJtiDigest,
+            newJtiDigest
         );
     }
 
-    /** Revokes the session as its own user with its cache purge row, and the entry when one is given, in one transaction; does nothing when it was already revoked or a write conflict lost. */
-    async revokeIfActive(
+    /** Revokes the session on the caller's transaction and adds its cache purge row; false when no live row matched. */
+    async revokeIfActiveInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
-        entry: IOutboxEffect | null
-    ): Promise<void> {
-        const revokedAt = this.helperDateService.create();
-
-        try {
-            await this.outboxService.withTransaction(async tx => {
-                await this.revokeInTx(tx, userId, sessionId, userId, revokedAt);
-                if (entry !== null) {
-                    await this.outboxService.addInTx(tx, entry);
-                }
-            });
-        } catch (err: unknown) {
-            if (err instanceof SessionNotFoundException) {
-                return;
-            }
-
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return;
-            }
-
-            throw new AppUnknownException(err);
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<boolean> {
+        const isRevoked = await this.sessionRepository.revokeInTx(
+            tx,
+            userId,
+            sessionId,
+            revokedBy,
+            revokedAt
+        );
+        if (!isRevoked) {
+            return false;
         }
+
+        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
+        await this.outboxService.addInTx(tx, effect);
+
+        return true;
     }
 
     /** Revokes the session on the caller's transaction and adds its cache purge row; no match throws SessionNotFoundException. */
@@ -306,7 +323,7 @@ export class SessionService {
         revokedBy: string,
         revokedAt: Date
     ): Promise<void> {
-        const isRevoked = await this.sessionRepository.revokeInTx(
+        const isRevoked = await this.revokeIfActiveInTx(
             tx,
             userId,
             sessionId,
@@ -316,9 +333,6 @@ export class SessionService {
         if (!isRevoked) {
             throw new SessionNotFoundException();
         }
-
-        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
-        await this.outboxService.addInTx(tx, effect);
     }
 
     /** Revokes the user's active sessions on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
@@ -328,18 +342,24 @@ export class SessionService {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
-        const sessions = await this.sessionRepository.revokeActiveByUserInTx(
+        return this.revokeActiveInTx(tx, userId, null, revokedBy, revokedAt);
+    }
+
+    /** Revokes the user's active sessions but the excepted one on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
+    async revokeActiveByUserExceptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        exceptSessionId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        return this.revokeActiveInTx(
             tx,
             userId,
+            exceptSessionId,
             revokedBy,
             revokedAt
         );
-        if (sessions.length > 0) {
-            const effect = this.purgeLoginsEffect(userId, sessions);
-            await this.outboxService.addInTx(tx, effect);
-        }
-
-        return sessions;
     }
 
     /** Revokes the user's active sessions with their cache purge row, then every device ownership, on the caller's transaction; returns the revoked session refs. */

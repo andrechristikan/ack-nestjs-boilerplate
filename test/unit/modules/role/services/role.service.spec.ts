@@ -4,6 +4,17 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { CacheService } from '@common/cache/services/cache.service';
+import {
+    EnumCacheProcess,
+    EnumCacheQueue,
+} from '@common/cache/enums/cache.enum';
+import type {
+    ICacheInvalidateEffect,
+    ICacheLease,
+} from '@common/cache/interfaces/cache.interface';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -21,6 +32,8 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Prisma, Role } from '@generated/prisma-client/client';
+import { RoleCache } from '@modules/role/caches/role.cache';
+import { RoleWithPoliciesCacheSchema } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -37,8 +50,23 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const roleCache: MockProxy<RoleCache> = mock<RoleCache>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
+    const roleKeys = ['Role:role-1', 'Role:Lease:role-1'];
+    const roleLease: ICacheLease = {
+        key: 'Role:Lease:role-1',
+        ttlInMs: 10000,
+    };
+    const cacheEffect: ICacheInvalidateEffect = {
+        queue: EnumCacheQueue.cache,
+        name: EnumCacheProcess.invalidate,
+        data: { keys: roleKeys },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const roleWithPolicies: IRoleWithPolicies = {
@@ -85,11 +113,18 @@ describe('RoleService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleCache.buildRoleKey.mockReturnValue('Role:role-1');
+        roleCache.buildRoleLease.mockReturnValue(roleLease);
+        roleCache.buildRoleKeys.mockReturnValue(roleKeys);
+        cacheService.invalidateEffect.mockReturnValue(cacheEffect);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleService,
                 { provide: RoleRepository, useValue: roleRepository },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: RoleCache, useValue: roleCache },
+                { provide: CacheService, useValue: cacheService },
+                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
 
@@ -229,6 +264,32 @@ describe('RoleService', () => {
         });
     });
 
+    describe('getByIdInTx', () => {
+        it('returns the role read on the tx', async () => {
+            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+
+            const result = await service.getByIdInTx(tx, role.id);
+
+            expect(result).toBe(role);
+            expect(roleRepository.findOneByIdInTx).toHaveBeenCalledWith(
+                tx,
+                role.id
+            );
+        });
+
+        it('throws RoleNotFoundException when the role does not exist', async () => {
+            roleRepository.findOneByIdInTx.mockResolvedValue(null);
+
+            await expect(
+                service.getByIdInTx(tx, 'missing')
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                messagePath: 'role.error.notFound',
+            });
+        });
+    });
+
     describe('getByName', () => {
         it('returns the role the repository reads', async () => {
             roleRepository.findOneByName.mockResolvedValue(role);
@@ -281,8 +342,45 @@ describe('RoleService', () => {
     });
 
     describe('getOne', () => {
-        it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneWithPoliciesById.mockResolvedValue(null);
+        beforeEach(() => {
+            Object.assign(roleCache, { roleTtlInMs: 900000 });
+        });
+
+        it('reads through with the role key, RoleWithPoliciesCacheSchema, the TTL, a loader, and the lease', async () => {
+            cacheService.readThrough.mockResolvedValue(roleWithPolicies);
+
+            const result = await service.getOne(role.id);
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleCache.buildRoleKey).toHaveBeenCalledWith(role.id);
+            expect(roleCache.buildRoleLease).toHaveBeenCalledWith(role.id);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'Role:role-1',
+                RoleWithPoliciesCacheSchema,
+                900000,
+                expect.any(Function),
+                { lease: roleLease }
+            );
+        });
+
+        it('passes a loader that reads the role with its policies', async () => {
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttlInMs, loader) => loader()
+            );
+            roleRepository.findOneWithPoliciesById.mockResolvedValue(
+                roleWithPolicies
+            );
+
+            const result = await service.getOne(role.id);
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleRepository.findOneWithPoliciesById).toHaveBeenCalledWith(
+                role.id
+            );
+        });
+
+        it('throws RoleNotFoundException when the read-through answers null', async () => {
+            cacheService.readThrough.mockResolvedValue(null);
 
             await expect(service.getOne('missing')).rejects.toMatchObject({
                 module: 'role',
@@ -293,15 +391,17 @@ describe('RoleService', () => {
                 messagePath: 'role.error.notFound',
             });
         });
+    });
 
-        it('returns the role with its policies', async () => {
-            roleRepository.findOneWithPoliciesById.mockResolvedValue(
-                roleWithPolicies
+    describe('invalidateEffect', () => {
+        it('builds the invalidate effect over the entry and lease keys', () => {
+            const result = service.invalidateEffect(role.id);
+
+            expect(result).toBe(cacheEffect);
+            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
+            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
+                roleKeys
             );
-
-            const result = await service.getOne(role.id);
-
-            expect(result).toBe(roleWithPolicies);
         });
     });
 
@@ -409,8 +509,104 @@ describe('RoleService', () => {
             type: EnumRoleType.user,
         };
 
+        it('reads the role through the policy-count read on the tx', async () => {
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
+            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
+
+            await service.updateByAdminInTx(
+                tx,
+                role.id,
+                update,
+                superAdminActor
+            );
+
+            expect(
+                roleRepository.findOneWithPolicyCountByIdInTx
+            ).toHaveBeenCalledWith(tx, role.id);
+        });
+
+        it('throws RoleHasPoliciesException when the type changes to user while the role holds a policy', async () => {
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 2 },
+            });
+
+            await expect(
+                service.updateByAdminInTx(tx, role.id, update, superAdminActor)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.hasPolicies,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[
+                        EnumRoleStatusCodeError.hasPolicies
+                    ],
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'role.error.hasPolicies',
+            });
+            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
+        });
+
+        it('updates to user when the role holds no policy', async () => {
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
+            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
+
+            const result = await service.updateByAdminInTx(
+                tx,
+                role.id,
+                update,
+                superAdminActor
+            );
+
+            expect(result).toBe(roleWithPolicies);
+        });
+
+        it('updates a user role that holds policies when the type stays user', async () => {
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                type: EnumRoleType.user,
+                _count: { policies: 1 },
+            });
+            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
+
+            await service.updateByAdminInTx(
+                tx,
+                role.id,
+                update,
+                superAdminActor
+            );
+
+            expect(roleRepository.updateInTx).toHaveBeenCalled();
+        });
+
+        it('answers the immutable refusal whatever the policy count', async () => {
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 3 },
+            });
+
+            await expect(
+                service.updateByAdminInTx(
+                    tx,
+                    immutableRole.id,
+                    update,
+                    superAdminActor
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumRoleStatusCodeError.immutable,
+            });
+            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
+        });
+
         it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(null);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue(
+                null
+            );
 
             await expect(
                 service.updateByAdminInTx(tx, 'missing', update, adminActor)
@@ -425,7 +621,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleSelfForbiddenException when the actor updates the role they hold', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
 
             await expect(
                 service.updateByAdminInTx(tx, role.id, update, {
@@ -446,7 +645,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleRankForbiddenException when an admin updates a superAdmin role', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(superAdminRole);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...superAdminRole,
+                _count: { policies: 0 },
+            });
 
             await expect(
                 service.updateByAdminInTx(
@@ -469,7 +671,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleRankForbiddenException when an admin updates an admin role', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
 
             await expect(
                 service.updateByAdminInTx(tx, role.id, update, adminActor)
@@ -487,9 +692,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleRankForbiddenException when an admin raises a user role to admin', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue({
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
                 ...role,
                 type: EnumRoleType.user,
+                _count: { policies: 0 },
             });
 
             await expect(
@@ -513,7 +719,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleImmutableException when the type of an immutable role changes', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(immutableRole);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 0 },
+            });
 
             await expect(
                 service.updateByAdminInTx(
@@ -538,7 +747,10 @@ describe('RoleService', () => {
                 description: 'Team lead role',
                 type: immutableRole.type,
             };
-            roleRepository.findOneByIdInTx.mockResolvedValue(immutableRole);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 0 },
+            });
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await service.updateByAdminInTx(
@@ -558,7 +770,10 @@ describe('RoleService', () => {
         });
 
         it('answers the rank exception ahead of the immutable refusal', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(immutableRole);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 0 },
+            });
 
             await expect(
                 service.updateByAdminInTx(
@@ -581,9 +796,10 @@ describe('RoleService', () => {
         });
 
         it('updates a user role for an admin actor', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue({
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
                 ...role,
                 type: EnumRoleType.user,
+                _count: { policies: 0 },
             });
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
@@ -604,7 +820,10 @@ describe('RoleService', () => {
         });
 
         it('updates the role and returns it', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await service.updateByAdminInTx(
@@ -621,12 +840,18 @@ describe('RoleService', () => {
                 role.type,
                 update
             );
+            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
+            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
+                roleKeys
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
         it("passes the read's type to the guarded write", async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue({
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
                 ...role,
                 type: EnumRoleType.user,
+                _count: { policies: 0 },
             });
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
@@ -646,7 +871,10 @@ describe('RoleService', () => {
         });
 
         it('throws RoleNotFoundException when the guarded write misses', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
             roleRepository.updateInTx.mockResolvedValue(null);
 
             await expect(
@@ -769,6 +997,11 @@ describe('RoleService', () => {
                 tx,
                 role.id
             );
+            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
+            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
+                roleKeys
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
     });
 
@@ -913,7 +1146,8 @@ describe('RoleService', () => {
             password: null,
             passwordExpired: null,
             passwordCreated: null,
-            passwordAttempt: null,
+            passwordAttempt: 0,
+            passwordLockedUntil: null,
             signUpAt: now,
             signUpFrom: EnumUserSignUpFrom.website,
             signUpWith: EnumUserSignUpWith.credential,
@@ -944,6 +1178,19 @@ describe('RoleService', () => {
             };
 
             const result = await service.validateRoleGuard(user, []);
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns an empty policy list for a user role in the required list', async () => {
+            const user = {
+                ...baseUser,
+                role: { ...roleWithPolicies, type: EnumRoleType.user },
+            };
+
+            const result = await service.validateRoleGuard(user, [
+                EnumRoleType.user,
+            ]);
 
             expect(result).toEqual([]);
         });

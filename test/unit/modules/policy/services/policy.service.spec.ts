@@ -58,6 +58,7 @@ describe('PolicyService', () => {
         passwordExpired: null,
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -181,6 +182,34 @@ describe('PolicyService', () => {
 
             expect(result).toBe(true);
         });
+    });
+
+    describe('assertRoleTypeAllowed', () => {
+        it('throws PolicyRoleTypeInvalidException for a user role', () => {
+            expect(() =>
+                service.assertRoleTypeAllowed(EnumRoleType.user)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'policy',
+                    statusCode: EnumPolicyStatusCodeError.roleTypeInvalid,
+                    statusCodeKey:
+                        EnumPolicyStatusCodeError[
+                            EnumPolicyStatusCodeError.roleTypeInvalid
+                        ],
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                    messagePath: 'policy.error.roleTypeInvalid',
+                })
+            );
+        });
+
+        it.each([EnumRoleType.admin, EnumRoleType.superAdmin])(
+            'passes a %s role',
+            roleType => {
+                expect(() =>
+                    service.assertRoleTypeAllowed(roleType)
+                ).not.toThrow();
+            }
+        );
     });
 
     describe('getManyByRole', () => {

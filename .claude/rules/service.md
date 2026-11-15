@@ -26,7 +26,7 @@ A service holds one module's application logic: its operations and invariants, t
 
 ## Shared transactions
 
-- When two or more use cases run the same sequence over this module's and lower modules' services and the sequence's subject is this module's entity, that sequence is one method here: it opens `withTransaction` and calls each participant as `*InTx(tx, ...)`; the use cases call it (`UserAuthService.createTokenAndSession`, `src/modules/user/services/user.auth.service.ts`; `SessionService.removeDeviceOwnership`, `src/modules/session/services/session.service.ts`).
+- When two or more use cases run the same sequence over this module's and lower modules' services and the sequence's subject is this module's entity, that sequence is one method here: it opens `withTransaction` and calls each participant as `*InTx(tx, ...)`; the use cases call it (`SessionService.removeDeviceOwnership`, `src/modules/session/services/session.service.ts`).
 - When the subject belongs to a lower module, no service holds the sequence: each use case opens its own transaction and calls each module's `*InTx` method (`use-case.md`, Transactions).
 - A sequence that also touches a higher module keeps its lower part here as an `*InTx` method; each use case opens the transaction and sequences the higher module's calls around it.
 - Whoever opens the transaction maps a guarded transition's write conflict (`database.md`, Transactions).

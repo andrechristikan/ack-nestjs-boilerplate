@@ -39,6 +39,7 @@ export enum EnumNotificationKind {
     forgotPassword = 'forgotPassword',
     resetPassword = 'resetPassword',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    loginLocked = 'loginLocked',
     newDeviceLogin = 'newDeviceLogin',
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
@@ -47,6 +48,12 @@ export enum EnumNotificationKind {
     workspaceJoinRequest = 'workspaceJoinRequest',
     workspaceJoinAccepted = 'workspaceJoinAccepted',
     workspaceJoinRejected = 'workspaceJoinRejected',
+}
+
+/** @public */
+export enum EnumNotificationLoginLockedMethod {
+    password = 'password',
+    twoFactor = 'twoFactor',
 }
 
 /** @public */

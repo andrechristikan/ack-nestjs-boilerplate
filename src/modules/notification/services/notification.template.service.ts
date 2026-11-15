@@ -143,6 +143,17 @@ export class NotificationTemplateService {
                         'utf8'
                     ),
                 };
+            case EnumNotificationKind.loginLocked:
+                return {
+                    subject: 'Login Locked',
+                    htmlBody: readFileSync(
+                        join(
+                            templateDir,
+                            'notification.login-locked.template.hbs'
+                        ),
+                        'utf8'
+                    ),
+                };
             case EnumNotificationKind.newDeviceLogin:
                 return {
                     subject: 'Device Login',

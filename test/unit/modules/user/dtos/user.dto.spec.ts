@@ -102,7 +102,6 @@ describe('UserSchema', () => {
             verifiedAt: null,
             passwordExpired: null,
             passwordCreated: null,
-            passwordAttempt: null,
             gender: null,
             lastLoginAt: null,
             lastIPAddress: null,
@@ -115,6 +114,12 @@ describe('UserSchema', () => {
         const result = UserSchema.parse(nullRow);
 
         expect(result).toEqual(nullRow);
+    });
+
+    it('rejects a null passwordAttempt', () => {
+        expect(() =>
+            UserSchema.parse({ ...row, passwordAttempt: null })
+        ).toThrow();
     });
 
     it('rejects a status outside EnumUserStatus', () => {

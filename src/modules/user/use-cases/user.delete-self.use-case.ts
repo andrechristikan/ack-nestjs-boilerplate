@@ -17,6 +17,7 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
@@ -46,6 +47,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
+        private readonly userPasswordService: UserPasswordService,
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly workspaceService: WorkspaceService,
@@ -115,6 +117,10 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         try {
             await this.outboxService.withTransaction(
                 async tx => {
+                    await this.userPasswordService.resetPasswordAttemptInTx(
+                        tx,
+                        userId
+                    );
                     await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
                         tx,
                         userId

@@ -19,6 +19,9 @@ export const ProjectActiveFilter: IProjectActiveFilter = [
 ];
 
 /** @public */
+export const ProjectDeletedSlugPattern = 'deleted-{id}';
+
+/** @public */
 export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
     EnumWorkspaceMemberRole.owner,
     EnumWorkspaceMemberRole.admin,

@@ -26,6 +26,7 @@ import {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -63,6 +64,8 @@ describe('UserDeleteSelfUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const userPasswordService: MockProxy<UserPasswordService> =
+        mock<UserPasswordService>();
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
@@ -99,6 +102,7 @@ describe('UserDeleteSelfUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -154,6 +158,7 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: UserPasswordService, useValue: userPasswordService },
                 {
                     provide: UserTwoFactorService,
                     useValue: userTwoFactorService,
@@ -271,6 +276,11 @@ describe('UserDeleteSelfUseCase', () => {
 
                 return ['outbox-id'];
             });
+            userPasswordService.resetPasswordAttemptInTx.mockImplementation(
+                async () => {
+                    calls.push('resetPasswordAttempt');
+                }
+            );
             workspaceService.assertOwnedHasNoOtherMembersInTx.mockImplementation(
                 async () => {
                     calls.push('assertNoOtherMembers');
@@ -402,6 +412,7 @@ describe('UserDeleteSelfUseCase', () => {
             expect(calls).toEqual([
                 'verifyPassword',
                 'begin',
+                'resetPasswordAttempt',
                 'assertNoOtherMembers',
                 'softDeleteWorkspaces',
                 'projects:workspace-one',
@@ -451,6 +462,46 @@ describe('UserDeleteSelfUseCase', () => {
                 entryEffect,
                 entryEffect,
             ]);
+        });
+
+        it('resets the password counter on the flow transaction', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder');
+        });
+
+        it('resets no counter outside the transaction when the main step fails after a correct password', async () => {
+            outboxService.withTransaction.mockRejectedValue(
+                new Error('write conflict')
+            );
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('reads the actor id from the context actorUserId', async () => {

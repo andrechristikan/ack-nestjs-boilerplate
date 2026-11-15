@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import {
     AuthGoogleCertificateErrorPrefix,
     AuthJwksErrorName,
@@ -26,10 +25,7 @@ import type { TokenPayload } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private readonly authSocialService: AuthSocialService,
-        private readonly helperHashService: HelperHashService
-    ) {}
+    constructor(private readonly authSocialService: AuthSocialService) {}
 
     private isTokenPayloadValid<
         T extends { sub?: string; jti?: string; sessionId: string },
@@ -43,12 +39,6 @@ export class AuthService {
             !!jti &&
             typeof jti === 'string'
         );
-    }
-
-    private isJtiMatch(sessionJtiDigest: string, jti: string): boolean {
-        const jtiHash = this.helperHashService.sha256Hash(jti);
-
-        return this.helperHashService.sha256Compare(sessionJtiDigest, jtiHash);
     }
 
     private toProviderUnavailableException(
@@ -110,17 +100,11 @@ export class AuthService {
         return payload;
     }
 
-    /** Throws the session-revoked exception when the session digest is null (no login stored) or the token jti does not hash to it. */
     validateJwtAccessSession(
         payload: IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload>,
-        sessionJtiDigest: string | null
+        isActive: boolean
     ): IAuthJwtAccessTokenPayload {
-        if (sessionJtiDigest === null) {
-            throw new SessionRevokedException();
-        }
-
-        const isMatch = this.isJtiMatch(sessionJtiDigest, payload.jti);
-        if (!isMatch) {
+        if (!isActive) {
             throw new SessionRevokedException();
         }
 

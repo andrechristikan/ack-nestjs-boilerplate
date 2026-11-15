@@ -48,4 +48,15 @@ export class DeviceRepository implements IDeviceRepository {
             },
         });
     }
+
+    async touchInTx(
+        tx: IDatabaseTransactionClient,
+        deviceId: string,
+        now: Date
+    ): Promise<void> {
+        await tx.device.update({
+            where: { id: deviceId },
+            data: { lastActiveAt: now },
+        });
+    }
 }

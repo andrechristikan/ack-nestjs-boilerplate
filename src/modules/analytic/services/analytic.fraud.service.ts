@@ -252,6 +252,7 @@ export class AnalyticFraudService {
         user: IUserAnalyticRef,
         signals: IAnalyticFraudSignalUsers
     ): IAnalyticFraudRiskScore {
+        const now = this.helperDateService.create();
         const checks = [
             {
                 signal: EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
@@ -281,7 +282,10 @@ export class AnalyticFraudService {
             {
                 signal: EnumAnalyticFraudContributingSignal.nearLockout,
                 weight: this.weightNearLockout,
-                hit: (user.passwordAttempt ?? 0) >= this.nearLockoutAttempt,
+                hit:
+                    (user.passwordLockedUntil !== null &&
+                        user.passwordLockedUntil > now) ||
+                    user.passwordAttempt >= this.nearLockoutAttempt,
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.massRegistrationIp,
@@ -1206,10 +1210,12 @@ export class AnalyticFraudService {
         minScore: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
+        const now = this.helperDateService.create();
         const [signals, nearLockout] = await Promise.all([
             this.collectSignalUsers(),
             this.userAnalyticService.getNearLockout(
                 this.nearLockoutAttempt,
+                now,
                 this.riskScoreCandidateLimit
             ),
         ]);

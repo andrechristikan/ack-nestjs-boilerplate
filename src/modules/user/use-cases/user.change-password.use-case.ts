@@ -66,15 +66,13 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        const attempt = await this.userPasswordService.countPasswordAttempt(
-            requestContext,
-            apiKeyContext,
-            user
-        );
-        if (attempt !== null) {
+        const credential = this.userPasswordService.getCredential(user);
+        if (credential !== null) {
+            // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
             await this.userAuthService.assertPasswordAttempt(
-                attempt,
+                requestContext,
+                apiKeyContext,
+                credential,
                 oldPassword ?? null
             );
             await this.passwordHistoryService.assertNew(
@@ -83,8 +81,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             );
         }
 
-        const twoFactorVerified =
-            await this.userTwoFactorService.verifyIfRequired(
+        const twoFactorChecked =
+            await this.userTwoFactorService.checkIfRequired(
                 requestContext,
                 apiKeyContext,
                 user,
@@ -99,6 +97,19 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
         try {
             await this.outboxService.withTransaction(async tx => {
+                if (credential !== null) {
+                    await this.userPasswordService.resetPasswordAttemptInTx(
+                        tx,
+                        authContext.userId
+                    );
+                }
+                if (twoFactorChecked) {
+                    await this.userTwoFactorService.verifyInTx(
+                        tx,
+                        authContext.userId,
+                        twoFactorChecked
+                    );
+                }
                 await this.userService.updatePasswordInTx(
                     tx,
                     authContext.userId,
@@ -118,9 +129,10 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     tx,
                     authContext.userId
                 );
-                await this.sessionService.revokeActiveByUserInTx(
+                await this.sessionService.revokeActiveByUserExceptInTx(
                     tx,
                     authContext.userId,
+                    authContext.sessionId,
                     authContext.userId,
                     password.passwordCreated
                 );
@@ -135,11 +147,11 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         }
                     ),
                 ];
-                if (twoFactorVerified) {
+                if (twoFactorChecked) {
                     await this.userTwoFactorService.recordVerificationInTx(
                         tx,
                         user,
-                        twoFactorVerified
+                        twoFactorChecked.verified
                     );
                     const verifyEntry = this.activityLogService.recordEffect(
                         requestContext,
@@ -170,7 +182,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                twoFactorVerified &&
+                twoFactorChecked &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new AuthTwoFactorInvalidException();

@@ -60,6 +60,7 @@ import type {
     IUserRecipient,
     IUserTwoFactorStatus,
 } from '@modules/user/interfaces/user.interface';
+import { RoleService } from '@modules/role/services/role.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -83,6 +84,7 @@ export class UserService {
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
+        private readonly roleService: RoleService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -129,7 +131,7 @@ export class UserService {
         authContext: IAuthJwtAccessContext,
         requiredVerified: boolean
     ): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleById(
+        const user = await this.userRepository.findOneWithTwoFactorById(
             authContext.userId
         );
         if (!user) {
@@ -157,7 +159,9 @@ export class UserService {
             throw new UserEmailNotVerifiedException();
         }
 
-        return user;
+        const role = await this.roleService.getOne(user.roleId);
+
+        return { ...user, role };
     }
 
     async getListOffsetByAdmin(
@@ -242,15 +246,11 @@ export class UserService {
         return this.userRepository.findEmailByIdInTx(tx, userId);
     }
 
-    async resetPasswordAttempt(userId: string): Promise<User> {
-        return this.userRepository.resetPasswordAttempt(userId);
-    }
-
-    async deactivateForMaxAttemptInTx(
+    async resetPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<boolean> {
-        return this.userRepository.deactivateForMaxAttemptInTx(tx, userId);
+    ): Promise<void> {
+        await this.userRepository.resetPasswordAttemptInTx(tx, userId);
     }
 
     async updatePasswordInTx(
@@ -417,10 +417,15 @@ export class UserService {
         }
     }
 
-    /** Writes the status guarded on the target's current one; activating a user resets its password and two-factor attempt counters. */
+    /** Writes the status guarded on the target's current one; activating a user resets its password and two-factor attempt counters and clears both locks. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
-        { id, status: currentStatus, passwordAttempt }: IUser,
+        {
+            id,
+            status: currentStatus,
+            passwordAttempt,
+            passwordLockedUntil,
+        }: IUser,
         status: EnumUserStatus
     ): Promise<User> {
         if (currentStatus === status) {
@@ -435,6 +440,10 @@ export class UserService {
                 status,
                 passwordAttempt:
                     status === EnumUserStatus.active ? 0 : passwordAttempt,
+                passwordLockedUntil:
+                    status === EnumUserStatus.active
+                        ? null
+                        : passwordLockedUntil,
             }
         );
         if (!row) {

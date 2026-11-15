@@ -4,11 +4,9 @@ import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
     IUserDeletePhotoPayload,
     IUserImportByAdminPayload,
-    IUserLockoutPayload,
 } from '@modules/user/interfaces/user.interface';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
-import { UserProcessLockoutUseCase } from '@modules/user/use-cases/user.process-lockout.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
@@ -27,7 +25,6 @@ export class UserProcessor extends QueueProcessorBase {
         protected readonly cacheService: CacheService,
         protected readonly outboxService: OutboxService,
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
-        private readonly userProcessLockoutUseCase: UserProcessLockoutUseCase,
         private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase
     ) {
         super(sentryService, messageService, cacheService, outboxService);
@@ -64,11 +61,6 @@ export class UserProcessor extends QueueProcessorBase {
 
                     this.throwUnknownException(error);
                 }
-            case EnumUserProcess.lockout: {
-                const { userId } = data as IUserLockoutPayload;
-
-                return await this.userProcessLockoutUseCase.execute(userId);
-            }
             case EnumUserProcess.importByAdmin: {
                 if (outboxId === null) {
                     const message = this.messageService.setMessage(

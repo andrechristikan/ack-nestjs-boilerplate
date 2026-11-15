@@ -38,6 +38,10 @@ export interface IRoleRepository {
         tx: IDatabaseTransactionClient,
         id: string
     ): Promise<IRole | null>;
+    findOneWithPolicyCountByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRoleWithPolicyCount | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,

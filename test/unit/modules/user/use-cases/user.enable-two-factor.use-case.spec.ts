@@ -8,17 +8,21 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { OutboxService } from '@common/outbox/services/outbox.service';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import type {
-    IUser,
-    IUserTwoFactorVerifyResult,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { UserEnableTwoFactorUseCase } from '@modules/user/use-cases/user.enable-two-factor.use-case';
 import {
@@ -32,6 +36,11 @@ describe('UserEnableTwoFactorUseCase', () => {
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const userPasswordService: MockProxy<UserPasswordService> =
+        mock<UserPasswordService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: UserEnableTwoFactorUseCase;
 
@@ -47,6 +56,7 @@ describe('UserEnableTwoFactorUseCase', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -64,6 +74,7 @@ describe('UserEnableTwoFactorUseCase', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -101,14 +112,13 @@ describe('UserEnableTwoFactorUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
     const userContext = buildUserContext(user);
-    const verified: IUserTwoFactorVerifyResult = {
-        method: EnumAuthTwoFactorMethod.code,
-        newBackupCodes: null,
-    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        userTwoFactorService.verify.mockResolvedValue(verified);
+        userTwoFactorService.checkSetupCode.mockResolvedValue(58123456);
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -118,6 +128,9 @@ describe('UserEnableTwoFactorUseCase', () => {
                     useValue: userTwoFactorService,
                 },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: UserPasswordService, useValue: userPasswordService },
+                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         useCase = module.get(UserEnableTwoFactorUseCase);
@@ -129,7 +142,7 @@ describe('UserEnableTwoFactorUseCase', () => {
             password: 'Current-pass1',
         };
 
-        it('asserts the password, counts the attempt, verifies the code against the pending secret, and enables with the passed context', async () => {
+        it('asserts the password, checks the code against the pending secret, then resets, verifies, and enables on one tx', async () => {
             const calls: string[] = [];
             userAuthService.assertCurrentPassword.mockImplementation(
                 async () => {
@@ -139,19 +152,24 @@ describe('UserEnableTwoFactorUseCase', () => {
             userTwoFactorService.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
-            userTwoFactorService.assertAttemptCounted.mockImplementation(
+            userTwoFactorService.checkSetupCode.mockImplementation(async () => {
+                calls.push('checkSetupCode');
+
+                return 58123456;
+            });
+            userTwoFactorService.verifySetupCodeInTx.mockImplementation(
                 async () => {
-                    calls.push('assertAttemptCounted');
+                    calls.push('verifySetupCodeInTx');
                 }
             );
-            userTwoFactorService.verifySetupCode.mockImplementation(
+            userPasswordService.resetPasswordAttemptInTx.mockImplementation(
                 async () => {
-                    calls.push('verifySetupCode');
+                    calls.push('resetPasswordAttemptInTx');
                 }
             );
-            userTwoFactorService.enableTwoFactor.mockImplementation(
+            userTwoFactorService.enableTwoFactorInTx.mockImplementation(
                 async () => {
-                    calls.push('enableTwoFactor');
+                    calls.push('enableTwoFactorInTx');
 
                     return ['CODE1'];
                 }
@@ -178,15 +196,23 @@ describe('UserEnableTwoFactorUseCase', () => {
             expect(userTwoFactorService.getPendingSecret).toHaveBeenCalledWith(
                 user
             );
-            expect(
-                userTwoFactorService.assertAttemptCounted
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, user);
-            expect(userTwoFactorService.verifySetupCode).toHaveBeenCalledWith(
+            expect(userTwoFactorService.checkSetupCode).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
                 user,
                 'pending-secret',
                 '123456'
             );
-            expect(userTwoFactorService.enableTwoFactor).toHaveBeenCalledWith(
+            expect(
+                userTwoFactorService.verifySetupCodeInTx
+            ).toHaveBeenCalledWith(tx, 'user-marten', 58123456);
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-marten');
+            expect(
+                userTwoFactorService.enableTwoFactorInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'user-marten',
@@ -194,9 +220,10 @@ describe('UserEnableTwoFactorUseCase', () => {
             );
             expect(calls).toEqual([
                 'assertCurrentPassword',
-                'assertAttemptCounted',
-                'verifySetupCode',
-                'enableTwoFactor',
+                'checkSetupCode',
+                'resetPasswordAttemptInTx',
+                'verifySetupCodeInTx',
+                'enableTwoFactorInTx',
             ]);
         });
 
@@ -204,7 +231,9 @@ describe('UserEnableTwoFactorUseCase', () => {
             userTwoFactorService.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
-            userTwoFactorService.enableTwoFactor.mockResolvedValue(['CODE1']);
+            userTwoFactorService.enableTwoFactorInTx.mockResolvedValue([
+                'CODE1',
+            ]);
 
             await useCase.execute(
                 requestContext,
@@ -214,19 +243,27 @@ describe('UserEnableTwoFactorUseCase', () => {
                 enableDto
             );
 
-            expect(userTwoFactorService.enableTwoFactor).toHaveBeenCalledWith(
+            expect(
+                userTwoFactorService.enableTwoFactorInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'actor-other',
                 'pending-secret'
             );
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'actor-other');
         });
 
         it('passes a null password for an absent one', async () => {
             userTwoFactorService.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
-            userTwoFactorService.enableTwoFactor.mockResolvedValue(['CODE1']);
+            userTwoFactorService.enableTwoFactorInTx.mockResolvedValue([
+                'CODE1',
+            ]);
 
             await useCase.execute(
                 requestContext,
@@ -260,7 +297,7 @@ describe('UserEnableTwoFactorUseCase', () => {
                     enableDto
                 )
             ).rejects.toThrow('no pending');
-            expect(userTwoFactorService.verifySetupCode).not.toHaveBeenCalled();
+            expect(userTwoFactorService.checkSetupCode).not.toHaveBeenCalled();
         });
 
         it('enables nothing when the setup code is rejected', async () => {
@@ -268,7 +305,7 @@ describe('UserEnableTwoFactorUseCase', () => {
             userTwoFactorService.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
-            userTwoFactorService.verifySetupCode.mockRejectedValue(failure);
+            userTwoFactorService.checkSetupCode.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -282,7 +319,9 @@ describe('UserEnableTwoFactorUseCase', () => {
                     }
                 )
             ).rejects.toBe(failure);
-            expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorService.enableTwoFactorInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('answers the password mismatch before any two-factor work', async () => {
@@ -310,18 +349,18 @@ describe('UserEnableTwoFactorUseCase', () => {
                 messagePath: 'user.error.passwordNotMatch',
             });
 
+            expect(userTwoFactorService.checkSetupCode).not.toHaveBeenCalled();
             expect(
-                userTwoFactorService.assertAttemptCounted
+                userTwoFactorService.enableTwoFactorInTx
             ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
         });
 
-        it('answers the attempt limit before enable verifies the setup code', async () => {
+        it('answers the attempt limit from the setup check and writes nothing', async () => {
             const limit = new AuthTwoFactorAttemptMaxException();
             userTwoFactorService.getPendingSecret.mockReturnValue(
                 'pending-secret'
             );
-            userTwoFactorService.assertAttemptCounted.mockRejectedValue(limit);
+            userTwoFactorService.checkSetupCode.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(
@@ -332,8 +371,106 @@ describe('UserEnableTwoFactorUseCase', () => {
                     enableDto
                 )
             ).rejects.toBe(limit);
-            expect(userTwoFactorService.verifySetupCode).not.toHaveBeenCalled();
-            expect(userTwoFactorService.enableTwoFactor).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorService.verifySetupCodeInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                userTwoFactorService.enableTwoFactorInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('resets no password counter and opens no transaction when the setup code is rejected', async () => {
+            userTwoFactorService.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            userTwoFactorService.checkSetupCode.mockRejectedValue(
+                new Error('invalid')
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toThrow('invalid');
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rethrows the guarded enable failure raised after the counter reset on the same transaction', async () => {
+            const failure = new AuthTwoFactorSetupRequiredException();
+            userTwoFactorService.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            userTwoFactorService.enableTwoFactorInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toBe(failure);
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledBefore(userTwoFactorService.enableTwoFactorInTx);
+        });
+
+        it('answers AuthTwoFactorSetupRequiredException on a write conflict', async () => {
+            const conflict = new Error('write conflict');
+            userTwoFactorService.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseUtil.toException.mockReturnValue(
+                new DatabaseWriteConflictException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.twoFactorSetupRequired,
+                messagePath: 'auth.error.twoFactorSetupRequired',
+            });
+            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('wraps an unknown transaction error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            userTwoFactorService.getPendingSecret.mockReturnValue(
+                'pending-secret'
+            );
+            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseUtil.toException.mockReturnValue(null);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
         });
     });
 });

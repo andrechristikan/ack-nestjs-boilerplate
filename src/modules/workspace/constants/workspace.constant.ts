@@ -21,6 +21,9 @@ export const WorkspaceActiveFilter: IWorkspaceActiveFilter = [
 ];
 
 /** @public */
+export const WorkspaceDeletedSlugPattern = 'deleted-{id}';
+
+/** @public */
 export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
 /** @public */

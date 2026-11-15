@@ -1,6 +1,9 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -9,9 +12,14 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import { RoleRank } from '@modules/role/constants/role.constant';
+import { RoleCache } from '@modules/role/caches/role.cache';
+import {
+    RoleRank,
+    RoleWithPoliciesCacheSchema,
+} from '@modules/role/constants/role.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
+import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
@@ -34,6 +42,9 @@ import { Injectable } from '@nestjs/common';
 export class RoleService {
     constructor(
         private readonly roleRepository: RoleRepository,
+        private readonly roleCache: RoleCache,
+        private readonly cacheService: CacheService,
+        private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -101,6 +112,18 @@ export class RoleService {
         return role;
     }
 
+    async getByIdInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string
+    ): Promise<IRole> {
+        const role = await this.roleRepository.findOneByIdInTx(tx, roleId);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        return role;
+    }
+
     async getByName(name: string): Promise<IRole> {
         const role = await this.roleRepository.findOneByName(name);
         if (!role) {
@@ -119,13 +142,30 @@ export class RoleService {
         return role;
     }
 
+    /** Read-through over the role row with its policies. */
     async getOne(id: string): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.findOneWithPoliciesById(id);
+        const cacheKey = this.roleCache.buildRoleKey(id);
+        const lease = this.roleCache.buildRoleLease(id);
+
+        const role = await this.cacheService.readThrough(
+            cacheKey,
+            RoleWithPoliciesCacheSchema,
+            this.roleCache.roleTtlInMs,
+            () => this.roleRepository.findOneWithPoliciesById(id),
+            { lease }
+        );
         if (!role) {
             throw new RoleNotFoundException();
         }
 
         return role;
+    }
+
+    /** The outbox effect that drops the role's cache keys; a policy flow adds it on its own `tx`. */
+    invalidateEffect(roleId: string): IOutboxEffect {
+        const keys = this.roleCache.buildRoleKeys(roleId);
+
+        return this.cacheService.invalidateEffect(keys);
     }
 
     assertActorOutranks(
@@ -173,7 +213,10 @@ export class RoleService {
         data: IRoleUpdate,
         actor: IRoleActor
     ): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.findOneByIdInTx(tx, id);
+        const role = await this.roleRepository.findOneWithPolicyCountByIdInTx(
+            tx,
+            id
+        );
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -187,6 +230,12 @@ export class RoleService {
             throw new RoleImmutableException();
         }
 
+        const dropsToUser =
+            data.type === EnumRoleType.user && role.type !== EnumRoleType.user;
+        if (dropsToUser && role._count.policies > 0) {
+            throw new RoleHasPoliciesException();
+        }
+
         const updated = await this.roleRepository.updateInTx(
             tx,
             id,
@@ -196,6 +245,9 @@ export class RoleService {
         if (!updated) {
             throw new RoleNotFoundException();
         }
+
+        const effect = this.invalidateEffect(id);
+        await this.outboxService.addInTx(tx, effect);
 
         return updated;
     }
@@ -223,6 +275,9 @@ export class RoleService {
             throw new RoleUsedException();
         }
 
+        const effect = this.invalidateEffect(id);
+        await this.outboxService.addInTx(tx, effect);
+
         return role;
     }
 
@@ -238,6 +293,6 @@ export class RoleService {
             throw new RoleForbiddenException();
         }
 
-        return role.policies;
+        return role.type === EnumRoleType.user ? [] : role.policies;
     }
 }

@@ -47,21 +47,25 @@ export class UserDisableTwoFactorUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         this.userTwoFactorService.assertEnabled(user);
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.userTwoFactorService.assertAttemptCounted(
+        const checked = await this.userTwoFactorService.check(
             requestContext,
             apiKeyContext,
-            user
+            user,
+            {
+                code: code ?? null,
+                backupCode: backupCode ?? null,
+                method,
+            }
         );
-        await this.userTwoFactorService.verify(user, {
-            code: code ?? null,
-            backupCode: backupCode ?? null,
-            method,
-        });
 
         const now = this.helperDateService.create();
         try {
             await this.outboxService.withTransaction(async tx => {
+                await this.userTwoFactorService.verifyInTx(
+                    tx,
+                    authContext.userId,
+                    checked
+                );
                 await this.userTwoFactorService.disableInTx(
                     tx,
                     authContext.userId

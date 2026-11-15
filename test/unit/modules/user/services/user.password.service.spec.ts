@@ -1,9 +1,9 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IUserLockoutEffect } from '@modules/user/interfaces/user.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { MessageService } from '@common/message/services/message.service';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -46,10 +46,8 @@ import { UserPasswordRepository } from '@modules/user/repositories/user.password
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -58,6 +56,7 @@ import {
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
@@ -73,11 +72,10 @@ describe('UserPasswordService', () => {
         mock<HelperHashService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
@@ -99,19 +97,12 @@ describe('UserPasswordService', () => {
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const lockoutEffect: IUserLockoutEffect = {
-        queue: EnumUserQueue.user,
-        name: EnumUserProcess.lockout,
-        data: { userId: 'user-hollow' },
-        priority: EnumQueuePriority.high,
-        idempotencyKey: null,
-    };
     const usedAt = new Date('2026-03-01T00:00:00.000Z');
     const now = new Date('2026-03-01T00:00:00.000Z');
 
     const configValues: Record<string, boolean | number | string> = {
-        'auth.password.attempt': true,
         'auth.password.maxAttempt': 5,
+        'auth.password.lockDurationInMs': 900000,
         'home.url': 'https://example.com',
         'forgotPassword.reference.prefix': 'FGT',
         'forgotPassword.reference.length': 8,
@@ -133,6 +124,7 @@ describe('UserPasswordService', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -151,6 +143,7 @@ describe('UserPasswordService', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -227,10 +220,6 @@ describe('UserPasswordService', () => {
                 },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserService, useValue: userService },
-                {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
-                },
                 { provide: OutboxService, useValue: outboxService },
                 {
                     provide: NotificationService,
@@ -243,21 +232,87 @@ describe('UserPasswordService', () => {
                     provide: ActivityLogService,
                     useValue: activityLogService,
                 },
+                { provide: MessageService, useValue: messageService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         service = module.get(UserPasswordService);
     });
 
-    describe('resetPasswordAttempt', () => {
-        it('delegates to the user domain', async () => {
-            userService.resetPasswordAttempt.mockResolvedValue(baseUser);
+    describe('assertPasswordAttemptAvailable', () => {
+        it('throws UserPasswordAttemptMaxException when the lock ends later than now', () => {
+            expect(() =>
+                service.assertPasswordAttemptAvailable({
+                    ...baseUser,
+                    passwordLockedUntil: new Date('2026-03-01T00:10:00.000Z'),
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                    statusCodeKey: 'passwordAttemptMax',
+                    messagePath: 'user.error.passwordAttemptMax',
+                })
+            );
+        });
+
+        it('returns when the lock ended before now', () => {
+            expect(() =>
+                service.assertPasswordAttemptAvailable({
+                    ...baseUser,
+                    passwordLockedUntil: new Date('2026-02-28T23:50:00.000Z'),
+                })
+            ).not.toThrow();
+        });
+
+        it('returns when the user holds no lock', () => {
+            expect(() =>
+                service.assertPasswordAttemptAvailable(baseUser)
+            ).not.toThrow();
+        });
+    });
+
+    describe('assertPasswordNotLocked', () => {
+        it('throws UserPasswordAttemptMaxException when the counted failure locked sign-in', () => {
+            expect(() => service.assertPasswordNotLocked(true)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+                    messagePath: 'user.error.passwordAttemptMax',
+                })
+            );
+        });
+
+        it('returns when the counted failure did not lock', () => {
+            expect(() => service.assertPasswordNotLocked(false)).not.toThrow();
+        });
+    });
+
+    describe('getCredential', () => {
+        it('returns the user with its password hash', () => {
+            expect(service.getCredential(baseUser)).toEqual({
+                user: baseUser,
+                hashedPassword: 'hashed-password',
+            });
+        });
+
+        it('returns null for a passwordless user', () => {
+            expect(
+                service.getCredential({ ...baseUser, password: null })
+            ).toBeNull();
+        });
+    });
+
+    describe('resetPasswordAttemptInTx', () => {
+        it('resets the counter and lock of the user on the given transaction', async () => {
+            userService.resetPasswordAttemptInTx.mockResolvedValue();
 
             await expect(
-                service.resetPasswordAttempt('user-hollow')
-            ).resolves.toBe(baseUser);
+                service.resetPasswordAttemptInTx(tx, 'user-hollow')
+            ).resolves.toBeUndefined();
 
-            expect(userService.resetPasswordAttempt).toHaveBeenCalledWith(
+            expect(userService.resetPasswordAttemptInTx).toHaveBeenCalledWith(
+                tx,
                 'user-hollow'
             );
         });
@@ -282,111 +337,114 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('countPasswordAttempt', () => {
+    describe('countFailedPasswordAttempt', () => {
+        const lockedUntil = new Date('2026-03-01T00:15:00.000Z');
+        const entryEffect: IActivityLogCreateManyEffect = {
+            queue: EnumActivityLogQueue.activityLog,
+            name: EnumActivityLogProcess.createMany,
+            data: { rows: [] },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+        const notifyEffect: INotificationNotifyEffect = {
+            queue: EnumNotificationQueue.notification,
+            name: EnumNotificationProcess.notify,
+            data: {
+                kind: EnumNotificationKind.loginLocked,
+                context: {
+                    userId: 'user-hollow',
+                    proceedBy: 'user-hollow',
+                    method: EnumNotificationLoginLockedMethod.password,
+                    methodLabel: 'Label',
+                    lockedUntil: '2026-03-01T00:15:00.000Z',
+                },
+                recipient: null,
+                notificationId: null,
+            },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
+
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
 
-        it('returns null without counting when the user has no password', async () => {
-            const passwordless: IUser = { ...baseUser, password: null };
+        it('counts the failure on the outbox tx and adds no row below the budget', async () => {
+            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
+                false
+            );
 
             await expect(
-                service.countPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    passwordless
-                )
-            ).resolves.toBeNull();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('counts the attempt on the outbox tx and adds no row within the budget', async () => {
-            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
-
-            await expect(
-                service.countPasswordAttempt(
+                service.countFailedPasswordAttempt(
                     requestContext,
                     apiKeyContext,
                     baseUser
                 )
-            ).resolves.toEqual({
-                user: baseUser,
-                hashedPassword: 'hashed-password',
-                isAttemptCounted: true,
-            });
+            ).resolves.toBe(false);
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userRepository.incrementPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow', 5);
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalled();
         });
 
-        it('returns a counted attempt without opening a transaction when attempt tracking is off', async () => {
-            configGet.mockImplementation(key =>
-                key === 'auth.password.attempt' ? false : configValues[key]
+        it('adds the reach-max entry and the loginLocked effect on the counting tx when the failure locked, and no lockout effect', async () => {
+            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-03-01T00:15:00.000Z'
             );
-            const module: TestingModule = await Test.createTestingModule({
-                providers: [
-                    UserPasswordService,
-                    {
-                        provide: UserPasswordRepository,
-                        useValue: userPasswordRepository,
-                    },
-                    { provide: UserRepository, useValue: userRepository },
-                    { provide: UserUtil, useValue: userUtil },
-                    { provide: HelperHashService, useValue: helperHashService },
-                    {
-                        provide: HelperStringService,
-                        useValue: helperStringService,
-                    },
-                    {
-                        provide: HelperDateService,
-                        useValue: helperDateService,
-                    },
-                    { provide: UserService, useValue: userService },
-                    {
-                        provide: UserTwoFactorService,
-                        useValue: userTwoFactorService,
-                    },
-                    { provide: OutboxService, useValue: outboxService },
-                    {
-                        provide: NotificationService,
-                        useValue: notificationService,
-                    },
-                    { provide: DatabaseUtil, useValue: databaseUtil },
-                    { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                    {
-                        provide: FeatureFlagService,
-                        useValue: featureFlagService,
-                    },
-                    {
-                        provide: ActivityLogService,
-                        useValue: activityLogService,
-                    },
-                    { provide: ConfigService, useValue: configService },
-                ],
-            }).compile();
-            const untracked = module.get(UserPasswordService);
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            notificationService.notify.mockReturnValue(notifyEffect);
+            messageService.setMessage.mockReturnValue('Label');
 
             await expect(
-                untracked.countPasswordAttempt(
+                service.countFailedPasswordAttempt(
                     requestContext,
                     apiKeyContext,
                     baseUser
                 )
-            ).resolves.toEqual({
-                user: baseUser,
-                hashedPassword: 'hashed-password',
-                isAttemptCounted: true,
-            });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            ).resolves.toBe(true);
             expect(
                 userRepository.incrementPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
+            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
+                lockedUntil
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    userId: 'user-hollow',
+                    createdBy: 'user-hollow',
+                }
+            );
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.loginLocked,
+                {
+                    userId: 'user-hollow',
+                    proceedBy: 'user-hollow',
+                    method: EnumNotificationLoginLockedMethod.password,
+                    methodLabel: 'Label',
+                    lockedUntil: '2026-03-01T00:15:00.000Z',
+                }
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.loginLockedMethod.password'
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                entryEffect,
+                notifyEffect,
+            ]);
         });
 
         it('throws the max-attempt exception with no row on a write conflict', async () => {
@@ -397,7 +455,7 @@ describe('UserPasswordService', () => {
             );
 
             await expect(
-                service.countPasswordAttempt(
+                service.countFailedPasswordAttempt(
                     requestContext,
                     apiKeyContext,
                     baseUser
@@ -417,7 +475,7 @@ describe('UserPasswordService', () => {
             outboxService.withTransaction.mockRejectedValue(failure);
 
             await expect(
-                service.countPasswordAttempt(
+                service.countFailedPasswordAttempt(
                     requestContext,
                     apiKeyContext,
                     baseUser
@@ -432,7 +490,7 @@ describe('UserPasswordService', () => {
             databaseUtil.toException.mockReturnValue(null);
 
             await expect(
-                service.countPasswordAttempt(
+                service.countFailedPasswordAttempt(
                     requestContext,
                     apiKeyContext,
                     baseUser
@@ -441,105 +499,6 @@ describe('UserPasswordService', () => {
                 constructor: AppUnknownException,
                 rawError: cause,
             });
-        });
-
-        it('adds the lockout row and both entries built from the passed context on the counting tx when the budget is spent', async () => {
-            const entryEffect: IActivityLogCreateManyEffect = {
-                queue: EnumActivityLogQueue.activityLog,
-                name: EnumActivityLogProcess.createMany,
-                data: { rows: [] },
-                priority: EnumQueuePriority.low,
-                idempotencyKey: null,
-            };
-            const revokeAllEntry: IActivityLogCreateManyEffect = {
-                ...entryEffect,
-                idempotencyKey: 'revoke-all',
-            };
-            const reachMaxEntry: IActivityLogCreateManyEffect = {
-                ...entryEffect,
-                idempotencyKey: 'reach-max',
-            };
-            userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
-                false
-            );
-            userTwoFactorService.lockoutEffect.mockReturnValue(lockoutEffect);
-            activityLogService.recordEffect.mockImplementation(
-                (
-                    _requestContext,
-                    _apiKeyContext,
-                    _authContext,
-                    _workspaceContext,
-                    input
-                ) =>
-                    input.action === EnumActivityLogAction.userRevokeAllSessions
-                        ? revokeAllEntry
-                        : reachMaxEntry
-            );
-
-            await expect(
-                service.countPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser
-                )
-            ).resolves.toEqual({
-                user: baseUser,
-                hashedPassword: 'hashed-password',
-                isAttemptCounted: false,
-            });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(
-                userRepository.incrementPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow', 5);
-            expect(userTwoFactorService.lockoutEffect).toHaveBeenCalledWith(
-                'user-hollow'
-            );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
-                1,
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-hollow',
-                    createdBy: 'user-hollow',
-                }
-            );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
-                2,
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: 'user-hollow',
-                    createdBy: 'user-hollow',
-                }
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                lockoutEffect,
-                revokeAllEntry,
-                reachMaxEntry,
-            ]);
-        });
-    });
-
-    describe('assertAttemptCounted', () => {
-        it('returns when the attempt was counted', () => {
-            expect(() => service.assertAttemptCounted(true)).not.toThrow();
-        });
-
-        it('throws UserPasswordAttemptMaxException when the attempt budget is spent', () => {
-            expect(() => service.assertAttemptCounted(false)).toThrow(
-                expect.objectContaining({
-                    module: 'user',
-                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                    messagePath: 'user.error.passwordAttemptMax',
-                })
-            );
         });
     });
 
@@ -869,23 +828,6 @@ describe('UserPasswordService', () => {
             expect(
                 service['hasPassword']({ ...baseUser, password: null })
             ).toBe(false);
-        });
-    });
-
-    describe('buildPasswordLockoutStages', () => {
-        it('returns the revoke-all-sessions and max-password-attempt stages owned by the user', () => {
-            expect(service['buildPasswordLockoutStages']('user-1')).toEqual([
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
-                },
-                {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
-                },
-            ]);
         });
     });
 

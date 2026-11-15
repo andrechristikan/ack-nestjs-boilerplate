@@ -51,6 +51,7 @@ export class MigrationTemplateEmailNotificationSeed
             welcomeEmail,
             resetTwoFactorByAdminEmail,
             newDeviceLoginEmail,
+            loginLockedEmail,
             publishTermPolicyEmail,
             userImportResultEmail,
             resetPasswordEmail,
@@ -91,6 +92,9 @@ export class MigrationTemplateEmailNotificationSeed
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.newDeviceLogin
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.loginLocked
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.publishTermPolicy
@@ -222,6 +226,17 @@ export class MigrationTemplateEmailNotificationSeed
                     EnumNotificationKind.resetTwoFactorByAdmin
                 );
             promises.push(resetTwoFactorByAdminEmailImport);
+        }
+
+        if (!loginLockedEmail) {
+            this.logger.log(
+                'Login Locked Email template missing, importing...'
+            );
+            const loginLockedEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.loginLocked
+                );
+            promises.push(loginLockedEmailImport);
         }
 
         if (!newDeviceLoginEmail) {
@@ -365,6 +380,9 @@ export class MigrationTemplateEmailNotificationSeed
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.newDeviceLogin
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.loginLocked
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.publishTermPolicy

@@ -56,14 +56,12 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
         const payload = this.authService.validateJwtAccessStrategy(data);
-        const login = await this.sessionService.getLogin(
+        const isActive = await this.sessionService.isLoginActive(
             payload.sub,
-            payload.sessionId
+            payload.sessionId,
+            payload.jti
         );
 
-        return this.authService.validateJwtAccessSession(
-            payload,
-            login?.jtiDigest ?? null
-        );
+        return this.authService.validateJwtAccessSession(payload, isActive);
     }
 }

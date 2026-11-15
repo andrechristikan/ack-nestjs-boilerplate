@@ -17,6 +17,7 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
+    IUserWithTwoFactor,
 } from '@modules/user/interfaces/user.interface';
 import {
     EnumUserLoginFrom,
@@ -59,6 +60,7 @@ export interface IUserRepository {
     findOneProfileById(id: string): Promise<IUserProfile | null>;
     findOneActiveProfileById(id: string): Promise<IUserProfile | null>;
     findOneWithRoleById(id: string): Promise<IUser | null>;
+    findOneWithTwoFactorById(id: string): Promise<IUserWithTwoFactor | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
     findExport(
@@ -81,7 +83,7 @@ export interface IUserRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         currentStatus: EnumUserStatus,
-        { status, passwordAttempt }: IUserUpdateStatus
+        { status, passwordAttempt, passwordLockedUntil }: IUserUpdateStatus
     ): Promise<User | null>;
     updateProfileInTx(
         tx: IDatabaseTransactionClient,
@@ -123,13 +125,13 @@ export interface IUserRepository {
     incrementPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        maxAttempt: number
+        maxAttempt: number,
+        lockedUntil: Date
     ): Promise<boolean>;
-    resetPasswordAttempt(userId: string): Promise<User>;
-    deactivateForMaxAttemptInTx(
+    resetPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<boolean>;
+    ): Promise<User>;
     markVerifiedBySocialInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

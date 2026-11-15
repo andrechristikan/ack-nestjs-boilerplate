@@ -18,20 +18,22 @@ describe('AnalyticNearLockoutResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('keeps a null passwordAttempt and a null lastLoginAt', () => {
+    it('keeps a null lastLoginAt', () => {
         const result = AnalyticNearLockoutResponseSchema.parse({
             ...row,
-            passwordAttempt: null,
             lastLoginAt: null,
         });
 
-        expect(result).toEqual({
-            id: 'user-1',
-            email: 'user@example.com',
-            passwordAttempt: null,
-            lastLoginAt: null,
-            createdAt,
-        });
+        expect(result).toEqual({ ...row, lastLoginAt: null });
+    });
+
+    it('rejects a null passwordAttempt', () => {
+        expect(() =>
+            AnalyticNearLockoutResponseSchema.parse({
+                ...row,
+                passwordAttempt: null,
+            })
+        ).toThrow();
     });
 
     it('rejects a createdAt that arrives as an ISO string', () => {

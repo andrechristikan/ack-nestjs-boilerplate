@@ -3,13 +3,12 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { MessageService } from '@common/message/services/message.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
@@ -17,13 +16,16 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
-    IUserCredentialAttempt,
+    IUserCredential,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserForgotPasswordPrepared,
@@ -33,7 +35,6 @@ import type {
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -43,8 +44,8 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 
 @Injectable()
 export class UserPasswordService {
-    private readonly passwordAttemptEnabled: boolean;
     private readonly passwordMaxAttempt: number;
+    private readonly passwordLockDurationInMs: number;
     private readonly homeUrl: string;
     private readonly forgotPasswordReferencePrefix: string;
     private readonly forgotPasswordReferenceLength: number;
@@ -61,20 +62,20 @@ export class UserPasswordService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
-        private readonly userTwoFactorService: UserTwoFactorService,
         private readonly outboxService: OutboxService,
         private readonly notificationService: NotificationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogService: ActivityLogService,
+        private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
-        this.passwordAttemptEnabled = this.configService.get<boolean>(
-            'auth.password.attempt'
-        )!;
         this.passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
+        )!;
+        this.passwordLockDurationInMs = this.configService.get<number>(
+            'auth.password.lockDurationInMs'
         )!;
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -100,23 +101,6 @@ export class UserPasswordService {
 
     private hasPassword(user: IUser): user is IUserPasswordSet {
         return user.password !== null;
-    }
-
-    private buildPasswordLockoutStages(
-        userId: string
-    ): IActivityLogInput<EnumActivityLogAction>[] {
-        return [
-            {
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId,
-                createdBy: userId,
-            },
-            {
-                action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                userId,
-                createdBy: userId,
-            },
-        ];
     }
 
     private createReference(): string {
@@ -161,43 +145,99 @@ export class UserPasswordService {
         };
     }
 
-    private async incrementPasswordAttempt(
+    async createTemporaryPassword(): Promise<IUserPasswordTemporary> {
+        const passwordString = this.authPasswordUtil.createPasswordRandom();
+        const password = await this.authPasswordUtil.createPassword(
+            passwordString,
+            { temporary: true }
+        );
+
+        return { password, passwordString };
+    }
+
+    /** Throws UserPasswordAttemptMaxException while the lock of the user ends later than now. */
+    assertPasswordAttemptAvailable({ passwordLockedUntil }: IUser): void {
+        const now = this.helperDateService.create();
+        if (passwordLockedUntil !== null && passwordLockedUntil > now) {
+            throw new UserPasswordAttemptMaxException();
+        }
+    }
+
+    /** Throws UserPasswordAttemptMaxException when the counted failure locked sign-in. */
+    assertPasswordNotLocked(isLocked: boolean): void {
+        if (isLocked) {
+            throw new UserPasswordAttemptMaxException();
+        }
+    }
+
+    /** Returns the user with its password hash; null for a passwordless user. */
+    getCredential(user: IUser): IUserCredential | null {
+        const hasPassword = this.hasPassword(user);
+        if (!hasPassword) {
+            return null;
+        }
+
+        return { user, hashedPassword: user.password };
+    }
+
+    async resetPasswordAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.userService.resetPasswordAttemptInTx(tx, userId);
+    }
+
+    /** Counts one failed password attempt in its own transaction; true when it reached the budget, which locks sign-in for the lock duration and adds the reach-max entry and the loginLocked effect in that transaction; a write conflict throws UserPasswordAttemptMaxException. */
+    async countFailedPasswordAttempt(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        userId: string
+        { id: userId }: IUser
     ): Promise<boolean> {
-        if (!this.passwordAttemptEnabled) {
-            return true;
-        }
+        const now = this.helperDateService.create();
+        const lockedUntil = this.helperDateService.forward(
+            now,
+            Duration.fromObject({ milliseconds: this.passwordLockDurationInMs })
+        );
+        const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
         try {
             return await this.outboxService.withTransaction(async tx => {
-                const isCounted =
+                const isLocked =
                     await this.userRepository.incrementPasswordAttemptInTx(
                         tx,
                         userId,
-                        this.passwordMaxAttempt
+                        this.passwordMaxAttempt,
+                        lockedUntil
                     );
-                if (!isCounted) {
-                    const lockout =
-                        this.userTwoFactorService.lockoutEffect(userId);
-                    const stages = this.buildPasswordLockoutStages(userId);
-                    const entries = stages.map(stage =>
-                        this.activityLogService.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            null,
-                            null,
-                            stage
-                        )
+                if (isLocked) {
+                    const entry = this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                            userId,
+                            createdBy: userId,
+                        }
                     );
-                    await this.outboxService.addManyInTx(tx, [
-                        lockout,
-                        ...entries,
-                    ]);
+                    const methodLabel = this.messageService.setMessage(
+                        'notification.loginLockedMethod.password'
+                    );
+                    const effect = this.notificationService.notify(
+                        EnumNotificationKind.loginLocked,
+                        {
+                            userId,
+                            proceedBy: userId,
+                            method: EnumNotificationLoginLockedMethod.password,
+                            methodLabel,
+                            lockedUntil: lockedUntilIso,
+                        }
+                    );
+                    await this.outboxService.addManyInTx(tx, [entry, effect]);
                 }
 
-                return isCounted;
+                return isLocked;
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -210,46 +250,6 @@ export class UserPasswordService {
             }
 
             throw new AppUnknownException(err);
-        }
-    }
-
-    async resetPasswordAttempt(userId: string): Promise<User> {
-        return this.userService.resetPasswordAttempt(userId);
-    }
-
-    async createTemporaryPassword(): Promise<IUserPasswordTemporary> {
-        const passwordString = this.authPasswordUtil.createPasswordRandom();
-        const password = await this.authPasswordUtil.createPassword(
-            passwordString,
-            { temporary: true }
-        );
-
-        return { password, passwordString };
-    }
-
-    /** Counts one password attempt for a user holding a password and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; null for a passwordless user, isAttemptCounted false on a spent budget; a write conflict throws UserPasswordAttemptMaxException. */
-    async countPasswordAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser
-    ): Promise<IUserCredentialAttempt | null> {
-        const hasPassword = this.hasPassword(user);
-        if (!hasPassword) {
-            return null;
-        }
-
-        const isAttemptCounted = await this.incrementPasswordAttempt(
-            requestContext,
-            apiKeyContext,
-            user.id
-        );
-
-        return { user, hashedPassword: user.password, isAttemptCounted };
-    }
-
-    assertAttemptCounted(isAttemptCounted: boolean): void {
-        if (!isAttemptCounted) {
-            throw new UserPasswordAttemptMaxException();
         }
     }
 

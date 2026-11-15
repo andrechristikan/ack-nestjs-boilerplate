@@ -37,7 +37,5 @@ A use case holds the business logic of one user- or job-facing action: it assemb
 ## Branches
 
 - A branch picks the next service call on a service or util predicate or a service result: `const revokesSessions = this.userService.revokesSessionsOn(status)`, not `if (status === EnumUserStatus.active)`.
-- Inline, a branch tests only:
-    - a null or presence check of an input (`!inviteToken`, `revoked.length > 0`);
-    - an enum comparison of a value a service returned (`cacheUpdate === EnumSessionCacheUpdate.mismatch`).
+- Inline, a branch tests only a null or presence check of an input (`!inviteToken`, `revoked.length > 0`).
 - A business-state check on an entity (`!user.isVerified`, `user.twoFactor.enabled`, `status === EnumUserStatus.active`) goes through a service or util predicate or a service assert (`service.md`, Methods).

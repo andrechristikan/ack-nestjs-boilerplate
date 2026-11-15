@@ -59,6 +59,9 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
         try {
             const updated = await this.outboxService.withTransaction(
                 async tx => {
+                    const role = await this.roleService.getByIdInTx(tx, roleId);
+                    this.policyService.assertRoleTypeAllowed(role.type);
+
                     const policy = await this.policyService.updateByAdminInTx(
                         tx,
                         roleId,
@@ -79,6 +82,9 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
                         }
                     );
                     await this.outboxService.addInTx(tx, effect);
+                    const roleEffect =
+                        this.roleService.invalidateEffect(roleId);
+                    await this.outboxService.addInTx(tx, roleEffect);
 
                     return policy;
                 }

@@ -1,10 +1,12 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationRoleData } from '@migration/data/migration.role.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationRoleData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { RoleCache } from '@modules/role/caches/role.cache';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -27,6 +29,8 @@ export class MigrationRoleSeed
 
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly roleCache: RoleCache,
+        private readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
         super();
@@ -43,10 +47,11 @@ export class MigrationRoleSeed
         this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
         try {
-            await this.databaseService.withTransaction(
+            const roleIds = await this.databaseService.withTransaction(
                 async tx => {
+                    const ids: string[] = [];
                     for (const role of this.roles) {
-                        await tx.role.upsert({
+                        const seeded = await tx.role.upsert({
                             where: {
                                 name: role.name.toLowerCase(),
                             },
@@ -62,10 +67,18 @@ export class MigrationRoleSeed
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                         });
+                        ids.push(seeded.id);
                     }
+
+                    return ids;
                 },
                 { timeout: this.seedTransactionTimeoutInMs }
             );
+
+            const keys = roleIds.flatMap(roleId =>
+                this.roleCache.buildRoleKeys(roleId)
+            );
+            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Seeding roles failed');
         }
@@ -79,7 +92,16 @@ export class MigrationRoleSeed
         this.logger.log('Removing back Roles...');
 
         try {
+            // Sequential by design: write must not run if an earlier step throws
+            const roles = await this.databaseService.client.role.findMany({
+                select: { id: true },
+            });
             await this.databaseService.client.role.deleteMany({});
+
+            const keys = roles.flatMap(role =>
+                this.roleCache.buildRoleKeys(role.id)
+            );
+            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Removing roles failed');
         }

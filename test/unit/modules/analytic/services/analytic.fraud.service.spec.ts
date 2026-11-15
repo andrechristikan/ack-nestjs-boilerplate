@@ -1120,6 +1120,7 @@ describe('AnalyticFraudService', () => {
             id: 'user-1',
             email: 'user@example.com',
             passwordAttempt: 4,
+            passwordLockedUntil: null,
         };
         const scored = {
             userId: 'user-1',
@@ -1184,6 +1185,36 @@ describe('AnalyticFraudService', () => {
         });
     });
 
+    describe('riskScore with a locked account', () => {
+        it('carries the nearLockout signal for a user with no attempts and a lock ending after now', async () => {
+            userAnalyticService.getOneById.mockResolvedValue({
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: 0,
+                passwordLockedUntil: new Date('2026-03-01T00:10:00.000Z'),
+            });
+
+            const result = await service.riskScore('user-1');
+
+            expect(result.contributingSignalCodes).toEqual([
+                EnumAnalyticFraudContributingSignal.nearLockout,
+            ]);
+        });
+
+        it('carries no nearLockout signal for a user with no attempts and a lock that ended before now', async () => {
+            userAnalyticService.getOneById.mockResolvedValue({
+                id: 'user-1',
+                email: 'user@example.com',
+                passwordAttempt: 0,
+                passwordLockedUntil: new Date('2026-02-28T23:50:00.000Z'),
+            });
+
+            const result = await service.riskScore('user-1');
+
+            expect(result.contributingSignalCodes).toEqual([]);
+        });
+    });
+
     describe('riskScores', () => {
         const shared = [
             {
@@ -1205,11 +1236,13 @@ describe('AnalyticFraudService', () => {
             id: 'user-low',
             email: 'low@example.com',
             passwordAttempt: 1,
+            passwordLockedUntil: null,
         };
         const high = {
             id: 'user-high',
             email: 'high@example.com',
             passwordAttempt: 4,
+            passwordLockedUntil: null,
         };
         const lowScore = {
             userId: 'user-low',
@@ -1248,6 +1281,7 @@ describe('AnalyticFraudService', () => {
             );
             expect(userAnalyticService.getNearLockout).toHaveBeenCalledWith(
                 4,
+                now,
                 3
             );
             expect(userAnalyticService.getManyByIds).toHaveBeenCalledWith([
@@ -1829,6 +1863,7 @@ describe('AnalyticFraudService', () => {
                 id: 'user-1',
                 email: 'user@example.com',
                 passwordAttempt: 0,
+                passwordLockedUntil: null,
             };
             const signals: IAnalyticFraudSignalUsers = {
                 ...emptySignals,
@@ -1891,7 +1926,8 @@ describe('AnalyticFraudService', () => {
         const user = {
             id: 'user-1',
             email: 'user@example.com',
-            passwordAttempt: null,
+            passwordAttempt: 0,
+            passwordLockedUntil: null,
         };
 
         it('sums the weight of every signal that hit, in signal order', () => {
@@ -1941,7 +1977,7 @@ describe('AnalyticFraudService', () => {
             });
         });
 
-        it('flags near-lockout at the password max attempt minus the offset and treats null as zero', () => {
+        it('flags near-lockout at the password max attempt minus the offset', () => {
             expect(
                 service['score']({ ...user, passwordAttempt: 3 }, emptySignals)
                     .contributingSignalCodes
@@ -1952,6 +1988,36 @@ describe('AnalyticFraudService', () => {
             ).toEqual([EnumAnalyticFraudContributingSignal.nearLockout]);
             expect(
                 service['score'](user, emptySignals).contributingSignalCodes
+            ).toEqual([]);
+        });
+
+        it('flags near-lockout for a zero-attempt user whose lock ends after now', () => {
+            expect(
+                service['score'](
+                    {
+                        ...user,
+                        passwordAttempt: 0,
+                        passwordLockedUntil: new Date(
+                            '2026-03-01T00:10:00.000Z'
+                        ),
+                    },
+                    emptySignals
+                ).contributingSignalCodes
+            ).toEqual([EnumAnalyticFraudContributingSignal.nearLockout]);
+        });
+
+        it('flags no near-lockout for a zero-attempt user whose lock ended before now', () => {
+            expect(
+                service['score'](
+                    {
+                        ...user,
+                        passwordAttempt: 0,
+                        passwordLockedUntil: new Date(
+                            '2026-02-28T23:50:00.000Z'
+                        ),
+                    },
+                    emptySignals
+                ).contributingSignalCodes
             ).toEqual([]);
         });
     });

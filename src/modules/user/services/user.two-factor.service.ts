@@ -4,16 +4,29 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { SentryService } from '@common/sentry/services/sentry.service';
+import { MessageService } from '@common/message/services/message.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import { UserTwoFactorChallengeEncryptionPurpose } from '@modules/user/constants/user.constant';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
 import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
@@ -30,8 +43,9 @@ import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.in
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type {
     IUser,
-    IUserLockoutEffect,
-    IUserTwoFactorChecked,
+    IUserTwoFactorChallenge,
+    IUserTwoFactorChallengeToken,
+    IUserTwoFactorCheck,
     IUserTwoFactorLoginSetup,
     IUserTwoFactorSetupSecret,
     IUserTwoFactorVerifyInput,
@@ -42,7 +56,7 @@ import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-fac
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { Duration } from 'luxon';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -50,6 +64,9 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 @Injectable()
 export class UserTwoFactorService {
     private readonly maxAttempt: number;
+    private readonly lockDurationInMs: number;
+    private readonly challengeTtlInMs: number;
+    private readonly encryptionSecretKey: string;
 
     constructor(
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
@@ -60,11 +77,58 @@ export class UserTwoFactorService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly userUtil: UserUtil,
+        private readonly notificationService: NotificationService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperDateService: HelperDateService,
+        private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
         this.maxAttempt = this.configService.get<number>(
             'auth.twoFactor.maxAttempt'
         )!;
+        this.lockDurationInMs = this.configService.get<number>(
+            'auth.twoFactor.lockDurationInMs'
+        )!;
+        this.challengeTtlInMs = this.configService.get<number>(
+            'auth.twoFactor.challengeTtlInMs'
+        )!;
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
+    }
+
+    private sealNotificationToken(
+        notificationToken: string | null,
+        userId: string
+    ): string | null {
+        if (notificationToken === null) {
+            return null;
+        }
+
+        return this.helperEncryptionService.aes256Encrypt(
+            notificationToken,
+            this.encryptionSecretKey,
+            UserTwoFactorChallengeEncryptionPurpose,
+            userId
+        );
+    }
+
+    private openNotificationToken(
+        encryptedNotificationToken: string | null,
+        userId: string
+    ): string | null {
+        if (encryptedNotificationToken === null) {
+            return null;
+        }
+
+        return this.helperEncryptionService.aes256Decrypt(
+            encryptedNotificationToken,
+            this.encryptionSecretKey,
+            UserTwoFactorChallengeEncryptionPurpose,
+            userId
+        );
     }
 
     private getEnabledTwoFactor({ twoFactor }: IUser): TwoFactor {
@@ -99,7 +163,7 @@ export class UserTwoFactorService {
         twoFactor: TwoFactor,
         method: EnumAuthTwoFactorMethod,
         { code, backupCode }: IUserTwoFactorVerifyInput
-    ): IUserTwoFactorChecked | null {
+    ): IUserTwoFactorCheck | null {
         const normalizedCode =
             method === EnumAuthTwoFactorMethod.code
                 ? code?.trim()
@@ -157,31 +221,88 @@ export class UserTwoFactorService {
         return user;
     }
 
-    private buildTwoFactorLockoutStages(
-        userId: string
-    ): IActivityLogInput<EnumActivityLogAction>[] {
-        return [
-            {
-                action: EnumActivityLogAction.userRevokeAllSessions,
-                userId,
-                createdBy: userId,
+    /** Stores the challenge row on the given tx under the SHA-256 hash of a new token and answers the raw token; the push token is stored encrypted. */
+    async createChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        { fingerprint, name, platform, notificationToken }: IDeviceIdentity,
+        loginFrom: EnumUserLoginFrom,
+        loginWith: EnumUserLoginWith
+    ): Promise<IUserTwoFactorChallengeToken> {
+        const challengeToken = this.helperStringService.random(48);
+        const tokenHash = this.helperHashService.sha256Hash(challengeToken);
+        const encryptedNotificationToken = this.sealNotificationToken(
+            notificationToken,
+            userId
+        );
+        const now = this.helperDateService.create();
+        const expiredAt = this.helperDateService.forward(
+            now,
+            Duration.fromObject({ milliseconds: this.challengeTtlInMs })
+        );
+        await this.userTwoFactorRepository.createChallengeInTx(tx, {
+            userId,
+            tokenHash,
+            device: {
+                fingerprint,
+                name,
+                platform,
+                encryptedNotificationToken,
             },
-            {
-                action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
-                userId,
-                createdBy: userId,
-            },
-        ];
+            loginFrom,
+            loginWith,
+            expiredAt,
+        });
+
+        return { challengeToken, expiresInMs: this.challengeTtlInMs };
     }
 
-    lockoutEffect(userId: string): IUserLockoutEffect {
+    /** Reads the live challenge of a token without claiming it; no live row throws AuthTwoFactorChallengeInvalidException. */
+    async getChallenge(
+        challengeToken: string
+    ): Promise<IUserTwoFactorChallenge> {
+        const tokenHash = this.helperHashService.sha256Hash(challengeToken);
+        const now = this.helperDateService.create();
+        const row =
+            await this.userTwoFactorRepository.findActiveChallengeByTokenHash(
+                tokenHash,
+                now
+            );
+        if (!row) {
+            throw new AuthTwoFactorChallengeInvalidException();
+        }
+
+        const { fingerprint, name, platform, encryptedNotificationToken } =
+            row.device;
+        const notificationToken = this.openNotificationToken(
+            encryptedNotificationToken,
+            row.userId
+        );
+
         return {
-            queue: EnumUserQueue.user,
-            name: EnumUserProcess.lockout,
-            data: { userId },
-            priority: EnumQueuePriority.high,
-            idempotencyKey: null,
+            userId: row.userId,
+            device: { fingerprint, name, platform, notificationToken },
+            loginFrom: row.loginFrom,
+            loginWith: row.loginWith,
         };
+    }
+
+    /** Claims the live challenge of a token on the given tx; a lost claim throws AuthTwoFactorChallengeInvalidException. */
+    async consumeChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        challengeToken: string
+    ): Promise<void> {
+        const tokenHash = this.helperHashService.sha256Hash(challengeToken);
+        const now = this.helperDateService.create();
+        const isClaimed =
+            await this.userTwoFactorRepository.consumeChallengeInTx(
+                tx,
+                tokenHash,
+                now
+            );
+        if (!isClaimed) {
+            throw new AuthTwoFactorChallengeInvalidException();
+        }
     }
 
     async getOneForLoginVerify(userId: string): Promise<IUser> {
@@ -209,39 +330,66 @@ export class UserTwoFactorService {
         return { user, pendingSecret };
     }
 
-    /** Counts one two-factor attempt before the code is checked and, when the budget is spent, adds the lockout row and its activity entries in the count's transaction; false on a spent budget; a write conflict throws AuthTwoFactorAttemptMaxException. */
-    async countAttempt(
+    /** Throws AuthTwoFactorAttemptMaxException while the lock of the user's two-factor ends later than now. */
+    assertAttemptAvailable({ twoFactor }: IUser): void {
+        const now = this.helperDateService.create();
+        const lockedUntil = twoFactor?.lockedUntil ?? null;
+        if (lockedUntil !== null && lockedUntil > now) {
+            throw new AuthTwoFactorAttemptMaxException();
+        }
+    }
+
+    /** Counts one failed two-factor attempt in its own transaction; true when it reached the budget, which locks two-factor for the lock duration and adds the reach-max entry and the loginLocked effect in that transaction; a write conflict throws AuthTwoFactorAttemptMaxException. */
+    async countFailedAttempt(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        user: IUser
+        { id: userId }: IUser
     ): Promise<boolean> {
+        const now = this.helperDateService.create();
+        const lockedUntil = this.helperDateService.forward(
+            now,
+            Duration.fromObject({ milliseconds: this.lockDurationInMs })
+        );
+        const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
+
         try {
             return await this.outboxService.withTransaction(async tx => {
-                const isCounted =
+                const isLocked =
                     await this.userTwoFactorRepository.incrementAttemptInTx(
                         tx,
-                        user.id,
-                        this.maxAttempt
+                        userId,
+                        this.maxAttempt,
+                        lockedUntil
                     );
-                if (!isCounted) {
-                    const lockout = this.lockoutEffect(user.id);
-                    const stages = this.buildTwoFactorLockoutStages(user.id);
-                    const entries = stages.map(stage =>
-                        this.activityLogService.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            null,
-                            null,
-                            stage
-                        )
+                if (isLocked) {
+                    const entry = this.activityLogService.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                            userId,
+                            createdBy: userId,
+                        }
                     );
-                    await this.outboxService.addManyInTx(tx, [
-                        lockout,
-                        ...entries,
-                    ]);
+                    const methodLabel = this.messageService.setMessage(
+                        'notification.loginLockedMethod.twoFactor'
+                    );
+                    const effect = this.notificationService.notify(
+                        EnumNotificationKind.loginLocked,
+                        {
+                            userId,
+                            proceedBy: userId,
+                            method: EnumNotificationLoginLockedMethod.twoFactor,
+                            methodLabel,
+                            lockedUntil: lockedUntilIso,
+                        }
+                    );
+                    await this.outboxService.addManyInTx(tx, [entry, effect]);
                 }
 
-                return isCounted;
+                return isLocked;
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -257,40 +405,48 @@ export class UserTwoFactorService {
         }
     }
 
-    /** Counts one two-factor attempt and throws AuthTwoFactorAttemptMaxException when the budget is spent. */
-    async assertAttemptCounted(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser
-    ): Promise<void> {
-        const isAttemptCounted = await this.countAttempt(
-            requestContext,
-            apiKeyContext,
-            user
-        );
-        if (!isAttemptCounted) {
-            throw new AuthTwoFactorAttemptMaxException();
-        }
-    }
-
-    /** Returns null when the user needs no two-factor check; otherwise requires a method, counts the attempt, and verifies the code. */
-    async verifyIfRequired(
+    /** Returns null when the user needs no two-factor check; otherwise requires a method and checks the code, counting a mismatch. */
+    async checkIfRequired(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUser,
         input: IUserTwoFactorVerifyInput
-    ): Promise<IUserTwoFactorVerifyResult | null> {
+    ): Promise<IUserTwoFactorCheck | null> {
         const requiresVerification =
             this.userUtil.requiresTwoFactorVerification(user);
         if (!requiresVerification) {
             return null;
         }
 
-        const method = this.getProvidedMethod(input.method);
-        // Sequential by design: gate before the work it guards
-        await this.assertAttemptCounted(requestContext, apiKeyContext, user);
+        return this.check(requestContext, apiKeyContext, user, input);
+    }
 
-        return this.verify(user, { ...input, method });
+    /** Checks the code or backup code against the confirmed secret and writes nothing on a match; a mismatch counts one failed attempt in its own transaction and throws AuthTwoFactorAttemptMaxException when it locked, else AuthTwoFactorInvalidException. */
+    async check(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        user: IUser,
+        input: IUserTwoFactorVerifyInput
+    ): Promise<IUserTwoFactorCheck> {
+        const method = this.getProvidedMethod(input.method);
+        this.assertAttemptAvailable(user);
+        const twoFactor = this.getEnabledTwoFactor(user);
+
+        const checked = this.checkCode(twoFactor, method, input);
+        if (!checked) {
+            const isLocked = await this.countFailedAttempt(
+                requestContext,
+                apiKeyContext,
+                user
+            );
+            if (isLocked) {
+                throw new AuthTwoFactorAttemptMaxException();
+            }
+
+            throw new AuthTwoFactorInvalidException();
+        }
+
+        return checked;
     }
 
     getProvidedMethod(
@@ -303,58 +459,65 @@ export class UserTwoFactorService {
         return method;
     }
 
-    /** Checks the code or backup code against the confirmed secret, accepts each TOTP step once, and resets the counter on a match; the caller counts the attempt and a backup code is not consumed here. */
-    async verify(
-        user: IUser,
-        input: IUserTwoFactorVerifyInput
-    ): Promise<IUserTwoFactorVerifyResult> {
-        const method = this.getProvidedMethod(input.method);
-        const twoFactor = this.getEnabledTwoFactor(user);
-
-        const checked = this.checkCode(twoFactor, method, input);
-        if (!checked) {
-            throw new AuthTwoFactorInvalidException();
-        }
-
-        if (checked.totpStep !== null) {
-            // Sequential by design: a write that must not happen if an earlier step throws (the attempt resets only after the step is accepted)
-            const isStepAccepted =
-                await this.userTwoFactorRepository.markTotpUsed(
-                    user.id,
-                    checked.totpStep
-                );
-            if (!isStepAccepted) {
-                throw new AuthTwoFactorInvalidException();
-            }
-        }
-
-        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
-
-        return checked.verified;
-    }
-
-    /** Checks a code against the pending secret, accepts each TOTP step once, and resets the counter on a match; the caller counts the attempt. */
-    async verifySetupCode(
+    /** Checks a code against the pending secret and writes nothing on a match, answering its TOTP step; a mismatch counts one failed attempt in its own transaction and throws AuthTwoFactorAttemptMaxException when it locked, else AuthTwoFactorInvalidException. */
+    async checkSetupCode(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         user: IUser,
         pendingSecret: string,
         code: string
-    ): Promise<void> {
+    ): Promise<number> {
+        this.assertAttemptAvailable(user);
         const secret = this.readSecret(pendingSecret, user.id);
         const totpStep = this.authTwoFactorUtil.verifyCode(secret, code.trim());
         if (totpStep === null) {
+            const isLocked = await this.countFailedAttempt(
+                requestContext,
+                apiKeyContext,
+                user
+            );
+            if (isLocked) {
+                throw new AuthTwoFactorAttemptMaxException();
+            }
+
             throw new AuthTwoFactorInvalidException();
         }
 
-        // Sequential by design: a write that must not happen if an earlier step throws (the attempt resets only after the step is accepted)
-        const isStepAccepted = await this.userTwoFactorRepository.markTotpUsed(
-            user.id,
-            totpStep
-        );
+        return totpStep;
+    }
+
+    /** Accepts the checked TOTP step once on the caller's transaction, a replayed step throwing AuthTwoFactorInvalidException, then resets the counter and the lock. */
+    async verifyInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        { totpStep }: IUserTwoFactorCheck
+    ): Promise<void> {
+        if (totpStep !== null) {
+            await this.verifySetupCodeInTx(tx, userId, totpStep);
+
+            return;
+        }
+
+        await this.resetAttemptInTx(tx, userId);
+    }
+
+    /** Accepts the checked setup TOTP step once on the caller's transaction, a replayed step throwing AuthTwoFactorInvalidException, then resets the counter and the lock. */
+    async verifySetupCodeInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        totpStep: number
+    ): Promise<void> {
+        const isStepAccepted =
+            await this.userTwoFactorRepository.markTotpUsedInTx(
+                tx,
+                userId,
+                totpStep
+            );
         if (!isStepAccepted) {
             throw new AuthTwoFactorInvalidException();
         }
 
-        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
+        await this.resetAttemptInTx(tx, userId);
     }
 
     /** Generates the secret, its encrypted form bound to the user, and the otpauth URL for enrollment, storing nothing. */
@@ -372,81 +535,66 @@ export class UserTwoFactorService {
         return { secret, otpauthUrl, encryptedSecret };
     }
 
-    /** Stores the pending secret and adds the setup entry in the same transaction. */
-    async saveSetup(
+    /** Stores the pending secret and adds the setup entry on the caller's transaction. */
+    async saveSetupInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         userId: string,
         encryptedSecret: string
     ): Promise<void> {
-        await this.outboxService.withTransaction(async tx => {
-            await this.userTwoFactorRepository.setupTwoFactorInTx(
-                tx,
+        await this.userTwoFactorRepository.setupTwoFactorInTx(
+            tx,
+            userId,
+            encryptedSecret
+        );
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userSetupTwoFactor,
                 userId,
-                encryptedSecret
-            );
-            const entry = this.activityLogService.recordEffect(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSetupTwoFactor,
-                    userId,
-                    createdBy: userId,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
-        });
+                createdBy: userId,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 
-    /** Stores the pending secret and consumes the verified backup code, adding the setup entry, in one transaction; the code is consumed only while the stored codes are still the ones it was verified against, otherwise, or on a write conflict, the setup is rejected. */
-    async saveSetupConsumingBackupCode(
+    /** Stores the pending secret and consumes the verified backup code, adding the setup entry, on the caller's transaction; the code is consumed only while the stored codes are still the ones it was verified against, otherwise the setup is rejected. */
+    async saveSetupConsumingBackupCodeInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         user: IUser,
         encryptedSecret: string,
         verified: IUserTwoFactorVerifyResult
     ): Promise<void> {
-        try {
-            await this.outboxService.withTransaction(async tx => {
-                const isSetUp =
-                    await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx(
-                        tx,
-                        user.id,
-                        encryptedSecret,
-                        verified,
-                        user.twoFactor?.backupCodes ?? []
-                    );
-                if (!isSetUp) {
-                    throw new AuthTwoFactorInvalidException();
-                }
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    null,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userSetupTwoFactor,
-                        userId: user.id,
-                        createdBy: user.id,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new AuthTwoFactorInvalidException();
-            }
-
-            throw new AppUnknownException(err);
+        const isSetUp =
+            await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCodeInTx(
+                tx,
+                user.id,
+                encryptedSecret,
+                verified,
+                user.twoFactor?.backupCodes ?? []
+            );
+        if (!isSetUp) {
+            throw new AuthTwoFactorInvalidException();
         }
+
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userSetupTwoFactor,
+                userId: user.id,
+                createdBy: user.id,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 
     getPendingSecret(user: IUser): string {
@@ -460,54 +608,40 @@ export class UserTwoFactorService {
         return pendingSecret;
     }
 
-    /** Makes the pending secret the account's secret and adds the enable entry in the same transaction; returns plain backup codes, storing only their hashes; a pending secret that no longer matches, or a write conflict over it, throws the setup-required exception. */
-    async enableTwoFactor(
+    /** Makes the pending secret the account's secret and adds the enable entry on the caller's transaction; returns plain backup codes, storing only their hashes; a pending secret that no longer matches throws the setup-required exception. */
+    async enableTwoFactorInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         userId: string,
         pendingSecret: string
     ): Promise<string[]> {
-        try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.outboxService.withTransaction(async tx => {
-                const isEnabled =
-                    await this.userTwoFactorRepository.enableTwoFactorInTx(
-                        tx,
-                        userId,
-                        pendingSecret,
-                        backupCodes.hashes
-                    );
-                if (!isEnabled) {
-                    throw new AuthTwoFactorSetupRequiredException();
-                }
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    null,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userEnableTwoFactor,
-                        userId,
-                        createdBy: userId,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-
-            return backupCodes.codes;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new AuthTwoFactorSetupRequiredException();
-            }
-
-            throw new AppUnknownException(err);
+        const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+        const isEnabled =
+            await this.userTwoFactorRepository.enableTwoFactorInTx(
+                tx,
+                userId,
+                pendingSecret,
+                backupCodes.hashes
+            );
+        if (!isEnabled) {
+            throw new AuthTwoFactorSetupRequiredException();
         }
+
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userEnableTwoFactor,
+                userId,
+                createdBy: userId,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+
+        return backupCodes.codes;
     }
 
     assertEnabled(user: IUser): void {
@@ -586,51 +720,36 @@ export class UserTwoFactorService {
         }
     }
 
-    /** Replaces the backup codes and adds the regenerate entry in one transaction; returns the plain codes; a write conflict throws the not-enabled exception. */
-    async regenerateTwoFactorBackupCodes(
+    /** Replaces the backup codes and adds the regenerate entry on the caller's transaction; returns the plain codes; a guarded write that misses throws AuthTwoFactorNotEnabledException. */
+    async regenerateTwoFactorBackupCodesInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext
     ): Promise<string[]> {
-        const userId = authContext.userId;
-        try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.outboxService.withTransaction(async tx => {
-                const isRegenerated =
-                    await this.userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx(
-                        tx,
-                        userId,
-                        backupCodes.hashes
-                    );
-                if (!isRegenerated) {
-                    throw new AuthTwoFactorNotEnabledException();
-                }
-
-                const entry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-
-            return backupCodes.codes;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new AuthTwoFactorNotEnabledException();
-            }
-
-            throw new AppUnknownException(err);
+        const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+        const isRegenerated =
+            await this.userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx(
+                tx,
+                authContext.userId,
+                backupCodes.hashes
+            );
+        if (!isRegenerated) {
+            throw new AuthTwoFactorNotEnabledException();
         }
+
+        const entry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+
+        return backupCodes.codes;
     }
 
     async createDisabledInTx(

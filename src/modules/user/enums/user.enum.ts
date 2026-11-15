@@ -12,6 +12,5 @@ export enum EnumUserSignUpWorkspaceContextType {
 /** @public */
 export enum EnumUserProcess {
     deletePhoto = 'deletePhoto',
-    lockout = 'lockout',
     importByAdmin = 'importByAdmin',
 }

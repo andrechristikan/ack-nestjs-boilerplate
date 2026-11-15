@@ -7,7 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { SessionService } from '@modules/session/services/session.service';
-import type { ISessionCache } from '@modules/session/interfaces/session.interface';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
@@ -126,15 +126,10 @@ describe('AuthJwtAccessStrategy', () => {
             roleId: 'role-1',
         };
         const identified = { ...payload, sub: 'user-1', jti: 'jti-value' };
-        const login: ISessionCache = {
-            userId: 'user-1',
-            sessionId: 'session-1',
-            jtiDigest: 'jti-digest',
-        };
 
-        it('checks the payload, reads the login through SessionService, then checks the session', async () => {
+        it('checks the payload, asks SessionService whether the login is active, then checks the session', async () => {
             authService.validateJwtAccessStrategy.mockReturnValue(identified);
-            sessionService.getLogin.mockResolvedValue(login);
+            sessionService.isLoginActive.mockResolvedValue(true);
             authService.validateJwtAccessSession.mockReturnValue(identified);
 
             const result = await strategy.validate(payload);
@@ -143,46 +138,50 @@ describe('AuthJwtAccessStrategy', () => {
             expect(authService.validateJwtAccessStrategy).toHaveBeenCalledWith(
                 payload
             );
-            expect(sessionService.getLogin).toHaveBeenCalledWith(
+            expect(sessionService.isLoginActive).toHaveBeenCalledWith(
                 'user-1',
-                'session-1'
+                'session-1',
+                'jti-value'
             );
             expect(authService.validateJwtAccessSession).toHaveBeenCalledWith(
                 identified,
-                'jti-digest'
+                true
             );
             expect(
                 authService.validateJwtAccessStrategy
-            ).toHaveBeenCalledBefore(sessionService.getLogin);
+            ).toHaveBeenCalledBefore(sessionService.isLoginActive);
         });
 
-        it('hands a missing login to the session check', async () => {
+        it('throws SessionRevokedException when the login is not active', async () => {
             authService.validateJwtAccessStrategy.mockReturnValue(identified);
-            sessionService.getLogin.mockResolvedValue(null);
-            authService.validateJwtAccessSession.mockReturnValue(identified);
+            sessionService.isLoginActive.mockResolvedValue(false);
+            authService.validateJwtAccessSession.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
 
-            await strategy.validate(payload);
-
+            await expect(strategy.validate(payload)).rejects.toBeInstanceOf(
+                SessionRevokedException
+            );
             expect(authService.validateJwtAccessSession).toHaveBeenCalledWith(
                 identified,
-                null
+                false
             );
         });
 
-        it('does not read the login when the payload check throws', async () => {
+        it('does not check the login when the payload check throws', async () => {
             const failure = new Error('invalid payload');
             authService.validateJwtAccessStrategy.mockImplementation(() => {
                 throw failure;
             });
 
             await expect(strategy.validate(payload)).rejects.toBe(failure);
-            expect(sessionService.getLogin).not.toHaveBeenCalled();
+            expect(sessionService.isLoginActive).not.toHaveBeenCalled();
         });
 
-        it('propagates a login read failure instead of revoking the session', async () => {
+        it('propagates a login check failure instead of revoking the session', async () => {
             const failure = new Error('redis down');
             authService.validateJwtAccessStrategy.mockReturnValue(identified);
-            sessionService.getLogin.mockRejectedValue(failure);
+            sessionService.isLoginActive.mockRejectedValue(failure);
 
             await expect(strategy.validate(payload)).rejects.toBe(failure);
             expect(authService.validateJwtAccessSession).not.toHaveBeenCalled();

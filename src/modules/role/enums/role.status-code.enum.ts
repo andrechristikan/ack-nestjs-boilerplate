@@ -7,4 +7,5 @@ export enum EnumRoleStatusCodeError {
     rankForbidden = 50504,
     selfForbidden = 50505,
     immutable = 50506,
+    hasPolicies = 50507,
 }

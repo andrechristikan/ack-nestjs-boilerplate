@@ -9,6 +9,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type {
     ISession,
     ISessionList,
+    ISessionLogin,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
@@ -31,21 +32,24 @@ export interface ISessionRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePaginationReturn<ISessionList>>;
-    existsActiveById(userId: string, sessionId: string): Promise<boolean>;
+    findLoginById(
+        userId: string,
+        sessionId: string
+    ): Promise<ISessionLogin | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         deviceOwnershipId: string,
-        jti: string,
+        jtiDigest: string,
         expiredAt: Date,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session>;
     updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        oldJti: string,
-        newJti: string
+        oldJtiDigest: string,
+        newJtiDigest: string
     ): Promise<boolean>;
     revokeInTx(
         tx: IDatabaseTransactionClient,
@@ -64,6 +68,7 @@ export interface ISessionRepository {
     revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        exceptSessionId: string | null,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]>;

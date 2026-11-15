@@ -56,7 +56,7 @@ export interface IAnalyticLoginSpikeIp {
 export interface IAnalyticNearLockout {
     id: string;
     email: string;
-    passwordAttempt: number | null;
+    passwordAttempt: number;
     lastLoginAt: Date | null;
     createdAt: Date;
 }

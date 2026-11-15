@@ -49,6 +49,9 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
         });
 
         const created = await this.outboxService.withTransaction(async tx => {
+            const role = await this.roleService.getByIdInTx(tx, roleId);
+            this.policyService.assertRoleTypeAllowed(role.type);
+
             const policy = await this.policyService.createByAdminInTx(
                 tx,
                 roleId,
@@ -67,6 +70,8 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
                 }
             );
             await this.outboxService.addInTx(tx, effect);
+            const roleEffect = this.roleService.invalidateEffect(roleId);
+            await this.outboxService.addInTx(tx, roleEffect);
 
             return policy;
         });

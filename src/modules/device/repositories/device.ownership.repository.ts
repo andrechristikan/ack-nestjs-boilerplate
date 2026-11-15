@@ -297,6 +297,32 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         return ownership?.deviceId ?? null;
     }
 
+    async touchInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        now: Date
+    ): Promise<string | null> {
+        const { count } = await tx.deviceOwnership.updateMany({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+                isRevoked: false,
+            },
+            data: { lastActiveAt: now },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        const ownership = await tx.deviceOwnership.findUnique({
+            where: { id: deviceOwnershipId },
+            select: DeviceOwnershipDeviceIdSelect,
+        });
+
+        return ownership?.deviceId ?? null;
+    }
+
     async clearTokenFromOtherUsersInTx(
         tx: IDatabaseTransactionClient,
         notificationToken: string,

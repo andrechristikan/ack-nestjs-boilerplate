@@ -4,7 +4,6 @@ import type {
     IAuthAccessTokenGenerate,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { EnumSessionCacheUpdate } from '@modules/session/enums/session.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type { SessionService } from '@modules/session/services/session.service';
 
@@ -27,9 +26,6 @@ export function stubUserRefreshSession(
     doubles.authJwtService.getRefreshJti.mockReturnValue(fixture.oldJti);
     doubles.authJwtService.refreshToken.mockReturnValue(fixture.refreshed);
     doubles.sessionService.updateJtiInTx.mockResolvedValue(true);
-    doubles.sessionService.updateLogin.mockResolvedValue(
-        EnumSessionCacheUpdate.updated
-    );
 }
 
 export async function expectSessionRevoked(

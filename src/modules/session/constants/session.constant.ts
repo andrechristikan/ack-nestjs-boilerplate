@@ -1,5 +1,7 @@
 import { Prisma } from '@generated/prisma-client/client';
+import type { ISessionLogin } from '@modules/session/interfaces/session.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
+import { z } from 'zod';
 
 /** @public */
 export const SessionAnalyticSelect = {
@@ -40,3 +42,13 @@ export const SessionUserRefSelect = {
     id: true,
     userId: true,
 } satisfies Prisma.SessionSelect;
+
+/** @public */
+export const SessionLoginSelect = {
+    jtiDigest: true,
+} satisfies Prisma.SessionSelect;
+
+/** @public */
+export const SessionLoginCacheSchema = z.object({
+    jtiDigest: z.string(),
+}) satisfies z.ZodType<ISessionLogin>;

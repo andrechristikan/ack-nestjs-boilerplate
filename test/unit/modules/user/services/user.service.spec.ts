@@ -30,6 +30,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { RoleService } from '@modules/role/services/role.service';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -73,6 +74,7 @@ describe('UserService', () => {
         mock<UserVerificationService>();
     const userTwoFactorService: MockProxy<UserTwoFactorService> =
         mock<UserTwoFactorService>();
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -119,6 +121,7 @@ describe('UserService', () => {
         lastUsedAt: null,
         lastUsedStep: null,
         attempt: 0,
+        lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -137,6 +140,7 @@ describe('UserService', () => {
         passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordAttempt: 0,
+        passwordLockedUntil: null,
         signUpAt: new Date('2026-01-01T00:00:00.000Z'),
         signUpFrom: EnumUserSignUpFrom.website,
         signUpWith: EnumUserSignUpWith.credential,
@@ -159,6 +163,8 @@ describe('UserService', () => {
         role,
         twoFactor,
     };
+
+    const { role: _role, ...userWithTwoFactor } = baseUser;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -188,6 +194,7 @@ describe('UserService', () => {
                     provide: UserTwoFactorService,
                     useValue: userTwoFactorService,
                 },
+                { provide: RoleService, useValue: roleService },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -200,7 +207,7 @@ describe('UserService', () => {
 
     describe('validateUserGuard', () => {
         it('throws UserAccountNotFoundException when the user row is gone', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(null);
+            userRepository.findOneWithTwoFactorById.mockResolvedValue(null);
 
             const call = service.validateUserGuard(
                 {
@@ -223,8 +230,8 @@ describe('UserService', () => {
         });
 
         it('throws UserBlockedForbiddenException when the user is blocked', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+            userRepository.findOneWithTwoFactorById.mockResolvedValue({
+                ...userWithTwoFactor,
                 status: EnumUserStatus.blocked,
             });
 
@@ -248,8 +255,8 @@ describe('UserService', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+            userRepository.findOneWithTwoFactorById.mockResolvedValue({
+                ...userWithTwoFactor,
                 status: EnumUserStatus.inactive,
             });
 
@@ -273,7 +280,10 @@ describe('UserService', () => {
         });
 
         it('skips the password expiry check for a social session', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            userRepository.findOneWithTwoFactorById.mockResolvedValue(
+                userWithTwoFactor
+            );
+            roleService.getOne.mockResolvedValue(role);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             await expect(
@@ -284,14 +294,16 @@ describe('UserService', () => {
                     },
                     false
                 )
-            ).resolves.toBe(baseUser);
+            ).resolves.toEqual(baseUser);
             expect(
                 authPasswordUtil.checkPasswordExpired
             ).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            userRepository.findOneWithTwoFactorById.mockResolvedValue(
+                userWithTwoFactor
+            );
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             const call = service.validateUserGuard(
@@ -314,8 +326,8 @@ describe('UserService', () => {
         });
 
         it('throws UserEmailNotVerifiedException when verification is required and missing', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue({
-                ...baseUser,
+            userRepository.findOneWithTwoFactorById.mockResolvedValue({
+                ...userWithTwoFactor,
                 isVerified: false,
             });
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
@@ -340,8 +352,10 @@ describe('UserService', () => {
         });
 
         it('returns the user when every check passes', async () => {
-            const user = baseUser;
-            userRepository.findOneWithRoleById.mockResolvedValue(user);
+            userRepository.findOneWithTwoFactorById.mockResolvedValue(
+                userWithTwoFactor
+            );
+            roleService.getOne.mockResolvedValue(role);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
@@ -352,7 +366,31 @@ describe('UserService', () => {
                     },
                     true
                 )
-            ).resolves.toBe(user);
+            ).resolves.toEqual(baseUser);
+            expect(
+                userRepository.findOneWithTwoFactorById
+            ).toHaveBeenCalledWith('user-cobalt');
+            expect(roleService.getOne).toHaveBeenCalledWith(role.id);
+        });
+
+        it('does not read the role for a blocked user', async () => {
+            userRepository.findOneWithTwoFactorById.mockResolvedValue({
+                ...userWithTwoFactor,
+                status: EnumUserStatus.blocked,
+            });
+
+            await expect(
+                service.validateUserGuard(
+                    {
+                        ...buildAuthJwtAccessContext('user-cobalt'),
+                        loginWith: EnumUserLoginWith.credential,
+                    },
+                    false
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumUserStatusCodeError.blockedForbidden,
+            });
+            expect(roleService.getOne).not.toHaveBeenCalled();
         });
     });
 
@@ -645,35 +683,17 @@ describe('UserService', () => {
         });
     });
 
-    describe('resetPasswordAttempt', () => {
-        it('delegates to the repository', async () => {
-            const user = baseUser;
-            userRepository.resetPasswordAttempt.mockResolvedValue(user);
-
-            await expect(service.resetPasswordAttempt(user.id)).resolves.toBe(
-                user
-            );
-        });
-    });
-
-    describe('deactivateForMaxAttemptInTx', () => {
-        it('answers true when the repository deactivated the still-active account', async () => {
-            userRepository.deactivateForMaxAttemptInTx.mockResolvedValue(true);
+    describe('resetPasswordAttemptInTx', () => {
+        it('resets the counter and lock on the given transaction', async () => {
+            userRepository.resetPasswordAttemptInTx.mockResolvedValue(baseUser);
 
             await expect(
-                service.deactivateForMaxAttemptInTx(tx, 'user-cobalt')
-            ).resolves.toBe(true);
+                service.resetPasswordAttemptInTx(tx, baseUser.id)
+            ).resolves.toBeUndefined();
+
             expect(
-                userRepository.deactivateForMaxAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-cobalt');
-        });
-
-        it('answers false when the account was no longer active', async () => {
-            userRepository.deactivateForMaxAttemptInTx.mockResolvedValue(false);
-
-            await expect(
-                service.deactivateForMaxAttemptInTx(tx, 'user-cobalt')
-            ).resolves.toBe(false);
+                userRepository.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, baseUser.id);
         });
     });
 
@@ -1094,9 +1114,14 @@ describe('UserService', () => {
     });
 
     describe('updateStatusByAdminInTx', () => {
-        const target: IUser = { ...baseUser, passwordAttempt: 4 };
+        const lockedUntil = new Date('2026-03-01T00:15:00.000Z');
+        const target: IUser = {
+            ...baseUser,
+            passwordAttempt: 4,
+            passwordLockedUntil: lockedUntil,
+        };
 
-        it('writes the status guarded on the current one and resets the attempt counter when the user is activated', async () => {
+        it('writes the status guarded on the current one and clears the attempt counter and the lock when the user is activated', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
 
             await expect(
@@ -1111,11 +1136,15 @@ describe('UserService', () => {
                 tx,
                 target.id,
                 EnumUserStatus.inactive,
-                { status: EnumUserStatus.active, passwordAttempt: 0 }
+                {
+                    status: EnumUserStatus.active,
+                    passwordAttempt: 0,
+                    passwordLockedUntil: null,
+                }
             );
         });
 
-        it('keeps the attempt counter when the user is not activated', async () => {
+        it('passes the current attempt counter and lock when the user is not activated', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
 
             await service.updateStatusByAdminInTx(
@@ -1128,7 +1157,11 @@ describe('UserService', () => {
                 tx,
                 target.id,
                 EnumUserStatus.active,
-                { status: EnumUserStatus.inactive, passwordAttempt: 4 }
+                {
+                    status: EnumUserStatus.inactive,
+                    passwordAttempt: 4,
+                    passwordLockedUntil: lockedUntil,
+                }
             );
         });
 
