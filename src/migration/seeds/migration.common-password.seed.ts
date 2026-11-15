@@ -2,13 +2,12 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
+import { MigrationCommonPasswordData } from '@migration/data/migration.common-password.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { readFileSync } from 'fs';
 import { Command } from 'nest-commander';
-import { join } from 'path';
 
 @Command({
     name: 'commonPassword',
@@ -42,14 +41,7 @@ export class MigrationCommonPasswordSeed
     async seed(): Promise<void> {
         this.logger.log('Seeding Common Passwords...');
 
-        const values = JSON.parse(
-            readFileSync(
-                join(
-                    import.meta.dirname,
-                    '../data/migration.common-password.data.json'
-                )
-            ).toString()
-        ) as string[];
+        const values = MigrationCommonPasswordData;
         const batches = this.helperArrayService.chunk(
             values,
             this.seedBatchSize

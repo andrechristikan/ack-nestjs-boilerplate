@@ -56,7 +56,7 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0064 · OWASP ASVS level 2 is the auth reference · chosen: ASVS 5.0 level 2 · rejected: ASVS level 3, NIST SP 800-63B alone, no named standard
 - 0065 · Passwords and backup codes are argon2id from `node:crypto` · chosen: argon2id from `node:crypto` · rejected: bcrypt, an argon2 package
 - 0066 · A regular password never expires · chosen: no expiry for a regular password · rejected: the 182-day expiry
-- 0067 · Common passwords live in an offline table · chosen: an offline `CommonPassword` table · rejected: a live breached-password API, a constants file
+- 0067 · Common passwords live in an offline table · chosen: an offline `CommonPassword` table · rejected: a live breached-password API, an in-memory list checked at sign-up
 - 0068 · Two-factor stays opt-in · chosen: opt-in two-factor · rejected: mandatory two-factor
 - 0069 · Sessions end after 7 days idle · chosen: an inactivity timeout on `Session.lastActiveAt` · rejected: the absolute lifetime alone
 - 0070 · Every sensitive flow re-authenticates fully · chosen: one full rule on every sensitive flow · rejected: two-factor alone when it is on, a rule per flow

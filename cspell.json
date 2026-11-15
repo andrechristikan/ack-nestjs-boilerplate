@@ -122,6 +122,7 @@
         "keys/**",
         ".warmup/**",
         ".nyc_output/**",
-        "**/**/*.json"
+        "**/**/*.json",
+        "src/migration/data/migration.common-password.data.ts"
     ]
 }
