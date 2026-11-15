@@ -24,7 +24,7 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0025 · Redis and MongoDB are both required · chosen: no boot while Redis or MongoDB is down; a Redis connection error, a command timeout or a direct enqueue's included, and a MongoDB server-selection timeout answer 503 fast · rejected: fail-open on an outage, Mongo-based rate limiting, booting while Redis or MongoDB is down, 500 for an enqueue's connection error or a MongoDB server-selection timeout, the driver's default server-selection timeout
 - 0026 · Session cache in front of the row · chosen: a hit with a matching `jtiDigest` is trusted, anything else reads the row, TTL 15 minutes · rejected: no session cache, the raw jti stored
 - 0027 · One transaction per flow, cross-module allowed · chosen: the use case or the highest service opens one transaction · rejected: two transactions where one suffices, a compensating write after commit
-- 0028 · MFA challenge is a row · chosen: `MfaChallenge` claimed inside the transaction of the flow it proves · rejected: the challenge as Redis state (`GETDEL`)
+- 0028 · Two-factor challenge is a row · chosen: `TwoFactorChallenge` claimed inside the verify transaction · rejected: the challenge as Redis state (`GETDEL`)
 - 0030 · Health follows Redis · chosen: Redis down marks health down · rejected: an informational indicator
 - 0032 · Every use case implements `IAppUseCase` · chosen: `IAppUseCase<TArgs, TResult>` with `execute(...args: TArgs): Promise<TResult>` · rejected: a single input object, a marker interface
 - 0033 · Queues register in their feature · chosen: each feature registers its queues with its own factory, the kit holds the shared config · rejected: the kit holding every feature queue, one kit factory, one fast-fail connection for workers, a module-level client in the decorator, the worker `configKey`, writing `bullmq:worker_metadata`, a kit worker registrar through `DiscoveryService`
@@ -44,6 +44,7 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0052 · `src/common/` and `src/app/` import no module code or type · chosen: no `src/modules/` import but the root module files · rejected: `import type` from a feature, kit-owned copies a feature extends, a generic at every call site
 - 0053 · The outbox is a kit module beside the queue kit · chosen: `src/common/outbox/`, separate from `src/common/queue/`, its processor awaiting `OutboxService.sweep()` · rejected: the outbox in `src/modules/`, a kit port the feature `OutboxService` implements, the outbox merged into the queue kit, a kit use-case layer
 - 0054 · Every global module is `@Global()` with `forRoot()` · chosen: the decorator and a no-argument `forRoot()` imported only by `common.module.ts`, `FirebaseModule` not global · rejected: `global: true` in `forRoot()`, a static `@Global() @Module({...})`, a global module re-imported by its use-case module or inside another `forRootAsync`, `FirebaseModule` global
+- 0055 · Feature dependency order · chosen: kernel, device, session, auth, password-history, notification, term-policy, user, workspace, project, analytic · rejected: password-history in the kernel, `AuthPasswordUtil` in the kit
 - 0056 · Compose variables in `.env.docker` · chosen: `.env.docker` read with `--env-file`, carried by `pnpm compose:dev` and `pnpm compose:prod`, production credentials required · rejected: one `.env` for the application and Compose, a tracked `.env.docker.example`, `COMPOSE_ENV_FILES` in each shell, production on `--env-file .env`, default credentials in production, Compose secrets for the passwords
 - 0057 · Attempt counters count failures only · chosen: a mismatch counts in its own transaction, a match resets inside the flow's transaction · rejected: count first with the reset folded in, count first with the reset outside the transaction
 - 0058 · A spent attempt budget is a temporary lock with an email · chosen: `lockedUntil` 15 minutes and the mandatory `loginLocked` email · rejected: deactivating the account, a temporary `inactive` status with a reactivation job, a lock with no email
@@ -52,13 +53,13 @@ Each line is one accepted decision: its number, title, chosen option, and reject
 - 0061 · A refresh rotation adds no cache invalidation · chosen: the mismatch reload of 0026 refreshes the entry · rejected: a `cache.invalidate` row per refresh
 - 0062 · The guard caches the role, not the user · chosen: `RoleCache` per role id, the user row read uncached · rejected: no cache, a user cache invalidated on every user write
 - 0063 · Policies belong to admin-type roles only · chosen: a policy write on a `user` role and a type change to `user` with policies refused · rejected: policies on every role kept for a future user route
-- 0064 · Feature dependency order with MFA · chosen: `mfa` between `notification` and `term-policy` · rejected: two-factor kept in `user` and `auth`, `mfa` above `user`, password-history in the kernel, `AuthPasswordUtil` in the kit
-- 0065 · Biometric sign-in is a WebAuthn passkey · chosen: a WebAuthn passkey through `@simplewebauthn/server` · rejected: a hand-made device key pair on `DeviceOwnership`, both as separate factors, WebAuthn on `node:crypto`
-- 0066 · SMS is no MFA factor · chosen: SMS outside MFA · rejected: an SMS OTP factor on a verified number
-- 0067 · Several MFA factors, one picked at login · chosen: several factors, one picked at login · rejected: exactly one active factor
-- 0068 · One attempt budget across MFA methods · chosen: one budget across every method · rejected: a budget per method
-- 0069 · Backup codes follow the first and last factor · chosen: codes follow the first and last factor · rejected: backup codes for TOTP only
-- 0070 · An admin MFA reset forces no enrolment · chosen: remove every factor, no forced enrolment · rejected: `requiredSetup` and enrolment at the next login
-- 0071 · A passkey proof is a whole proof · chosen: a passkey alone suffices · rejected: TOTP or a backup code after a passkey, a passkey standing for the code only
-- 0072 · The passkey relying party is required config · chosen: required environment keys · rejected: an optional integration, deriving it from `HOME_URL` and `CORS_ALLOWED_ORIGIN`
-- 0073 · A password reset proves any MFA method · chosen: any enrolled method, a passkey included · rejected: TOTP or a backup code only, no MFA on the reset
+- 0064 · OWASP ASVS level 2 is the auth reference · chosen: ASVS 5.0 level 2 · rejected: ASVS level 3, NIST SP 800-63B alone, no named standard
+- 0065 · Passwords and backup codes are argon2id from `node:crypto` · chosen: argon2id from `node:crypto` · rejected: bcrypt, an argon2 package
+- 0066 · A regular password never expires · chosen: no expiry for a regular password · rejected: the 182-day expiry
+- 0067 · Common passwords live in an offline table · chosen: an offline `CommonPassword` table · rejected: a live breached-password API, a constants file
+- 0068 · Two-factor stays opt-in · chosen: opt-in two-factor · rejected: mandatory two-factor
+- 0069 · Sessions end after 7 days idle · chosen: an inactivity timeout on `Session.lastActiveAt` · rejected: the absolute lifetime alone
+- 0070 · Every sensitive flow re-authenticates fully · chosen: one full rule on every sensitive flow · rejected: two-factor alone when it is on, a rule per flow
+- 0071 · An email code re-authenticates an account with nothing else · chosen: an email code only for an account with no password and no two-factor · rejected: the session alone, the code replacing the password
+- 0072 · The re-authentication code is bound to one action · chosen: a code and a window per action · rejected: one code and one window for every action, a time-boxed re-authenticated session
+- 0073 · TOTP stays on SHA-1 with window 1 · chosen: SHA-1 with `window` 1 · rejected: SHA-256, `window` 0

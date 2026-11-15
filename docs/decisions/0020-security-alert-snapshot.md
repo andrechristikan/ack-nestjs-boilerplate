@@ -9,7 +9,7 @@ A credential reset revokes the live sessions of the user. A processor that resol
 
 ## Decision
 
-`temporaryPasswordByAdmin`, `resetPassword`, and `resetMfaByAdmin` snapshot the encrypted tokens of the devices with a live session and the user's encrypted email, read before the revoke inside the same transaction. The three kinds are mandatory.
+`temporaryPasswordByAdmin`, `resetPassword`, and `resetTwoFactorByAdmin` snapshot the encrypted tokens of the devices with a live session and the user's encrypted email, read before the revoke inside the same transaction. The three kinds are mandatory.
 
 ## Considered options
 

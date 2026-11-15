@@ -27,7 +27,8 @@ A sequential `await` whose dependency is visible in the code carries no comment:
 - a write that must not happen if an earlier step throws;
 - a gate that decides whether the request proceeds (a feature-flag gate, an existence or permission check) runs before the work it guards, so a closed gate starts no query and its exception is the one the caller sees;
 - side effects whose order is part of the contract (a reset before a boot, seeds that read rows an earlier seed wrote);
-- a fan-out over an unbounded collection: bounded chunks in turn, each concurrent; the size is a config key (`config.md`).
+- a fan-out over an unbounded collection: bounded chunks in turn, each concurrent; the size is a config key (`config.md`);
+- an argon2id hash or compare, which holds `helper.argon2` memory per call: one at a time, a compare stopping at the first match.
 
 A method carries at most one `// Sequential by design: <case>` line, above its first ordered `await`, naming every case the method has (`gate before the work it guards; write after the gate`); the later `await`s of the same method, a loop body included, carry none. A second marker in one method is a defect.
 

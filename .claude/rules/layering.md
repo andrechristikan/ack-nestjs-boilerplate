@@ -25,26 +25,25 @@ Lower and higher come from `imports:`: a module is lower than every module whose
 4. `auth`
 5. `password-history`
 6. `notification`
-7. `mfa`
-8. `term-policy`
-9. `user`
-10. `workspace`
-11. `project`
-12. `analytic`
+7. `term-policy`
+8. `user`
+9. `workspace`
+10. `project`
+11. `analytic`
 
 - A kernel module's services inject no other feature's service or util.
 - Controllers, processors, and use cases sit above the whole order.
 - `analytic` reads only: its services inject lower modules' analytic services and utils and its own services, utils, and caches; never a repository, a queue class, or `DatabaseService`.
 - The kit, the `src/common/` modules `common.module.ts` composes, sits below every feature; anyone injects it.
-- Lint enforces the layer matrix only (`eslint.md`); `reviewer` checks the module files against this list.
+- Lint enforces the layer matrix only (`eslint.md`, Config blocks): a new edge adds an import, and `reviewer` checks the module files against this list.
 
-`src/common/` and `src/app/` import no module code or type outside `common.module.ts` and `app.module.ts`; other code imports anything. Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub, except an unchosen provider's adapter, which logs and returns (`NotificationSmsDeliveryService`).
+`src/common/` and `src/app/` import no module code or type outside `common.module.ts` and `app.module.ts`; other code imports anything. Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub.
 
 ## `@Global()`
 
 - A global module carries `@Global()` and a no-argument `forRoot()` with no `global` key; only `src/common/common.module.ts` imports it, once, as `<Module>.forRoot()`.
 - A feature `<Module>Module` is global only when a guard, strategy, interceptor, or decorator injects its classes: `ApiKeyModule`, `AuthModule`, `FeatureFlagModule`, `PolicyModule`, `RoleModule`, `SessionModule`, `TermPolicyModule`. A use-case module is never global.
-- Every kit module `common.module.ts` composes is global but `LoggerModule`. `AwsModule` and `FirebaseModule` sit outside it, imported where used.
+- Every kit module `common.module.ts` composes is global but `LoggerModule`, which exports nothing. `AwsModule` and `FirebaseModule` sit outside it, imported where used.
 - `@Global()` removes the import, never the rank (`cross-module.md`).
 
 ## Module files

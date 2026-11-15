@@ -12,7 +12,7 @@ paths:
 ```
 src/migration/
 ├── bases/migration.seed.base.ts   MigrationSeedBase, extends nest-commander CommandRunner
-├── data/                          migration.<concern>.data.ts, PascalCase consts
+├── data/                          migration.<concern>.data.ts, PascalCase consts; a bulk list .data.json
 ├── seeds/                         migration.<concern>.seed.ts, one @Command per concern
 ├── enums/ · interfaces/
 └── migration.module.ts            its own composition root; provides every seed
@@ -21,7 +21,7 @@ src/migration/
 - A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts`), whose `run` owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
 - `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `awsS3Config`.
 - Static rows live in `data/` as PascalCase consts; a seed whose data has no external key needs no data file.
-- A data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
+- A bulk list shared by every environment is a `migration.<concern>.data.json` array, read with `readFileSync` and copied by the `nest-cli.json` `assets` entry (`migration.common-password.data.json`, the `commonPassword` seed). Any other data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` and `updatedBy` on every seeded row, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A seed's create writes `null` into each nullable column a read filters by `null` (`database.md`, Access).
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.

@@ -27,7 +27,7 @@ A DTO's `<concern>` is an action, a noun, or absent for the module's canonical s
 
 The user module's sign-in and sign-up flows are two groups of use cases:
 
-- sign-in, sharing `UserAuthService` (`user.auth.service.ts`): `UserLoginCredentialUseCase`, `UserLoginWithSocialUseCase` with its first-login sign-up, `UserLoginVerifyMfaUseCase`, `UserGetLoginPasskeyOptionsUseCase`, `UserLoginWithPasskeyUseCase`, `UserRefreshUseCase`, `UserLogoutUseCase`.
+- sign-in, sharing `UserAuthService` (`user.auth.service.ts`): `UserLoginCredentialUseCase`, `UserLoginWithSocialUseCase` with its first-login sign-up, `UserLoginVerifyTwoFactorUseCase`, `UserLoginSetupTwoFactorUseCase`, `UserRefreshUseCase`, `UserLogoutUseCase`.
 - sign-up: `UserSignUpUseCase`, `UserCreateByAdminUseCase`, `UserImportByAdminUseCase`.
 
 A util, interface, config key, or service method one flow uses takes that flow's concern, `auth` (sign-in) or `registration` (sign-up); one both use takes its action concern, a config group included (`user.create` holds `timeoutInMs` and `bulkTimeoutInMs`). `onboarding` names nothing in the user module.
