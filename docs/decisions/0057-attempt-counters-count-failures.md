@@ -19,5 +19,5 @@ A wrong password or code counts one failure in its own transaction and throws; a
 
 ## Consequences
 
-- The flow asserts no lock, checks the credential without writing, and counts on a mismatch (`auth.md`, Two-factor).
+- The flow asserts no lock, checks the credential without writing, and counts on a mismatch (`auth.md`, MFA).
 - Concurrent wrong guesses may pass the budget by a few; the throttle stays.

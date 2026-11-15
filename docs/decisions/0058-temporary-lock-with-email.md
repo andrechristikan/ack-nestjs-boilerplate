@@ -9,7 +9,7 @@ A spent password or two-factor budget deactivated the account and revoked every 
 
 ## Decision
 
-The failure that reaches the budget sets `User.passwordLockedUntil` or `TwoFactor.lockedUntil` 15 minutes ahead and sends the owner the mandatory `loginLocked` email. The account keeps its status, sessions, and devices; the lock opens with the clock.
+The failure that reaches the budget sets `User.passwordLockedUntil` or `Mfa.lockedUntil` 15 minutes ahead and sends the owner the mandatory `loginLocked` email. The account keeps its status, sessions, and devices; the lock opens with the clock.
 
 ## Considered options
 
@@ -20,5 +20,5 @@ The failure that reaches the budget sets `User.passwordLockedUntil` or `TwoFacto
 
 ## Consequences
 
-- No lockout job; a reactivation, a password write, or an admin two-factor reset clears the matching lock (`auth.md`, Two-factor).
+- No lockout job; a reactivation, a password write, or an admin MFA reset clears the matching lock (`auth.md`, MFA).
 - The near-lockout analytics count a locked account as at the budget.
