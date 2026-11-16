@@ -18,7 +18,7 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 - `class Migration<Concern>Seed extends MigrationSeedBase implements IMigrationSeed` (`src/migration/bases/migration.seed.base.ts`, `src/migration/interfaces/migration.seed.interface.ts`). The base's `run` owns `--type seed|remove`; the class implements both `seed()` and `remove()`.
 - Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (the `MigrationCountrySeed` constructor).
 - `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
-- Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
+- Every row carries `createdBy`, and `updatedBy` where its model carries it, set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`MigrationCountrySeed.remove`).
 - A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`MigrationCountrySeed.seed`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 

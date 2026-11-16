@@ -269,11 +269,12 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async consumeChallengeInTx(
         tx: IDatabaseTransactionClient,
         tokenHash: string,
-        now: Date
+        now: Date,
+        updatedBy: string
     ): Promise<boolean> {
         const { count } = await tx.twoFactorChallenge.updateMany({
             where: { tokenHash, consumedAt: null, expiredAt: { gt: now } },
-            data: { consumedAt: now },
+            data: { consumedAt: now, updatedBy },
         });
 
         return count > 0;

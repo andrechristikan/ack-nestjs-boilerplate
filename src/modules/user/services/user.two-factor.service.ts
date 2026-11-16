@@ -289,7 +289,8 @@ export class UserTwoFactorService {
     /** Claims the live challenge of a token on the given tx; a lost claim throws AuthTwoFactorChallengeInvalidException. */
     async consumeChallengeInTx(
         tx: IDatabaseTransactionClient,
-        challengeToken: string
+        challengeToken: string,
+        userId: string
     ): Promise<void> {
         const tokenHash = this.helperHashService.sha256Hash(challengeToken);
         const now = this.helperDateService.create();
@@ -297,7 +298,8 @@ export class UserTwoFactorService {
             await this.userTwoFactorRepository.consumeChallengeInTx(
                 tx,
                 tokenHash,
-                now
+                now,
+                userId
             );
         if (!isClaimed) {
             throw new AuthTwoFactorChallengeInvalidException();

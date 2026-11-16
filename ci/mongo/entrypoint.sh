@@ -8,6 +8,9 @@ set -eu
 # With a keyfile mounted at KEYFILE and MONGO_INITDB_ROOT_PASSWORD set: mongod runs with --keyFile and --auth;
 # rs.initiate runs on a fresh volume; every start tries createUser for the root user in admin over the
 # localhost exception, and an Unauthorized reply means a user already exists. The member host is RS_HOST.
+# After the root user, when MONGO_APP_USERNAME, MONGO_APP_PASSWORD, and MONGO_APP_DATABASE are all set, the
+# application user is created with readWrite on that database, authenticated as root inside the script; an
+# existing user is left as it is. With any of the three unset, no application user is created.
 RS_ID="${RS_ID:-rs0}"
 RS_HOST="${RS_HOST:-host.docker.internal:27017}"
 MONGO_PORT="${MONGO_PORT:-27017}"
@@ -98,6 +101,25 @@ try {
   print("entrypoint: root user already exists");
 }
 '
+  if [ -n "${MONGO_APP_USERNAME:-}" ] && [ -n "${MONGO_APP_PASSWORD:-}" ] && [ -n "${MONGO_APP_DATABASE:-}" ]; then
+    echo "entrypoint: ensuring application user..."
+    mongosh --port "$MONGO_PORT" --quiet --eval '
+db.getSiblingDB("admin").auth(process.env.MONGO_INITDB_ROOT_USERNAME, process.env.MONGO_INITDB_ROOT_PASSWORD);
+const appDb = db.getSiblingDB(process.env.MONGO_APP_DATABASE);
+if (appDb.getUser(process.env.MONGO_APP_USERNAME) === null) {
+  appDb.createUser({
+    user: process.env.MONGO_APP_USERNAME,
+    pwd: process.env.MONGO_APP_PASSWORD,
+    roles: [{ role: "readWrite", db: process.env.MONGO_APP_DATABASE }]
+  });
+  print("entrypoint: application user created");
+} else {
+  print("entrypoint: application user already exists");
+}
+'
+  else
+    echo "entrypoint: MONGO_APP_* not all set; no application user created."
+  fi
 fi
 
 echo "entrypoint: mongo replica set ready."

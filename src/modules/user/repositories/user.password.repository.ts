@@ -69,7 +69,7 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         email: string,
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate
     ): Promise<ForgotPassword> {
-        await this.markUnusedUsedByUserInTx(tx, userId);
+        await this.markUnusedUsedByUserInTx(tx, userId, userId);
 
         return tx.forgotPassword.create({
             data: {
@@ -86,13 +86,15 @@ export class UserPasswordRepository implements IUserPasswordRepository {
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
-        resetAt: Date
+        resetAt: Date,
+        updatedBy: string
     ): Promise<boolean> {
         const { count } = await tx.forgotPassword.updateMany({
             where: { id: forgotPasswordId, isUsed: false },
             data: {
                 isUsed: true,
                 resetAt,
+                updatedBy,
             },
         });
 
@@ -101,11 +103,12 @@ export class UserPasswordRepository implements IUserPasswordRepository {
 
     async markUnusedUsedByUserInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        updatedBy: string
     ): Promise<void> {
         await tx.forgotPassword.updateMany({
             where: { userId, isUsed: false },
-            data: { isUsed: true },
+            data: { isUsed: true, updatedBy },
         });
     }
 }

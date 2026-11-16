@@ -51,11 +51,20 @@ describe('RequestHelmetMiddleware', () => {
         middleware = module.get(RequestHelmetMiddleware);
 
         req = {} as Request;
-        res = {} as Response;
+        res = { setHeader: vi.fn() } as unknown as Response;
         next = vi.fn();
     });
 
     describe('use', () => {
+        it('sets Cache-Control no-store on the response', () => {
+            middleware.use(req, res, next);
+
+            expect(res.setHeader).toHaveBeenCalledWith(
+                'Cache-Control',
+                'no-store'
+            );
+        });
+
         it('applies the non-documents helmet profile using configured HSTS values', () => {
             middleware.use(req, res, next);
 

@@ -1,6 +1,7 @@
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
 import { AuthCommonPasswordRepository } from '@modules/auth/repositories/auth.common-password.repository';
+import { AuthSocialNonceRepository } from '@modules/auth/repositories/auth.social-nonce.repository';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
@@ -14,7 +15,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 
-/** Shared module: AuthService for the JWT and social guards; AuthJwtService and AuthPasswordService for the user module and use cases; AuthUtil for the user module; AuthPasswordUtil for the user and password-history modules and the user seed; AuthTwoFactorUtil for the user module. */
+/** Shared module: AuthService for the JWT and social guards; AuthJwtService and AuthPasswordService for the user module and use cases; AuthSocialService for the user use cases; AuthUtil for the user module; AuthPasswordUtil for the user and password-history modules and the user seed; AuthTwoFactorUtil for the user module. */
 @Global()
 @Module({})
 export class AuthModule {
@@ -28,6 +29,7 @@ export class AuthModule {
                 AuthService,
                 AuthJwtService,
                 AuthCommonPasswordRepository,
+                AuthSocialNonceRepository,
                 AuthPasswordService,
                 AuthPasswordUtil,
                 AuthSocialService,
@@ -39,6 +41,7 @@ export class AuthModule {
                 AuthJwtService,
                 AuthPasswordService,
                 AuthPasswordUtil,
+                AuthSocialService,
                 AuthTwoFactorUtil,
                 AuthUtil,
             ],

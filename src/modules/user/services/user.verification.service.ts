@@ -126,7 +126,8 @@ export class UserVerificationService {
                     await this.userVerificationRepository.markUsedInTx(
                         tx,
                         verification.id,
-                        verifiedAt
+                        verifiedAt,
+                        verification.userId
                     );
                 if (!isMarkedUsed) {
                     throw new UserTokenInvalidException();
@@ -352,11 +353,17 @@ export class UserVerificationService {
     /** Marks the verification used now; false when it was used or expired first. */
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        id: string,
+        userId: string
     ): Promise<boolean> {
         const verifiedAt = this.helperDateService.create();
 
-        return this.userVerificationRepository.markUsedInTx(tx, id, verifiedAt);
+        return this.userVerificationRepository.markUsedInTx(
+            tx,
+            id,
+            verifiedAt,
+            userId
+        );
     }
 
     async createInTx(

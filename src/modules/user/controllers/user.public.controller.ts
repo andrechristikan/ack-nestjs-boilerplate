@@ -37,10 +37,12 @@ import { UserSignUpRequestSchema } from '@modules/user/dtos/request/user.sign-up
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserVerifyEmailRequestSchema } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserSocialNonceResponseSchema } from '@modules/user/dtos/response/user.social-nonce.response.dto';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
+import { UserCreateSocialNonceUseCase } from '@modules/user/use-cases/user.create-social-nonce.use-case';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
@@ -62,6 +64,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { EnumUserLoginWith } from '@generated/prisma-client/client';
 import type {
     IAuthSocialContext,
+    IAuthSocialNonce,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -75,6 +78,7 @@ export class UserPublicController {
     constructor(
         private readonly userLoginCredentialUseCase: UserLoginCredentialUseCase,
         private readonly userLoginWithSocialUseCase: UserLoginWithSocialUseCase,
+        private readonly userCreateSocialNonceUseCase: UserCreateSocialNonceUseCase,
         private readonly userSignUpUseCase: UserSignUpUseCase,
         private readonly userVerifyEmailUseCase: UserVerifyEmailUseCase,
         private readonly userSendVerificationEmailUseCase: UserSendVerificationEmailUseCase,
@@ -102,6 +106,17 @@ export class UserPublicController {
             apiKeyContext,
             body
         );
+    }
+
+    @Doc({ summary: 'create social login nonce' })
+    @Response('user.createSocialNonce', {
+        schema: UserSocialNonceResponseSchema,
+    })
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @ApiKeyProtected()
+    @Post('/login/social/nonce/create')
+    async createSocialNonce(): Promise<IResponseReturn<IAuthSocialNonce>> {
+        return this.userCreateSocialNonceUseCase.execute();
     }
 
     @Doc({ summary: 'login with social google' })

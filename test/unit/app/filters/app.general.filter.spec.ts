@@ -1,5 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -25,6 +25,7 @@ import { ResponseSerializationException } from '@common/response/exceptions/resp
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
+import { buildStatusException } from '@test/unit/helpers/test.unit.app-exception.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AppGeneralFilter', () => {
@@ -85,6 +86,54 @@ describe('AppGeneralFilter', () => {
     });
 
     describe('catch', () => {
+        it.each([
+            HttpStatus.UNAUTHORIZED,
+            HttpStatus.FORBIDDEN,
+            HttpStatus.PAYLOAD_TOO_LARGE,
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            HttpStatus.TOO_MANY_REQUESTS,
+        ])('warns once with the refusal fields for %s', async httpStatus => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+
+            await filter.catch(buildStatusException(httpStatus), argumentsHost);
+
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn).toHaveBeenCalledWith(
+                { statusCode: 12345, statusCodeKey: 'statusKey', httpStatus },
+                'A request was refused'
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            HttpStatus.BAD_REQUEST,
+            HttpStatus.NOT_FOUND,
+            HttpStatus.CONFLICT,
+        ])('writes no warn for %s', async httpStatus => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+
+            await filter.catch(buildStatusException(httpStatus), argumentsHost);
+
+            expect(warn).not.toHaveBeenCalled();
+        });
+
+        it('keeps the error line and the Sentry report for a 500 and writes no warn', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = vi.spyOn(Logger.prototype, 'error');
+            const exception = buildStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
+            );
+            expect(warn).not.toHaveBeenCalled();
+        });
+
         const serverSelectionTimeout = new Prisma.PrismaClientKnownRequestError(
             'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
             { code: 'P2010', clientVersion: '6.19.0' }

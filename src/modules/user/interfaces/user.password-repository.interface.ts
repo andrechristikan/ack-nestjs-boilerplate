@@ -21,10 +21,12 @@ export interface IUserPasswordRepository {
     markUsedInTx(
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
-        resetAt: Date
+        resetAt: Date,
+        updatedBy: string
     ): Promise<boolean>;
     markUnusedUsedByUserInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        updatedBy: string
     ): Promise<void>;
 }

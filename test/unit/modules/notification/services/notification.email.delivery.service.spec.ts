@@ -50,21 +50,22 @@ describe('NotificationEmailDeliveryService', () => {
 
     describe('stampProcessed', () => {
         it('stamps processedAt on the email delivery row', async () => {
-            await service.stampProcessed('notification-id');
+            await service.stampProcessed('notification-id', 'proceed-by-id');
 
             expect(
                 notificationRepository.updateDeliveryProcessedAt
             ).toHaveBeenCalledWith(
                 'notification-id',
                 EnumNotificationChannel.email,
-                stampedAt
+                stampedAt,
+                'proceed-by-id'
             );
         });
     });
 
     describe('stampSent', () => {
         it('stamps sentAt on the email delivery row with no failure token', async () => {
-            await service.stampSent('notification-id');
+            await service.stampSent('notification-id', 'proceed-by-id');
 
             expect(
                 notificationRepository.updateDeliverySentAt
@@ -72,7 +73,8 @@ describe('NotificationEmailDeliveryService', () => {
                 'notification-id',
                 EnumNotificationChannel.email,
                 stampedAt,
-                []
+                [],
+                'proceed-by-id'
             );
         });
     });

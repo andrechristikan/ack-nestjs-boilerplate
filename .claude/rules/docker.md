@@ -21,16 +21,19 @@ paths:
 ## Production
 
 - `ci/docker-compose.production.yml` runs the development services, `vault` and `vault-bootstrap` under the `vault` profile, with `apis` built from `ci/dockerfile.production`. Run it with `pnpm compose:prod`.
-- It publishes only `apis` and `redis-bullboard`, the latter bound to `127.0.0.1` behind a login; ports are in the file.
+- It publishes only `apis` and `redis-bullboard`, both bound to `127.0.0.1`, BullBoard behind a login; TLS ends at a proxy in front of the host: the compose files hold no bind-address variable and no proxy service. Ports are in the file.
+- Connections between the compose services are unencrypted.
+- The compose files ship static service credentials, a Vault profile that stays optional, and logs on stdout; short-lived credentials, a mandatory secret manager, and log shipping are the deployment's.
 - `ci/dockerfile.production` builds in a `builder` stage (`pnpm generate` once, then `pnpm build`, whose closing `pnpm typecheck` is the only type check) and starts from a `main` stage holding production dependencies only, as a non-root user, with the exec-form `CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]`: `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck.
 - A schema or dependency change ships only in a rebuilt image.
-- Before the first `up` of either compose file the owner generates `keys/` and `.env` (`pnpm generate:secret`), writes `.env.docker` (production: its five credentials), pushes the schema, and runs the seeds (`AGENTS.md`).
+- Before the first `up` of either compose file the owner generates `keys/` and `.env` (`pnpm generate:secret`), writes `.env.docker` (production: its eight credentials), pushes the schema, and runs the seeds (`AGENTS.md`).
 
 ## Credentials and variables
 
 - Auth is opt-in in development. Mongo turns on `--keyFile` and `--auth` and creates the root user only when `DOCKER_MONGO_ROOT_PASSWORD` is set; Redis, run as user `redis`, takes `--requirepass` and BullBoard authenticates to it only when `DOCKER_REDIS_PASSWORD` is set.
-- With `DOCKER_MONGO_ROOT_PASSWORD` set, `DATABASE_URL` carries `<DOCKER_MONGO_ROOT_USERNAME>:<password>@` and `authSource=admin`: the root user lives in `admin`, and without it Prisma fails with `SCRAM failure: Authentication failed`. With `DOCKER_REDIS_PASSWORD` set, `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` carry `redis://:<password>@`.
-- Every `DOCKER_` key lives in the owner's `.env.docker`, each optional in development, which every Compose command passes as `--env-file` (`compose:dev`, `compose:dev:down`, `compose:prod`, and `compose:prod:down` carry it); development reads each as `${DOCKER_X:-default}`, production its five credentials as `${DOCKER_X:?message}` with no default.
+- With `DOCKER_MONGO_ROOT_PASSWORD` set and no application account, `DATABASE_URL` carries `<DOCKER_MONGO_ROOT_USERNAME>:<password>@` and `authSource=admin`: the root user lives in `admin`, and without it Prisma fails with `SCRAM failure: Authentication failed`. With `DOCKER_REDIS_PASSWORD` set, `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` carry `redis://:<password>@`.
+- Every `DOCKER_` key lives in the owner's `.env.docker`, each optional in development, which every Compose command passes as `--env-file` (`compose:dev`, `compose:dev:down`, `compose:prod`, and `compose:prod:down` carry it); development reads each as `${DOCKER_X:-default}`, production its eight credentials as `${DOCKER_X:?message}` with no default.
+- With `DOCKER_MONGO_APP_USERNAME`, `DOCKER_MONGO_APP_PASSWORD`, and `DOCKER_MONGO_APP_DATABASE` set, the entrypoint creates that user with `readWrite` on that database, and the application's `DATABASE_URL` carries it with `authSource=<database>`. Production requires the three; the root account serves administration and the healthcheck.
 
 ## Volumes
 

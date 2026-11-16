@@ -116,10 +116,12 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                 await this.userPasswordService.markResetUsedInTx(
                     tx,
                     reset.id,
-                    password.passwordCreated
+                    password.passwordCreated,
+                    reset.userId
                 );
                 await this.userPasswordService.markUnusedResetsUsedInTx(
                     tx,
+                    reset.userId,
                     reset.userId
                 );
                 await this.sessionService.revokeActiveByUserInTx(

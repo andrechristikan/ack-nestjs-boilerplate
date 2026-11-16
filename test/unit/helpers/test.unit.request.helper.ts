@@ -248,8 +248,11 @@ export function buildAuthJwtRefreshContext(
     return { ...buildAuthJwtAccessContext(userId), token };
 }
 
-export function buildAuthSocialContext(email: string): IAuthSocialContext {
-    return { email, emailVerified: true };
+export function buildAuthSocialContext(
+    email: string,
+    subject: string
+): IAuthSocialContext {
+    return { email, emailVerified: true, subject };
 }
 
 export function buildUserContext(user: IUser): IUserContext {

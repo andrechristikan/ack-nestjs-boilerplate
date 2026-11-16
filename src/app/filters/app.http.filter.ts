@@ -2,6 +2,7 @@ import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import Case from 'case';
+import { AppRefusalLogStatuses } from '@app/constants/app.constant';
 import { MessageService } from '@common/message/services/message.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
@@ -41,6 +42,17 @@ export class AppHttpFilter implements ExceptionFilter {
                 ? (responseException as Record<string, unknown>)
                 : null;
 
+        const statusCodeKey: string =
+            (extended?.statusCodeKey as string) ??
+            (statusName ? Case.camel(statusName) : statusHttp.toString());
+
+        if (AppRefusalLogStatuses.has(statusHttp)) {
+            this.logger.warn(
+                { statusCodeKey, httpStatus: statusHttp },
+                'A request was refused'
+            );
+        }
+
         const metadata: ResponseMetadataDto =
             this.responseMetadataService.create();
 
@@ -53,9 +65,7 @@ export class AppHttpFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode: statusHttp,
-            statusCodeKey:
-                (extended?.statusCodeKey as string) ??
-                (statusName ? Case.camel(statusName) : statusHttp.toString()),
+            statusCodeKey,
             module: (extended?.module as string) ?? 'http',
             message,
             metadata,

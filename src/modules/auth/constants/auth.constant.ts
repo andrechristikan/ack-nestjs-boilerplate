@@ -103,6 +103,11 @@ export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'auth.error.socialGoogleRequired',
     },
     {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+        messagePath: 'auth.error.socialNonceInvalid',
+    },
+    {
         httpStatus: HttpStatus.NOT_FOUND,
         statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
         messagePath: 'auth.error.socialGoogleNotConfigured',
@@ -125,6 +130,11 @@ export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
         httpStatus: HttpStatus.UNAUTHORIZED,
         statusCode: EnumAuthStatusCodeError.socialAppleRequired,
         messagePath: 'auth.error.socialAppleRequired',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+        messagePath: 'auth.error.socialNonceInvalid',
     },
     {
         httpStatus: HttpStatus.NOT_FOUND,

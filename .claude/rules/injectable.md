@@ -9,6 +9,8 @@ paths:
 
 Hand-rolling what Nest provides is a defect: no service locator, no manual `new` of an injectable, no bare `@UseGuards` where a `@<Feature>Protected()` exists. Exceptions: `ClsServiceManager.getClsService()` in a `createParamDecorator` factory, and the per-class `new Logger(ClassName.name)` (Logger).
 
+An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, never global `fetch`, `axios`, or `@nestjs/axios`; every client sets `redirect: 'error'` and a `timeout`.
+
 ## Constructors and fields
 
 - Every constructor parameter is a parameter property, never plain, never `public`; `QueueWorkerBase` alone takes plain parameters, because BullMQ's `Worker` holds public `name` and `opts` and `@nestjs/bullmq` constructs it positionally.
@@ -20,9 +22,9 @@ Hand-rolling what Nest provides is a defect: no service locator, no manual `new`
 
 ## Logger
 
-- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, and a `warn` that carries a caught error, are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`; the reverse drops the stack and the object), the rest message-first.
+- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, a `warn` that carries a caught error, and a line that carries fields are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`, `this.logger.warn({ statusCode }, 'context')`; the reverse drops the stack and the object), the rest message-first.
 
 ## Config
 
 - Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field; a module `useFactory`, a queue options factory, `main.ts`, `configure.ts`, and `swagger.ts` read where they build.
-- A TTL, retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes is a constant in its kit (`config.md`).
+- A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes is a constant in its kit (`config.md`).

@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { HttpClient } from '@nestjs/http-client';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -51,7 +52,8 @@ export async function createHealthAppleIndicator(
 
 export async function createHealthJwksIndicator(
     configService: MockProxy<ConfigService>,
-    healthIndicatorService: MockProxy<HealthIndicatorService>
+    healthIndicatorService: MockProxy<HealthIndicatorService>,
+    httpClient: MockProxy<HttpClient>
 ): Promise<HealthJwksIndicator> {
     const { HealthJwksIndicator: HealthJwksIndicatorClass } =
         await import('@modules/health/indicators/health.jwks.indicator');
@@ -64,6 +66,7 @@ export async function createHealthJwksIndicator(
                 provide: HealthIndicatorService,
                 useValue: healthIndicatorService,
             },
+            { provide: HttpClient, useValue: httpClient },
         ],
     }).compile();
 

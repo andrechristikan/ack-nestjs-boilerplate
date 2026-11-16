@@ -35,14 +35,16 @@ export class NotificationPushDeliveryService {
 
     async stampProcessed(
         notificationId: string,
-        process: EnumNotificationPushProcess
+        process: EnumNotificationPushProcess,
+        proceedBy: string
     ): Promise<void> {
         const processedAt = this.helperDateService.create();
         const stamped =
             await this.notificationRepository.updateDeliveryProcessedAt(
                 notificationId,
                 EnumNotificationChannel.push,
-                processedAt
+                processedAt,
+                proceedBy
             );
         if (!stamped) {
             this.throwDeliveryNotFound(process);
@@ -86,7 +88,8 @@ export class NotificationPushDeliveryService {
         tx: IDatabaseTransactionClient,
         notificationId: string,
         failureTokens: string[],
-        process: EnumNotificationPushProcess
+        process: EnumNotificationPushProcess,
+        proceedBy: string
     ): Promise<void> {
         const sentAt = this.helperDateService.create();
         const stamped =
@@ -95,7 +98,8 @@ export class NotificationPushDeliveryService {
                 notificationId,
                 EnumNotificationChannel.push,
                 sentAt,
-                failureTokens
+                failureTokens,
+                proceedBy
             );
         if (!stamped) {
             this.throwDeliveryNotFound(process);

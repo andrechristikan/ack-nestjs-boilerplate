@@ -401,7 +401,7 @@ describe('DatabaseExtensionFactory', () => {
         it('returns false when the model does not own the field', () => {
             expect(
                 factory['modelHasField'](
-                    'Verification',
+                    'PasswordHistory',
                     EnumDatabaseAuditField.updatedBy
                 )
             ).toBe(false);
@@ -491,7 +491,7 @@ describe('DatabaseExtensionFactory', () => {
         it('stamps only createdBy on a model that does not own updatedBy', () => {
             const payload: IDatabaseData = {};
 
-            factory['stampCreate']('Verification', payload, 'actor-1');
+            factory['stampCreate']('PasswordHistory', payload, 'actor-1');
 
             expect(payload).toEqual({ createdBy: 'actor-1' });
         });
@@ -564,7 +564,7 @@ describe('DatabaseExtensionFactory', () => {
         it('stamps nothing on a model that does not own updatedBy', () => {
             const payload: IDatabaseData = {};
 
-            factory['stampUpdate']('Verification', payload, 'actor-1');
+            factory['stampUpdate']('PasswordHistory', payload, 'actor-1');
 
             expect(payload).toEqual({});
         });

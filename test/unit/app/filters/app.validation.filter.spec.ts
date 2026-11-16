@@ -1,5 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, Logger } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -74,7 +74,31 @@ describe('AppValidationFilter', () => {
         filter = module.get(AppValidationFilter);
     });
 
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     describe('catch', () => {
+        it('warns once with the refusal fields', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const exception = new RequestValidationException(issues);
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn).toHaveBeenCalledWith(
+                {
+                    statusCode: EnumRequestStatusCodeError.validation,
+                    statusCodeKey:
+                        EnumRequestStatusCodeError[
+                            EnumRequestStatusCodeError.validation
+                        ],
+                    httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                },
+                'A request was refused'
+            );
+        });
+
         it('responds 422 with the validation error envelope', async () => {
             const exception = new RequestValidationException(issues);
 

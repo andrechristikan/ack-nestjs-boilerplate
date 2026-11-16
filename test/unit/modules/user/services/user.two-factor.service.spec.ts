@@ -1568,6 +1568,8 @@ describe('UserTwoFactorService', () => {
                 consumedAt: null,
                 createdAt: now,
                 createdBy: null,
+                updatedAt: now,
+                updatedBy: null,
             };
 
             it('reads the live row by the token hash and decrypts the push token', async () => {
@@ -1639,11 +1641,15 @@ describe('UserTwoFactorService', () => {
                     true
                 );
 
-                await service.consumeChallengeInTx(tx, challengeToken);
+                await service.consumeChallengeInTx(
+                    tx,
+                    challengeToken,
+                    'user-id'
+                );
 
                 expect(
                     userTwoFactorRepository.consumeChallengeInTx
-                ).toHaveBeenCalledWith(tx, tokenHash, now);
+                ).toHaveBeenCalledWith(tx, tokenHash, now, 'user-id');
             });
 
             it('throws AuthTwoFactorChallengeInvalidException on a lost claim', async () => {
@@ -1652,7 +1658,7 @@ describe('UserTwoFactorService', () => {
                 );
 
                 await expect(
-                    service.consumeChallengeInTx(tx, challengeToken)
+                    service.consumeChallengeInTx(tx, challengeToken, 'user-id')
                 ).rejects.toMatchObject({
                     module: 'auth',
                     statusCode:

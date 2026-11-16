@@ -28,6 +28,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { UserSocialService } from '@modules/user/services/user.social.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -72,6 +73,8 @@ describe('UserDeleteSelfUseCase', () => {
         mock<UserTwoFactorService>();
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
+    const userSocialService: MockProxy<UserSocialService> =
+        mock<UserSocialService>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -168,6 +171,7 @@ describe('UserDeleteSelfUseCase', () => {
                     provide: UserMobileNumberService,
                     useValue: userMobileNumberService,
                 },
+                { provide: UserSocialService, useValue: userSocialService },
                 { provide: WorkspaceService, useValue: workspaceService },
                 {
                     provide: WorkspaceMemberService,
@@ -347,6 +351,11 @@ describe('UserDeleteSelfUseCase', () => {
                     calls.push('removeMobileNumbers');
                 }
             );
+            userSocialService.removeByUserInTx.mockImplementation(async () => {
+                calls.push('removeSocials');
+
+                return 1;
+            });
             userTwoFactorService.removeInTx.mockImplementation(async () => {
                 calls.push('removeTwoFactor');
             });
@@ -408,6 +417,10 @@ describe('UserDeleteSelfUseCase', () => {
             expect(
                 userMobileNumberService.removeByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-cinder');
+            expect(userSocialService.removeByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder'
+            );
             expect(userTwoFactorService.removeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cinder'
@@ -443,6 +456,7 @@ describe('UserDeleteSelfUseCase', () => {
                 'removeMemberships',
                 'removeProjectMemberships',
                 'removeMobileNumbers',
+                'removeSocials',
                 'removeTwoFactor',
                 'revokeSessions',
                 'deleteUser',

@@ -15,6 +15,7 @@ import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthSocialNonceInvalidException } from '@modules/auth/exceptions/auth.social-nonce-invalid.exception';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
@@ -361,10 +362,101 @@ describe('AuthService', () => {
     });
 
     describe('validateOAuthApple', () => {
+        it('passes the nonce claim of the verified payload to consumeNonce', async () => {
+            authSocialService.verifyApple.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+                nonce: 'plain-nonce',
+            } as VerifyAppleIdTokenResponse);
+
+            await service.validateOAuthApple('id-token');
+
+            expect(authSocialService.consumeNonce).toHaveBeenCalledWith(
+                'plain-nonce'
+            );
+        });
+
+        it('passes null to consumeNonce when the payload has no nonce', async () => {
+            authSocialService.verifyApple.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as VerifyAppleIdTokenResponse);
+
+            await service.validateOAuthApple('id-token');
+
+            expect(authSocialService.consumeNonce).toHaveBeenCalledWith(null);
+        });
+
+        it('rethrows AuthSocialNonceInvalidException unwrapped', async () => {
+            const invalid = new AuthSocialNonceInvalidException();
+            authSocialService.verifyApple.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as VerifyAppleIdTokenResponse);
+            authSocialService.consumeNonce.mockRejectedValue(invalid);
+
+            const rejection = service.validateOAuthApple('id-token');
+
+            await expect(rejection).rejects.toBe(invalid);
+        });
+
+        it('rethrows an unknown consumeNonce error unwrapped', async () => {
+            const failure = new Error('database down');
+            authSocialService.verifyApple.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as VerifyAppleIdTokenResponse);
+            authSocialService.consumeNonce.mockRejectedValue(failure);
+
+            const rejection = service.validateOAuthApple('id-token');
+
+            await expect(rejection).rejects.toBe(failure);
+        });
+
+        it('does not call consumeNonce when verification fails', async () => {
+            authSocialService.verifyApple.mockRejectedValue(
+                new Error('bad token')
+            );
+
+            await expect(
+                service.validateOAuthApple('id-token')
+            ).rejects.toBeInstanceOf(AuthSocialAppleInvalidException);
+
+            expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthSocialAppleInvalidException and spends no nonce when the payload has no sub', async () => {
+            authSocialService.verifyApple.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                nonce: 'plain-nonce',
+            } as VerifyAppleIdTokenResponse);
+
+            await expect(
+                service.validateOAuthApple('id-token')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.socialAppleInvalid
+                    ],
+                messagePath: 'auth.error.socialAppleInvalid',
+                rawError: 'Apple token payload does not contain sub',
+            });
+
+            expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
+        });
+
         it('returns the mapped social payload', async () => {
             const applePayload = {
                 email: 'jane@example.com',
                 email_verified: true,
+                sub: 'subject-jane',
             } as VerifyAppleIdTokenResponse;
             authSocialService.verifyApple.mockResolvedValue(applePayload);
 
@@ -373,6 +465,7 @@ describe('AuthService', () => {
             expect(result).toEqual({
                 email: 'jane@example.com',
                 emailVerified: true,
+                subject: 'subject-jane',
             });
             expect(authSocialService.verifyApple).toHaveBeenCalledWith(
                 'id-token'
@@ -440,10 +533,101 @@ describe('AuthService', () => {
     });
 
     describe('validateOAuthGoogle', () => {
+        it('passes the nonce claim of the verified payload to consumeNonce', async () => {
+            authSocialService.verifyGoogle.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+                nonce: 'plain-nonce',
+            } as TokenPayload);
+
+            await service.validateOAuthGoogle('id-token');
+
+            expect(authSocialService.consumeNonce).toHaveBeenCalledWith(
+                'plain-nonce'
+            );
+        });
+
+        it('passes null to consumeNonce when the payload has no nonce', async () => {
+            authSocialService.verifyGoogle.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as TokenPayload);
+
+            await service.validateOAuthGoogle('id-token');
+
+            expect(authSocialService.consumeNonce).toHaveBeenCalledWith(null);
+        });
+
+        it('rethrows AuthSocialNonceInvalidException unwrapped', async () => {
+            const invalid = new AuthSocialNonceInvalidException();
+            authSocialService.verifyGoogle.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as TokenPayload);
+            authSocialService.consumeNonce.mockRejectedValue(invalid);
+
+            const rejection = service.validateOAuthGoogle('id-token');
+
+            await expect(rejection).rejects.toBe(invalid);
+        });
+
+        it('rethrows an unknown consumeNonce error unwrapped', async () => {
+            const failure = new Error('database down');
+            authSocialService.verifyGoogle.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                sub: 'subject-jane',
+            } as TokenPayload);
+            authSocialService.consumeNonce.mockRejectedValue(failure);
+
+            const rejection = service.validateOAuthGoogle('id-token');
+
+            await expect(rejection).rejects.toBe(failure);
+        });
+
+        it('does not call consumeNonce when verification fails', async () => {
+            authSocialService.verifyGoogle.mockRejectedValue(
+                new Error('bad token')
+            );
+
+            await expect(
+                service.validateOAuthGoogle('id-token')
+            ).rejects.toBeInstanceOf(AuthSocialGoogleInvalidException);
+
+            expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthSocialGoogleInvalidException and spends no nonce when the payload has no sub', async () => {
+            authSocialService.verifyGoogle.mockResolvedValue({
+                email: 'jane@example.com',
+                email_verified: true,
+                nonce: 'plain-nonce',
+            } as TokenPayload);
+
+            await expect(
+                service.validateOAuthGoogle('id-token')
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.socialGoogleInvalid
+                    ],
+                messagePath: 'auth.error.socialGoogleInvalid',
+                rawError: 'Google token payload does not contain sub',
+            });
+
+            expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
+        });
+
         it('returns the mapped social payload', async () => {
             const googlePayload = {
                 email: 'jane@example.com',
                 email_verified: true,
+                sub: 'subject-jane',
             } as TokenPayload;
             authSocialService.verifyGoogle.mockResolvedValue(googlePayload);
 
@@ -452,16 +636,21 @@ describe('AuthService', () => {
             expect(result).toEqual({
                 email: 'jane@example.com',
                 emailVerified: true,
+                subject: 'subject-jane',
             });
         });
 
         it('defaults email and emailVerified when the payload omits them', async () => {
-            const googlePayload = {} as TokenPayload;
+            const googlePayload = { sub: 'subject-jane' } as TokenPayload;
             authSocialService.verifyGoogle.mockResolvedValue(googlePayload);
 
             const result = await service.validateOAuthGoogle('id-token');
 
-            expect(result).toEqual({ email: '', emailVerified: false });
+            expect(result).toEqual({
+                email: '',
+                emailVerified: false,
+                subject: 'subject-jane',
+            });
         });
 
         it('rethrows AuthSocialGoogleNotConfiguredException unwrapped', async () => {

@@ -59,6 +59,11 @@ describe('auth.social.decorator', () => {
                     messagePath: 'auth.error.socialGoogleRequired',
                 },
                 {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+                    messagePath: 'auth.error.socialNonceInvalid',
+                },
+                {
                     httpStatus: HttpStatus.NOT_FOUND,
                     statusCode:
                         EnumAuthStatusCodeError.socialGoogleNotConfigured,
@@ -108,6 +113,11 @@ describe('auth.social.decorator', () => {
                     httpStatus: HttpStatus.UNAUTHORIZED,
                     statusCode: EnumAuthStatusCodeError.socialAppleRequired,
                     messagePath: 'auth.error.socialAppleRequired',
+                },
+                {
+                    httpStatus: HttpStatus.UNAUTHORIZED,
+                    statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+                    messagePath: 'auth.error.socialNonceInvalid',
                 },
                 {
                     httpStatus: HttpStatus.NOT_FOUND,
@@ -162,7 +172,10 @@ describe('auth.social.decorator', () => {
         });
 
         it('returns the stored social context', () => {
-            const authContext = buildAuthSocialContext('jane@example.com');
+            const authContext = buildAuthSocialContext(
+                'jane@example.com',
+                'subject-jane'
+            );
             clsService.get.mockReturnValue(authContext);
 
             expect(factory(undefined, executionContext)).toBe(authContext);

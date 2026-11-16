@@ -312,7 +312,7 @@ describe('UserLoginVerifyTwoFactorUseCase', () => {
             );
             expect(
                 userTwoFactorService.consumeChallengeInTx
-            ).toHaveBeenCalledWith(tx, 'challenge-token');
+            ).toHaveBeenCalledWith(tx, 'challenge-token', 'user-bramble');
             expect(callOrder).toEqual([
                 'check',
                 'consumeChallengeInTx',

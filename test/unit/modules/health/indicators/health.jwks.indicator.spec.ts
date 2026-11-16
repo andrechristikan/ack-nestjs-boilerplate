@@ -1,4 +1,9 @@
 import { HealthIndicatorService } from '@nestjs/terminus';
+import {
+    HttpClient,
+    HttpNetworkError,
+    HttpResponseError,
+} from '@nestjs/http-client';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -9,33 +14,27 @@ describe('HealthJwksIndicator', () => {
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
         mock<HealthIndicatorService>();
     const session = { up: vi.fn(), down: vi.fn() };
-    const fetchMock = vi.fn<typeof fetch>();
-    const jwksTimeoutInMs = 3000;
+    const httpClient: MockProxy<HttpClient> = mock<HttpClient>();
     const accessUri = 'https://issuer.example/access/jwks';
     const refreshUri = 'https://issuer.example/refresh/jwks';
-    const jwksResponse = Response.json({ keys: [{ kid: 'key-1' }] });
+    const jwksResponse = { data: { keys: [{ kid: 'key-1' }] } };
 
     beforeEach(() => {
         vi.resetAllMocks();
-        vi.stubGlobal('fetch', fetchMock);
 
         healthIndicatorService.check.mockReturnValue(session as never);
-        fetchMock.mockResolvedValue(jwksResponse.clone());
-    });
-
-    afterEach(() => {
-        vi.unstubAllGlobals();
+        httpClient.get.mockResolvedValue(jwksResponse as never);
     });
 
     describe('isHealthyAccessToken', () => {
         it('reports up when the access-token JWKS endpoint answers with a key set', async () => {
             const configService = buildConfigService({
                 'auth.jwt.accessToken.jwksUri': accessUri,
-                'health.jwksTimeoutInMs': jwksTimeoutInMs,
             });
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.up.mockReturnValue({
                 jwksAccessToken: { status: 'up' },
@@ -49,21 +48,15 @@ describe('HealthJwksIndicator', () => {
             expect(configService.get).toHaveBeenCalledWith(
                 'auth.jwt.accessToken.jwksUri'
             );
-            expect(configService.get).toHaveBeenCalledWith(
-                'health.jwksTimeoutInMs'
-            );
-            expect(fetchMock).toHaveBeenCalledWith(accessUri, {
-                signal: expect.any(AbortSignal),
-            });
+            expect(httpClient.get).toHaveBeenCalledWith(accessUri);
         });
 
         it('reports down when the access-token JWKS URI is not configured', async () => {
-            const configService = buildConfigService({
-                'health.jwksTimeoutInMs': jwksTimeoutInMs,
-            });
+            const configService = buildConfigService({});
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.down.mockReturnValue({
                 jwksAccessToken: { status: 'down' },
@@ -77,7 +70,7 @@ describe('HealthJwksIndicator', () => {
             expect(session.down).toHaveBeenCalledWith(
                 'JWKS URI is not configured'
             );
-            expect(fetchMock).not.toHaveBeenCalled();
+            expect(httpClient.get).not.toHaveBeenCalled();
         });
     });
 
@@ -85,11 +78,11 @@ describe('HealthJwksIndicator', () => {
         it('reports up when the refresh-token JWKS endpoint answers with a key set', async () => {
             const configService = buildConfigService({
                 'auth.jwt.refreshToken.jwksUri': refreshUri,
-                'health.jwksTimeoutInMs': jwksTimeoutInMs,
             });
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.up.mockReturnValue({
                 jwksRefreshToken: { status: 'up' },
@@ -103,19 +96,17 @@ describe('HealthJwksIndicator', () => {
             expect(configService.get).toHaveBeenCalledWith(
                 'auth.jwt.refreshToken.jwksUri'
             );
-            expect(fetchMock).toHaveBeenCalledWith(refreshUri, {
-                signal: expect.any(AbortSignal),
-            });
+            expect(httpClient.get).toHaveBeenCalledWith(refreshUri);
         });
 
         it('reports down when the refresh-token JWKS URI is not a valid URL', async () => {
             const configService = buildConfigService({
                 'auth.jwt.refreshToken.jwksUri': 'not-a-valid-url',
-                'health.jwksTimeoutInMs': jwksTimeoutInMs,
             });
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.down.mockReturnValue({
                 jwksRefreshToken: { status: 'down' },
@@ -129,18 +120,19 @@ describe('HealthJwksIndicator', () => {
             expect(session.down).toHaveBeenCalledWith(
                 'JWKS URI is not a valid URL'
             );
-            expect(fetchMock).not.toHaveBeenCalled();
+            expect(httpClient.get).not.toHaveBeenCalled();
         });
     });
 
     describe('checkUri', () => {
-        const configValues = { 'health.jwksTimeoutInMs': jwksTimeoutInMs };
+        const configValues = {};
 
         it('reports down when the URI is empty', async () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
@@ -159,7 +151,8 @@ describe('HealthJwksIndicator', () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
@@ -178,7 +171,8 @@ describe('HealthJwksIndicator', () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
             session.up.mockReturnValue({ jwks: { status: 'up' } });
 
@@ -195,9 +189,16 @@ describe('HealthJwksIndicator', () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
-            fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
+            httpClient.get.mockRejectedValue(
+                new HttpResponseError({
+                    method: 'GET',
+                    url: accessUri,
+                    status: 503,
+                })
+            );
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
             const result = await indicator['checkUri'](
@@ -215,9 +216,12 @@ describe('HealthJwksIndicator', () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
-            fetchMock.mockResolvedValue(Response.json({ keys: 'none' }));
+            httpClient.get.mockResolvedValue({
+                data: { keys: 'none' },
+            } as never);
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
             const result = await indicator['checkUri'](
@@ -231,13 +235,42 @@ describe('HealthJwksIndicator', () => {
             );
         });
 
-        it('reports down with a fixed message when the fetch rejects', async () => {
+        it('reports down with a fixed message when the endpoint answers with a redirect', async () => {
             const configService = buildConfigService(configValues);
             const indicator = await createHealthJwksIndicator(
                 configService,
-                healthIndicatorService
+                healthIndicatorService,
+                httpClient
             );
-            fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
+            httpClient.get.mockRejectedValue(
+                new HttpNetworkError({
+                    method: 'GET',
+                    url: accessUri,
+                    cause: new TypeError('redirect mode is set to error'),
+                })
+            );
+            session.down.mockReturnValue({ jwks: { status: 'down' } });
+
+            const result = await indicator['checkUri'](
+                EnumHealthIndicatorKey.jwksAccessToken,
+                accessUri
+            );
+
+            expect(result).toEqual({ jwks: { status: 'down' } });
+            expect(httpClient.get).toHaveBeenCalledWith(accessUri);
+            expect(session.down).toHaveBeenCalledWith(
+                'JWKS endpoint is unreachable'
+            );
+        });
+
+        it('reports down with a fixed message when the request rejects', async () => {
+            const configService = buildConfigService(configValues);
+            const indicator = await createHealthJwksIndicator(
+                configService,
+                healthIndicatorService,
+                httpClient
+            );
+            httpClient.get.mockRejectedValue(new Error('connect ECONNREFUSED'));
             session.down.mockReturnValue({ jwks: { status: 'down' } });
 
             const result = await indicator['checkUri'](

@@ -110,6 +110,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             },
             data: {
                 isUsed: true,
+                updatedBy: userId,
             },
         });
     }
@@ -117,13 +118,15 @@ export class UserVerificationRepository implements IUserVerificationRepository {
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        verifiedAt: Date
+        verifiedAt: Date,
+        updatedBy: string
     ): Promise<boolean> {
         const { count } = await tx.verification.updateMany({
             where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
             data: {
                 isUsed: true,
                 verifiedAt,
+                updatedBy,
             },
         });
 
@@ -184,6 +187,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             },
             data: {
                 expiredAt: createdAt,
+                updatedBy: userId,
             },
         });
 

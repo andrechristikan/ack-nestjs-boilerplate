@@ -29,11 +29,11 @@ export class AuthSocialAppleGuard implements CanActivate {
             throw new AuthSocialAppleRequiredException();
         }
 
-        const { email, emailVerified } =
+        const { email, emailVerified, subject } =
             await this.authService.validateOAuthApple(requestHeaders[1]!);
         this.requestStoreService.set<IAuthSocialContext>(
             AuthSocialContextStoreKey,
-            { email, emailVerified }
+            { email, emailVerified, subject }
         );
 
         return true;

@@ -29,11 +29,11 @@ export class AuthSocialGoogleGuard implements CanActivate {
             throw new AuthSocialGoogleRequiredException();
         }
 
-        const { email, emailVerified } =
+        const { email, emailVerified, subject } =
             await this.authService.validateOAuthGoogle(requestHeaders[1]!);
         this.requestStoreService.set<IAuthSocialContext>(
             AuthSocialContextStoreKey,
-            { email, emailVerified }
+            { email, emailVerified, subject }
         );
 
         return true;

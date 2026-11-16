@@ -55,6 +55,12 @@ export const RequestThrottleHeaderName = 'X-RateLimit';
 export const RequestWorkspaceIdHeaderName = 'x-workspace-id';
 
 /** @public */
+export const RequestHelmetCacheControlHeaderName = 'Cache-Control';
+
+/** @public */
+export const RequestHelmetCacheControlHeaderValue = 'no-store';
+
+/** @public */
 export const RequestHelmetCspDirectives: Record<string, string[]> = {
     defaultSrc: ["'none'"],
     baseUri: ["'none'"],

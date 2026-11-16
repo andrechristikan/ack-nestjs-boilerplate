@@ -297,7 +297,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             );
             expect(
                 userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden');
+            ).toHaveBeenCalledWith(tx, 'user-linden', 'admin-linden');
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',

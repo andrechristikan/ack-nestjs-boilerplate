@@ -70,6 +70,12 @@ export interface IAuthJwtRefreshContext extends IAuthJwtAccessContext {
 export interface IAuthSocialContext {
     email: string;
     emailVerified: boolean;
+    subject: string;
+}
+
+export interface IAuthSocialNonce {
+    nonce: string;
+    expiredAt: Date;
 }
 
 export interface IAuthAccessTokenGenerate {

@@ -102,3 +102,6 @@ tmp/
 
 ## AI generated files
 plan.md
+
+## SBOM
+sbom.cdx.json

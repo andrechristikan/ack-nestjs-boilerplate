@@ -782,13 +782,19 @@ describe('UserPasswordService', () => {
             userPasswordRepository.markUsedInTx.mockResolvedValue(true);
 
             await expect(
-                service.markResetUsedInTx(tx, 'forgot-hollow', usedAt)
+                service.markResetUsedInTx(
+                    tx,
+                    'forgot-hollow',
+                    usedAt,
+                    'user-hollow'
+                )
             ).resolves.toBeUndefined();
 
             expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
                 tx,
                 'forgot-hollow',
-                usedAt
+                usedAt,
+                'user-hollow'
             );
         });
 
@@ -796,7 +802,12 @@ describe('UserPasswordService', () => {
             userPasswordRepository.markUsedInTx.mockResolvedValue(false);
 
             await expect(
-                service.markResetUsedInTx(tx, 'forgot-hollow', usedAt)
+                service.markResetUsedInTx(
+                    tx,
+                    'forgot-hollow',
+                    usedAt,
+                    'user-hollow'
+                )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
@@ -808,12 +819,16 @@ describe('UserPasswordService', () => {
     describe('markUnusedResetsUsedInTx', () => {
         it("marks the user's unused resets used on the given transaction", async () => {
             await expect(
-                service.markUnusedResetsUsedInTx(tx, 'user-hollow')
+                service.markUnusedResetsUsedInTx(
+                    tx,
+                    'user-hollow',
+                    'user-hollow'
+                )
             ).resolves.toBeUndefined();
 
             expect(
                 userPasswordRepository.markUnusedUsedByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow');
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 'user-hollow');
         });
     });
 

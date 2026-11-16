@@ -54,7 +54,8 @@ describe('NotificationPushDeliveryService', () => {
 
             await service.stampProcessed(
                 'notification-id',
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'proceed-by-id'
             );
 
             expect(
@@ -62,7 +63,8 @@ describe('NotificationPushDeliveryService', () => {
             ).toHaveBeenCalledWith(
                 'notification-id',
                 EnumNotificationChannel.push,
-                TestPushStampedAt
+                TestPushStampedAt,
+                'proceed-by-id'
             );
         });
 
@@ -74,7 +76,8 @@ describe('NotificationPushDeliveryService', () => {
             await expect(
                 service.stampProcessed(
                     'notification-id',
-                    EnumNotificationPushProcess.send
+                    EnumNotificationPushProcess.send,
+                    'proceed-by-id'
                 )
             ).rejects.toMatchObject({
                 constructor: UnrecoverableError,
@@ -195,7 +198,8 @@ describe('NotificationPushDeliveryService', () => {
                 tx,
                 'notification-id',
                 ['token-1'],
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'proceed-by-id'
             );
 
             expect(
@@ -205,7 +209,8 @@ describe('NotificationPushDeliveryService', () => {
                 'notification-id',
                 EnumNotificationChannel.push,
                 TestPushStampedAt,
-                ['token-1']
+                ['token-1'],
+                'proceed-by-id'
             );
         });
 
@@ -219,7 +224,8 @@ describe('NotificationPushDeliveryService', () => {
                     tx,
                     'notification-id',
                     [],
-                    EnumNotificationPushProcess.send
+                    EnumNotificationPushProcess.send,
+                    'proceed-by-id'
                 )
             ).rejects.toMatchObject({
                 constructor: UnrecoverableError,

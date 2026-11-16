@@ -353,12 +353,14 @@ export class UserPasswordService {
     async markResetUsedInTx(
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
-        usedAt: Date
+        usedAt: Date,
+        userId: string
     ): Promise<void> {
         const isMarkedUsed = await this.userPasswordRepository.markUsedInTx(
             tx,
             forgotPasswordId,
-            usedAt
+            usedAt,
+            userId
         );
         if (!isMarkedUsed) {
             throw new UserTokenInvalidException();
@@ -367,8 +369,13 @@ export class UserPasswordService {
 
     async markUnusedResetsUsedInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        updatedBy: string
     ): Promise<void> {
-        await this.userPasswordRepository.markUnusedUsedByUserInTx(tx, userId);
+        await this.userPasswordRepository.markUnusedUsedByUserInTx(
+            tx,
+            userId,
+            updatedBy
+        );
     }
 }

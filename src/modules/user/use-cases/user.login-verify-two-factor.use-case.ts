@@ -63,7 +63,8 @@ export class UserLoginVerifyTwoFactorUseCase implements IAppUseCase<
                 async tx => {
                     await this.userTwoFactorService.consumeChallengeInTx(
                         tx,
-                        challengeToken
+                        challengeToken,
+                        user.id
                     );
                     await this.userTwoFactorService.verifyInTx(
                         tx,

@@ -79,6 +79,7 @@ describe('AuthSocialAppleGuard', () => {
             const authContext: IAuthSocialContext = {
                 email: 'jane@example.com',
                 emailVerified: true,
+                subject: 'subject-jane',
             };
             authService.validateOAuthApple.mockResolvedValue(authContext);
 

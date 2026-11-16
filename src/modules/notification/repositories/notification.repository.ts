@@ -70,6 +70,7 @@ export class NotificationRepository implements INotificationRepository {
                                 channel,
                                 processedAt: null,
                                 sentAt: null,
+                                createdBy,
                             })),
                         ...deliveredChannels
                             .filter(channel => channels.includes(channel))
@@ -77,6 +78,7 @@ export class NotificationRepository implements INotificationRepository {
                                 channel,
                                 processedAt: today,
                                 sentAt: today,
+                                createdBy,
                             })),
                     ],
                 },
@@ -252,7 +254,7 @@ export class NotificationRepository implements INotificationRepository {
                     channel: EnumNotificationChannel.email,
                     sentAt: null,
                 },
-                data: { processedAt: sentAt, sentAt },
+                data: { processedAt: sentAt, sentAt, updatedBy },
             });
         });
     }
@@ -308,12 +310,13 @@ export class NotificationRepository implements INotificationRepository {
     async updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,
-        at: Date
+        at: Date,
+        updatedBy: string
     ): Promise<boolean> {
         const { count } =
             await this.databaseService.client.notificationDelivery.updateMany({
                 where: { notificationId, channel },
-                data: { processedAt: at },
+                data: { processedAt: at, updatedBy },
             });
 
         return count > 0;
@@ -323,12 +326,13 @@ export class NotificationRepository implements INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[]
+        failureTokens: string[],
+        updatedBy: string
     ): Promise<boolean> {
         const { count } =
             await this.databaseService.client.notificationDelivery.updateMany({
                 where: { notificationId, channel },
-                data: { failureTokens, sentAt: at },
+                data: { failureTokens, sentAt: at, updatedBy },
             });
 
         return count > 0;
@@ -339,11 +343,12 @@ export class NotificationRepository implements INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[]
+        failureTokens: string[],
+        updatedBy: string
     ): Promise<boolean> {
         const { count } = await tx.notificationDelivery.updateMany({
             where: { notificationId, channel },
-            data: { failureTokens, sentAt: at },
+            data: { failureTokens, sentAt: at, updatedBy },
         });
 
         return count > 0;

@@ -1,6 +1,6 @@
 # Run from the repository root: pnpm compose:prod
 # (docker compose --env-file .env.docker -f ci/docker-compose.production.yml up -d)
-# The DOCKER_* variables are read from .env.docker. The five credentials are required: with one empty, every command stops and names it.
+# The DOCKER_* variables are read from .env.docker. The eight credentials are required: with one empty, every command stops and names it.
 name: ack-nestjs-boilerplate-production
 
 services:
@@ -16,7 +16,7 @@ services:
               bind:
                   create_host_path: false
         ports:
-            - '3000:3000'
+            - '127.0.0.1:3000:3000'
         restart: unless-stopped
         networks:
             - app-network
@@ -91,6 +91,9 @@ services:
             HOME: /tmp
             MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:?set DOCKER_MONGO_ROOT_USERNAME in .env.docker}
             MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:?set DOCKER_MONGO_ROOT_PASSWORD in .env.docker}
+            MONGO_APP_USERNAME: ${DOCKER_MONGO_APP_USERNAME:?set DOCKER_MONGO_APP_USERNAME in .env.docker}
+            MONGO_APP_PASSWORD: ${DOCKER_MONGO_APP_PASSWORD:?set DOCKER_MONGO_APP_PASSWORD in .env.docker}
+            MONGO_APP_DATABASE: ${DOCKER_MONGO_APP_DATABASE:?set DOCKER_MONGO_APP_DATABASE in .env.docker}
             RS_HOST: mongo:27017
         volumes:
             - type: volume

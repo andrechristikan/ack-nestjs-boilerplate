@@ -78,19 +78,22 @@ export interface INotificationRepository {
     updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,
-        at: Date
+        at: Date,
+        updatedBy: string
     ): Promise<boolean>;
     updateDeliverySentAt(
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[]
+        failureTokens: string[],
+        updatedBy: string
     ): Promise<boolean>;
     updateDeliverySentAtInTx(
         tx: IDatabaseTransactionClient,
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[]
+        failureTokens: string[],
+        updatedBy: string
     ): Promise<boolean>;
 }

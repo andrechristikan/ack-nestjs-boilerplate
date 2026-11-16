@@ -1,3 +1,6 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoginTicket, OAuth2Client } from 'google-auth-library';
@@ -7,7 +10,10 @@ import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
+import { AuthSocialNonceInvalidException } from '@modules/auth/exceptions/auth.social-nonce-invalid.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
+import type { IAuthSocialNonce } from '@modules/auth/interfaces/auth.interface';
+import { AuthSocialNonceRepository } from '@modules/auth/repositories/auth.social-nonce.repository';
 
 @Injectable()
 export class AuthSocialService {
@@ -18,7 +24,22 @@ export class AuthSocialService {
         clientId: string;
     } | null;
 
-    constructor(private readonly configService: ConfigService) {
+    private readonly nonceLength: number;
+    private readonly nonceExpiredInMs: number;
+
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly authSocialNonceRepository: AuthSocialNonceRepository,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
+        private readonly helperDateService: HelperDateService
+    ) {
+        this.nonceLength = this.configService.get<number>(
+            'auth.social.nonce.length'
+        )!;
+        this.nonceExpiredInMs = this.configService.get<number>(
+            'auth.social.nonce.expiredInMs'
+        )!;
         const appleClientId = this.configService.get<string | null>(
             'auth.apple.clientId'
         );
@@ -38,6 +59,42 @@ export class AuthSocialService {
                   clientId: googleClientId,
               }
             : null;
+    }
+
+    /** Stores the SHA-256 hash of a new nonce, deletes the expired rows in the same call, and returns the plain nonce once. */
+    async createNonce(): Promise<IAuthSocialNonce> {
+        const nonce = this.helperStringService.random(this.nonceLength);
+        const nonceHash = this.helperHashService.sha256Hash(nonce);
+        const now = this.helperDateService.create();
+        const duration = this.helperDateService.createDuration({
+            milliseconds: this.nonceExpiredInMs,
+        });
+        const expiredAt = this.helperDateService.forward(now, duration);
+
+        await Promise.all([
+            this.authSocialNonceRepository.create(nonceHash, expiredAt),
+            this.authSocialNonceRepository.deleteExpired(now),
+        ]);
+
+        return { nonce, expiredAt };
+    }
+
+    /** Spends the nonce claim of a verified ID token: the one `deleteMany` statement lets only one of two concurrent calls win. */
+    async consumeNonce(nonce: string | null): Promise<void> {
+        if (nonce === null || nonce === '') {
+            throw new AuthSocialNonceInvalidException();
+        }
+
+        const nonceHash = this.helperHashService.sha256Hash(nonce);
+        const now = this.helperDateService.create();
+        const consumed = await this.authSocialNonceRepository.consume(
+            nonceHash,
+            now
+        );
+
+        if (!consumed) {
+            throw new AuthSocialNonceInvalidException();
+        }
     }
 
     async verifyGoogle(token: string): Promise<TokenPayload> {

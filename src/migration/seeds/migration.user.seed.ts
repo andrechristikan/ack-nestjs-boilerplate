@@ -286,6 +286,7 @@ export class MigrationUserSeed
                                         type,
                                         action,
                                         createdBy: MigrationUserSuperAdminId,
+                                        updatedBy: MigrationUserSuperAdminId,
                                         to: row.user.email,
                                         isUsed: true,
                                     },

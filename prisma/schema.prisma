@@ -117,6 +117,22 @@ model UserMobileNumber {
   @@map("UserMobiles")
 }
 
+model UserSocial {
+  id       String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String            @db.ObjectId
+  provider EnumUserLoginWith
+  subject  String
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+
+  user User @relation("UserSocialUser", fields: [userId], references: [id])
+
+  @@unique(fields: [provider, subject])
+  @@unique(fields: [userId, provider])
+  @@map("UserSocials")
+}
+
 model User {
   id                     String             @id @default(auto()) @map("_id") @db.ObjectId
   name                   String?
@@ -152,6 +168,7 @@ model User {
   deletedBy String?   @db.ObjectId
 
   mobileNumbers           UserMobileNumber[]         @relation("UserMobileNumberUser")
+  socials                 UserSocial[]               @relation("UserSocialUser")
   verifications           Verification[]             @relation("UserVerifications")
   passwordHistories       PasswordHistory[]          @relation("UserPasswordHistories")
   activityLogs            ActivityLog[]              @relation("UserActivityLogs")
@@ -202,6 +219,8 @@ model Verification {
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   user         User              @relation("UserVerifications", fields: [userId], references: [id])
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
@@ -241,6 +260,19 @@ model CommonPassword {
   createdBy String?  @db.ObjectId
 
   @@map("CommonPasswords")
+}
+
+model AuthSocialNonce {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  nonceHash String
+  expiredAt DateTime
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+
+  @@index(fields: [nonceHash])
+  @@index(fields: [expiredAt])
+  @@map("AuthSocialNonces")
 }
 
 model ActivityLog {
@@ -395,6 +427,8 @@ model TwoFactorChallenge {
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [tokenHash])
   @@map("TwoFactorChallenges")
@@ -492,6 +526,8 @@ model ForgotPassword {
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   user User @relation("UserForgotPassword", fields: [userId], references: [id])
 
@@ -537,7 +573,9 @@ model NotificationDelivery {
   notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
 
   createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
 
   @@unique(fields: [notificationId, channel])
   @@map("NotificationDeliveries")

@@ -4,14 +4,14 @@ Each entry names a choice the rules in `.claude/rules/` carry and gives the reas
 
 ## Standard
 
-### OWASP ASVS 5.0 level 2 is the reference for the auth area and chapters V1 to V5
+### OWASP ASVS 5.0 level 2 is the reference for the auth area and chapters V1 to V5 and V10 to V16
 
 Rule: `discipline.md`, Normal use.
 
 - ASVS level 3: its hardware-backed factors and extra controls exceed what a general boilerplate ships.
 - NIST SP 800-63B alone: it states assurance levels, not checkable application requirements.
 - No named standard: each control would be argued with no common bar.
-- Level 2 for the auth area alone: the V1 to V5 controls would have no rule bringing them in scope against normal use.
+- Level 2 for the auth area alone: the V1 to V5 and V10 to V16 controls would have no rule bringing them in scope against normal use.
 - Level 2 for the whole project: chapters not yet read would bind before any gap read checked them.
 
 ## Passwords
@@ -154,3 +154,77 @@ Rule: `config.md`.
 
 - Refused in every environment: every local setup would need an origin list for clients whose origin changes.
 - Allowed everywhere: the standard requires an allowlist for sensitive responses.
+
+## Social sign-in
+
+### A social login is matched by the provider subject
+
+Rule: `login.md`.
+
+- Matching by email: a provider can hand an address to another person, who then enters the old account.
+- Relinking an account to a new subject: the person who received the address takes the account over.
+
+### The social nonce is a row deleted on use, spent at verification
+
+Rule: `login.md`, and `cache.md` for the two stores.
+
+- Redis state with a TTL: a flush or an eviction would change an answer, where a lost cache entry changes only a speed.
+- Writing the nonce to both stores: two sources of truth have to be kept equal.
+- A scheduled purge job: the delete on use and the sweep on issue leave no row for a job to purge.
+- Spending it inside the login transaction: a login refused before the transaction leaves the token usable again.
+- No nonce: a stolen ID token signs in again until it expires.
+
+## Logging and debug
+
+### A refused request is logged by status in the filters
+
+Rule: `filter.md`.
+
+- Requiring `LOGGER_AUTO` in production: the access log records every request, the refused ones lost among them.
+- Logging every 4xx: a mistyped route and every business error drown the refusals.
+
+### `DATABASE_DEBUG` is refused in production
+
+Rule: `config.md`.
+
+- Refusing `LOGGER_LEVEL=debug` and `LOGGER_PRETTIER` as well: the level and the format are operating choices, and neither writes query content.
+
+## Deployment
+
+### The production application binds to loopback and TLS ends in front of it
+
+Rule: `docker.md`, Production.
+
+- A bind-address variable: the compose file serves one host with a proxy in front, and a public deployment adds its own layer.
+- A Caddy service in the compose file: the boilerplate knows neither the domain nor the certificate.
+
+### The application has its own MongoDB account
+
+Rule: `docker.md`, Credentials and variables.
+
+- Connecting as root: a leaked `DATABASE_URL` hands out every database and every user.
+
+### Connections inside the compose network stay unencrypted
+
+Rule: `docker.md`, Production.
+
+- An internal certificate authority for MongoDB, Redis, and the JWKS server: the traffic never leaves the bridge network of one host.
+
+### The encryption roots have no rotation path
+
+Rule: `security.md`, Cryptography.
+
+- A previous-key fallback on decrypt: keeping an earlier root alive is each deployment's choice, and the boilerplate ships no mechanism for it.
+
+### Short-lived service credentials, a secret manager, and log shipping belong to the deployment
+
+Rule: `docker.md`, Production.
+
+- Forcing Vault: every user of the boilerplate would have to run it.
+- A log shipper in the compose file: the platform that runs the containers collects stdout.
+
+### A release carries a CycloneDX SBOM
+
+Rule: `layering.md`, The run surface is a call site.
+
+- The lockfile as the only inventory: it holds the same facts in no standard format an audit tool reads.

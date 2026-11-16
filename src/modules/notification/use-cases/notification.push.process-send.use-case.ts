@@ -61,7 +61,8 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
             // Sequential by design: write must not run if an earlier step throws
             await this.notificationPushDeliveryService.stampProcessed(
                 notificationId,
-                process
+                process,
+                context.proceedBy
             );
             done.push(EnumNotificationStep.updateProcessAt);
         }
@@ -123,7 +124,8 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                     tx,
                     notificationId,
                     plainTokens,
-                    process
+                    process,
+                    context.proceedBy
                 );
                 if (tokens.length > 0) {
                     const effect = this.notificationService.cleanupTokensEffect(

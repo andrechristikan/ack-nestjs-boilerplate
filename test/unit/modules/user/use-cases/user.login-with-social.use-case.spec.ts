@@ -42,6 +42,7 @@ import type {
     IAuthPassword,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -63,6 +64,7 @@ import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/ex
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserSocialService } from '@modules/user/services/user.social.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
@@ -100,6 +102,8 @@ import {
 describe('UserLoginWithSocialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const userSocialService: MockProxy<UserSocialService> =
+        mock<UserSocialService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
@@ -159,7 +163,10 @@ describe('UserLoginWithSocialUseCase', () => {
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const authContext = buildAuthSocialContext('bramble@example.com');
+    const authContext = buildAuthSocialContext(
+        'bramble@example.com',
+        'subject-bramble'
+    );
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -392,6 +399,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 UserLoginWithSocialUseCase,
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: UserService, useValue: userService },
+                { provide: UserSocialService, useValue: userSocialService },
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
@@ -462,6 +470,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 true
             );
+            userSocialService.getUserIdBySubject.mockResolvedValue(null);
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
@@ -469,6 +478,51 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumActivityLogAction.userLoginGoogle
             );
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
+        });
+
+        it('logs the user linked to the subject in without the email lookup or the sign-up check', async () => {
+            userSocialService.getUserIdBySubject.mockResolvedValue(
+                'user-bramble'
+            );
+            userAuthService.getOneForSocialLoginById.mockResolvedValue(
+                baseUser
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    EnumUserLoginWith.socialGoogle,
+                    dto
+                )
+            ).resolves.toEqual({ data: tokenOutcome });
+
+            expect(userSocialService.getUserIdBySubject).toHaveBeenCalledWith(
+                EnumUserLoginWith.socialGoogle,
+                'subject-bramble'
+            );
+            expect(
+                userAuthService.getOneForSocialLoginById
+            ).toHaveBeenCalledWith('user-bramble');
+            expect(
+                userRegistrationService.isSocialSignUpAllowed
+            ).not.toHaveBeenCalled();
+            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
+            expect(userSocialService.linkInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSessionInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                baseUser,
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.socialGoogle,
+                now
+            );
         });
 
         it('commits the new user, the social welcome effect, the created entries, and the session on one tx', async () => {
@@ -597,6 +651,109 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumUserLoginWith.socialGoogle,
                 now
             );
+        });
+
+        it('links the subject of a new user inside the sign-up transaction after the user row', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                EnumUserLoginWith.socialApple,
+                dto
+            );
+
+            expect(userSocialService.linkInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                EnumUserLoginWith.socialApple,
+                'subject-bramble'
+            );
+            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+                userSocialService.linkInTx
+            );
+            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
+        });
+
+        it('links the subject to the account holding the email before the session is created', async () => {
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    EnumUserLoginWith.socialGoogle,
+                    dto
+                )
+            ).resolves.toEqual({ data: tokenOutcome });
+
+            expect(userSocialService.assertLinkable).toHaveBeenCalledWith(
+                'user-bramble',
+                EnumUserLoginWith.socialGoogle
+            );
+            expect(userSocialService.linkInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                EnumUserLoginWith.socialGoogle,
+                'subject-bramble'
+            );
+            expect(userSocialService.assertLinkable).toHaveBeenCalledBefore(
+                outboxService.withTransaction
+            );
+            expect(userSocialService.linkInTx).toHaveBeenCalledBefore(
+                userAuthService.createTokenAndSessionInTx
+            );
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('rejects with the not found exception and opens no transaction when no account holds the email', async () => {
+            const failure = new UserNotFoundException();
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
+            userAuthService.getOneForSocialLogin.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    EnumUserLoginWith.socialGoogle,
+                    dto
+                )
+            ).rejects.toBe(failure);
+
+            expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the provider exception and writes nothing when the account holds another subject', async () => {
+            const failure = new AuthSocialGoogleInvalidException(
+                'Google subject does not match the linked account'
+            );
+            userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
+                false
+            );
+            userSocialService.assertLinkable.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    EnumUserLoginWith.socialGoogle,
+                    dto
+                )
+            ).rejects.toBe(failure);
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(userSocialService.linkInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSessionInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
@@ -1130,7 +1287,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
-                now
+                now,
+                'subject-bramble'
             );
 
             expect(
@@ -1232,7 +1390,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
                     social,
-                    now
+                    now,
+                    'subject-bramble'
                 )
             ).resolves.toEqual({ user: committedUser, tokens });
         });
@@ -1253,7 +1412,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
-                now
+                now,
+                'subject-bramble'
             );
 
             expect(
@@ -1279,7 +1439,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 { ...social, inviteToken: null },
-                now
+                now,
+                'subject-bramble'
             );
 
             expect(
@@ -1305,7 +1466,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
                     social,
-                    now
+                    now,
+                    'subject-bramble'
                 )
             ).rejects.toBe(failure);
             expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
@@ -1324,7 +1486,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
-                now
+                now,
+                'subject-bramble'
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
@@ -1351,7 +1514,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
                     social,
-                    now
+                    now,
+                    'subject-bramble'
                 )
             ).rejects.toMatchObject({
                 module: 'database',
@@ -1376,7 +1540,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
                     social,
-                    now
+                    now,
+                    'subject-bramble'
                 )
             ).rejects.toBe(mapped);
             expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
@@ -1397,7 +1562,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'bramble@example.com',
                     EnumUserLoginWith.socialGoogle,
                     social,
-                    now
+                    now,
+                    'subject-bramble'
                 )
             ).rejects.toMatchObject({
                 module: 'app',

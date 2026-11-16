@@ -25,6 +25,7 @@ import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserSocialService } from '@modules/user/services/user.social.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
@@ -61,6 +62,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     constructor(
         private readonly userAuthService: UserAuthService,
         private readonly userService: UserService,
+        private readonly userSocialService: UserSocialService,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly notificationService: NotificationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
@@ -93,7 +95,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         normalizedEmail: string,
         loginWith: EnumUserLoginWith,
         loginSocial: IUserLoginSocial,
-        loginAt: Date
+        loginAt: Date,
+        subject: string
     ): Promise<IUserLoginSignUp> {
         const invite = await this.workspaceInviteService.getSignUpInvite(
             loginSocial.inviteToken,
@@ -137,6 +140,12 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                                 tx,
                                 inputs
                             );
+                        await this.userSocialService.linkInTx(
+                            tx,
+                            input.userId,
+                            loginWith,
+                            subject
+                        );
 
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,
@@ -243,7 +252,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date
+        loginAt: Date,
+        subject: string | null
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
@@ -257,6 +267,14 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
         return this.outboxService.withTransaction(
             async (tx): Promise<IUserLoginOutcome> => {
+                if (subject !== null) {
+                    await this.userSocialService.linkInTx(
+                        tx,
+                        user.id,
+                        loginWith,
+                        subject
+                    );
+                }
                 let loginUser = user;
                 if (isUnverified) {
                     loginUser =
@@ -336,14 +354,37 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        const normalizedEmail = authContext.email.trim().toLowerCase();
+        const loginAt = this.helperDateService.create();
         // Sequential by design: gate before the work it guards
+        const linkedUserId = await this.userSocialService.getUserIdBySubject(
+            loginWith,
+            authContext.subject
+        );
+        if (linkedUserId !== null) {
+            const linkedUser =
+                await this.userAuthService.getOneForSocialLoginById(
+                    linkedUserId
+                );
+            const outcome = await this.resolveLoginOutcome(
+                requestContext,
+                apiKeyContext,
+                linkedUser,
+                deviceIdentity,
+                from,
+                loginWith,
+                loginAt,
+                null
+            );
+
+            return { data: outcome };
+        }
+
+        const normalizedEmail = authContext.email.trim().toLowerCase();
         const isSignUpAllowed =
             await this.userRegistrationService.isSocialSignUpAllowed(
                 normalizedEmail,
                 loginWith
             );
-        const loginAt = this.helperDateService.create();
         if (isSignUpAllowed) {
             const { user, tokens } = await this.signUpWithSocial(
                 requestContext,
@@ -351,7 +392,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 normalizedEmail,
                 loginWith,
                 loginSocial,
-                loginAt
+                loginAt,
+                authContext.subject
             );
             const lastWorkspaceId =
                 await this.workspaceMemberService.resolveLastWorkspaceId(
@@ -372,6 +414,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         const user = await this.userAuthService.getOneForSocialLogin(
             authContext.email
         );
+        await this.userSocialService.assertLinkable(user.id, loginWith);
         const outcome = await this.resolveLoginOutcome(
             requestContext,
             apiKeyContext,
@@ -379,7 +422,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             deviceIdentity,
             from,
             loginWith,
-            loginAt
+            loginAt,
+            authContext.subject
         );
 
         return { data: outcome };

@@ -132,6 +132,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 );
                 await this.userPasswordService.markUnusedResetsUsedInTx(
                     tx,
+                    authContext.userId,
                     authContext.userId
                 );
                 await this.sessionService.revokeActiveByUserExceptInTx(

@@ -9,6 +9,7 @@ import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/u
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserSocialRepository } from '@modules/user/repositories/user.social.repository';
 import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
@@ -23,6 +24,7 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserSocialService } from '@modules/user/services/user.social.service';
 import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
@@ -43,6 +45,7 @@ import { Module } from '@nestjs/common';
         UserVerificationRepository,
         UserTwoFactorRepository,
         UserMobileNumberRepository,
+        UserSocialRepository,
         UserAnalyticRepository,
         UserForgotPasswordAnalyticRepository,
         UserTwoFactorAnalyticRepository,
@@ -57,6 +60,7 @@ import { Module } from '@nestjs/common';
         UserProfileService,
         UserRegistrationService,
         UserMobileNumberService,
+        UserSocialService,
         UserUtil,
         UserCreateUtil,
         UserVerificationUtil,
@@ -76,6 +80,7 @@ import { Module } from '@nestjs/common';
         UserProfileService,
         UserRegistrationService,
         UserMobileNumberService,
+        UserSocialService,
         UserCreateUtil,
         UserUtil,
         UserVerificationUtil,

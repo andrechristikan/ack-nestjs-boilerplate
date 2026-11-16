@@ -30,7 +30,8 @@ export interface IUserVerificationRepository {
     markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        verifiedAt: Date
+        verifiedAt: Date,
+        updatedBy: string
     ): Promise<boolean>;
     createInTx(
         tx: IDatabaseTransactionClient,

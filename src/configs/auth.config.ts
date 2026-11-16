@@ -40,6 +40,12 @@ export interface IConfigAuth {
     google: {
         clientId: string | null;
     };
+    social: {
+        nonce: {
+            length: number;
+            expiredInMs: number;
+        };
+    };
     xApiKey: {
         keyPattern: string;
         cacheTtlInMs: number;
@@ -129,6 +135,12 @@ export default registerAs('auth', (): IConfigAuth => {
                 process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID === ''
                     ? null
                     : (process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null),
+        },
+        social: {
+            nonce: {
+                length: 32,
+                expiredInMs: ms('5m'),
+            },
         },
         xApiKey: {
             keyPattern: 'ApiKey:{key}',

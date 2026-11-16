@@ -72,6 +72,7 @@ export interface IUserTwoFactorRepository {
     consumeChallengeInTx(
         tx: IDatabaseTransactionClient,
         tokenHash: string,
-        now: Date
+        now: Date,
+        updatedBy: string
     ): Promise<boolean>;
 }

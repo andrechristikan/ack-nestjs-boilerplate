@@ -159,7 +159,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 notificationPushDeliveryService.stampProcessed
             ).toHaveBeenCalledWith(
                 'notification-id',
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'actor-id'
             );
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.workspaceInvite.body',
@@ -190,7 +191,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 tx,
                 'notification-id',
                 ['token-2'],
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'actor-id'
             );
             expect(
                 notificationService.cleanupTokensEffect
@@ -253,7 +255,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 tx,
                 'notification-id',
                 [],
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'actor-id'
             );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -360,7 +363,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 tx,
                 'notification-id',
                 [],
-                EnumNotificationPushProcess.send
+                EnumNotificationPushProcess.send,
+                'actor-id'
             );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

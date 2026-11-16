@@ -737,6 +737,53 @@ describe('UserAuthService', () => {
         });
     });
 
+    describe('getOneForSocialLoginById', () => {
+        it('returns the active user read by id with its role', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+
+            await expect(
+                service.getOneForSocialLoginById(baseUser.id)
+            ).resolves.toBe(baseUser);
+
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
+                baseUser.id
+            );
+        });
+
+        it('throws UserNotFoundException when the user does not exist', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
+
+            await expect(
+                service.getOneForSocialLoginById('missing-user')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
+                messagePath: 'user.error.notFound',
+            });
+        });
+
+        it('throws UserInactiveForbiddenException when the user is not active', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                status: EnumUserStatus.inactive,
+            });
+
+            await expect(
+                service.getOneForSocialLoginById(baseUser.id)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.inactiveForbidden
+                    ],
+                messagePath: 'user.error.inactive',
+            });
+        });
+    });
+
     describe('verifyEmailBySocialInTx', () => {
         it('returns the user merged with the row written on the given tx with the verified entry', async () => {
             const user = { ...baseUser, isVerified: false, verifiedAt: null };
@@ -1639,6 +1686,8 @@ describe('UserAuthService', () => {
             reference: 'VER-halcyon',
             createdAt: new Date('2026-03-01T00:00:00.000Z'),
             createdBy: 'user-halcyon',
+            updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+            updatedBy: null,
         };
 
         it('throws AuthTwoFactorInvalidException counted by the two-factor check when the method is code and the code is missing', async () => {
@@ -2181,7 +2230,8 @@ describe('UserAuthService', () => {
 
             expect(userVerificationService.markUsedInTx).toHaveBeenCalledWith(
                 tx,
-                'verification-halcyon'
+                'verification-halcyon',
+                authContext.userId
             );
             expect(
                 userPasswordService.resetPasswordAttemptInTx

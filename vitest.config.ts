@@ -6,6 +6,14 @@ export default defineConfig({
         swc.vite({
             module: { type: 'nodenext' },
         }),
+        {
+            // The Vitest VS Code extension forces `importDurations.limit: Infinity`,
+            // which grows its end-of-run message past the 100 MiB WebSocket limit.
+            name: 'no-import-durations',
+            configureVitest({ project }) {
+                project.config.experimental.importDurations.limit = 0;
+            },
+        },
     ],
     resolve: {
         tsconfigPaths: true,

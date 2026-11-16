@@ -79,6 +79,7 @@ describe('AuthSocialGoogleGuard', () => {
             const authContext: IAuthSocialContext = {
                 email: 'jane@example.com',
                 emailVerified: true,
+                subject: 'subject-jane',
             };
             authService.validateOAuthGoogle.mockResolvedValue(authContext);
 

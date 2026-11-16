@@ -22,4 +22,5 @@ export enum EnumAuthStatusCodeError {
     jwtGuardMissing = 50819,
     passwordContextWord = 50820,
     passwordCommon = 50821,
+    socialNonceInvalid = 50822,
 }

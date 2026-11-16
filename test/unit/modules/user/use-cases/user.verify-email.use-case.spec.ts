@@ -41,6 +41,8 @@ describe('UserVerifyEmailUseCase', () => {
         reference: 'VRF-wren',
         createdAt: new Date('2026-02-01T00:00:00.000Z'),
         createdBy: null,
+        updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+        updatedBy: null,
     };
     const user: User = {
         id: 'user-wren',

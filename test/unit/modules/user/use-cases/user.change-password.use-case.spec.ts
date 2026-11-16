@@ -330,7 +330,7 @@ describe('UserChangePasswordUseCase', () => {
             );
             expect(
                 userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden');
+            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
             expect(
                 sessionService.revokeActiveByUserExceptInTx
             ).toHaveBeenCalledWith(

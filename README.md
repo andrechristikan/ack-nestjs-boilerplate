@@ -95,6 +95,7 @@ A good fit when you are building:
 
 - [ ] Move to PostgreSQL
 - [ ] Move to a monorepo (backend application and a separate documentation website)
+- [ ] Publish the documentation website with Fumadocs, API reference rendered from the OpenAPI document
 
 ### Next Features
 

@@ -164,6 +164,17 @@ export const AppEnvSchema = z
                 message: 'Must list origins in production',
             });
         }
+
+        if (
+            env.APP_ENV === EnumAppEnvironment.production &&
+            env.DATABASE_DEBUG
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['DATABASE_DEBUG'],
+                message: 'Must be false in production',
+            });
+        }
     });
 
 /** @public */

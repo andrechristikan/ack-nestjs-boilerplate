@@ -93,6 +93,16 @@ export class UserAuthService {
         return user.twoFactor.requiredSetup;
     }
 
+    private assertSocialLoginAllowed(user: IUser | null): IUser {
+        if (!user) {
+            throw new UserNotFoundException();
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new UserInactiveForbiddenException();
+        }
+
+        return user;
+    }
+
     /** Resolves the active credential user of an email, counting nothing; an unknown, inactive, or passwordless account throws the credential error. */
     async getOneForCredentialLogin(email: string): Promise<IUserCredential> {
         const user = await this.userRepository.findOneWithRoleByEmail(email);
@@ -283,7 +293,8 @@ export class UserAuthService {
             const isMarkedUsed =
                 await this.userVerificationService.markUsedInTx(
                     tx,
-                    verificationId
+                    verificationId,
+                    authContext.userId
                 );
             if (!isMarkedUsed) {
                 throw new UserReauthenticationOtpInvalidException();
@@ -322,13 +333,14 @@ export class UserAuthService {
         const user = await this.userRepository.findOneWithRoleByEmail(
             email.trim().toLowerCase()
         );
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        }
 
-        return user;
+        return this.assertSocialLoginAllowed(user);
+    }
+
+    async getOneForSocialLoginById(userId: string): Promise<IUser> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+
+        return this.assertSocialLoginAllowed(user);
     }
 
     /** Marks the user verified by the provider-verified email, clearing its password, and adds the verified entry on the caller's transaction. */

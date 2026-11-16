@@ -920,6 +920,45 @@ describe('AppEnvSchema', () => {
         });
     });
 
+    describe('database debug refinement', () => {
+        it('rejects DATABASE_DEBUG true in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                CORS_ALLOWED_ORIGIN: 'https://a.example.com',
+                DATABASE_DEBUG: 'true',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toHaveLength(1);
+            expect(result.error?.issues[0]).toMatchObject({
+                path: ['DATABASE_DEBUG'],
+                message: 'Must be false in production',
+            });
+        });
+
+        it('parses DATABASE_DEBUG false in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                CORS_ALLOWED_ORIGIN: 'https://a.example.com',
+                DATABASE_DEBUG: 'false',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it('parses DATABASE_DEBUG true in local', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.local,
+                DATABASE_DEBUG: 'true',
+            });
+
+            expect(result.success).toBe(true);
+        });
+    });
+
     describe('CORS origin refinement', () => {
         it('rejects a wildcard origin in production', () => {
             const result = AppEnvSchema.safeParse({

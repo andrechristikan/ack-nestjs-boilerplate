@@ -18,6 +18,7 @@ import { HealthUtil } from '@modules/health/utils/health.util';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HttpClientModule } from '@nestjs/http-client';
 import { TerminusModule } from '@nestjs/terminus';
 
 @Module({
@@ -44,6 +45,14 @@ import { TerminusModule } from '@nestjs/terminus';
         BullModule.registerQueueAsync({
             name: EnumHealthQueue.health,
             useClass: HealthQueueFactory,
+        }),
+        HttpClientModule.registerAsync({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                redirect: 'error',
+                retry: false,
+                timeout: configService.get<number>('health.jwksTimeoutInMs')!,
+            }),
         }),
         TerminusModule.forRootAsync({
             inject: [ConfigService],

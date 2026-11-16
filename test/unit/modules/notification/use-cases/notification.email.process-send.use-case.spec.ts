@@ -115,7 +115,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             ]);
             expect(
                 notificationEmailDeliveryService.stampProcessed
-            ).toHaveBeenCalledWith('notification-id');
+            ).toHaveBeenCalledWith('notification-id', 'actor-id');
             expect(notificationEmailDeliveryService.send).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceInvite,
                 'invitee@example.com',
@@ -134,7 +134,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             });
             expect(
                 notificationEmailDeliveryService.stampSent
-            ).toHaveBeenCalledWith('notification-id');
+            ).toHaveBeenCalledWith('notification-id', 'actor-id');
             expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
                 'cipher(https://app.test/invite/token)',
                 'secret-key',
@@ -176,7 +176,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             expect(outboxService.updateData).not.toHaveBeenCalled();
             expect(
                 notificationEmailDeliveryService.stampSent
-            ).toHaveBeenCalledWith('notification-id');
+            ).toHaveBeenCalledWith('notification-id', 'actor-id');
             expect(result).toEqual({
                 message: 'notification.queue.email.send',
             });

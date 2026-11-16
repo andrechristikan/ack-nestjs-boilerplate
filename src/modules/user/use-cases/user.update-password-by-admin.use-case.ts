@@ -90,7 +90,11 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 password.passwordCreated,
                 authContext.userId
             );
-            await this.userPasswordService.markUnusedResetsUsedInTx(tx, userId);
+            await this.userPasswordService.markUnusedResetsUsedInTx(
+                tx,
+                userId,
+                authContext.userId
+            );
             await this.sessionService.revokeActiveByUserInTx(
                 tx,
                 userId,

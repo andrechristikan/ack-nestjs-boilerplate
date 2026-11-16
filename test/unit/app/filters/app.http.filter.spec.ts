@@ -1,5 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
@@ -62,7 +62,58 @@ describe('AppHttpFilter', () => {
         filter = module.get(AppHttpFilter);
     });
 
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     describe('catch', () => {
+        it('warns once with the key and status for a 429', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+
+            await filter.catch(
+                new HttpException('Too Many', HttpStatus.TOO_MANY_REQUESTS),
+                argumentsHost
+            );
+
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn).toHaveBeenCalledWith(
+                { statusCodeKey: 'tooManyRequests', httpStatus: 429 },
+                'A request was refused'
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it.each([HttpStatus.NOT_FOUND, HttpStatus.BAD_REQUEST])(
+            'writes no warn for %s',
+            async status => {
+                const warn = vi.spyOn(Logger.prototype, 'warn');
+
+                await filter.catch(
+                    new HttpException('x', status),
+                    argumentsHost
+                );
+
+                expect(warn).not.toHaveBeenCalled();
+            }
+        );
+
+        it('keeps the error line and Sentry report for a 500 and writes no warn', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = vi.spyOn(Logger.prototype, 'error');
+            const exception = new HttpException(
+                'x',
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
+            );
+            expect(warn).not.toHaveBeenCalled();
+        });
+
         it('derives statusCodeKey from the camelCased HttpStatus name and defaults the module to http', async () => {
             const exception = new HttpException(
                 'Not Found',

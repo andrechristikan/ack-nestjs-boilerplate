@@ -1,6 +1,7 @@
 import { Catch, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
+import { AppRefusalLogStatuses } from '@app/constants/app.constant';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
@@ -102,6 +103,17 @@ export class AppGeneralFilter implements ExceptionFilter {
         const resolved = this.resolve(exception);
 
         this.sendToSentry(exception, resolved);
+
+        if (AppRefusalLogStatuses.has(resolved.httpStatus)) {
+            this.logger.warn(
+                {
+                    statusCode: resolved.statusCode,
+                    statusCodeKey: resolved.statusCodeKey,
+                    httpStatus: resolved.httpStatus,
+                },
+                'A request was refused'
+            );
+        }
 
         const responseMetadata = this.responseMetadataService.create();
         const metadata: ResponseMetadataDto = {

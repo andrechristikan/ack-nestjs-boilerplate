@@ -93,7 +93,7 @@ Rule: `naming.md`, Files.
 
 - Short names (`sign-up.use-case.ts`): the prefix keeps every file findable by a search on its module name, matches the tree, and keeps the spec mirror unambiguous.
 
-### A warn carrying a caught error is object-first
+### A line carrying an error or fields is object-first
 
 Rule: `injectable.md`, Logger.
 
@@ -280,6 +280,13 @@ Rule: `docker.md`, Credentials and variables.
 - Production left on `--env-file .env`: two environments would follow two rules.
 - Default credentials in production: a forgotten file starts MongoDB and Redis open.
 - Compose secrets for the passwords: the same passwords stay in the application's URLs.
+
+### Outbound HTTP goes through `@nestjs/http-client`
+
+Rule: `injectable.md`, NestJS idiomatic.
+
+- Global `fetch`: no injectable seam to double in a spec, and no client-wide timeout or redirect policy.
+- `axios` or `@nestjs/axios`: each adds axios as a dependency where the NestJS client runs on native `fetch` with none.
 
 ### S3 without bucket versioning
 

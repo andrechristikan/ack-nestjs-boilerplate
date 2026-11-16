@@ -36,6 +36,7 @@ export const LoggerSensitiveFields: string[] = [
     'privateKey',
     'secretKey',
     'otp',
+    'nonce',
     'recoveryCode',
     'location',
     'gps',

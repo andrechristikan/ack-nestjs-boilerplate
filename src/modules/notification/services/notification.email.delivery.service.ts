@@ -25,22 +25,27 @@ export class NotificationEmailDeliveryService {
         this.defaultTemplateData = { homeName, supportEmail, homeUrl };
     }
 
-    async stampProcessed(notificationId: string): Promise<void> {
+    async stampProcessed(
+        notificationId: string,
+        proceedBy: string
+    ): Promise<void> {
         const processedAt = this.helperDateService.create();
         await this.notificationRepository.updateDeliveryProcessedAt(
             notificationId,
             EnumNotificationChannel.email,
-            processedAt
+            processedAt,
+            proceedBy
         );
     }
 
-    async stampSent(notificationId: string): Promise<void> {
+    async stampSent(notificationId: string, proceedBy: string): Promise<void> {
         const sentAt = this.helperDateService.create();
         await this.notificationRepository.updateDeliverySentAt(
             notificationId,
             EnumNotificationChannel.email,
             sentAt,
-            []
+            [],
+            proceedBy
         );
     }
 

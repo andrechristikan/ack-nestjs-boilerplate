@@ -147,6 +147,8 @@ describe('UserVerificationService', () => {
         reference: 'VRF-flint',
         createdAt: new Date('2026-02-01T00:00:00.000Z'),
         createdBy: null,
+        updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+        updatedBy: null,
     };
 
     const notifyEffect: INotificationNotifyEffect = {
@@ -336,7 +338,12 @@ describe('UserVerificationService', () => {
 
             expect(
                 userVerificationRepository.markUsedInTx
-            ).toHaveBeenCalledWith(tx, verification.id, now);
+            ).toHaveBeenCalledWith(
+                tx,
+                verification.id,
+                now,
+                verification.userId
+            );
             expect(userRepository.markVerifiedInTx).toHaveBeenCalledWith(
                 tx,
                 verification.userId,
@@ -884,12 +891,12 @@ describe('UserVerificationService', () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
 
             await expect(
-                service.markUsedInTx(tx, 'verification-flint')
+                service.markUsedInTx(tx, 'verification-flint', 'user-flint')
             ).resolves.toBe(false);
 
             expect(
                 userVerificationRepository.markUsedInTx
-            ).toHaveBeenCalledWith(tx, 'verification-flint', now);
+            ).toHaveBeenCalledWith(tx, 'verification-flint', now, 'user-flint');
         });
     });
 

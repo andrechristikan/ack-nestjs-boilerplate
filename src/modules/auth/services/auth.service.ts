@@ -22,6 +22,7 @@ import { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { Injectable } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
+import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 
 @Injectable()
 export class AuthService {
@@ -89,6 +90,56 @@ export class AuthService {
         }
     }
 
+    private async verifyApplePayload(
+        idToken: string
+    ): Promise<VerifyAppleIdTokenResponse> {
+        try {
+            const payload = await this.authSocialService.verifyApple(idToken);
+            if (!payload.sub) {
+                throw new AuthSocialAppleInvalidException(
+                    'Apple token payload does not contain sub'
+                );
+            }
+
+            return payload;
+        } catch (err: unknown) {
+            if (
+                err instanceof AuthSocialAppleNotConfiguredException ||
+                err instanceof AuthSocialAppleInvalidException
+            ) {
+                throw err;
+            }
+
+            const unavailable = this.toProviderUnavailableException(err);
+
+            throw unavailable ?? new AuthSocialAppleInvalidException(err);
+        }
+    }
+
+    private async verifyGooglePayload(idToken: string): Promise<TokenPayload> {
+        try {
+            const payload = await this.authSocialService.verifyGoogle(idToken);
+            if (!payload.sub) {
+                throw new AuthSocialGoogleInvalidException(
+                    'Google token payload does not contain sub'
+                );
+            }
+
+            return payload;
+        } catch (err: unknown) {
+            if (
+                err instanceof AuthSocialGoogleNotConfiguredException ||
+                err instanceof AuthSocialGoogleInvalidException
+            ) {
+                throw err;
+            }
+
+            const unavailable = this.toProviderUnavailableException(err);
+
+            throw unavailable ?? new AuthSocialGoogleInvalidException(err);
+        }
+    }
+
     validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
     ): IAuthJwtPayloadIdentified<IAuthJwtAccessTokenPayload> {
@@ -151,47 +202,26 @@ export class AuthService {
     }
 
     async validateOAuthApple(idToken: string): Promise<IAuthSocialContext> {
-        try {
-            const payload = await this.authSocialService.verifyApple(idToken);
+        const payload = await this.verifyApplePayload(idToken);
 
-            return {
-                email: payload.email,
-                emailVerified: payload.email_verified,
-            };
-        } catch (err: unknown) {
-            if (
-                err instanceof AuthSocialAppleNotConfiguredException ||
-                err instanceof AuthSocialAppleInvalidException
-            ) {
-                throw err;
-            }
+        await this.authSocialService.consumeNonce(payload.nonce ?? null);
 
-            const unavailable = this.toProviderUnavailableException(err);
-
-            throw unavailable ?? new AuthSocialAppleInvalidException(err);
-        }
+        return {
+            email: payload.email,
+            emailVerified: payload.email_verified,
+            subject: payload.sub,
+        };
     }
 
     async validateOAuthGoogle(idToken: string): Promise<IAuthSocialContext> {
-        try {
-            const payload: TokenPayload =
-                await this.authSocialService.verifyGoogle(idToken);
+        const payload = await this.verifyGooglePayload(idToken);
 
-            return {
-                email: payload.email ?? '',
-                emailVerified: payload.email_verified ?? false,
-            };
-        } catch (err: unknown) {
-            if (
-                err instanceof AuthSocialGoogleNotConfiguredException ||
-                err instanceof AuthSocialGoogleInvalidException
-            ) {
-                throw err;
-            }
+        await this.authSocialService.consumeNonce(payload.nonce ?? null);
 
-            const unavailable = this.toProviderUnavailableException(err);
-
-            throw unavailable ?? new AuthSocialGoogleInvalidException(err);
-        }
+        return {
+            email: payload.email ?? '',
+            emailVerified: payload.email_verified ?? false,
+            subject: payload.sub,
+        };
     }
 }

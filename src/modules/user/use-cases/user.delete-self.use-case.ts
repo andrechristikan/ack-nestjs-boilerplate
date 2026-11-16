@@ -22,6 +22,7 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserSocialService } from '@modules/user/services/user.social.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import { UserService } from '@modules/user/services/user.service';
@@ -51,6 +52,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly userTwoFactorService: UserTwoFactorService,
         private readonly userMobileNumberService: UserMobileNumberService,
+        private readonly userSocialService: UserSocialService,
         private readonly workspaceService: WorkspaceService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly workspaceInviteService: WorkspaceInviteService,
@@ -169,6 +171,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         tx,
                         userId
                     );
+                    await this.userSocialService.removeByUserInTx(tx, userId);
                     await this.userTwoFactorService.removeInTx(tx, userId);
                     await this.sessionService.revokeAllByUserInTx(
                         tx,

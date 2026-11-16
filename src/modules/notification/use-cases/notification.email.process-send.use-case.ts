@@ -37,7 +37,8 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
         if (!completedSteps.includes(EnumNotificationStep.sendEmail)) {
             // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, the step recorded after its success, sentAt last)
             await this.notificationEmailDeliveryService.stampProcessed(
-                notificationId
+                notificationId,
+                context.proceedBy
             );
             const email = this.notificationUtil.decryptPayload(
                 encryptedEmail,
@@ -63,7 +64,10 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
             });
         }
 
-        await this.notificationEmailDeliveryService.stampSent(notificationId);
+        await this.notificationEmailDeliveryService.stampSent(
+            notificationId,
+            context.proceedBy
+        );
 
         const message = this.messageService.setMessage(
             'notification.queue.email.send',
