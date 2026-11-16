@@ -17,8 +17,10 @@ export const PolicySchema = DatabaseResponseSchema.omit({
     action: z
         .array(z.enum(EnumPolicyAction))
         .min(1)
+        .max(Object.values(EnumPolicyAction).length)
         .meta({
-            description: 'Policy action base on subject',
+            description:
+                'Policy action base on subject, at most one per policy action',
             default: [EnumPolicyAction.manage],
             example: [EnumPolicyAction.manage],
         }),

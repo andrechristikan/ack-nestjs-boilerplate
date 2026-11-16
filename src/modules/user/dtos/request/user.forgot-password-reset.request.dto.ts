@@ -12,8 +12,9 @@ export const UserForgotPasswordResetRequestSchema =
         token: z
             .string()
             .min(1)
+            .max(200)
             .meta({
-                description: 'Forgot password token',
+                description: 'Forgot password token, at most 200 characters',
                 example: faker.string.alphanumeric(20),
             }),
     });

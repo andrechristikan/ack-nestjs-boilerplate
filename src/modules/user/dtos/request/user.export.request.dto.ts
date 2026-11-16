@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { faker } from '@faker-js/faker';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { EnumUserStatus } from '@generated/prisma-client/client';
@@ -7,9 +8,10 @@ import { EnumUserStatus } from '@generated/prisma-client/client';
 export const UserExportRequestSchema = z.strictObject({
     status: z
         .string()
+        .max(PaginationMaxFilterLength)
         .optional()
         .meta({
-            description: "value with ',' delimiter",
+            description: `value with ',' delimiter, at most ${PaginationMaxFilterLength} characters`,
             example: Object.values(EnumUserStatus).join(','),
         }),
     roleId: RequestMongoIdSchema.optional().meta({

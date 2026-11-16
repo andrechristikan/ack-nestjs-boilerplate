@@ -7,6 +7,9 @@ import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-c
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
+import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
+import { FileService } from '@common/file/services/file.service';
+import { NoSuchKey } from '@aws-sdk/client-s3';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -15,6 +18,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -44,7 +48,8 @@ export class TermPolicyContentService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly fileService: FileService
     ) {}
 
     private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
@@ -74,6 +79,37 @@ export class TermPolicyContentService {
         );
         if (!isInPath) {
             throw new TermPolicyContentKeyInvalidException();
+        }
+    }
+
+    async assertContentText(key: string): Promise<void> {
+        let head: Buffer | null;
+        try {
+            head = await this.awsS3Service.getItemBytes(
+                key,
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.private }
+            );
+        } catch (err: unknown) {
+            if (err instanceof NoSuchKey) {
+                throw new TermPolicyContentKeyInvalidException();
+            } else if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+
+        if (!head) {
+            throw new AwsS3NotConfiguredException();
+        }
+
+        const isText = await this.fileService.isContentOfExtension(
+            head,
+            EnumFileExtensionTemplate.hbs
+        );
+        if (!isText) {
+            throw new TermPolicyContentTypeInvalidException();
         }
     }
 
@@ -139,6 +175,7 @@ export class TermPolicyContentService {
             throw new TermPolicyContentSizeExceededException();
         }
 
+        // Sequential by design: gate before the work it guards
         const termPolicy = await this.findOneDraftById(termPolicyId);
         this.assertKeyPath(termPolicy, key);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -155,6 +192,8 @@ export class TermPolicyContentService {
         if (!isS3Initialized) {
             throw new AwsS3NotConfiguredException();
         }
+
+        await this.assertContentText(key);
 
         try {
             const presign = this.awsS3Service.mapPresign(
@@ -225,6 +264,7 @@ export class TermPolicyContentService {
             throw new TermPolicyContentSizeExceededException();
         }
 
+        // Sequential by design: gate before the work it guards
         const termPolicy = await this.findOneDraftById(termPolicyId);
         this.assertKeyPath(termPolicy, key);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -241,6 +281,8 @@ export class TermPolicyContentService {
         if (!isS3Initialized) {
             throw new AwsS3NotConfiguredException();
         }
+
+        await this.assertContentText(key);
 
         try {
             const presign = this.awsS3Service.mapPresign(

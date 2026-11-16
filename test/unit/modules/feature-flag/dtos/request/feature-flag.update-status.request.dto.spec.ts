@@ -107,4 +107,23 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts 1000 targetUserIds and rejects 1001', () => {
+        const id = '507f1f77bcf86cd799439011';
+
+        expect(() =>
+            FeatureFlagUpdateStatusRequestSchema.parse({
+                isEnable: true,
+                rolloutPercent: 50,
+                targetUserIds: new Array(1000).fill(id),
+            })
+        ).not.toThrow();
+        expect(() =>
+            FeatureFlagUpdateStatusRequestSchema.parse({
+                isEnable: true,
+                rolloutPercent: 50,
+                targetUserIds: new Array(1001).fill(id),
+            })
+        ).toThrow();
+    });
 });

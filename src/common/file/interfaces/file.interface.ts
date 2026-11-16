@@ -1,7 +1,4 @@
-import {
-    EnumFileExtension,
-    EnumFileExtensionTemplate,
-} from '@common/file/enums/file.enum';
+import { EnumFileExtension } from '@common/file/enums/file.enum';
 
 export type IFile = Express.Multer.File;
 
@@ -35,8 +32,5 @@ export interface IFileCsvValidationOptions {
 }
 
 export type IFileExtensionContracts = Readonly<
-    Record<
-        Exclude<EnumFileExtension, EnumFileExtensionTemplate>,
-        readonly string[]
-    >
+    Record<EnumFileExtension, readonly string[]>
 >;

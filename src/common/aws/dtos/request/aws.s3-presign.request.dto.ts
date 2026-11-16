@@ -4,8 +4,8 @@ import { AwsS3ObjectKeyRegex } from '@common/aws/constants/aws.constant';
 
 /** @public */
 export const AwsS3PresignRequestSchema = z.strictObject({
-    key: z.string().min(1).regex(AwsS3ObjectKeyRegex).meta({
-        description: 'Object key to presign in S3',
+    key: z.string().min(1).max(1024).regex(AwsS3ObjectKeyRegex).meta({
+        description: 'Object key to presign in S3, at most 1024 characters',
         example:
             'users/507f1f77bcf86cd799439011/profile/aB3xY9zQ1mN7pR2sT4vW.jpg',
     }),

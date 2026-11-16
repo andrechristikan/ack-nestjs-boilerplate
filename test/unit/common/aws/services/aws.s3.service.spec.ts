@@ -522,6 +522,86 @@ describe('AwsS3Service', () => {
         });
     });
 
+    describe('getItemBytes', () => {
+        it('returns null when not initialized', async () => {
+            const service = await createAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+
+            await expect(
+                service.getItemBytes('users/avatar.jpg', 4100, {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).resolves.toBeNull();
+            expect(send).not.toHaveBeenCalled();
+        });
+
+        it('throws when the key starts with "/"', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+
+            await expectAwsS3KeyInvalid(
+                service.getItemBytes('/users/avatar.jpg', 4100, {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            );
+        });
+
+        it('requests the first bytes of the object on the named bucket and returns them', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({
+                Body: {
+                    transformToByteArray: vi
+                        .fn()
+                        .mockResolvedValue(new Uint8Array([1, 2, 3])),
+                },
+            });
+
+            const result = await service.getItemBytes(
+                'users/avatar.jpg',
+                4100,
+                {
+                    access: EnumAwsS3Accessibility.private,
+                }
+            );
+
+            expect(result).toEqual(Buffer.from([1, 2, 3]));
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: {
+                        Bucket: 'private-bucket',
+                        Key: 'users/avatar.jpg',
+                        Range: 'bytes=0-4099',
+                    },
+                })
+            );
+        });
+
+        it('returns an empty buffer when the response carries no body', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await expect(
+                service.getItemBytes('users/avatar.jpg', 4100, {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).resolves.toEqual(Buffer.alloc(0));
+        });
+    });
+
     describe('putItem', () => {
         const file = Buffer.from('content');
 

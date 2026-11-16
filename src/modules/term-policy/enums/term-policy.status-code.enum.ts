@@ -13,4 +13,5 @@ export enum EnumTermPolicyStatusCodeError {
     requiredNotPublished = 51510,
     contentSizeExceeded = 51511,
     contentKeyInvalid = 51512,
+    contentTypeInvalid = 51513,
 }

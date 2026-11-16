@@ -45,4 +45,17 @@ describe('TermPolicyContentsRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts one content per language and rejects more than the language count', () => {
+        const pastBound = new Array(
+            Object.values(EnumMessageLanguage).length + 1
+        ).fill(contents[0]);
+
+        expect(() =>
+            TermPolicyContentsRequestSchema.parse({ contents })
+        ).not.toThrow();
+        expect(() =>
+            TermPolicyContentsRequestSchema.parse({ contents: pastBound })
+        ).toThrow();
+    });
 });

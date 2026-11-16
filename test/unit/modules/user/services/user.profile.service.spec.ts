@@ -26,6 +26,7 @@ import type {
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
@@ -348,10 +349,93 @@ describe('UserProfileService', () => {
             size: 2048,
         };
 
+        const head = Buffer.from('persimmon-head');
+
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
+            awsS3Service.getItemBytes.mockResolvedValue(head);
+            fileService.isContentOfExtension.mockResolvedValue(true);
+        });
+
+        it('adds the delete effect then throws UserPhotoContentInvalidException when the head is not the extension, touching no user row', async () => {
+            awsS3Service.checkItem.mockResolvedValue(aws);
+            fileService.isContentOfExtension.mockResolvedValue(false);
+
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoContentInvalid,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.photoContentInvalid
+                    ],
+                messagePath: 'user.error.photoContentInvalid',
+            });
+            expect(fileService.isContentOfExtension).toHaveBeenCalledWith(
+                head,
+                aws.extension
+            );
+            expect(outboxService.add).toHaveBeenCalledWith({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.deletePhoto,
+                data: {
+                    userId: profile.id,
+                    key: aws.key,
+                    access: EnumAwsS3Accessibility.public,
+                },
+                priority: EnumQueuePriority.low,
+                idempotencyKey: null,
+            });
+            expect(userRepository.findOneById).not.toHaveBeenCalled();
+            expect(
+                userRepository.updatePhotoProfileInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('reads the head with the key, the configured sniff size, and the public access', async () => {
+            awsS3Service.checkItem.mockResolvedValue(aws);
+
+            await service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
+
+            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
+                aws.key,
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.public }
+            );
+            expect(outboxService.add).not.toHaveBeenCalled();
+        });
+
+        it('throws AwsS3NotConfiguredException when the head read returns null', async () => {
+            awsS3Service.checkItem.mockResolvedValue(aws);
+            awsS3Service.getItemBytes.mockResolvedValue(null);
+
+            const call = service.updatePhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { key: aws.key }
+            );
+
+            await expect(call).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+            });
+            expect(
+                userRepository.updatePhotoProfileInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('heads the uploaded object and stores the headed item', async () => {

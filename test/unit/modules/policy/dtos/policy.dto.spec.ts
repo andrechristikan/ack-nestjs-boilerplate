@@ -40,4 +40,15 @@ describe('PolicySchema', () => {
             PolicySchema.parse({ ...row, subject: 'unknownSubject' })
         ).toThrow();
     });
+
+    it('accepts one action per EnumPolicyAction and rejects more', () => {
+        const actions = Object.values(EnumPolicyAction);
+
+        expect(() =>
+            PolicySchema.parse({ ...row, action: actions })
+        ).not.toThrow();
+        expect(() =>
+            PolicySchema.parse({ ...row, action: [...actions, actions[0]] })
+        ).toThrow();
+    });
 });

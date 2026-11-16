@@ -82,4 +82,13 @@ describe('WorkspaceMemberListRequestSchema', () => {
             WorkspaceMemberListRequestSchema.safeParse({ orderBy }).success
         ).toBe(false);
     });
+
+    it('accepts a role of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

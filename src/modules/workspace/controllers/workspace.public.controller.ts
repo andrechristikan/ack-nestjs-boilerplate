@@ -1,7 +1,6 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
@@ -12,6 +11,8 @@ import { WorkspaceInvitePreviewRequestSchema } from '@modules/workspace/dtos/req
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import { WorkspaceSlugRequestSchema } from '@modules/workspace/dtos/request/workspace.slug.request.dto';
+import type { WorkspaceSlugRequestDto } from '@modules/workspace/dtos/request/workspace.slug.request.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
 import { WorkspacePreviewUseCase } from '@modules/workspace/use-cases/workspace.preview.use-case';
@@ -68,8 +69,8 @@ export class WorkspacePublicController {
     @ApiKeyProtected()
     @Get('/preview/:slug')
     async preview(
-        @Param('slug', { schema: RequestRequiredStringSchema })
-        slug: string
+        @Param('slug', { schema: WorkspaceSlugRequestSchema })
+        slug: WorkspaceSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspacePreviewUseCase.execute(slug);
     }

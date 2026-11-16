@@ -71,4 +71,19 @@ describe('UserTwoFactorEnableRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a code of 32 characters and rejects one of 33', () => {
+        expect(() =>
+            UserTwoFactorEnableRequestSchema.parse({
+                ...payload,
+                code: '1'.repeat(32),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserTwoFactorEnableRequestSchema.parse({
+                ...payload,
+                code: '1'.repeat(33),
+            })
+        ).toThrow();
+    });
 });

@@ -162,7 +162,10 @@ export function ResponseFileInterceptor(
                         const mimeFromFilename =
                             this.fileService.extractMimeFromFilename(filename);
                         const mime =
-                            mimeFromFilename ?? 'application/octet-stream';
+                            mimeFromFilename === 'text/csv'
+                                ? 'text/csv; charset=utf-8'
+                                : (mimeFromFilename ??
+                                  'application/octet-stream');
 
                         const metadata = this.responseMetadataService.create();
                         this.responseMetadataService.setHeaders(

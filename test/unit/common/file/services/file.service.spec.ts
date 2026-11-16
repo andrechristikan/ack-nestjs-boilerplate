@@ -191,4 +191,50 @@ describe('FileService', () => {
             expect(result).toBeNull();
         });
     });
+
+    describe('isContentOfExtension', () => {
+        const pngBytes = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'base64'
+        );
+        const textBytes = Buffer.from(
+            'hello world this is plain text padding padding'
+        );
+
+        it('accepts png bytes declared as png', async () => {
+            await expect(
+                service.isContentOfExtension(pngBytes, 'png')
+            ).resolves.toBe(true);
+        });
+
+        it('rejects png bytes declared as jpg', async () => {
+            await expect(
+                service.isContentOfExtension(pngBytes, 'jpg')
+            ).resolves.toBe(false);
+        });
+
+        it('accepts plain text declared as csv', async () => {
+            await expect(
+                service.isContentOfExtension(textBytes, 'csv')
+            ).resolves.toBe(true);
+        });
+
+        it('accepts plain text declared as hbs', async () => {
+            await expect(
+                service.isContentOfExtension(textBytes, 'hbs')
+            ).resolves.toBe(true);
+        });
+
+        it('rejects png bytes declared as hbs', async () => {
+            await expect(
+                service.isContentOfExtension(pngBytes, 'hbs')
+            ).resolves.toBe(false);
+        });
+
+        it('rejects any bytes declared as an extension with no contract row', async () => {
+            await expect(
+                service.isContentOfExtension(textBytes, 'exe')
+            ).resolves.toBe(false);
+        });
+    });
 });

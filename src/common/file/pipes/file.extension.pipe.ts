@@ -2,7 +2,6 @@ import { Injectable, mixin } from '@nestjs/common';
 import type { PipeTransform, Type } from '@nestjs/common';
 import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
-import { FileExtensionContract } from '@common/file/contracts/file.extension.contract';
 import { FileService } from '@common/file/services/file.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
@@ -16,18 +15,6 @@ export function FileExtensionPipe(
         );
 
         constructor(private readonly fileService: FileService) {}
-
-        private signaturesOf(
-            extension: EnumFileExtension
-        ): readonly string[] | null {
-            if (!(extension in FileExtensionContract)) {
-                return null;
-            }
-
-            return FileExtensionContract[
-                extension as keyof typeof FileExtensionContract
-            ];
-        }
 
         private extractFilesToValidate(value: IFileInput): IFile[] {
             const isEmpty = this.isEmptyValue(value);
@@ -61,19 +48,11 @@ export function FileExtensionPipe(
                 throw new FileExtensionInvalidException();
             }
 
-            const sniffed = await this.fileService.sniffExtensionFromBuffer(
-                file.buffer
+            const isContent = await this.fileService.isContentOfExtension(
+                file.buffer,
+                declared
             );
-            const signatures = this.signaturesOf(declared as EnumFileExtension);
-            if (signatures === null) {
-                throw new FileExtensionInvalidException();
-            }
-
-            const isMatch =
-                sniffed === null
-                    ? signatures.length === 0
-                    : signatures.includes(sniffed);
-            if (!isMatch) {
+            if (!isContent) {
                 throw new FileExtensionInvalidException();
             }
         }

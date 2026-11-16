@@ -151,6 +151,19 @@ export const AppEnvSchema = z
             ],
             'a Firebase key is set'
         );
+
+        if (
+            env.APP_ENV === EnumAppEnvironment.production &&
+            env.CORS_ALLOWED_ORIGIN.split(',').some(
+                origin => origin.trim() === '*'
+            )
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['CORS_ALLOWED_ORIGIN'],
+                message: 'Must list origins in production',
+            });
+        }
     });
 
 /** @public */

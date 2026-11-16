@@ -83,4 +83,22 @@ describe('TermPolicyAdminListRequestSchema', () => {
             TermPolicyAdminListRequestSchema.safeParse({ orderBy }).success
         ).toBe(false);
     });
+
+    it('accepts a type of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            TermPolicyAdminListRequestSchema.parse({ type: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            TermPolicyAdminListRequestSchema.parse({ type: 'a'.repeat(257) })
+        ).toThrow();
+    });
+
+    it('accepts a status of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            TermPolicyAdminListRequestSchema.parse({ status: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            TermPolicyAdminListRequestSchema.parse({ status: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

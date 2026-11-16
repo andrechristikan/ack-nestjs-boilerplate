@@ -6,8 +6,9 @@ export const UserVerifyEmailRequestSchema = z.strictObject({
     token: z
         .string()
         .min(1)
+        .max(200)
         .meta({
-            description: 'Verification token',
+            description: 'Verification token, at most 200 characters',
             example: faker.string.alphanumeric(20),
         }),
 });

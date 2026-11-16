@@ -76,6 +76,7 @@
         "accountNotFound": "The account of this session no longer exists.",
         "guardMissing": "Your account could not be verified. Please sign in again.",
         "photoKeyInvalid": "This photo does not belong to your profile.",
+        "photoContentInvalid": "This photo is not a valid image.",
         "photoSizeExceeded": "This photo is larger than the allowed size.",
         "credentialInvalid": "The email or password is incorrect.",
         "deleteSelfForbidden": "An administrator account cannot delete itself.",

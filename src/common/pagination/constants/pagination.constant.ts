@@ -20,6 +20,9 @@ export const PaginationDefaultCursorField = 'id';
 export const PaginationMaxCursorLength = 2560;
 
 /** @public */
+export const PaginationMaxFilterLength = 256;
+
+/** @public */
 export const PaginationCursorEncryptionPurpose = 'PaginationCursor';
 
 /** @public */

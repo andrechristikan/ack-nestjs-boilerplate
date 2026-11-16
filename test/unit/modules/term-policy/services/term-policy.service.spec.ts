@@ -67,6 +67,8 @@ import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
+import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
@@ -95,6 +97,8 @@ describe('TermPolicyService', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+    const termPolicyContentService: MockProxy<TermPolicyContentService> =
+        mock<TermPolicyContentService>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
 
@@ -195,6 +199,10 @@ describe('TermPolicyService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyService,
+                {
+                    provide: TermPolicyContentService,
+                    useValue: termPolicyContentService,
+                },
                 {
                     provide: TermPolicyRepository,
                     useValue: termPolicyRepository,
@@ -323,6 +331,55 @@ describe('TermPolicyService', () => {
     });
 
     describe('createByAdmin', () => {
+        it('checks every content once and writes nothing when one is not a text template', async () => {
+            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
+                false
+            );
+            helperArrayService.unique.mockImplementation(array => array);
+            termPolicyContentService.assertContentText.mockResolvedValueOnce();
+            termPolicyContentService.assertContentText.mockRejectedValueOnce(
+                new TermPolicyContentTypeInvalidException()
+            );
+
+            const promise = service.createByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                {
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                    contents: [
+                        {
+                            language: EnumMessageLanguage.en,
+                            size: 1024,
+                            key: 'term-policies/privacy/1/a.hbs',
+                        },
+                        {
+                            language: EnumMessageLanguage.en,
+                            size: 1024,
+                            key: 'term-policies/privacy/1/b.hbs',
+                        },
+                    ],
+                }
+            );
+
+            await expect(promise).rejects.toBeInstanceOf(
+                TermPolicyContentTypeInvalidException
+            );
+            expect(
+                termPolicyContentService.assertContentText
+            ).toHaveBeenCalledTimes(2);
+            expect(
+                termPolicyContentService.assertContentText
+            ).toHaveBeenCalledWith('term-policies/privacy/1/a.hbs');
+            expect(
+                termPolicyContentService.assertContentText
+            ).toHaveBeenCalledWith('term-policies/privacy/1/b.hbs');
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyExistException when the version and type already exist', async () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(true);
 

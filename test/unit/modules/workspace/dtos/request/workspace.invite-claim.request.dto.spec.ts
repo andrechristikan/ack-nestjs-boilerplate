@@ -20,4 +20,19 @@ describe('WorkspaceInviteClaimRequestSchema', () => {
             WorkspaceInviteClaimRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
+
+    it('accepts a inviteToken of 200 characters and rejects one of 201', () => {
+        expect(() =>
+            WorkspaceInviteClaimRequestSchema.parse({
+                ...payload,
+                inviteToken: 'a'.repeat(200),
+            })
+        ).not.toThrow();
+        expect(() =>
+            WorkspaceInviteClaimRequestSchema.parse({
+                ...payload,
+                inviteToken: 'a'.repeat(201),
+            })
+        ).toThrow();
+    });
 });

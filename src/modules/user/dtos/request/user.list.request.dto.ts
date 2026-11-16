@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -31,9 +32,10 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         }),
     status: z
         .string()
+        .max(PaginationMaxFilterLength)
         .optional()
         .meta({
-            description: "value with ',' delimiter",
+            description: `value with ',' delimiter, at most ${PaginationMaxFilterLength} characters`,
             example: Object.values(EnumUserStatus).join(','),
         }),
     roleId: RequestMongoIdSchema.optional().meta({

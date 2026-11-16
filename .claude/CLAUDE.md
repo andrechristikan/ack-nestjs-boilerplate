@@ -53,7 +53,7 @@ Skills dispatch the agents in `.claude/agents/`; each agent's `description` stat
 ### Etiquette
 
 - A commit message is one conventional subject line, `<type>(<scope>): <description>`, no body, no footer, 100 characters max. `.commitlintrc` is the source for types and subject case; scope is the module name.
-- Commits and staging go through `ask`: propose the subject and wait. A finished task is not a commit request. Stage only what the owner names. Branch before committing on `main`.
+- Commits and staging go through `ask`. Propose a subject only when the owner asks for a commit or the running skill's Hand back lists one. A finished task, ticket, or build is not a commit request. Stage only what the owner names. Branch before committing on `main`.
 - The working tree on disk is the source, unstaged and untracked files included; list changes with `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
 - Every commit in a series leaves `pre-commit` green (`AGENTS.md`, Commit gates). A commit touching neither `src/` nor `test/` passes `--no-verify`, which skips `commit-msg` (commitlint) too, so check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks, and a red gate is fixed, not skipped.

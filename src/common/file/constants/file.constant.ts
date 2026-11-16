@@ -10,6 +10,9 @@ export const FileSizeInBytes: number = bytes('10mb') ?? 0;
 export const FileMaxMultiple: number = 3;
 
 /** @public */
+export const FileSniffSizeInBytes: number = 4100;
+
+/** @public */
 export const FileUploadDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,

@@ -77,4 +77,19 @@ describe('UserSignUpRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a inviteToken of 200 characters and rejects one of 201', () => {
+        expect(() =>
+            UserSignUpRequestSchema.parse({
+                ...payload,
+                inviteToken: 'a'.repeat(200),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserSignUpRequestSchema.parse({
+                ...payload,
+                inviteToken: 'a'.repeat(201),
+            })
+        ).toThrow();
+    });
 });

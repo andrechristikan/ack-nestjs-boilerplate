@@ -84,4 +84,13 @@ describe('UserListRequestSchema', () => {
             false
         );
     });
+
+    it('accepts a status of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            UserListRequestSchema.parse({ status: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            UserListRequestSchema.parse({ status: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

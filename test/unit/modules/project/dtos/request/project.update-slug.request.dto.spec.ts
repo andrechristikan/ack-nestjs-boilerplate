@@ -27,4 +27,13 @@ describe('ProjectUpdateSlugRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a slug of 100 characters and rejects one of 101', () => {
+        expect(() =>
+            ProjectUpdateSlugRequestSchema.parse({ slug: 'a'.repeat(100) })
+        ).not.toThrow();
+        expect(() =>
+            ProjectUpdateSlugRequestSchema.parse({ slug: 'a'.repeat(101) })
+        ).toThrow();
+    });
 });

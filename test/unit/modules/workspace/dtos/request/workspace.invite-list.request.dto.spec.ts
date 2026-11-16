@@ -84,4 +84,13 @@ describe('WorkspaceInviteListRequestSchema', () => {
             WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
         ).toBe(false);
     });
+
+    it('accepts a status of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

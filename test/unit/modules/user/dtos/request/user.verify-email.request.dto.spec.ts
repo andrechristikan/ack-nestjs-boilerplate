@@ -23,4 +23,19 @@ describe('UserVerifyEmailRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a token of 200 characters and rejects one of 201', () => {
+        expect(() =>
+            UserVerifyEmailRequestSchema.parse({
+                ...payload,
+                token: 'a'.repeat(200),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserVerifyEmailRequestSchema.parse({
+                ...payload,
+                token: 'a'.repeat(201),
+            })
+        ).toThrow();
+    });
 });

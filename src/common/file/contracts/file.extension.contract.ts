@@ -12,4 +12,5 @@ export const FileExtensionContract: IFileExtensionContracts = {
     [EnumFileExtension.mp4]: ['mp4'],
     [EnumFileExtension.mpeg]: ['mp3'],
     [EnumFileExtension.csv]: [],
+    [EnumFileExtension.hbs]: [],
 };

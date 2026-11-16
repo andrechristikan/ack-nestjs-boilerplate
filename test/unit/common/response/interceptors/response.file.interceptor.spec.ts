@@ -134,6 +134,41 @@ describe('ResponseFileInterceptor', () => {
             expect(responseMetadataService.setHeaders).toHaveBeenCalled();
         });
 
+        it('states the utf-8 charset on a text/csv type', async () => {
+            const responseData: IResponseCsvReturn = {
+                data: 'a,b,c',
+                extension: EnumFileExtensionDocument.csv,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData))
+            );
+
+            const result = await firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            expect(result.options.type).toBe('text/csv; charset=utf-8');
+        });
+
+        it('keeps application/pdf without a charset', async () => {
+            fileService.extractMimeFromFilename.mockReturnValue(
+                'application/pdf'
+            );
+            const responseData: IResponsePdfReturn = {
+                data: Buffer.from('%PDF-1.4'),
+                extension: EnumFileExtensionDocument.pdf,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData))
+            );
+
+            const result = await firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            expect(result.options.type).toBe('application/pdf');
+        });
+
         it('streams a PDF payload as-is', async () => {
             const responseData: IResponsePdfReturn = {
                 data: Buffer.from('%PDF-1.4'),

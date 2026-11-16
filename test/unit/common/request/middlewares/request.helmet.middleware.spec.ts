@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
+import { RequestHelmetCspDirectives } from '@common/request/constants/request.constant';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
 
 vi.mock('helmet', () => ({
@@ -60,10 +61,13 @@ describe('RequestHelmetMiddleware', () => {
 
             expect(helmet).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    contentSecurityPolicy: false,
+                    contentSecurityPolicy: {
+                        useDefaults: false,
+                        directives: RequestHelmetCspDirectives,
+                    },
                     crossOriginOpenerPolicy: false,
                     originAgentCluster: false,
-                    referrerPolicy: false,
+                    referrerPolicy: { policy: 'no-referrer' },
                     xDnsPrefetchControl: false,
                     xXssProtection: false,
                     crossOriginResourcePolicy: { policy: 'same-origin' },

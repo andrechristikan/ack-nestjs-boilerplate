@@ -14,6 +14,9 @@ import type {
     IAwsS3Presign,
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
+import { FileService } from '@common/file/services/file.service';
+import { NoSuchKey } from '@aws-sdk/client-s3';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -26,6 +29,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumActivityLogAction,
@@ -37,6 +41,7 @@ import { TermPolicyContentService } from '@modules/term-policy/services/term-pol
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
 import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -61,6 +66,8 @@ describe('TermPolicyContentService', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const fileService: MockProxy<FileService> = mock<FileService>();
+    const head = Buffer.from('{{title}}');
     const tx = {} as IDatabaseTransactionClient;
     const requestContext: IRequestContext = {
         requestLog: {
@@ -134,6 +141,8 @@ describe('TermPolicyContentService', () => {
         vi.resetAllMocks();
 
         awsS3Service.isInitialized.mockReturnValue(true);
+        awsS3Service.getItemBytes.mockResolvedValue(head);
+        fileService.isContentOfExtension.mockResolvedValue(true);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
         termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
         helperDateService.create.mockReturnValue(timestamp);
@@ -159,10 +168,79 @@ describe('TermPolicyContentService', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: FileService, useValue: fileService },
             ],
         }).compile();
 
         service = module.get(TermPolicyContentService);
+    });
+
+    describe('assertContentText', () => {
+        it('throws TermPolicyContentTypeInvalidException when the head is not a text template', async () => {
+            fileService.isContentOfExtension.mockResolvedValue(false);
+
+            const promise = service.assertContentText(existingContent.key);
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: TermPolicyContentTypeInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+                statusCodeKey: 'contentTypeInvalid',
+                httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                messagePath: 'termPolicy.error.contentTypeInvalid',
+            });
+            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
+                existingContent.key,
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.private }
+            );
+            expect(fileService.isContentOfExtension).toHaveBeenCalledWith(
+                head,
+                EnumFileExtensionTemplate.hbs
+            );
+        });
+
+        it('throws AwsS3NotConfiguredException when S3 answers null', async () => {
+            awsS3Service.getItemBytes.mockResolvedValue(null);
+
+            await expect(
+                service.assertContentText(existingContent.key)
+            ).rejects.toBeInstanceOf(AwsS3NotConfiguredException);
+            expect(fileService.isContentOfExtension).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyContentKeyInvalidException when the object is missing', async () => {
+            awsS3Service.getItemBytes.mockRejectedValue(
+                new NoSuchKey({ message: 'missing', $metadata: {} })
+            );
+
+            await expect(
+                service.assertContentText(existingContent.key)
+            ).rejects.toBeInstanceOf(TermPolicyContentKeyInvalidException);
+        });
+
+        it('passes an AppBaseException through', async () => {
+            const error = new AwsS3NotConfiguredException();
+            awsS3Service.getItemBytes.mockRejectedValue(error);
+
+            await expect(
+                service.assertContentText(existingContent.key)
+            ).rejects.toBe(error);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            awsS3Service.getItemBytes.mockRejectedValue(new Error('boom'));
+
+            await expect(
+                service.assertContentText(existingContent.key)
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('resolves when the head is a text template', async () => {
+            await expect(
+                service.assertContentText(existingContent.key)
+            ).resolves.toBeUndefined();
+        });
     });
 
     describe('generateContentPresignByAdmin', () => {
@@ -296,6 +374,36 @@ describe('TermPolicyContentService', () => {
     });
 
     describe('updateContentByAdmin', () => {
+        it('throws TermPolicyContentTypeInvalidException and writes nothing when the head is not a text template', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            fileService.isContentOfExtension.mockResolvedValue(false);
+
+            const promise = service.updateContentByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                }
+            );
+
+            await expect(promise).rejects.toBeInstanceOf(
+                TermPolicyContentTypeInvalidException
+            );
+            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
+                'term-policies/privacy/v1/en.hbs',
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.private }
+            );
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                termPolicyRepository.updateContentInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyContentSizeExceededException and writes nothing when size exceeds the configured max', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
 
@@ -738,6 +846,35 @@ describe('TermPolicyContentService', () => {
     });
 
     describe('addContentByAdmin', () => {
+        it('throws TermPolicyContentTypeInvalidException and writes nothing when the head is not a text template', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue([]);
+            fileService.isContentOfExtension.mockResolvedValue(false);
+
+            const promise = service.addContentByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                }
+            );
+
+            await expect(promise).rejects.toBeInstanceOf(
+                TermPolicyContentTypeInvalidException
+            );
+            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
+                'term-policies/privacy/v1/en.hbs',
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.private }
+            );
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(termPolicyRepository.addContentInTx).not.toHaveBeenCalled();
+        });
+
         it('throws TermPolicyContentKeyInvalidException and writes nothing when the key is outside the policy path', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.isContentKeyInPath.mockReturnValue(false);

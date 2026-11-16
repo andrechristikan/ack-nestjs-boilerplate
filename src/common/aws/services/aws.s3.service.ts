@@ -516,6 +516,41 @@ export class AwsS3Service implements OnModuleInit {
         return allItems;
     }
 
+    /** Reads the first `length` bytes of an object; `null` when S3 is not configured. */
+    async getItemBytes(
+        key: string,
+        length: number,
+        options: IAwsS3Options
+    ): Promise<Buffer | null> {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
+            this.logger.warn(
+                'AWS S3 credentials not configured. S3 functionalities will be disabled.'
+            );
+
+            return null;
+        }
+
+        if (key.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        const config = this.getConfig(options.access);
+        const command: GetObjectCommand = new GetObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+            Range: `bytes=0-${length - 1}`,
+        });
+        const item: GetObjectCommandOutput = await this.s3Client.send<
+            GetObjectCommandInput,
+            GetObjectCommandOutput
+        >(command);
+
+        return item.Body
+            ? Buffer.from(await item.Body.transformToByteArray())
+            : Buffer.alloc(0);
+    }
+
     async getItem(key: string, options: IAwsS3Options): Promise<IAwsS3 | null> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {

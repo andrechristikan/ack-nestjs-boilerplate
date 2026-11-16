@@ -36,4 +36,34 @@ describe('UserReauthenticationRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a password of 64 characters and rejects one of 65', () => {
+        expect(() =>
+            UserReauthenticationRequestSchema.parse({
+                ...payload,
+                password: 'a'.repeat(64),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserReauthenticationRequestSchema.parse({
+                ...payload,
+                password: 'a'.repeat(65),
+            })
+        ).toThrow();
+    });
+
+    it('accepts a otp of 32 characters and rejects one of 33', () => {
+        expect(() =>
+            UserReauthenticationRequestSchema.parse({
+                ...payload,
+                otp: '1'.repeat(32),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserReauthenticationRequestSchema.parse({
+                ...payload,
+                otp: '1'.repeat(33),
+            })
+        ).toThrow();
+    });
 });

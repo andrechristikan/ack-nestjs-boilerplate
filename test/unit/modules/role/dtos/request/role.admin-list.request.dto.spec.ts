@@ -82,4 +82,13 @@ describe('RoleAdminListRequestSchema', () => {
             false
         );
     });
+
+    it('accepts a type of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            RoleAdminListRequestSchema.parse({ type: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            RoleAdminListRequestSchema.parse({ type: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

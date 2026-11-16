@@ -79,4 +79,13 @@ describe('TermPolicyPublicListRequestSchema', () => {
             TermPolicyPublicListRequestSchema.safeParse({ orderBy }).success
         ).toBe(false);
     });
+
+    it('accepts a type of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

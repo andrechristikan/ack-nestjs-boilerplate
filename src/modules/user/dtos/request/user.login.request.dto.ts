@@ -20,8 +20,9 @@ export const UserLoginRequestSchema = z.strictObject({
     password: z
         .string()
         .min(1)
+        .max(64)
         .meta({
-            description: 'string password',
+            description: 'string password, at most 64 characters',
             example: faker.string.alphanumeric(10),
         }),
     from: z.enum(EnumUserLoginFrom).meta({

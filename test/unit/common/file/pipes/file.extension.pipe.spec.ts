@@ -2,10 +2,7 @@ import type { ArgumentMetadata } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { FileService } from '@common/file/services/file.service';
-import {
-    EnumFileExtension,
-    EnumFileExtensionTemplate,
-} from '@common/file/enums/file.enum';
+import { EnumFileExtension } from '@common/file/enums/file.enum';
 import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import {
     createFileExtensionPipe,
@@ -15,7 +12,6 @@ import {
 type IPipeMixin = {
     extractFilesToValidate(value: IFileInput): IFile[];
     isEmptyValue(value: unknown): boolean;
-    signaturesOf(extension: EnumFileExtension): readonly string[] | null;
     validate(file: IFile): Promise<void>;
 };
 
@@ -92,7 +88,7 @@ describe('FileExtensionPipe', () => {
             );
 
             await expectFileExtensionInvalid(promise);
-            expect(fileService.sniffExtensionFromBuffer).not.toHaveBeenCalled();
+            expect(fileService.isContentOfExtension).not.toHaveBeenCalled();
         });
 
         it('throws when the declared extension is missing', async () => {
@@ -109,13 +105,13 @@ describe('FileExtensionPipe', () => {
             await expectFileExtensionInvalid(promise);
         });
 
-        it('passes a signatureless extension whose sniff comes back null', async () => {
+        it('passes when the content check accepts the declared extension', async () => {
             const pipe = await createFileExtensionPipe(
                 [EnumFileExtension.csv],
                 fileService
             );
             fileService.extractExtensionFromFilename.mockReturnValue('csv');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue(null);
+            fileService.isContentOfExtension.mockResolvedValue(true);
 
             const value = { ...baseFile, originalname: 'a.csv' };
             const result = await pipe.transform(value, metadata);
@@ -123,29 +119,13 @@ describe('FileExtensionPipe', () => {
             expect(result).toBe(value);
         });
 
-        it('throws for a null sniff when the declared extension carries no signatureless entry', async () => {
-            const pipe = await createFileExtensionPipe(
-                [EnumFileExtensionTemplate.hbs],
-                fileService
-            );
-            fileService.extractExtensionFromFilename.mockReturnValue('hbs');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue(null);
-
-            const promise = pipe.transform(
-                { ...baseFile, originalname: 'a.hbs' },
-                metadata
-            );
-
-            await expectFileExtensionInvalid(promise);
-        });
-
-        it('passes when the sniffed type matches the declared extension signature', async () => {
+        it('passes when the content check accepts the declared extension', async () => {
             const pipe = await createFileExtensionPipe(
                 [EnumFileExtension.pdf],
                 fileService
             );
             fileService.extractExtensionFromFilename.mockReturnValue('pdf');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('pdf');
+            fileService.isContentOfExtension.mockResolvedValue(true);
 
             const value = { ...baseFile, originalname: 'a.pdf' };
             const result = await pipe.transform(value, metadata);
@@ -153,48 +133,16 @@ describe('FileExtensionPipe', () => {
             expect(result).toBe(value);
         });
 
-        it('throws when the sniffed type does not match the declared extension signature', async () => {
+        it('throws when the content check rejects the declared extension', async () => {
             const pipe = await createFileExtensionPipe(
                 [EnumFileExtension.pdf],
                 fileService
             );
             fileService.extractExtensionFromFilename.mockReturnValue('pdf');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('png');
+            fileService.isContentOfExtension.mockResolvedValue(false);
 
             const promise = pipe.transform(
                 { ...baseFile, originalname: 'a.pdf' },
-                metadata
-            );
-
-            await expectFileExtensionInvalid(promise);
-        });
-
-        it('throws when the sniffed type belongs to another allowed extension than the declared one', async () => {
-            const pipe = await createFileExtensionPipe(
-                [EnumFileExtension.jpg, EnumFileExtension.png],
-                fileService
-            );
-            fileService.extractExtensionFromFilename.mockReturnValue('jpg');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('png');
-
-            const promise = pipe.transform(
-                { ...baseFile, originalname: 'a.jpg' },
-                metadata
-            );
-
-            await expectFileExtensionInvalid(promise);
-        });
-
-        it('throws when a declared csv carries a sniffed binary signature of another allowed extension', async () => {
-            const pipe = await createFileExtensionPipe(
-                [EnumFileExtension.csv, EnumFileExtension.pdf],
-                fileService
-            );
-            fileService.extractExtensionFromFilename.mockReturnValue('csv');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('pdf');
-
-            const promise = pipe.transform(
-                { ...baseFile, originalname: 'a.csv' },
                 metadata
             );
 
@@ -207,7 +155,7 @@ describe('FileExtensionPipe', () => {
                 fileService
             );
             fileService.extractExtensionFromFilename.mockReturnValue('pdf');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('pdf');
+            fileService.isContentOfExtension.mockResolvedValue(true);
 
             const values = [
                 { ...baseFile, originalname: 'a.pdf' },
@@ -216,9 +164,7 @@ describe('FileExtensionPipe', () => {
             const result = await pipe.transform(values, metadata);
 
             expect(result).toBe(values);
-            expect(fileService.sniffExtensionFromBuffer).toHaveBeenCalledTimes(
-                2
-            );
+            expect(fileService.isContentOfExtension).toHaveBeenCalledTimes(2);
         });
 
         it('rejects the request when one element of an array fails validation', async () => {
@@ -302,30 +248,6 @@ describe('FileExtensionPipe', () => {
         });
     });
 
-    describe('signaturesOf', () => {
-        it('returns the contract signatures for a mapped extension', async () => {
-            const pipe = (await createFileExtensionPipe(
-                [EnumFileExtension.pdf],
-                fileService
-            )) as unknown as IPipeMixin;
-
-            expect(pipe['signaturesOf'](EnumFileExtension.pdf)).toEqual([
-                'pdf',
-            ]);
-        });
-
-        it('returns null for an extension the contract does not map', async () => {
-            const pipe = (await createFileExtensionPipe(
-                [EnumFileExtensionTemplate.hbs],
-                fileService
-            )) as unknown as IPipeMixin;
-
-            expect(
-                pipe['signaturesOf'](EnumFileExtensionTemplate.hbs)
-            ).toBeNull();
-        });
-    });
-
     describe('validate', () => {
         it('throws when the file carries no originalname', async () => {
             const pipe = (await createFileExtensionPipe(
@@ -340,13 +262,13 @@ describe('FileExtensionPipe', () => {
             await expectFileExtensionInvalid(promise);
         });
 
-        it('resolves when the sniffed type matches the declared extension', async () => {
+        it('resolves when the content check accepts the declared extension', async () => {
             const pipe = (await createFileExtensionPipe(
                 [EnumFileExtension.pdf],
                 fileService
             )) as unknown as IPipeMixin;
             fileService.extractExtensionFromFilename.mockReturnValue('pdf');
-            fileService.sniffExtensionFromBuffer.mockResolvedValue('pdf');
+            fileService.isContentOfExtension.mockResolvedValue(true);
 
             await expect(
                 pipe['validate']({ ...baseFile, originalname: 'a.pdf' })

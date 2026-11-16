@@ -43,6 +43,7 @@ import type {
     ITermPolicyDeleteContentEffect,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
@@ -72,7 +73,8 @@ export class TermPolicyService {
         private readonly notificationService: NotificationService,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogService: ActivityLogService,
+        private readonly termPolicyContentService: TermPolicyContentService
     ) {
         this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.copyContentPattern'
@@ -197,6 +199,12 @@ export class TermPolicyService {
         if (!isS3Initialized) {
             throw new AwsS3NotConfiguredException();
         }
+
+        await Promise.all(
+            contents.map(({ key }) =>
+                this.termPolicyContentService.assertContentText(key)
+            )
+        );
 
         try {
             const mappedContents: ITermPolicyContent[] = contents.map(

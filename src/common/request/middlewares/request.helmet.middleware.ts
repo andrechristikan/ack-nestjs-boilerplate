@@ -3,6 +3,7 @@ import type { NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import { RequestHelmetCspDirectives } from '@common/request/constants/request.constant';
 
 @Injectable()
 export class RequestHelmetMiddleware implements NestMiddleware {
@@ -24,10 +25,13 @@ export class RequestHelmetMiddleware implements NestMiddleware {
 
     use(req: Request, res: Response, next: NextFunction): void {
         helmet({
-            contentSecurityPolicy: false,
+            contentSecurityPolicy: {
+                useDefaults: false,
+                directives: RequestHelmetCspDirectives,
+            },
             crossOriginOpenerPolicy: false,
             originAgentCluster: false,
-            referrerPolicy: false,
+            referrerPolicy: { policy: 'no-referrer' },
             xDnsPrefetchControl: false,
             xXssProtection: false,
             crossOriginResourcePolicy: { policy: 'same-origin' },

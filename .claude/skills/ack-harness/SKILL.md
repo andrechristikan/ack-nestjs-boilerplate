@@ -53,7 +53,7 @@ bash .claude/hooks/check.sh
 
 - No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/ai-harness.md`, no `.github/**` beyond the Copilot digest.
 - No database or seed command.
-- Commits go through `ask`; propose the subject only.
+- Commits go through `ask`.
 
 ## Hand back
 

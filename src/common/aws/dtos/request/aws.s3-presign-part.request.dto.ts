@@ -8,8 +8,8 @@ export const AwsS3PresignPartRequestSchema = AwsS3PresignRequestSchema.extend({
         description: 'Part number for multipart upload',
         example: 1,
     }),
-    uploadId: z.string().min(1).meta({
-        description: 'Upload ID for multipart upload',
+    uploadId: z.string().min(1).max(1024).meta({
+        description: 'Upload ID for multipart upload, at most 1024 characters',
         example: '1',
     }),
 });

@@ -85,4 +85,17 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
             WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).success
         ).toBe(false);
     });
+
+    it('accepts a status of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            WorkspaceJoinRequestListRequestSchema.parse({
+                status: 'a'.repeat(256),
+            })
+        ).not.toThrow();
+        expect(() =>
+            WorkspaceJoinRequestListRequestSchema.parse({
+                status: 'a'.repeat(257),
+            })
+        ).toThrow();
+    });
 });

@@ -90,4 +90,19 @@ describe('UserLoginRequestSchema', () => {
             UserLoginRequestSchema.parse({ ...payload, rememberMe: true })
         ).toThrow();
     });
+
+    it('accepts a password of 64 characters and rejects one of 65', () => {
+        expect(() =>
+            UserLoginRequestSchema.parse({
+                ...payload,
+                password: 'a'.repeat(64),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserLoginRequestSchema.parse({
+                ...payload,
+                password: 'a'.repeat(65),
+            })
+        ).toThrow();
+    });
 });

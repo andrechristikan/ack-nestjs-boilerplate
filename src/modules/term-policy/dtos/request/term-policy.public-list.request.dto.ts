@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
@@ -20,10 +21,14 @@ export const TermPolicyPublicListRequestSchema =
                 description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${TermPolicyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-        type: z.string().optional().meta({
-            description: 'Filter by type',
-            example: '',
-        }),
+        type: z
+            .string()
+            .max(PaginationMaxFilterLength)
+            .optional()
+            .meta({
+                description: `Filter by type, at most ${PaginationMaxFilterLength} characters`,
+                example: '',
+            }),
     });
 
 /** @public */

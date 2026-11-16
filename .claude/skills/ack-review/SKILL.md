@@ -83,7 +83,6 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the pin's files, 
 - Each finding: the owner's answer, its route, its state.
 - The gate output after the fixes.
 - The `docs/` pages the change makes stale, as a list for `/ack-doc`.
-- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`, for the commit after `/ack-doc`.
 
 ## Next
 

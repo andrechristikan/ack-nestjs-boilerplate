@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import {
@@ -27,10 +28,14 @@ export const WorkspaceInviteListRequestSchema =
                 description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceInviteDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceInviteDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${WorkspaceInviteDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-        status: z.string().optional().meta({
-            description: 'Filter by status, comma-delimited',
-            example: '',
-        }),
+        status: z
+            .string()
+            .max(PaginationMaxFilterLength)
+            .optional()
+            .meta({
+                description: `Filter by status, comma-delimited, at most ${PaginationMaxFilterLength} characters`,
+                example: '',
+            }),
     });
 
 /** @public */

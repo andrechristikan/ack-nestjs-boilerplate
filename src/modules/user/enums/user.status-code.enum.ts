@@ -32,4 +32,5 @@ export enum EnumUserStatusCodeError {
     reauthenticationOtpResendLimit = 51029,
     reauthenticationOtpRequired = 51030,
     reauthenticationOtpInvalid = 51031,
+    photoContentInvalid = 51032,
 }

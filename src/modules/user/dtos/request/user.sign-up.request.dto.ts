@@ -32,10 +32,11 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
     inviteToken: z
         .string()
         .min(1)
+        .max(200)
         .optional()
         .meta({
             description:
-                'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one',
+                'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one. At most 200 characters',
             example: faker.string.alphanumeric(100),
         }),
 });

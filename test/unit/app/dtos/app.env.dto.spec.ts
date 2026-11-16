@@ -919,4 +919,57 @@ describe('AppEnvSchema', () => {
             expect(result.success).toBe(true);
         });
     });
+
+    describe('CORS origin refinement', () => {
+        it('rejects a wildcard origin in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                CORS_ALLOWED_ORIGIN: '*',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toHaveLength(1);
+            expect(result.error?.issues[0]).toMatchObject({
+                path: ['CORS_ALLOWED_ORIGIN'],
+                message: 'Must list origins in production',
+            });
+        });
+
+        it('rejects a wildcard among listed origins in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                CORS_ALLOWED_ORIGIN: 'https://a.example.com, *',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: ['CORS_ALLOWED_ORIGIN'] })
+            );
+        });
+
+        it.each(['*.example.com', 'https://a.example.com'])(
+            'parses %s in production',
+            origin => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    APP_ENV: EnumAppEnvironment.production,
+                    CORS_ALLOWED_ORIGIN: origin,
+                });
+
+                expect(result.success).toBe(true);
+            }
+        );
+
+        it('parses a wildcard origin in local', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.local,
+                CORS_ALLOWED_ORIGIN: '*',
+            });
+
+            expect(result.success).toBe(true);
+        });
+    });
 });

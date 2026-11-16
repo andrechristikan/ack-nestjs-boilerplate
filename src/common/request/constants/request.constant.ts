@@ -53,3 +53,21 @@ export const RequestThrottleHeaderName = 'X-RateLimit';
 
 /** @public */
 export const RequestWorkspaceIdHeaderName = 'x-workspace-id';
+
+/** @public */
+export const RequestHelmetCspDirectives: Record<string, string[]> = {
+    defaultSrc: ["'none'"],
+    baseUri: ["'none'"],
+    objectSrc: ["'none'"],
+    frameAncestors: ["'none'"],
+};
+
+/** @public */
+export const RequestHelmetCspDocDirectives: Record<string, string[]> = {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:'],
+    baseUri: ["'none'"],
+    objectSrc: ["'none'"],
+    frameAncestors: ["'none'"],
+};

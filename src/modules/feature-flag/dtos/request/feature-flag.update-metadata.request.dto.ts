@@ -4,29 +4,58 @@ import { z } from 'zod';
 export const FeatureFlagUpdateMetadataRequestSchema = z.strictObject({
     metadata: z
         .record(
-            z.string().regex(/^[a-z][a-zA-Z0-9]*$/, {
-                error: () => 'featureFlag.error.invalidMetadata',
-            }),
+            z
+                .string()
+                .max(64, {
+                    error: () => 'featureFlag.error.invalidMetadata',
+                })
+                .regex(/^[a-z][a-zA-Z0-9]*$/, {
+                    error: () => 'featureFlag.error.invalidMetadata',
+                }),
             z.union(
                 [
-                    z.string().min(1, {
-                        error: () => 'featureFlag.error.invalidMetadata',
-                    }),
+                    z
+                        .string()
+                        .min(1, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        })
+                        .max(500, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        }),
                     z.number(),
                     z.boolean(),
-                    z.array(z.string()).min(1, {
-                        error: () => 'featureFlag.error.invalidMetadata',
-                    }),
-                    z.array(z.number()).min(1, {
-                        error: () => 'featureFlag.error.invalidMetadata',
-                    }),
+                    z
+                        .array(
+                            z.string().max(500, {
+                                error: () =>
+                                    'featureFlag.error.invalidMetadata',
+                            })
+                        )
+                        .min(1, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        })
+                        .max(100, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        }),
+                    z
+                        .array(z.number())
+                        .min(1, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        })
+                        .max(100, {
+                            error: () => 'featureFlag.error.invalidMetadata',
+                        }),
                 ],
                 { error: () => 'featureFlag.error.invalidMetadata' }
             ),
             { error: () => 'featureFlag.error.invalidMetadata' }
         )
+        .refine(metadata => Object.keys(metadata).length <= 50, {
+            error: () => 'featureFlag.error.invalidMetadata',
+        })
         .meta({
-            description: 'Feature flag metadata in JSON format',
+            description:
+                'Feature flag metadata in JSON format: at most 50 keys of 64 characters, string values of 500 characters, arrays of 100 items',
             example: {
                 newFeature: true,
                 betaUserAccess: false,

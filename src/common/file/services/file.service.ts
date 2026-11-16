@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { FileExtensionContract } from '@common/file/contracts/file.extension.contract';
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import Mime from 'mime';
@@ -75,5 +76,25 @@ export class FileService {
         const sniffed = await fileTypeFromBuffer(buffer);
 
         return sniffed?.ext ?? null;
+    }
+
+    /** Answers `false` when the extension has no contract row, the bytes sniff to a type the row does not list, or they sniff to no type while the row lists one. */
+    async isContentOfExtension(
+        buffer: Buffer,
+        extension: string
+    ): Promise<boolean> {
+        if (!(extension in FileExtensionContract)) {
+            return false;
+        }
+
+        const signatures =
+            FileExtensionContract[
+                extension as keyof typeof FileExtensionContract
+            ];
+        const sniffed = await this.sniffExtensionFromBuffer(buffer);
+
+        return sniffed === null
+            ? signatures.length === 0
+            : signatures.includes(sniffed);
     }
 }

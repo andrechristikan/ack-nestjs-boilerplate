@@ -58,4 +58,49 @@ describe('UserLoginVerifyTwoFactorRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('accepts a challengeToken of 128 characters and rejects one of 129', () => {
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                challengeToken: 'a'.repeat(128),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                challengeToken: 'a'.repeat(129),
+            })
+        ).toThrow();
+    });
+
+    it('accepts a code of 32 characters and rejects one of 33', () => {
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                code: '1'.repeat(32),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                code: '1'.repeat(33),
+            })
+        ).toThrow();
+    });
+
+    it('accepts a backupCode of 32 characters and rejects one of 33', () => {
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                backupCode: 'A'.repeat(32),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserLoginVerifyTwoFactorRequestSchema.parse({
+                ...payload,
+                backupCode: 'A'.repeat(33),
+            })
+        ).toThrow();
+    });
 });

@@ -107,7 +107,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 4. The session writes the fix list into `review.md` and the owner approves it.
 5. `coder` applies each kept finding as written. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature to the sweep log.
 6. The gates run again and a second `reviewer` reads the fixed findings. A finding still open goes to the owner.
-7. The session proposes the commit subject and names `/ack-doc`.
+7. The session names `/ack-doc`, which ends by proposing the commit subject.
 
 ## Standalone Commands
 

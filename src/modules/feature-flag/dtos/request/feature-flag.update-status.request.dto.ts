@@ -11,10 +11,14 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         description: 'Feature flag rollout percentage (0-100)',
         example: 50,
     }),
-    targetUserIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).meta({
-        description: 'Target user ids allow-list; [] clears it',
-        example: [faker.database.mongodbObjectId()],
-    }),
+    targetUserIds: z
+        .array(z.string().regex(/^[0-9a-fA-F]{24}$/))
+        .max(1000)
+        .meta({
+            description:
+                'Target user ids allow-list, at most 1000; [] clears it',
+            example: [faker.database.mongodbObjectId()],
+        }),
 });
 
 /** @public */

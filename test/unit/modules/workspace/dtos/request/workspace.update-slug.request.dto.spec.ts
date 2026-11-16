@@ -20,4 +20,19 @@ describe('WorkspaceUpdateSlugRequestSchema', () => {
             WorkspaceUpdateSlugRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
+
+    it('accepts a slug of 100 characters and rejects one of 101', () => {
+        expect(() =>
+            WorkspaceUpdateSlugRequestSchema.parse({
+                ...payload,
+                slug: 'a'.repeat(100),
+            })
+        ).not.toThrow();
+        expect(() =>
+            WorkspaceUpdateSlugRequestSchema.parse({
+                ...payload,
+                slug: 'a'.repeat(101),
+            })
+        ).toThrow();
+    });
 });

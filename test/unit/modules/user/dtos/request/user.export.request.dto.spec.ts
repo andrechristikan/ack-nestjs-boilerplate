@@ -36,4 +36,13 @@ describe('UserExportRequestSchema', () => {
             UserExportRequestSchema.parse({ ...payload, search: 'john' })
         ).toThrow();
     });
+
+    it('accepts a status of 256 characters and rejects one of 257', () => {
+        expect(() =>
+            UserExportRequestSchema.parse({ status: 'a'.repeat(256) })
+        ).not.toThrow();
+        expect(() =>
+            UserExportRequestSchema.parse({ status: 'a'.repeat(257) })
+        ).toThrow();
+    });
 });

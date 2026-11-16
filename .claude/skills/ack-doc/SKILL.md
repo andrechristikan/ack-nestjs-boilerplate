@@ -79,7 +79,6 @@ A CONFLICT is a doc and the code disagreeing about a decision, where the code ma
 
 - No `src/`, `test/`, `.claude/`, `prisma/`, `docs/ai-harness.md`, or `.github/copilot-instructions.md`.
 - No database or seed command.
-- Commits go through `ask`; propose the subject only.
 
 ## Hand back
 
@@ -88,6 +87,7 @@ A CONFLICT is a doc and the code disagreeing about a decision, where the code ma
 - The reader-test result per file, or the line that the step was skipped; each finding and its state (fixed, rejected with the reason, open).
 - The diagram paths, when one was drawn.
 - One line per thing noticed outside the scope.
+- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`; omit it when Next is `/ack-debug`.
 
 ## Next
 

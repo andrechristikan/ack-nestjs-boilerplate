@@ -44,4 +44,19 @@ describe('AwsS3PresignRequestSchema', () => {
             AwsS3PresignRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
+
+    it('accepts a key of 1024 characters and rejects one of 1025', () => {
+        expect(() =>
+            AwsS3PresignRequestSchema.parse({
+                ...payload,
+                key: 'a'.repeat(1024),
+            })
+        ).not.toThrow();
+        expect(() =>
+            AwsS3PresignRequestSchema.parse({
+                ...payload,
+                key: 'a'.repeat(1025),
+            })
+        ).toThrow();
+    });
 });

@@ -58,4 +58,19 @@ describe('AwsS3PresignPartRequestSchema', () => {
             AwsS3PresignPartRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
+
+    it('accepts a uploadId of 1024 characters and rejects one of 1025', () => {
+        expect(() =>
+            AwsS3PresignPartRequestSchema.parse({
+                ...payload,
+                uploadId: 'a'.repeat(1024),
+            })
+        ).not.toThrow();
+        expect(() =>
+            AwsS3PresignPartRequestSchema.parse({
+                ...payload,
+                uploadId: 'a'.repeat(1025),
+            })
+        ).toThrow();
+    });
 });

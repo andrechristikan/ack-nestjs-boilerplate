@@ -10,6 +10,7 @@ import type {
     IAwsS3Presign,
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type {
     IFile,
@@ -19,6 +20,7 @@ import { FileService } from '@common/file/services/file.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
@@ -258,6 +260,26 @@ export class UserProfileService {
             const isSizeAllowed = this.isPhotoSizeAllowed(aws.size);
             if (!isSizeAllowed) {
                 throw new UserPhotoSizeExceededException();
+            }
+
+            const head: Buffer | null = await this.awsS3Service.getItemBytes(
+                key,
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.public }
+            );
+            if (!head) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            const isContentValid = await this.fileService.isContentOfExtension(
+                head,
+                aws.extension
+            );
+            if (!isContentValid) {
+                const effect = this.deletePhotoEffect(userId, aws);
+                await this.outboxService.add(effect);
+
+                throw new UserPhotoContentInvalidException();
             }
 
             const user = await this.userRepository.findOneById(userId);

@@ -5,7 +5,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { mkdirSync, writeFileSync } from 'fs';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
+import helmet from 'helmet';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { RequestHelmetCspDocDirectives } from '@common/request/constants/request.constant';
 import { MessageService } from '@common/message/services/message.service';
 import {
     ApiKeyDocSecurityName,
@@ -87,6 +89,15 @@ export default async function (app: NestApplication): Promise<void> {
         } catch (err: unknown) {
             logger.warn(err, 'Failed to write swagger.json');
         }
+
+        app.use(
+            docPrefix,
+            helmet.contentSecurityPolicy({
+                useDefaults: false,
+                directives: RequestHelmetCspDocDirectives,
+            })
+        );
+        app.use(docPrefix, helmet.referrerPolicy({ policy: 'no-referrer' }));
 
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: docJsonUrlPattern.replace(
