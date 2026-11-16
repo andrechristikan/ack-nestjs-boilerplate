@@ -25,4 +25,4 @@ Hand-rolling what Nest provides is a defect: no service locator, no manual `new`
 ## Config
 
 - Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field; a module `useFactory`, a queue options factory, `main.ts`, `configure.ts`, and `swagger.ts` read where they build.
-- A TTL, retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`.
+- A TTL, retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes is a constant in its kit (`config.md`).

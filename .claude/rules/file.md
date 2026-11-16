@@ -29,7 +29,7 @@ paths:
 
 ## S3 presign
 
-The browser PUTs straight to S3; the API signs and never proxies bytes. The presign DTOs (`src/common/aws/dtos/request/`) validate `key`, `size`, and for multipart `partNumber` / `uploadId`. `EnumAwsS3Accessibility` (`public` / `private`) is a required argument wherever an `AwsS3Service` method reaches a bucket (`copyItem` names `accessFrom` and `accessTo`); when in doubt, `private`. A presign signature is a credential (`security.md`): returned in the response and nowhere else. Expiry stays short. A service saving a presigned key reads the object's head through `AwsS3Service.getItemBytes` (`file.sniffSizeInBytes`) and checks it with `FileService.isContentOfExtension` before any write; a refused public object is deleted through `OutboxService.add` before the module's 415 (`UserProfileService.updatePhotoProfile`).
+The browser PUTs straight to S3; the API signs and never proxies bytes. The presign DTOs (`src/common/aws/dtos/request/`) validate `key`, `size`, and for multipart `partNumber` / `uploadId`. `EnumAwsS3Accessibility` (`public` / `private`) is a required argument wherever an `AwsS3Service` method reaches a bucket (`copyItem` names `accessFrom` and `accessTo`); when in doubt, `private`. A presign signature is a credential (`security.md`): returned in the response and nowhere else. Expiry stays short. A service saving a presigned key reads the object's head through `AwsS3Service.getItemBytes` (`FileSniffSizeInBytes`, `src/common/file/constants/file.constant.ts`: the head `file-type` reads) and checks it with `FileService.isContentOfExtension` before any write; a refused public object is deleted through `OutboxService.add` before the module's 415 (`UserProfileService.updatePhotoProfile`).
 
 ## S3 deletes
 
