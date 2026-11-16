@@ -33,34 +33,34 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type {
+    INotificationEmailPublishTermPolicyEffect,
     INotificationEmailSendEffect,
     INotificationEmailSendUnregisteredEffect,
     INotificationNotifyEffect,
-    INotificationPublishTermPolicyEffect,
     INotificationPushCleanupTokensEffect,
     INotificationPushSendEffect,
-    INotificationResendPublishTermPolicyEffect,
 } from '@modules/notification/interfaces/notification.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ConfigService } from '@nestjs/config';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type {
     INotificationContext,
     INotificationContextMap,
+    INotificationCreateEntry,
+    INotificationCreateRecipient,
     INotificationKeyPatterns,
-    INotificationPublishTermPolicyInput,
-    INotificationPublishTermPolicyPayload,
     INotificationPushCleanupStaleTokensResult,
     INotificationPushCleanupTokensResult,
     INotificationRecipientRecord,
     INotificationSealedData,
     INotificationSealedRecord,
     INotificationSnapshot,
+    INotificationTermPolicyBatchRecipient,
     INotificationUserSettingPreference,
     INotificationUserSettingUpdate,
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
+import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -75,7 +75,8 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 export class NotificationService {
     private readonly keyPatterns: INotificationKeyPatterns;
     private readonly stepPattern: string;
-    private readonly termPolicyResendPattern: string;
+    private readonly termPolicyBatchPattern: string;
+    private readonly termPolicyBatchResendPattern: string;
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
@@ -86,14 +87,16 @@ export class NotificationService {
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogService: ActivityLogService
     ) {
         this.stepPattern = this.configService.get<string>(
             'notification.idempotencyKey.stepPattern'
         )!;
-        this.termPolicyResendPattern = this.configService.get<string>(
-            'notification.idempotencyKey.termPolicyResendPattern'
+        this.termPolicyBatchPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyBatchPattern'
+        )!;
+        this.termPolicyBatchResendPattern = this.configService.get<string>(
+            'notification.idempotencyKey.termPolicyBatchResendPattern'
         )!;
         const userPattern = this.configService.get<string>(
             'notification.idempotencyKey.userPattern'
@@ -107,17 +110,12 @@ export class NotificationService {
         const userTermPolicyPattern = this.configService.get<string>(
             'notification.idempotencyKey.userTermPolicyPattern'
         )!;
-        const termPolicyPublishPattern = this.configService.get<string>(
-            'notification.idempotencyKey.termPolicyPublishPattern'
-        )!;
         this.keyPatterns = {
             [EnumNotificationKeyPattern.userPattern]: userPattern,
             [EnumNotificationKeyPattern.referencePattern]: referencePattern,
             [EnumNotificationKeyPattern.joinRequestPattern]: joinRequestPattern,
             [EnumNotificationKeyPattern.userTermPolicyPattern]:
                 userTermPolicyPattern,
-            [EnumNotificationKeyPattern.termPolicyPublishPattern]:
-                termPolicyPublishPattern,
         };
     }
 
@@ -427,49 +425,84 @@ export class NotificationService {
         }
     }
 
-    /** The outbox effect that pages the active recipients up to the cutoff and adds one email batch row per page. */
-    publishTermPolicyEffect(
-        payload: INotificationPublishTermPolicyPayload,
-        proceedBy: string
-    ): INotificationPublishTermPolicyEffect {
-        const idempotencyKey = this.helperStringService.fillPattern(
-            this.keyPatterns[
-                EnumNotificationKeyPattern.termPolicyPublishPattern
-            ],
-            {
-                process: EnumNotificationProcess.publishTermPolicy,
-                termPolicyId: payload.termPolicyId,
-            }
+    /** Creates one notification per recipient on the caller's transaction, with the channels the kind's contract lists as pending and delivered. */
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        kind: EnumNotificationKind,
+        metadata: Prisma.InputJsonValue,
+        proceedBy: string,
+        recipients: INotificationCreateRecipient[]
+    ): Promise<void> {
+        const { pendingChannels, deliveredChannels } =
+            NotificationKindContract[kind];
+        const channels = [...pendingChannels, ...deliveredChannels];
+        const entries: INotificationCreateEntry[] = recipients.map(
+            ({ userId, notificationId }) => ({
+                kind,
+                payload: {
+                    id: notificationId,
+                    userId,
+                    metadata,
+                    createdBy: proceedBy,
+                    channels,
+                },
+            })
         );
 
-        return {
-            queue: EnumNotificationQueue.notification,
-            name: EnumNotificationProcess.publishTermPolicy,
-            data: { proceedBy, data: payload },
-            priority: EnumQueuePriority.medium,
-            idempotencyKey,
-        };
+        await this.notificationRepository.createManyInTx(tx, entries);
     }
 
-    /** The operator re-run of the publish effect: a fresh nonce sits in its data and its key, and in every batch key it adds. */
-    resendPublishTermPolicyEffect(
-        payload: INotificationPublishTermPolicyInput,
-        proceedBy: string
-    ): INotificationResendPublishTermPolicyEffect {
-        const resendNonce = this.databaseUtil.createId();
-        const idempotencyKey = this.helperStringService.fillPattern(
-            this.termPolicyResendPattern,
-            {
-                process: EnumNotificationProcess.resendPublishTermPolicy,
-                termPolicyId: payload.termPolicyId,
-                resendNonce,
+    async markEmailSentInTx(
+        tx: IDatabaseTransactionClient,
+        notificationIds: string[],
+        sentAt: Date,
+        updatedBy: string
+    ): Promise<void> {
+        await this.notificationRepository.markEmailSentInTx(
+            tx,
+            notificationIds,
+            sentAt,
+            updatedBy
+        );
+    }
+
+    emailPublishTermPolicyEffect(
+        data: ITermPolicyPublishPayload,
+        batchId: string,
+        proceedBy: string,
+        recipients: INotificationTermPolicyBatchRecipient[]
+    ): INotificationEmailPublishTermPolicyEffect {
+        const { resendNonce } = data;
+        const pattern =
+            resendNonce === null
+                ? this.termPolicyBatchPattern
+                : this.termPolicyBatchResendPattern;
+        const idempotencyKey = this.helperStringService.fillPattern(pattern, {
+            process: EnumNotificationEmailProcess.publishTermPolicy,
+            termPolicyId: data.termPolicyId,
+            batchId,
+            ...(resendNonce !== null && { resendNonce }),
+        });
+        const encryptedRecipients = recipients.map(
+            ({ userId, notificationId, email, username }) => {
+                const encryptedEmail = this.notificationUtil.encryptPayload(
+                    email,
+                    userId
+                );
+
+                return { userId, notificationId, encryptedEmail, username };
             }
         );
 
         return {
-            queue: EnumNotificationQueue.notification,
-            name: EnumNotificationProcess.resendPublishTermPolicy,
-            data: { proceedBy, data: { ...payload, resendNonce } },
+            queue: EnumNotificationQueue.notificationEmail,
+            name: EnumNotificationEmailProcess.publishTermPolicy,
+            data: {
+                data,
+                batchId,
+                proceedBy,
+                recipients: encryptedRecipients,
+            },
             priority: EnumQueuePriority.medium,
             idempotencyKey,
         };

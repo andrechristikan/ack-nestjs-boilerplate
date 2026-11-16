@@ -10,11 +10,9 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
-import { NotificationEmailTermPolicyService } from '@modules/notification/services/notification.email.term-policy.service';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
-import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -26,9 +24,7 @@ import { Module } from '@nestjs/common';
         NotificationUserSettingRepository,
         NotificationService,
         NotificationTemplateService,
-        NotificationTermPolicyService,
         NotificationEmailDeliveryService,
-        NotificationEmailTermPolicyService,
         NotificationPushDeliveryService,
         NotificationPushQueue,
         NotificationUtil,
@@ -36,8 +32,6 @@ import { Module } from '@nestjs/common';
     exports: [
         NotificationService,
         NotificationTemplateService,
-        NotificationTermPolicyService,
-        NotificationEmailTermPolicyService,
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
         NotificationUtil,

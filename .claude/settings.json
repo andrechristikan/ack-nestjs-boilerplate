@@ -2,6 +2,11 @@
     "$schema": "https://json.schemastore.org/claude-code-settings.json",
     "attribution": { "commit": "", "pr": "", "sessionUrl": false },
     "plansDirectory": ".scratch/plans",
+    "statusLine": {
+        "type": "command",
+        "command": "npx -y ccstatusline@2.2.34",
+        "padding": 0
+    },
     "permissions": {
         "defaultMode": "acceptEdits",
         "allow": [

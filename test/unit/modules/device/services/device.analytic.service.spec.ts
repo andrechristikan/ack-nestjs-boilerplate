@@ -70,7 +70,9 @@ describe('DeviceAnalyticService', () => {
 
     describe('getPushTokenRate', () => {
         it('computes the rate from devices with a push token and the total device count', async () => {
-            deviceAnalyticRepository.countWithPushToken.mockResolvedValue(4);
+            deviceOwnershipAnalyticRepository.countWithPushToken.mockResolvedValue(
+                4
+            );
             deviceAnalyticRepository.countDevices.mockResolvedValue(10);
             helperNumberService.percent.mockReturnValue(40);
 

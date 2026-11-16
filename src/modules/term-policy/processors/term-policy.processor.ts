@@ -1,11 +1,14 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type {
+    ITermPolicyBulkQueuePayload,
     ITermPolicyCopyContentPayload,
     ITermPolicyDeleteContentPayload,
+    ITermPolicyPublishPayload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyProcessCopyContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-copy-content.use-case';
 import { TermPolicyProcessDeleteContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-delete-content.use-case';
+import { TermPolicyProcessPublishUseCase } from '@modules/term-policy/use-cases/term-policy.process-publish.use-case';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -24,7 +27,8 @@ export class TermPolicyProcessor extends QueueProcessorBase {
         protected readonly cacheService: CacheService,
         protected readonly outboxService: OutboxService,
         private readonly termPolicyProcessDeleteContentUseCase: TermPolicyProcessDeleteContentUseCase,
-        private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase
+        private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase,
+        private readonly termPolicyProcessPublishUseCase: TermPolicyProcessPublishUseCase
     ) {
         super(sentryService, messageService, cacheService, outboxService);
     }
@@ -41,6 +45,10 @@ export class TermPolicyProcessor extends QueueProcessorBase {
             case EnumTermPolicyProcess.copyContent:
                 return await this.termPolicyProcessCopyContentUseCase.execute(
                     data as ITermPolicyCopyContentPayload
+                );
+            case EnumTermPolicyProcess.publish:
+                return await this.termPolicyProcessPublishUseCase.execute(
+                    data as ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>
                 );
             default: {
                 const message = this.messageService.setMessage(

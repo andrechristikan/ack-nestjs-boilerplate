@@ -14,6 +14,12 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
         });
     }
 
+    async countWithPushToken(): Promise<number> {
+        return this.databaseService.client.deviceOwnership.count({
+            where: { notificationToken: { not: null } },
+        });
+    }
+
     async countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
         const rows = await this.databaseService.client.deviceOwnership.groupBy({
             by: ['userId'],

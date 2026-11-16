@@ -6,8 +6,6 @@ import type {
     INotificationCreate,
     INotificationCreateEntry,
     INotificationReadState,
-    INotificationTermPolicyRecipientCreate,
-    INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationChannel,
@@ -34,40 +32,14 @@ export interface INotificationRepository {
         kind: EnumNotificationKind,
         payload: INotificationCreate
     ): Promise<void>;
-    findTermPolicyRecipients(
-        termPolicyId: string,
-        userIds: string[]
-    ): Promise<INotificationTermPolicyRecipientState[]>;
-    findTermPolicyRecipientsSendableByBatchIds(
-        termPolicyId: string,
-        batchIds: string[]
-    ): Promise<INotificationTermPolicyRecipientState[]>;
-    createTermPolicyRecipientsInTx(
+    createManyInTx(
         tx: IDatabaseTransactionClient,
-        proceedBy: string,
-        termPolicyId: string,
-        batchId: string,
-        entries: INotificationCreateEntry[],
-        recipients: INotificationTermPolicyRecipientCreate[]
+        entries: INotificationCreateEntry[]
     ): Promise<void>;
-    claimTermPolicyRecipients(
-        termPolicyId: string,
-        batchId: string,
-        userIds: string[],
-        claimNonce: string,
-        claimedAt: Date,
-        updatedBy: string
-    ): Promise<string[]>;
-    markTermPolicyRecipientsSent(
-        claimNonce: string,
-        userIds: string[],
+    markEmailSentInTx(
+        tx: IDatabaseTransactionClient,
         notificationIds: string[],
         sentAt: Date,
-        updatedBy: string
-    ): Promise<void>;
-    releaseTermPolicyRecipients(
-        claimNonce: string,
-        userIds: string[],
         updatedBy: string
     ): Promise<void>;
     markAsRead(notificationId: string, userId: string): Promise<boolean>;

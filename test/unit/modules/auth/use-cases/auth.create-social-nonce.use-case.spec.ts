@@ -3,24 +3,24 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthSocialService } from '@modules/auth/services/auth.social.service';
-import { UserCreateSocialNonceUseCase } from '@modules/user/use-cases/user.create-social-nonce.use-case';
+import { AuthCreateSocialNonceUseCase } from '@modules/auth/use-cases/auth.create-social-nonce.use-case';
 
-describe('UserCreateSocialNonceUseCase', () => {
+describe('AuthCreateSocialNonceUseCase', () => {
     const authSocialService: MockProxy<AuthSocialService> =
         mock<AuthSocialService>();
 
-    let useCase: UserCreateSocialNonceUseCase;
+    let useCase: AuthCreateSocialNonceUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                UserCreateSocialNonceUseCase,
+                AuthCreateSocialNonceUseCase,
                 { provide: AuthSocialService, useValue: authSocialService },
             ],
         }).compile();
-        useCase = module.get(UserCreateSocialNonceUseCase);
+        useCase = module.get(AuthCreateSocialNonceUseCase);
     });
 
     describe('execute', () => {

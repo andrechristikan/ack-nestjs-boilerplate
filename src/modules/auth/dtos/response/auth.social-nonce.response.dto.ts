@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
 /** @public */
-export const UserSocialNonceResponseSchema = z.object({
+export const AuthSocialNonceResponseSchema = z.object({
     nonce: z.string().meta({
         description:
             'One-time value the client passes to the social provider when it starts a sign-in',
@@ -15,6 +15,6 @@ export const UserSocialNonceResponseSchema = z.object({
 });
 
 /** @public */
-export type UserSocialNonceResponseDto = z.infer<
-    typeof UserSocialNonceResponseSchema
+export type AuthSocialNonceResponseDto = z.infer<
+    typeof AuthSocialNonceResponseSchema
 >;

@@ -264,7 +264,7 @@ export const NotificationKindContract: INotificationKindContracts = {
         deliveredChannels: [EnumNotificationChannel.silent],
         queuePriority: EnumQueuePriority.medium,
         secrets: [],
-        keyPattern: EnumNotificationKeyPattern.termPolicyPublishPattern,
+        keyPattern: null,
         metadataFields: ['type', 'version'],
         templateFields: ['type', 'version'],
         dateFields: [],

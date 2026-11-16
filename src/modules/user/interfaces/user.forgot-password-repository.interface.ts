@@ -5,7 +5,7 @@ import type {
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
 
-export interface IUserPasswordRepository {
+export interface IUserForgotPasswordRepository {
     findOneActiveByForgotPasswordToken(
         token: string
     ): Promise<IUserForgotPassword | null>;

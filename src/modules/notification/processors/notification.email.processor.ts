@@ -13,7 +13,6 @@ import type {
     INotificationEmailBulkQueuePayload,
     INotificationEmailSendPayload,
     INotificationEmailSendUnregisteredPayload,
-    INotificationPublishTermPolicyPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationEmailProcess,
@@ -27,6 +26,7 @@ import {
     AwsSESRateLimitDurationInMs,
     AwsSESRateLimitPerDuration,
 } from '@common/aws/constants/aws.constant';
+import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 
 @QueueProcessor(EnumNotificationQueue.notificationEmail, {
     limiter: {
@@ -76,7 +76,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 
                 case EnumNotificationEmailProcess.publishTermPolicy:
                     return await this.notificationEmailProcessPublishTermPolicyUseCase.execute(
-                        data as INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>
+                        data as INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>
                     );
 
                 default: {

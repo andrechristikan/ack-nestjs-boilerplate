@@ -7,7 +7,7 @@ import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
 import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/user.mobile-number.analytic.repository';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
-import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
+import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserSocialRepository } from '@modules/user/repositories/user.social.repository';
 import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
@@ -41,7 +41,7 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [
         UserRepository,
-        UserPasswordRepository,
+        UserForgotPasswordRepository,
         UserVerificationRepository,
         UserTwoFactorRepository,
         UserMobileNumberRepository,

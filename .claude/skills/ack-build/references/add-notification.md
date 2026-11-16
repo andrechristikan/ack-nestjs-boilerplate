@@ -38,10 +38,10 @@ Push properties come from the contract row; `NotificationPushProcessSendUseCase`
 
 A bulk email follows `publishTermPolicy` (`.claude/rules/notification.md`, Term-policy publish):
 
-1. The publishing transaction adds the publish effect; the resend adds its own with a fresh nonce through `OutboxService.add`.
-2. `NotificationProcessPublishTermPolicyUseCase` (`src/modules/notification/use-cases/notification.process-publish-term-policy.use-case.ts`) pages active recipients up to the bound (`UserService.getListActiveRecipientCursor`, `email.batchSize` per page) and passes each page to `NotificationTermPolicyService`; `UserService.getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
-3. Markers and batches: `NotificationRepository.createTermPolicyRecipientsInTx`, one transaction per batch, its batch row added on the same `tx`; a pending batch is re-added with only its sendable rows (`NotificationTermPolicyRecipientSendWhere`).
-4. Send: `NotificationEmailTermPolicyService.processPublishTermPolicy` (`src/modules/notification/services/notification.email.term-policy.service.ts`) claims, sends in bulk, and marks each success sent.
+1. The publishing transaction adds the publish effect (`TermPolicyService.publishByAdmin`); the resend adds `TermPolicyService.resendPublishEffect` with a fresh nonce through `OutboxService.addMany`. Both add the `publish` job on the owning module's queue.
+2. `TermPolicyProcessPublishUseCase` (`src/modules/term-policy/use-cases/term-policy.process-publish.use-case.ts`) pages active recipients up to the bound (`UserService.getListActiveRecipientCursor`, `email.batchSize` per page) and passes each page to `TermPolicyRecipientService`; `UserService.getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
+3. Markers and batches: the use case opens one transaction per fresh batch over `NotificationService.createManyInTx`, `TermPolicyRecipientService.createManyInTx`, and the batch row from `NotificationService.emailPublishTermPolicyEffect`; a pending batch is re-added with only its sendable rows (`TermPolicyRecipientSendWhere`).
+4. Send: `NotificationEmailProcessPublishTermPolicyUseCase` (`src/modules/notification/use-cases/notification.email.process-publish-term-policy.use-case.ts`) claims through the owning module's service, sends in bulk through `NotificationEmailDeliveryService.sendPublishTermPolicy`, and marks each success sent.
 
 ## 8. Verify
 

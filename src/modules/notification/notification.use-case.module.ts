@@ -1,3 +1,4 @@
+import { AwsModule } from '@common/aws/aws.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { NotificationModule } from '@modules/notification/notification.module';
@@ -7,7 +8,6 @@ import { NotificationMarkAsReadUseCase } from '@modules/notification/use-cases/n
 import { NotificationMarkAllAsReadUseCase } from '@modules/notification/use-cases/notification.mark-all-as-read.use-case';
 import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-cases/notification.update-user-setting.use-case';
 import { NotificationEmailProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.email.process-publish-term-policy.use-case';
-import { NotificationProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.process-publish-term-policy.use-case';
 import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
 import { UserModule } from '@modules/user/user.module';
@@ -26,7 +26,6 @@ import { Module } from '@nestjs/common';
         NotificationMarkAllAsReadUseCase,
         NotificationUpdateUserSettingUseCase,
         NotificationEmailProcessPublishTermPolicyUseCase,
-        NotificationProcessPublishTermPolicyUseCase,
         NotificationPushProcessCleanupTokensUseCase,
         NotificationPushProcessCleanupStaleTokensUseCase,
         NotificationProcessUseCase,
@@ -41,7 +40,6 @@ import { Module } from '@nestjs/common';
         NotificationMarkAllAsReadUseCase,
         NotificationUpdateUserSettingUseCase,
         NotificationEmailProcessPublishTermPolicyUseCase,
-        NotificationProcessPublishTermPolicyUseCase,
         NotificationPushProcessCleanupTokensUseCase,
         NotificationPushProcessCleanupStaleTokensUseCase,
         NotificationProcessUseCase,
@@ -49,6 +47,12 @@ import { Module } from '@nestjs/common';
         NotificationEmailProcessSendUnregisteredUseCase,
         NotificationPushProcessSendUseCase,
     ],
-    imports: [DeviceModule, UserModule, NotificationModule, FirebaseModule],
+    imports: [
+        DeviceModule,
+        UserModule,
+        NotificationModule,
+        AwsModule,
+        FirebaseModule,
+    ],
 })
 export class NotificationUseCaseModule {}

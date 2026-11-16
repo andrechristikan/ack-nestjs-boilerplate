@@ -46,16 +46,15 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import type {
-    INotificationPublishTermPolicyInput,
-    INotificationPublishTermPolicyPayload,
     INotificationRecipientRecord,
     INotificationSealedData,
     INotificationSnapshot,
+    INotificationTermPolicyBatchRecipient,
     INotificationWorkspaceInviteContext,
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
@@ -73,7 +72,6 @@ describe('NotificationService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
@@ -119,14 +117,14 @@ describe('NotificationService', () => {
             '{process}-{joinRequestId}-{userId}',
         'notification.idempotencyKey.userTermPolicyPattern':
             '{process}-{userId}-{termPolicyId}',
-        'notification.idempotencyKey.termPolicyPublishPattern':
-            '{process}-{termPolicyId}',
-        'notification.idempotencyKey.termPolicyResendPattern':
-            '{process}-{termPolicyId}-{resendNonce}',
         'notification.idempotencyKey.stepPattern': '{notificationId}-{step}',
+        'notification.idempotencyKey.termPolicyBatchPattern':
+            '{process}-{termPolicyId}-{batchId}',
+        'notification.idempotencyKey.termPolicyBatchResendPattern':
+            '{process}-{termPolicyId}-{batchId}-{resendNonce}',
     };
 
-    const publishPayload: INotificationPublishTermPolicyPayload = {
+    const publishPayload: ITermPolicyPublishPayload = {
         termPolicyId: 'term-policy-id',
         type: EnumTermPolicyType.privacy,
         version: 1,
@@ -171,7 +169,6 @@ describe('NotificationService', () => {
                 },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: MessageService, useValue: messageService },
                 NotificationService,
@@ -700,6 +697,78 @@ describe('NotificationService', () => {
         });
     });
 
+    describe('createManyInTx', () => {
+        const tx: IDatabaseTransactionClient =
+            mock<IDatabaseTransactionClient>();
+        const metadata = { type: EnumTermPolicyType.privacy, version: 1 };
+
+        it('forwards one entry per recipient with the contract channels on the same tx', async () => {
+            const { pendingChannels, deliveredChannels } =
+                NotificationKindContract.publishTermPolicy;
+            const channels = [...pendingChannels, ...deliveredChannels];
+
+            await service.createManyInTx(
+                tx,
+                EnumNotificationKind.publishTermPolicy,
+                metadata,
+                'admin-id',
+                [
+                    { userId: 'u1', notificationId: 'n-1' },
+                    { userId: 'u2', notificationId: 'n-2' },
+                ]
+            );
+
+            expect(
+                notificationRepository.createManyInTx
+            ).toHaveBeenCalledExactlyOnceWith(tx, [
+                {
+                    kind: EnumNotificationKind.publishTermPolicy,
+                    payload: {
+                        id: 'n-1',
+                        userId: 'u1',
+                        metadata,
+                        createdBy: 'admin-id',
+                        channels,
+                    },
+                },
+                {
+                    kind: EnumNotificationKind.publishTermPolicy,
+                    payload: {
+                        id: 'n-2',
+                        userId: 'u2',
+                        metadata,
+                        createdBy: 'admin-id',
+                        channels,
+                    },
+                },
+            ]);
+        });
+    });
+
+    describe('markEmailSentInTx', () => {
+        it('forwards the ids, the time, and the actor on the same tx', async () => {
+            const tx: IDatabaseTransactionClient =
+                mock<IDatabaseTransactionClient>();
+            const sentAt = new Date('2024-01-02T00:00:00.000Z');
+
+            await service.markEmailSentInTx(
+                tx,
+                ['n-1', 'n-2'],
+                sentAt,
+                'admin-id'
+            );
+
+            expect(
+                notificationRepository.markEmailSentInTx
+            ).toHaveBeenCalledExactlyOnceWith(
+                tx,
+                ['n-1', 'n-2'],
+                sentAt,
+                'admin-id'
+            );
+        });
+    });
+
     describe('cleanupTokensEffect', () => {
         it('returns the push cleanup effect for the failure tokens', () => {
             const result = service.cleanupTokensEffect('user-id', [
@@ -719,97 +788,99 @@ describe('NotificationService', () => {
         });
     });
 
-    describe('publishTermPolicyEffect', () => {
-        it('returns the main queue effect keyed by the term policy', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'publishTermPolicy-term-policy-id'
-            );
+    describe('emailPublishTermPolicyEffect', () => {
+        const recipients: INotificationTermPolicyBatchRecipient[] = [
+            {
+                userId: 'u1',
+                notificationId: 'n-1',
+                email: 'u1@example.com',
+                username: 'name-u1',
+            },
+            {
+                userId: 'u2',
+                notificationId: 'n-2',
+                email: 'u2@example.com',
+                username: 'name-u2',
+            },
+        ];
 
-            const result = service.publishTermPolicyEffect(
+        beforeEach(() => {
+            notificationUtil.encryptPayload.mockImplementation(
+                (value: string, context: string) => `enc-${context}-${value}`
+            );
+        });
+
+        it('returns the email queue effect with each address encrypted against its user id, keyed by the batch pattern', () => {
+            helperStringService.fillPattern.mockReturnValue('batch-key');
+
+            const result = service.emailPublishTermPolicyEffect(
                 publishPayload,
-                'admin-id'
+                'batch-1',
+                'admin-id',
+                recipients
             );
 
+            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+                'u1@example.com',
+                'u1'
+            );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{termPolicyId}',
+                '{process}-{termPolicyId}-{batchId}',
                 {
-                    process: EnumNotificationProcess.publishTermPolicy,
+                    process: EnumNotificationEmailProcess.publishTermPolicy,
                     termPolicyId: 'term-policy-id',
+                    batchId: 'batch-1',
                 }
             );
             expect(result).toEqual({
-                queue: EnumNotificationQueue.notification,
-                name: EnumNotificationProcess.publishTermPolicy,
-                data: { proceedBy: 'admin-id', data: publishPayload },
+                queue: EnumNotificationQueue.notificationEmail,
+                name: EnumNotificationEmailProcess.publishTermPolicy,
+                data: {
+                    data: publishPayload,
+                    batchId: 'batch-1',
+                    proceedBy: 'admin-id',
+                    recipients: [
+                        {
+                            userId: 'u1',
+                            notificationId: 'n-1',
+                            encryptedEmail: 'enc-u1-u1@example.com',
+                            username: 'name-u1',
+                        },
+                        {
+                            userId: 'u2',
+                            notificationId: 'n-2',
+                            encryptedEmail: 'enc-u2-u2@example.com',
+                            username: 'name-u2',
+                        },
+                    ],
+                },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'publishTermPolicy-term-policy-id',
+                idempotencyKey: 'batch-key',
             });
         });
-    });
 
-    describe('resendPublishTermPolicyEffect', () => {
-        const resendInput: INotificationPublishTermPolicyInput = {
-            termPolicyId: 'term-policy-id',
-            type: EnumTermPolicyType.privacy,
-            version: 1,
-            recipientCutoffAt: '2024-01-01T00:00:00.000Z',
-        };
+        it('keys the effect by the resend pattern and the nonce when the data carries one', () => {
+            const resendData = { ...publishPayload, resendNonce: 'nonce-1' };
+            helperStringService.fillPattern.mockReturnValue('resend-key');
 
-        it('draws a nonce into the data and the key', () => {
-            databaseUtil.createId.mockReturnValue('nonce-1');
-            helperStringService.fillPattern.mockReturnValue(
-                'resendPublishTermPolicy-term-policy-id-nonce-1'
-            );
-
-            const result = service.resendPublishTermPolicyEffect(
-                resendInput,
-                'admin-id'
+            const result = service.emailPublishTermPolicyEffect(
+                resendData,
+                'batch-1',
+                'admin-id',
+                recipients
             );
 
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{termPolicyId}-{resendNonce}',
+                '{process}-{termPolicyId}-{batchId}-{resendNonce}',
                 {
-                    process: EnumNotificationProcess.resendPublishTermPolicy,
+                    process: EnumNotificationEmailProcess.publishTermPolicy,
                     termPolicyId: 'term-policy-id',
+                    batchId: 'batch-1',
                     resendNonce: 'nonce-1',
                 }
             );
-            expect(result).toEqual({
-                queue: EnumNotificationQueue.notification,
-                name: EnumNotificationProcess.resendPublishTermPolicy,
-                data: {
-                    proceedBy: 'admin-id',
-                    data: { ...resendInput, resendNonce: 'nonce-1' },
-                },
-                priority: EnumQueuePriority.medium,
-                idempotencyKey:
-                    'resendPublishTermPolicy-term-policy-id-nonce-1',
-            });
-        });
-
-        it('returns a distinct key for each call', () => {
-            databaseUtil.createId
-                .mockReturnValueOnce('nonce-1')
-                .mockReturnValueOnce('nonce-2');
-            helperStringService.fillPattern.mockImplementation(
-                (_pattern, values) => `${values.process}-${values.resendNonce}`
-            );
-
-            const first = service.resendPublishTermPolicyEffect(
-                resendInput,
-                'admin-id'
-            );
-            const second = service.resendPublishTermPolicyEffect(
-                resendInput,
-                'admin-id'
-            );
-
-            expect(first.idempotencyKey).toBe(
-                'resendPublishTermPolicy-nonce-1'
-            );
-            expect(second.idempotencyKey).toBe(
-                'resendPublishTermPolicy-nonce-2'
-            );
+            expect(result.idempotencyKey).toBe('resend-key');
+            expect(result.data.data).toEqual(resendData);
         });
     });
 

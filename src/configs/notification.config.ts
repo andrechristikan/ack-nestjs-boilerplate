@@ -12,8 +12,6 @@ export interface IConfigNotification {
         joinRequestPattern: string;
         termPolicyBatchPattern: string;
         termPolicyBatchResendPattern: string;
-        termPolicyResendPattern: string;
-        termPolicyPublishPattern: string;
         userTermPolicyPattern: string;
         stepPattern: string;
     };
@@ -31,8 +29,6 @@ export default registerAs('notification', (): IConfigNotification => ({
         termPolicyBatchPattern: '{process}-{termPolicyId}-{batchId}',
         termPolicyBatchResendPattern:
             '{process}-{termPolicyId}-{batchId}-{resendNonce}',
-        termPolicyResendPattern: '{process}-{termPolicyId}-{resendNonce}',
-        termPolicyPublishPattern: '{process}-{termPolicyId}',
         userTermPolicyPattern: '{process}-{userId}-{termPolicyId}',
         stepPattern: '{notificationId}-{step}',
     },

@@ -42,7 +42,7 @@ import type {
     IUserForgotPassword,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
+import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -64,8 +64,8 @@ import { NotificationService } from '@modules/notification/services/notification
 import { Duration } from 'luxon';
 
 describe('UserPasswordService', () => {
-    const userPasswordRepository: MockProxy<UserPasswordRepository> =
-        mock<UserPasswordRepository>();
+    const userForgotPasswordRepository: MockProxy<UserForgotPasswordRepository> =
+        mock<UserForgotPasswordRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const helperHashService: MockProxy<HelperHashService> =
@@ -208,8 +208,8 @@ describe('UserPasswordService', () => {
             providers: [
                 UserPasswordService,
                 {
-                    provide: UserPasswordRepository,
-                    useValue: userPasswordRepository,
+                    provide: UserForgotPasswordRepository,
+                    useValue: userForgotPasswordRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserUtil, useValue: userUtil },
@@ -506,7 +506,9 @@ describe('UserPasswordService', () => {
         const lastForgot = {
             createdAt: new Date('2026-03-01T00:00:00.000Z'),
         } as Awaited<
-            ReturnType<UserPasswordRepository['findOneLatestByForgotPassword']>
+            ReturnType<
+                UserForgotPasswordRepository['findOneLatestByForgotPassword']
+            >
         >;
 
         beforeEach(() => {
@@ -548,7 +550,7 @@ describe('UserPasswordService', () => {
 
         it('returns the active user and a fresh reset payload when there is no previous request', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
+            userForgotPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 null
             );
 
@@ -561,7 +563,7 @@ describe('UserPasswordService', () => {
 
         it('returns the payload when the previous request is past its resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
+            userForgotPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 lastForgot
             );
             userUtil.isInsideResendWindow.mockReturnValue(false);
@@ -584,14 +586,14 @@ describe('UserPasswordService', () => {
             ).resolves.toBeNull();
 
             expect(
-                userPasswordRepository.findOneLatestByForgotPassword
+                userForgotPasswordRepository.findOneLatestByForgotPassword
             ).not.toHaveBeenCalled();
             expect(helperStringService.random).not.toHaveBeenCalled();
         });
 
         it('returns null inside the resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
-            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
+            userForgotPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 lastForgot
             );
             userUtil.isInsideResendWindow.mockReturnValue(true);
@@ -645,7 +647,7 @@ describe('UserPasswordService', () => {
             );
 
             expect(
-                userPasswordRepository.createReplacingUnusedInTx
+                userForgotPasswordRepository.createReplacingUnusedInTx
             ).toHaveBeenCalledWith(
                 tx,
                 'user-hollow',
@@ -679,13 +681,13 @@ describe('UserPasswordService', () => {
                 forgotEffect,
             ]);
             expect(
-                userPasswordRepository.createReplacingUnusedInTx
+                userForgotPasswordRepository.createReplacingUnusedInTx
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
         it('adds no effect when the replace rejects', async () => {
             const cause = new Error('write');
-            userPasswordRepository.createReplacingUnusedInTx.mockRejectedValue(
+            userForgotPasswordRepository.createReplacingUnusedInTx.mockRejectedValue(
                 cause
             );
 
@@ -710,7 +712,7 @@ describe('UserPasswordService', () => {
         } as IUserForgotPassword;
 
         it('validates changePassword.forgotAllowed before the read', async () => {
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+            userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 reset
             );
 
@@ -725,7 +727,7 @@ describe('UserPasswordService', () => {
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledBefore(
-                userPasswordRepository.findOneActiveByForgotPasswordToken
+                userForgotPasswordRepository.findOneActiveByForgotPasswordToken
             );
         });
 
@@ -740,13 +742,13 @@ describe('UserPasswordService', () => {
 
             expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
             expect(
-                userPasswordRepository.findOneActiveByForgotPasswordToken
+                userForgotPasswordRepository.findOneActiveByForgotPasswordToken
             ).not.toHaveBeenCalled();
         });
 
         it('hashes the token and returns the active request', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+            userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 reset
             );
 
@@ -758,12 +760,12 @@ describe('UserPasswordService', () => {
                 'raw-token'
             );
             expect(
-                userPasswordRepository.findOneActiveByForgotPasswordToken
+                userForgotPasswordRepository.findOneActiveByForgotPasswordToken
             ).toHaveBeenCalledWith('hashed-token');
         });
 
         it('throws UserTokenInvalidException when no active request matches', async () => {
-            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+            userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 null
             );
 
@@ -779,7 +781,7 @@ describe('UserPasswordService', () => {
 
     describe('markResetUsedInTx', () => {
         it('marks the request used on the given transaction', async () => {
-            userPasswordRepository.markUsedInTx.mockResolvedValue(true);
+            userForgotPasswordRepository.markUsedInTx.mockResolvedValue(true);
 
             await expect(
                 service.markResetUsedInTx(
@@ -790,16 +792,13 @@ describe('UserPasswordService', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(userPasswordRepository.markUsedInTx).toHaveBeenCalledWith(
-                tx,
-                'forgot-hollow',
-                usedAt,
-                'user-hollow'
-            );
+            expect(
+                userForgotPasswordRepository.markUsedInTx
+            ).toHaveBeenCalledWith(tx, 'forgot-hollow', usedAt, 'user-hollow');
         });
 
         it('throws UserTokenInvalidException when the request was already used', async () => {
-            userPasswordRepository.markUsedInTx.mockResolvedValue(false);
+            userForgotPasswordRepository.markUsedInTx.mockResolvedValue(false);
 
             await expect(
                 service.markResetUsedInTx(
@@ -827,7 +826,7 @@ describe('UserPasswordService', () => {
             ).resolves.toBeUndefined();
 
             expect(
-                userPasswordRepository.markUnusedUsedByUserInTx
+                userForgotPasswordRepository.markUnusedUsedByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 'user-hollow');
         });
     });

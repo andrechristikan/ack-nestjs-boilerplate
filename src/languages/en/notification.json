@@ -132,8 +132,7 @@
                 "tokensPending": "{count} push tokens pending retry."
             },
             "send": "Push notification {process} sent."
-        },
-        "publishTermPolicy": "Publish term policy notification processed."
+        }
     },
     "error": {
         "notFound": "Notification not found.",

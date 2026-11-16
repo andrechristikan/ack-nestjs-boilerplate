@@ -1,5 +1,5 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { INotificationResendPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
+import type { ITermPolicyPublishEffect } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -24,10 +24,9 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {
-    EnumNotificationProcess,
-    EnumNotificationQueue,
-} from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -41,8 +40,6 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
@@ -88,9 +85,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
-    const resendEffect: INotificationResendPublishTermPolicyEffect = {
-        queue: EnumNotificationQueue.notification,
-        name: EnumNotificationProcess.resendPublishTermPolicy,
+    const resendEffect: ITermPolicyPublishEffect = {
+        queue: EnumTermPolicyQueue.termPolicy,
+        name: EnumTermPolicyProcess.publish,
         data: {
             proceedBy: 'user-1',
             data: {
@@ -102,7 +99,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             },
         },
         priority: EnumQueuePriority.medium,
-        idempotencyKey: 'resendPublishTermPolicy-term-policy-1-nonce-1',
+        idempotencyKey: 'publish-term-policy-1-nonce-1',
     };
 
     let useCase: TermPolicyResendEmailByAdminUseCase;
@@ -116,9 +113,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
         );
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
-        notificationService.resendPublishTermPolicyEffect.mockReturnValue(
-            resendEffect
-        );
+        termPolicyService.resendPublishEffect.mockReturnValue(resendEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -126,7 +121,6 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 { provide: TermPolicyService, useValue: termPolicyService },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
@@ -149,9 +143,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(
-                notificationService.resendPublishTermPolicyEffect
-            ).toHaveBeenCalledWith(
+            expect(termPolicyService.resendPublishEffect).toHaveBeenCalledWith(
                 {
                     termPolicyId: 'term-policy-1',
                     type: EnumTermPolicyType.privacy,

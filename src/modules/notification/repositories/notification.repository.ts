@@ -1,24 +1,16 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    NotificationReadStateSelect,
-    NotificationTermPolicyRecipientSendSelect,
-    NotificationTermPolicyRecipientSendWhere,
-    NotificationTermPolicyRecipientStateSelect,
-} from '@modules/notification/constants/notification.constant';
+import { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationCreate,
     INotificationCreateEntry,
     INotificationReadState,
-    INotificationTermPolicyRecipientCreate,
-    INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
 import type { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -154,38 +146,9 @@ export class NotificationRepository implements INotificationRepository {
         await tx.notification.create({ data: createData });
     }
 
-    async findTermPolicyRecipients(
-        termPolicyId: string,
-        userIds: string[]
-    ): Promise<INotificationTermPolicyRecipientState[]> {
-        return this.databaseService.client.termPolicyRecipient.findMany({
-            where: { termPolicyId, userId: { in: userIds } },
-            select: NotificationTermPolicyRecipientStateSelect,
-        });
-    }
-
-    async findTermPolicyRecipientsSendableByBatchIds(
-        termPolicyId: string,
-        batchIds: string[]
-    ): Promise<INotificationTermPolicyRecipientState[]> {
-        return this.databaseService.client.termPolicyRecipient.findMany({
-            where: {
-                ...NotificationTermPolicyRecipientSendWhere,
-                termPolicyId,
-                batchId: { in: batchIds },
-            },
-            select: NotificationTermPolicyRecipientStateSelect,
-            orderBy: { userId: EnumPaginationOrderDirectionType.asc },
-        });
-    }
-
-    async createTermPolicyRecipientsInTx(
+    async createManyInTx(
         tx: IDatabaseTransactionClient,
-        proceedBy: string,
-        termPolicyId: string,
-        batchId: string,
-        entries: INotificationCreateEntry[],
-        recipients: INotificationTermPolicyRecipientCreate[]
+        entries: INotificationCreateEntry[]
     ): Promise<void> {
         const today = this.helperDateService.create();
 
@@ -193,80 +156,21 @@ export class NotificationRepository implements INotificationRepository {
             const createData = this.buildCreateData(kind, payload, today);
             await tx.notification.create({ data: createData });
         }
-
-        await tx.termPolicyRecipient.createMany({
-            data: recipients.map(({ userId, notificationId }) => ({
-                termPolicyId,
-                userId,
-                notificationId,
-                batchId,
-                sentAt: null,
-                claimedAt: null,
-                claimNonce: null,
-                createdBy: proceedBy,
-                updatedBy: proceedBy,
-            })),
-        });
     }
 
-    async claimTermPolicyRecipients(
-        termPolicyId: string,
-        batchId: string,
-        userIds: string[],
-        claimNonce: string,
-        claimedAt: Date,
-        updatedBy: string
-    ): Promise<string[]> {
-        await this.databaseService.client.termPolicyRecipient.updateMany({
-            where: {
-                ...NotificationTermPolicyRecipientSendWhere,
-                termPolicyId,
-                batchId,
-                userId: { in: userIds },
-            },
-            data: { claimedAt, claimNonce, updatedBy },
-        });
-
-        const rows =
-            await this.databaseService.client.termPolicyRecipient.findMany({
-                where: { termPolicyId, batchId, claimNonce },
-                select: NotificationTermPolicyRecipientSendSelect,
-            });
-
-        return rows.map(({ userId }) => userId);
-    }
-
-    async markTermPolicyRecipientsSent(
-        claimNonce: string,
-        userIds: string[],
+    async markEmailSentInTx(
+        tx: IDatabaseTransactionClient,
         notificationIds: string[],
         sentAt: Date,
         updatedBy: string
     ): Promise<void> {
-        await this.databaseService.withTransaction(async tx => {
-            await tx.termPolicyRecipient.updateMany({
-                where: { claimNonce, userId: { in: userIds }, sentAt: null },
-                data: { sentAt, updatedBy },
-            });
-            await tx.notificationDelivery.updateMany({
-                where: {
-                    notificationId: { in: notificationIds },
-                    channel: EnumNotificationChannel.email,
-                    sentAt: null,
-                },
-                data: { processedAt: sentAt, sentAt, updatedBy },
-            });
-        });
-    }
-
-    async releaseTermPolicyRecipients(
-        claimNonce: string,
-        userIds: string[],
-        updatedBy: string
-    ): Promise<void> {
-        await this.databaseService.client.termPolicyRecipient.updateMany({
-            where: { claimNonce, userId: { in: userIds }, sentAt: null },
-            data: { claimedAt: null, claimNonce: null, updatedBy },
+        await tx.notificationDelivery.updateMany({
+            where: {
+                notificationId: { in: notificationIds },
+                channel: EnumNotificationChannel.email,
+                sentAt: null,
+            },
+            data: { processedAt: sentAt, sentAt, updatedBy },
         });
     }
 

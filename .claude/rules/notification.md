@@ -1,6 +1,8 @@
 ---
 paths:
     - 'src/modules/notification/**'
+    - 'src/modules/term-policy/**/term-policy.recipient*'
+    - 'src/modules/term-policy/use-cases/term-policy.process-publish.use-case.ts'
 ---
 
 # Notifications
@@ -30,10 +32,11 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 ## Term-policy publish
 
 - A broadcast keeps its own pipeline. A recipient set too large for a payload carries a fixed bound from a stable column, never the current time.
-- Each page marks its unmarked users with a `Notification` row and one `TermPolicyRecipient` under a batch id, and adds the batch row (`termPolicyBatchPattern`) on the same `tx`.
-- The send claims its rows (`claimedAt`, `claimNonce`), which keeps delivery at most once per recipient.
-- A definite SES failure releases the claim and throws a retrying `QueueException`.
-- An unknown outcome keeps the claim and throws `NotificationEmailDeliveryUnknownException`.
+- The term-policy module owns `TermPolicyRecipient`, the fan-out, and the `publish` job on its `termPolicy` queue; a resend is a `publish` job keyed by `resendPublishPattern`, with no job name, process use case, or `execute` argument of its own. The notification module owns the `Notification` and `NotificationDelivery` rows, the batch job, and its SES send.
+- The batch job runs on `notificationEmail`, so every SES call passes one limiter: no second email queue, and no batch send on the `termPolicy` queue. `NotificationService.emailPublishTermPolicyEffect` builds it (`termPolicyBatchPattern`, `termPolicyBatchResendPattern` with a resend nonce).
+- `TermPolicyProcessPublishUseCase` opens one transaction per fresh batch: `NotificationService.createManyInTx`, `TermPolicyRecipientService.createManyInTx` under a batch id, and the batch row.
+- `NotificationEmailProcessPublishTermPolicyUseCase` sequences the send: `TermPolicyRecipientService.claim` (`claimedAt`, `claimNonce`), which keeps delivery at most once per recipient; `NotificationEmailDeliveryService.sendPublishTermPolicy`; one transaction over `TermPolicyRecipientService.markSentInTx` and `NotificationService.markEmailSentInTx`; `TermPolicyRecipientService.release` for a definite SES failure.
+- `NotificationEmailDeliveryService.assertSettled` throws a retrying `QueueException` for a definite failure and `NotificationEmailDeliveryUnknownException`, the claim kept, for an unknown outcome.
 - When both happen, the `QueueException` wins.
 
 ## Live by design

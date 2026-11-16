@@ -50,3 +50,23 @@ export const TermPolicyAcceptanceProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'user.error.guardMissing',
     },
 ];
+
+/** @public */
+export const TermPolicyRecipientSendWhere = {
+    sentAt: null,
+    claimedAt: null,
+} satisfies Prisma.TermPolicyRecipientWhereInput;
+
+/** @public */
+export const TermPolicyRecipientStateSelect = {
+    userId: true,
+    notificationId: true,
+    batchId: true,
+    sentAt: true,
+    claimedAt: true,
+} satisfies Prisma.TermPolicyRecipientSelect;
+
+/** @public */
+export const TermPolicyRecipientSendSelect = {
+    userId: true,
+} satisfies Prisma.TermPolicyRecipientSelect;

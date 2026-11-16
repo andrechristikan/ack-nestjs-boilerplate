@@ -32,7 +32,7 @@ import type {
     IUserPasswordSet,
     IUserPasswordTemporary,
 } from '@modules/user/interfaces/user.interface';
-import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
+import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -55,7 +55,7 @@ export class UserPasswordService {
     private readonly forgotLinkPattern: string;
 
     constructor(
-        private readonly userPasswordRepository: UserPasswordRepository,
+        private readonly userForgotPasswordRepository: UserForgotPasswordRepository,
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
         private readonly helperHashService: HelperHashService,
@@ -269,7 +269,7 @@ export class UserPasswordService {
         }
 
         const lastForgotPassword =
-            await this.userPasswordRepository.findOneLatestByForgotPassword(
+            await this.userForgotPasswordRepository.findOneLatestByForgotPassword(
                 user.id
             );
         if (lastForgotPassword) {
@@ -298,7 +298,7 @@ export class UserPasswordService {
         const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
 
         await this.outboxService.withTransaction(async tx => {
-            await this.userPasswordRepository.createReplacingUnusedInTx(
+            await this.userForgotPasswordRepository.createReplacingUnusedInTx(
                 tx,
                 userId,
                 email,
@@ -340,7 +340,7 @@ export class UserPasswordService {
 
         const hashedToken = this.helperHashService.sha256Hash(token);
         const reset =
-            await this.userPasswordRepository.findOneActiveByForgotPasswordToken(
+            await this.userForgotPasswordRepository.findOneActiveByForgotPasswordToken(
                 hashedToken
             );
         if (!reset) {
@@ -356,12 +356,13 @@ export class UserPasswordService {
         usedAt: Date,
         userId: string
     ): Promise<void> {
-        const isMarkedUsed = await this.userPasswordRepository.markUsedInTx(
-            tx,
-            forgotPasswordId,
-            usedAt,
-            userId
-        );
+        const isMarkedUsed =
+            await this.userForgotPasswordRepository.markUsedInTx(
+                tx,
+                forgotPasswordId,
+                usedAt,
+                userId
+            );
         if (!isMarkedUsed) {
             throw new UserTokenInvalidException();
         }
@@ -372,7 +373,7 @@ export class UserPasswordService {
         userId: string,
         updatedBy: string
     ): Promise<void> {
-        await this.userPasswordRepository.markUnusedUsedByUserInTx(
+        await this.userForgotPasswordRepository.markUnusedUsedByUserInTx(
             tx,
             userId,
             updatedBy

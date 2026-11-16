@@ -1,5 +1,4 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { INotificationPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -36,11 +35,6 @@ import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import {
-    EnumNotificationProcess,
-    EnumNotificationQueue,
-} from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumActivityLogAction,
@@ -66,6 +60,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
+    ITermPolicyPublishEffect,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
@@ -89,8 +84,6 @@ describe('TermPolicyService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const configGet = vi.fn<(key: string) => string | undefined>();
@@ -183,7 +176,11 @@ describe('TermPolicyService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        configGet.mockReturnValue('{process}-{termPolicyId}');
+        configGet.mockImplementation((key: string) =>
+            key === 'termPolicy.idempotencyKey.resendPublishPattern'
+                ? '{process}-{termPolicyId}-{resendNonce}'
+                : '{process}-{termPolicyId}'
+        );
         awsS3Service.isInitialized.mockReturnValue(true);
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
         termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
@@ -214,7 +211,6 @@ describe('TermPolicyService', () => {
                 { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
@@ -1361,9 +1357,9 @@ describe('TermPolicyService', () => {
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'copyContent-term-policy-1',
                 };
-                const publishEffect: INotificationPublishTermPolicyEffect = {
-                    queue: EnumNotificationQueue.notification,
-                    name: EnumNotificationProcess.publishTermPolicy,
+                const publishEffect: ITermPolicyPublishEffect = {
+                    queue: EnumTermPolicyQueue.termPolicy,
+                    name: EnumTermPolicyProcess.publish,
                     data: {
                         proceedBy: 'admin-1',
                         data: {
@@ -1375,16 +1371,13 @@ describe('TermPolicyService', () => {
                         },
                     },
                     priority: EnumQueuePriority.medium,
-                    idempotencyKey: 'publishTermPolicy-term-policy-1',
+                    idempotencyKey: 'publish-term-policy-1',
                 };
-                helperStringService.fillPattern.mockReturnValue(
-                    'copyContent-term-policy-1'
-                );
+                helperStringService.fillPattern
+                    .mockReturnValueOnce('copyContent-term-policy-1')
+                    .mockReturnValueOnce('publish-term-policy-1');
                 helperDateService.formatToIso.mockReturnValue(
                     '2026-01-01T00:00:00.000Z'
-                );
-                notificationService.publishTermPolicyEffect.mockReturnValue(
-                    publishEffect
                 );
 
                 await service.publishByAdmin(
@@ -1407,17 +1400,16 @@ describe('TermPolicyService', () => {
                 expect(helperDateService.formatToIso).toHaveBeenCalledWith(
                     timestamp
                 );
-                expect(
-                    notificationService.publishTermPolicyEffect
-                ).toHaveBeenCalledWith(
+                expect(configGet).toHaveBeenCalledWith(
+                    'termPolicy.idempotencyKey.publishPattern'
+                );
+                expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
+                    2,
+                    '{process}-{termPolicyId}',
                     {
+                        process: EnumTermPolicyProcess.publish,
                         termPolicyId: 'term-policy-1',
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
-                        resendNonce: null,
-                    },
-                    'admin-1'
+                    }
                 );
                 expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
                 expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -1743,6 +1735,52 @@ describe('TermPolicyService', () => {
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
+        });
+    });
+
+    describe('resendPublishEffect', () => {
+        it('returns a resend effect on the term-policy queue with one fresh nonce in its data and its key', () => {
+            const resendEffect: ITermPolicyPublishEffect = {
+                queue: EnumTermPolicyQueue.termPolicy,
+                name: EnumTermPolicyProcess.publish,
+                data: {
+                    proceedBy: 'admin-1',
+                    data: {
+                        termPolicyId: 'term-policy-1',
+                        type: EnumTermPolicyType.privacy,
+                        version: 1,
+                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                        resendNonce: 'nonce-1',
+                    },
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'publish-term-policy-1-nonce-1',
+            };
+            databaseUtil.createId.mockReturnValue('nonce-1');
+            helperStringService.fillPattern.mockReturnValue(
+                'publish-term-policy-1-nonce-1'
+            );
+
+            const effect = service.resendPublishEffect(
+                {
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                    recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                },
+                'admin-1'
+            );
+
+            expect(databaseUtil.createId).toHaveBeenCalledTimes(1);
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                '{process}-{termPolicyId}-{resendNonce}',
+                {
+                    process: EnumTermPolicyProcess.publish,
+                    termPolicyId: 'term-policy-1',
+                    resendNonce: 'nonce-1',
+                }
+            );
+            expect(effect).toEqual(resendEffect);
         });
     });
 

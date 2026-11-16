@@ -1,9 +1,9 @@
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationCursorReturn } from '@common/pagination/interfaces/pagination.interface';
 import type {
-    INotificationTermPolicyPage,
-    INotificationTermPolicyRecipientState,
-} from '@modules/notification/interfaces/notification.interface';
+    ITermPolicyRecipientPage,
+    ITermPolicyRecipientState,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 
 export function buildTermPolicyMarker(
@@ -11,7 +11,7 @@ export function buildTermPolicyMarker(
     batchId: string,
     sentAt: Date | null = null,
     claimedAt: Date | null = null
-): INotificationTermPolicyRecipientState {
+): ITermPolicyRecipientState {
     return {
         userId,
         notificationId: `n-${userId}`,
@@ -25,7 +25,7 @@ export function buildTermPolicyPage(
     users: IUserRecipient[],
     freshUsers: IUserRecipient[] = users,
     pendingBatchIds: string[] = []
-): INotificationTermPolicyPage {
+): ITermPolicyRecipientPage {
     return { users, freshUsers, pendingBatchIds };
 }
 

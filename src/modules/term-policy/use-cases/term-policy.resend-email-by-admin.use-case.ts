@@ -7,7 +7,6 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -21,7 +20,6 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         private readonly termPolicyService: TermPolicyService,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -38,7 +36,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         const recipientCutoffAt = this.helperDateService.formatToIso(
             termPolicy.publishedAt!
         );
-        const resend = this.notificationService.resendPublishTermPolicyEffect(
+        const resend = this.termPolicyService.resendPublishEffect(
             {
                 termPolicyId: termPolicy.id,
                 type: termPolicy.type,

@@ -58,7 +58,7 @@ export class DeviceAnalyticService {
 
     async getPushTokenRate(): Promise<IAnalyticMetricRate> {
         const [withToken, total] = await Promise.all([
-            this.deviceAnalyticRepository.countWithPushToken(),
+            this.deviceOwnershipAnalyticRepository.countWithPushToken(),
             this.deviceAnalyticRepository.countDevices(),
         ]);
         const rate = this.helperNumberService.percent(withToken, total);

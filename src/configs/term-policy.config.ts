@@ -9,6 +9,8 @@ export interface IConfigTermPolicy {
     };
     idempotencyKey: {
         copyContentPattern: string;
+        publishPattern: string;
+        resendPublishPattern: string;
     };
 }
 
@@ -20,5 +22,7 @@ export default registerAs('termPolicy', (): IConfigTermPolicy => ({
     },
     idempotencyKey: {
         copyContentPattern: '{process}-{termPolicyId}',
+        publishPattern: '{process}-{termPolicyId}',
+        resendPublishPattern: '{process}-{termPolicyId}-{resendNonce}',
     },
 }));

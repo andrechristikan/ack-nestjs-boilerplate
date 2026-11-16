@@ -15,6 +15,7 @@
     "queue": {
         "deleteContent": "Deleted term policy content.",
         "copyContent": "Copied term policy {termPolicyId} content to the public bucket.",
+        "publish": "Publish term policy notification processed.",
         "error": {
             "copyContent": "Copy of term policy {termPolicyId} content to the public bucket failed.",
             "unknownProcess": "No {process} job handler exists."

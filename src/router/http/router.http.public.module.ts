@@ -1,3 +1,5 @@
+import { AuthPublicController } from '@modules/auth/controllers/auth.public.controller';
+import { AuthUseCaseModule } from '@modules/auth/auth.use-case.module';
 import { CountryPublicController } from '@modules/country/controllers/country.public.controller';
 import { CountryUseCaseModule } from '@modules/country/country.use-case.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
@@ -12,6 +14,7 @@ import { Module } from '@nestjs/common';
 
 @Module({
     controllers: [
+        AuthPublicController,
         CountryPublicController,
         HelloPublicController,
         UserPublicController,
@@ -21,6 +24,7 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
+        AuthUseCaseModule,
         CountryUseCaseModule,
         HelloUseCaseModule,
         TermPolicyUseCaseModule,

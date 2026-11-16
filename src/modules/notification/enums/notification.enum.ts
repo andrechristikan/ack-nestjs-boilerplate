@@ -8,8 +8,6 @@ export enum EnumNotificationQueue {
 /** @public */
 export enum EnumNotificationProcess {
     notify = 'notify',
-    publishTermPolicy = 'publishTermPolicy',
-    resendPublishTermPolicy = 'resendPublishTermPolicy',
 }
 
 /** @public */
@@ -72,5 +70,4 @@ export enum EnumNotificationKeyPattern {
     referencePattern = 'referencePattern',
     joinRequestPattern = 'joinRequestPattern',
     userTermPolicyPattern = 'userTermPolicyPattern',
-    termPolicyPublishPattern = 'termPolicyPublishPattern',
 }

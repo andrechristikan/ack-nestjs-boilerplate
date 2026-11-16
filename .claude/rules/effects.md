@@ -12,7 +12,7 @@ paths:
 A request's side effect (notification, activity entry, session cache purge, cache invalidation, S3 object delete) is an `Outbox` row written in its write's transaction and dispatched to its BullMQ queue after the commit. The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. A failed dispatch never changes the response. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
 
 - An exception the request throws stays its answer.
-- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add`: a failed insert answers as `database.md` maps it, and a failed dispatch leaves the row `pending` and the route answers 200.
+- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add` or `addMany`: a failed insert answers as `database.md` maps it, and a failed dispatch leaves the row `pending` and the route answers 200.
 
 ## Effects
 

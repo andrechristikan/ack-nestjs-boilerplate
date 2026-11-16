@@ -5,7 +5,7 @@ import { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserCreateSocialNonceUseCase implements IAppUseCase<
+export class AuthCreateSocialNonceUseCase implements IAppUseCase<
     [],
     IResponseReturn<IAuthSocialNonce>
 > {

@@ -7,10 +7,16 @@ import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import type {
+    Prisma,
     TermPolicy,
     TermPolicyUserAcceptance,
 } from '@generated/prisma-client/client';
-import type { IUserRef } from '@modules/user/interfaces/user.interface';
+import type { TermPolicyRecipientStateSelect } from '@modules/term-policy/constants/term-policy.constant';
+import type {
+    IUserRecipient,
+    IUserRef,
+} from '@modules/user/interfaces/user.interface';
+import type { INotificationTermPolicyBatchRecipient } from '@modules/notification/interfaces/notification.interface';
 
 export interface ITermPolicyUserAcceptance extends TermPolicyUserAcceptance {
     user: IUserRef;
@@ -97,4 +103,60 @@ export interface ITermPolicyCopyContentEffect extends IOutboxEffect {
     queue: EnumTermPolicyQueue.termPolicy;
     name: EnumTermPolicyProcess.copyContent;
     data: ITermPolicyCopyContentPayload;
+}
+
+export interface ITermPolicyPublishPayload {
+    termPolicyId: string;
+    type: EnumTermPolicyType;
+    version: number;
+    recipientCutoffAt: string;
+    resendNonce: string | null;
+}
+
+export type ITermPolicyPublishInput = Omit<
+    ITermPolicyPublishPayload,
+    'resendNonce'
+>;
+
+export interface ITermPolicyBulkQueuePayload<T> {
+    proceedBy: string;
+    data: T;
+}
+
+export interface ITermPolicyPublishEffect extends IOutboxEffect {
+    queue: EnumTermPolicyQueue.termPolicy;
+    name: EnumTermPolicyProcess.publish;
+    data: ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>;
+}
+
+export type ITermPolicyRecipientState = Prisma.TermPolicyRecipientGetPayload<{
+    select: typeof TermPolicyRecipientStateSelect;
+}>;
+
+export interface ITermPolicyRecipientCreate {
+    userId: string;
+    notificationId: string;
+}
+
+export type ITermPolicyRecipientUser = IUserRecipient;
+
+export interface ITermPolicyRecipientPage {
+    users: ITermPolicyRecipientUser[];
+    freshUsers: ITermPolicyRecipientUser[];
+    pendingBatchIds: string[];
+}
+
+export interface ITermPolicyRecipientPending {
+    sendableMarkers: ITermPolicyRecipientState[];
+    offPageUserIds: string[];
+}
+
+export interface ITermPolicyRecipientBatch {
+    batchId: string;
+    recipients: INotificationTermPolicyBatchRecipient[];
+}
+
+export interface ITermPolicyRecipientClaim {
+    claimNonce: string;
+    userIds: string[];
 }

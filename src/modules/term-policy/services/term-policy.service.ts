@@ -18,7 +18,6 @@ import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -41,6 +40,9 @@ import type {
     ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
     ITermPolicyDeleteContentEffect,
+    ITermPolicyPublishEffect,
+    ITermPolicyPublishInput,
+    ITermPolicyPublishPayload,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
@@ -60,6 +62,8 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 @Injectable()
 export class TermPolicyService {
     private readonly copyContentIdempotencyKeyPattern: string;
+    private readonly publishIdempotencyKeyPattern: string;
+    private readonly resendPublishIdempotencyKeyPattern: string;
 
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
@@ -70,7 +74,6 @@ export class TermPolicyService {
         private readonly helperArrayService: HelperArrayService,
         private readonly helperStringService: HelperStringService,
         private readonly outboxService: OutboxService,
-        private readonly notificationService: NotificationService,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly activityLogService: ActivityLogService,
@@ -79,6 +82,13 @@ export class TermPolicyService {
         this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.copyContentPattern'
         )!;
+        this.publishIdempotencyKeyPattern = this.configService.get<string>(
+            'termPolicy.idempotencyKey.publishPattern'
+        )!;
+        this.resendPublishIdempotencyKeyPattern =
+            this.configService.get<string>(
+                'termPolicy.idempotencyKey.resendPublishPattern'
+            )!;
     }
 
     private deleteContentEffect(path: string): ITermPolicyDeleteContentEffect {
@@ -111,6 +121,27 @@ export class TermPolicyService {
         };
     }
 
+    private publishEffect(
+        payload: ITermPolicyPublishPayload,
+        proceedBy: string
+    ): ITermPolicyPublishEffect {
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.publishIdempotencyKeyPattern,
+            {
+                process: EnumTermPolicyProcess.publish,
+                termPolicyId: payload.termPolicyId,
+            }
+        );
+
+        return {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.publish,
+            data: { proceedBy, data: payload },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey,
+        };
+    }
+
     private validateUniqueLanguages(
         contents: TermPolicyContentRequestDto[]
     ): boolean {
@@ -133,6 +164,30 @@ export class TermPolicyService {
             size,
             key: `${destination}/${key.slice(key.lastIndexOf('/') + 1)}`,
         }));
+    }
+
+    /** Draws one fresh nonce and puts it in the effect's data and its key. */
+    resendPublishEffect(
+        payload: ITermPolicyPublishInput,
+        proceedBy: string
+    ): ITermPolicyPublishEffect {
+        const resendNonce = this.databaseUtil.createId();
+        const idempotencyKey = this.helperStringService.fillPattern(
+            this.resendPublishIdempotencyKeyPattern,
+            {
+                process: EnumTermPolicyProcess.publish,
+                termPolicyId: payload.termPolicyId,
+                resendNonce,
+            }
+        );
+
+        return {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.publish,
+            data: { proceedBy, data: { ...payload, resendNonce } },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey,
+        };
     }
 
     async getListByAdmin(
@@ -430,17 +485,16 @@ export class TermPolicyService {
                             this.helperDateService.formatToIso(
                                 row.publishedAt!
                             );
-                        const publishEffect =
-                            this.notificationService.publishTermPolicyEffect(
-                                {
-                                    termPolicyId,
-                                    type: row.type,
-                                    version: row.version,
-                                    recipientCutoffAt,
-                                    resendNonce: null,
-                                },
-                                authContext.userId
-                            );
+                        const publishEffect = this.publishEffect(
+                            {
+                                termPolicyId,
+                                type: row.type,
+                                version: row.version,
+                                recipientCutoffAt,
+                                resendNonce: null,
+                            },
+                            authContext.userId
+                        );
                         await this.outboxService.addManyInTx(tx, [
                             copyEffect,
                             publishEffect,

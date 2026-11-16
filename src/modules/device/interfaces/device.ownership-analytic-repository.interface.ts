@@ -3,6 +3,7 @@ import type { IDeviceOwnershipAnalyticUserCount } from '@modules/device/interfac
 
 export interface IDeviceOwnershipAnalyticRepository {
     countOwnerships(): Promise<number>;
+    countWithPushToken(): Promise<number>;
     countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]>;
     countInactive(before: Date): Promise<number>;
     existsCreatedInRangeByUser(

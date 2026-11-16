@@ -261,6 +261,21 @@ Rule: `notification.md`, Recipient.
 
 - A producer snapshot for every kind: the user, settings, address, and live-session tokens still exist after commit, so a producer-side read only copies machinery into every service.
 
+### The term-policy batch email job stays on `notificationEmail`
+
+Rule: `notification.md`, Term-policy publish.
+
+- A `termPolicyEmail` queue: a BullMQ limiter binds one queue, so two email queues together send to SES at twice the limited rate.
+- The batch send on the `termPolicy` queue: that queue has no limiter, and a limiter cannot bind one job name.
+
+### A term-policy resend is a `publish` job
+
+Rule: `notification.md`, Term-policy publish.
+
+- A `resendPublish` job: it runs the same use case as `publish`, and only its key and `resendNonce` tell the two apart.
+- A separate resend process use case (`TermPolicyProcessResendPublishUseCase`): the paging loop reads `UserService`, which sits above term-policy, so it cannot move down into a term-policy service and would be duplicated.
+- The process passed to `execute`: the use case would take a job name as an argument for its message alone.
+
 ### Admin import is a job, export is not
 
 Rule: `login.md`.

@@ -8,11 +8,11 @@ import type {
     IUserForgotPassword,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password-repository.interface';
+import type { IUserForgotPasswordRepository } from '@modules/user/interfaces/user.forgot-password-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserPasswordRepository implements IUserPasswordRepository {
+export class UserForgotPasswordRepository implements IUserForgotPasswordRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService

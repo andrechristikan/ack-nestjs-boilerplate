@@ -11,7 +11,6 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
-import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -387,7 +386,7 @@ describe('NotificationUtil', () => {
                 'reset two factor by admin',
             ],
             [EnumNotificationKind.newDeviceLogin, 'new device login'],
-            [EnumNotificationProcess.publishTermPolicy, 'publish term policy'],
+            [EnumNotificationKind.publishTermPolicy, 'publish term policy'],
             [EnumNotificationKind.workspaceInvite, 'workspace invite'],
             [
                 EnumNotificationKind.workspaceJoinRequest,

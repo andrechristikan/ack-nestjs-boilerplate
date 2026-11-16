@@ -5,7 +5,6 @@ import { NotificationModule } from '@modules/notification/notification.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { UserModule } from '@modules/user/user.module';
-import { UserCreateSocialNonceUseCase } from '@modules/user/use-cases/user.create-social-nonce.use-case';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 import { UserLoginVerifyTwoFactorUseCase } from '@modules/user/use-cases/user.login-verify-two-factor.use-case';
@@ -52,7 +51,6 @@ import { Module } from '@nestjs/common';
 @Module({
     controllers: [],
     providers: [
-        UserCreateSocialNonceUseCase,
         UserLoginWithSocialUseCase,
         UserLoginCredentialUseCase,
         UserLoginVerifyTwoFactorUseCase,
@@ -95,7 +93,6 @@ import { Module } from '@nestjs/common';
         UserProcessImportByAdminUseCase,
     ],
     exports: [
-        UserCreateSocialNonceUseCase,
         UserLoginWithSocialUseCase,
         UserLoginCredentialUseCase,
         UserLoginVerifyTwoFactorUseCase,

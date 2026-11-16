@@ -25,7 +25,7 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
-import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
+import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
 export type INotificationReadState = Prisma.NotificationGetPayload<{
@@ -270,28 +270,7 @@ export interface INotificationCreateEntry {
     payload: INotificationCreate;
 }
 
-export interface INotificationTermPolicyRecipientState {
-    userId: string;
-    notificationId: string;
-    batchId: string;
-    sentAt: Date | null;
-    claimedAt: Date | null;
-}
-
-export type INotificationTermPolicyUser = IUserRecipient;
-
-export interface INotificationTermPolicyPage {
-    users: INotificationTermPolicyUser[];
-    freshUsers: INotificationTermPolicyUser[];
-    pendingBatchIds: string[];
-}
-
-export interface INotificationTermPolicyPending {
-    sendableMarkers: INotificationTermPolicyRecipientState[];
-    offPageUserIds: string[];
-}
-
-export interface INotificationTermPolicyRecipientCreate {
+export interface INotificationCreateRecipient {
     userId: string;
     notificationId: string;
 }
@@ -316,22 +295,6 @@ export interface INotificationUserSettingUpdate {
     isActive: boolean;
 }
 
-export interface INotificationAcceptTermPolicyPayload {
-    termPolicyId: string;
-    type: EnumTermPolicyType;
-    version: number;
-}
-
-export interface INotificationPublishTermPolicyPayload extends INotificationAcceptTermPolicyPayload {
-    recipientCutoffAt: string;
-    resendNonce: string | null;
-}
-
-export interface INotificationBulkQueuePayload<T = null> {
-    proceedBy: string;
-    data: T;
-}
-
 export interface INotificationPushCleanupTokenEncryptedPayload {
     userId: string;
     encryptedFailureTokens: string[];
@@ -342,6 +305,12 @@ export interface INotificationEmailBulkQueuePayload<T = null> {
     batchId: string;
     proceedBy: string;
     recipients: INotificationTermPolicyBatchRecipientEncryptedPayload[];
+}
+
+export interface INotificationEmailBulkOutcome {
+    sentUserIds: string[];
+    failedUserIds: string[];
+    unknownCount: number;
 }
 
 export interface INotificationStepFailure {
@@ -363,11 +332,6 @@ export interface INotificationPushSendOutcome {
 export type INotificationUserSettingPreference = Pick<
     NotificationUserSetting,
     'channel' | 'type' | 'isActive'
->;
-
-export type INotificationPublishTermPolicyInput = Omit<
-    INotificationPublishTermPolicyPayload,
-    'resendNonce'
 >;
 
 export type INotificationKindContracts = {
@@ -405,22 +369,10 @@ export interface INotificationNotifyEffect extends IOutboxEffect {
     data: INotificationNotifyPayload;
 }
 
-export interface INotificationPublishTermPolicyEffect extends IOutboxEffect {
-    queue: EnumNotificationQueue.notification;
-    name: EnumNotificationProcess.publishTermPolicy;
-    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
-}
-
-export interface INotificationResendPublishTermPolicyEffect extends IOutboxEffect {
-    queue: EnumNotificationQueue.notification;
-    name: EnumNotificationProcess.resendPublishTermPolicy;
-    data: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>;
-}
-
 export interface INotificationEmailPublishTermPolicyEffect extends IOutboxEffect {
     queue: EnumNotificationQueue.notificationEmail;
     name: EnumNotificationEmailProcess.publishTermPolicy;
-    data: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>;
+    data: INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>;
 }
 
 export interface INotificationEmailSendEffect extends IOutboxEffect {
