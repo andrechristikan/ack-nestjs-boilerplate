@@ -135,7 +135,12 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.temporaryPasswordByAdmin,
-            context: { userId: 'user-linden', proceedBy: 'admin-linden' },
+            context: {
+                userId: 'user-linden',
+                proceedBy: 'admin-linden',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },

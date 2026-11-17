@@ -113,8 +113,7 @@ model UserMobileNumber {
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [userId, countryId, phoneCode, number])
-  @@index(fields: [countryId])
-  @@map("UserMobiles")
+  @@map("UserMobileNumbers")
 }
 
 model UserSocial {
@@ -330,7 +329,6 @@ model Session {
   @@index(fields: [userId, isRevoked, expiredAt])
   @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
   @@index(fields: [createdAt(sort: Desc)])
-  @@index(fields: [revokedById])
   @@map("Sessions")
 }
 
@@ -377,11 +375,8 @@ model DeviceOwnership {
   @@unique(fields: [deviceId, userId])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, lastActiveAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [deviceId, userId, isRevoked])
   @@index(fields: [isRevoked, lastActiveAt])
   @@index(fields: [notificationToken, lastActiveAt])
-  @@index(fields: [createdAt])
-  @@index(fields: [revokedById])
   @@map("DeviceOwnerships")
 }
 
@@ -835,7 +830,7 @@ type UserPhoto {
   completedUrl String
   mime         String
   extension    String
-  access       String
+  access       EnumAwsS3Accessibility
 }
 
 type TermPolicyContent {
@@ -846,7 +841,7 @@ type TermPolicyContent {
   completedUrl String
   mime         String
   extension    String
-  access       String
+  access       EnumAwsS3Accessibility
   size         Int
 }
 
@@ -892,6 +887,11 @@ type GeoLocation {
   country   String
   region    String
   city      String
+}
+
+enum EnumAwsS3Accessibility {
+  public
+  private
 }
 
 enum EnumUserGender {

@@ -1,3 +1,5 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import type {
     EnumNotificationEmailProcess,
     EnumNotificationProcess,
@@ -210,8 +212,10 @@ export type INotificationKeyPatterns = Record<
 
 export type INotificationSealedRecord = Record<string, Prisma.JsonValue>;
 
-export type INotificationSealedData = INotificationContextBase &
-    INotificationSealedRecord;
+export type INotificationSealedData = INotificationContextBase & {
+    snapshot: INotificationSnapshot | null;
+    verificationId: string | null;
+} & INotificationSealedRecord;
 
 export type INotificationRecipientRecord = {
     userId: string;
@@ -424,4 +428,12 @@ export interface INotificationPushCleanupTokensEffect extends IOutboxEffect {
     queue: EnumNotificationQueue.notificationPush;
     name: EnumNotificationPushProcess.cleanupTokens;
     data: INotificationPushCleanupTokenEncryptedPayload;
+}
+
+export interface INotificationEmailSendQueueResponse extends IQueueResponse {
+    result: SendTemplatedEmailCommandOutput | null;
+}
+
+export interface INotificationEmailSendUnregisteredQueueResponse extends IQueueResponse {
+    result: SendTemplatedEmailCommandOutput;
 }

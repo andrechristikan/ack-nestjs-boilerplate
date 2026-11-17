@@ -74,7 +74,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { FileUploadSingle } from '@common/file/decorators/file.decorator';
+import { FileImportSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -247,7 +247,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @FileUploadSingle()
+    @FileImportSingle()
     @RequestTimeout('1m')
     @HttpCode(HttpStatus.OK)
     @Post('/import')

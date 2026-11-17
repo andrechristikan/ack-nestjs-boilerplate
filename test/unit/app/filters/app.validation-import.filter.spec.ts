@@ -13,7 +13,7 @@ import type {
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
 import { MessageService } from '@common/message/services/message.service';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
@@ -27,40 +27,35 @@ describe('AppValidationImportFilter', () => {
     > = mock<ReturnType<ArgumentsHost['switchToHttp']>>();
     const argumentsHost: MockProxy<ArgumentsHost> = mock<ArgumentsHost>();
 
-    let metadata: ResponseMetadataDto;
-    let importErrors: IMessageValidationImportErrorParam[];
-    let errors: IMessageValidationImportError[];
     let filter: AppValidationImportFilter;
 
-    beforeAll(() => {
-        metadata = {
-            language: EnumMessageLanguage.en,
-            timestamp: 1758153600000,
-            timezone: 'Asia/Jakarta',
-            version: '1',
-            repoVersion: '1.0.0',
-            requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
-            correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
-        };
-        importErrors = [
-            {
-                row: 2,
-                errors: [{ message: 'Invalid input', path: ['email'] }],
-            },
-        ];
-        errors = [
-            {
-                row: 2,
-                errors: [
-                    {
-                        key: 'invalidType',
-                        property: 'email',
-                        message: 'email must be an email',
-                    },
-                ],
-            },
-        ];
-    });
+    const metadata: ResponseMetadataDto = {
+        language: EnumMessageLanguage.en,
+        timestamp: 1758153600000,
+        timezone: 'Asia/Jakarta',
+        version: '1',
+        repoVersion: '1.0.0',
+        requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+        correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
+    };
+    const importErrors: IMessageValidationImportErrorParam[] = [
+        {
+            row: 2,
+            errors: [{ message: 'Invalid input', path: ['email'] }],
+        },
+    ];
+    const errors: IMessageValidationImportError[] = [
+        {
+            row: 2,
+            errors: [
+                {
+                    key: 'invalidType',
+                    property: 'email',
+                    message: 'email must be an email',
+                },
+            ],
+        },
+    ];
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -96,10 +91,10 @@ describe('AppValidationImportFilter', () => {
                 HttpStatus.UNPROCESSABLE_ENTITY
             );
             expect(response.json).toHaveBeenCalledWith({
-                statusCode: EnumRequestStatusCodeError.validation,
+                statusCode: EnumFileStatusCodeError.importInvalid,
                 statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.validation
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.importInvalid
                     ],
                 module: 'file',
                 message: 'Import Validation Error',
@@ -114,7 +109,7 @@ describe('AppValidationImportFilter', () => {
             await filter.catch(exception, argumentsHost);
 
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                'file.error.validationDto',
+                'file.error.importInvalid',
                 { customLanguage: EnumMessageLanguage.en }
             );
         });

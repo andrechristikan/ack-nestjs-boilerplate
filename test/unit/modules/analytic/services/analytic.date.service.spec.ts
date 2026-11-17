@@ -125,13 +125,6 @@ describe('AnalyticDateService', () => {
     });
 
     describe('optionalRange', () => {
-        it('returns null dates when both dates are omitted', () => {
-            expect(service.optionalRange()).toEqual({
-                startDate: null,
-                endDate: null,
-            });
-        });
-
         it('returns null dates when neither date is present', () => {
             expect(service.optionalRange(null, null)).toEqual({
                 startDate: null,

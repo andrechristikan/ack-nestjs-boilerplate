@@ -1,13 +1,12 @@
-import { faker } from '@faker-js/faker';
 import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
 
 describe('RequestGeoLocationResponseSchema', () => {
     const payload = {
-        latitude: faker.location.latitude(),
-        longitude: faker.location.longitude(),
-        country: faker.location.country(),
-        region: faker.location.state(),
-        city: faker.location.city(),
+        latitude: -6.2,
+        longitude: 106.816666,
+        country: 'Indonesia',
+        region: 'Jakarta',
+        city: 'Jakarta',
     };
 
     it('parses a payload into exactly the declared fields', () => {

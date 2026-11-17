@@ -1,4 +1,4 @@
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';

@@ -48,7 +48,7 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
-              
+
             - name: Configure AWS Credentials
               uses: aws-actions/configure-aws-credentials@v6
               with:
@@ -63,11 +63,11 @@ jobs:
             - name: Build & Push
               if: ${{ github.ref_name == matrix.branch }}
               run: |
-                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker build -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
                   docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
-                  
+
                   # Push latest tag only for production
                   if [ "${{ matrix.env }}" = "production" ]; then
                     docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:latest

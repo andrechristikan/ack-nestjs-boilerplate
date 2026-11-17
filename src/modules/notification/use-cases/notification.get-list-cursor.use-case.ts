@@ -4,7 +4,6 @@ import { MessageService } from '@common/message/services/message.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -33,14 +32,10 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         query: NotificationListRequestDto
     ): Promise<IResponsePaginationReturn<Notification>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.NotificationWhereInput>(
-                query,
-                {
-                    scope: NotificationSharedListCursorScope,
-                    availableOrderBy: NotificationDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: NotificationSharedListCursorScope,
+            availableOrderBy: NotificationDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

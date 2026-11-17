@@ -21,7 +21,7 @@ paths:
 1. `FileCsvParsePipe` validates a non-empty `.csv` and parses it through `FileService.readCsv`.
 2. `FileCsvValidationPipe(schema, { maxDataImportConfigKey })` validates every row against a request schema (`dto.md`) and collects every failure into one `FileImportException` carrying `{ row, errors }[]`; it never fails fast.
 
-`file.maxDataImport` is the row cap, overridden per module through `maxDataImportConfigKey` (`user.maxDataImport`); exceeding it throws `FileExceedMaxDataImportException`. `FileImportException` is caught by `AppValidationImportFilter`, maps to 422, and reports no Sentry.
+`file.maxDataImport` is the row cap, overridden per module through `maxDataImportConfigKey` (`user.maxDataImport`); exceeding it throws `FileExceedMaxDataImportException`. `FileImportException` is caught by `AppValidationImportFilter`, maps to 422, and reports no Sentry. An import route carries `@FileImportSingle()` in place of `@FileUploadSingle()`: it adds `FileImportDocErrors`, the entries of `FileImportException` and `FileExceedMaxDataImportException`. `FileUploadSingle` takes no import option.
 
 ## CSV and PDF export: capped, then streamed
 

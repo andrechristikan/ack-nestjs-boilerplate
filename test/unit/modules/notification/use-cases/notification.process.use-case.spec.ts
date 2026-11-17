@@ -57,6 +57,8 @@ describe('NotificationProcessUseCase', () => {
             workspaceMemberRole: EnumWorkspaceMemberRole.member,
             expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
             encryptedLink: 'encrypted-link',
+            snapshot: null,
+            verificationId: null,
         },
         recipient: null,
         notificationId: null,
@@ -204,6 +206,7 @@ describe('NotificationProcessUseCase', () => {
                     reference: 'VRF-abc',
                     expiredInMinutes: 5,
                     encryptedOtp: 'encrypted-otp',
+                    snapshot: null,
                 },
                 recipient: null,
                 notificationId: null,
@@ -270,6 +273,20 @@ describe('NotificationProcessUseCase', () => {
                 ).toHaveBeenCalledWith(user, [], null, smsChannels);
             });
 
+            it('reads no number and passes a null number when the context holds no verificationId', async () => {
+                await useCase.execute('outbox-id', {
+                    ...smsData,
+                    context: { ...smsData.context, verificationId: null },
+                });
+
+                expect(
+                    userVerificationService.getOneActiveMobileRecipient
+                ).not.toHaveBeenCalled();
+                expect(
+                    notificationService.toRecipientRecord
+                ).toHaveBeenCalledWith(user, [], null, smsChannels);
+            });
+
             it('reads no number on a later attempt', async () => {
                 await useCase.execute('outbox-id', {
                     ...smsData,
@@ -291,7 +308,12 @@ describe('NotificationProcessUseCase', () => {
             };
             const snapshotData: INotificationNotifyPayload = {
                 kind: EnumNotificationKind.resetPassword,
-                context: { userId: 'user-id', proceedBy: 'user-id', snapshot },
+                context: {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    snapshot,
+                    verificationId: null,
+                },
                 recipient: null,
                 notificationId: null,
             };
@@ -361,6 +383,7 @@ describe('NotificationProcessUseCase', () => {
                         encryptedEmail: 'encrypted-email',
                         encryptedTokens: ['encrypted-token'],
                     },
+                    verificationId: null,
                 },
                 recipient,
                 notificationId: 'notification-id',

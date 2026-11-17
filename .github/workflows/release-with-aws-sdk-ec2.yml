@@ -48,7 +48,7 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
-              
+
             - name: Configure AWS Credentials
               uses: aws-actions/configure-aws-credentials@v6
               with:
@@ -63,11 +63,11 @@ jobs:
             - name: Build & Push
               if: ${{ github.ref_name == matrix.branch }}
               run: |
-                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker build -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
                   docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
-                  
+
                   # Push latest tag only for production
                   if [ "${{ matrix.env }}" = "production" ]; then
                     docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:latest
@@ -122,7 +122,7 @@ jobs:
                           "docker pull ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}",
                           "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
                           "docker network create app-network --driver=bridge 2>/dev/null || true",
-                          "docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/keys/:/app/keys/ --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/logs/:/app/logs/ --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}"
+                          "docker run -itd --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}"
                       ]'
 
     clean:

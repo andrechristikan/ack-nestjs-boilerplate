@@ -1,11 +1,11 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type { EnumMfaChallengePurpose } from '@generated/prisma-client/client';
-import type { IMfaChallengeRepository } from '@modules/mfa/interfaces/mfa.challenge-repository.interface';
 import type {
-    IMfaChallengeCreateData,
-    IMfaChallengeRow,
-} from '@modules/mfa/interfaces/mfa.interface';
+    EnumMfaChallengePurpose,
+    MfaChallenge,
+} from '@generated/prisma-client/client';
+import type { IMfaChallengeRepository } from '@modules/mfa/interfaces/mfa.challenge-repository.interface';
+import type { IMfaChallengeCreateData } from '@modules/mfa/interfaces/mfa.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -31,7 +31,7 @@ export class MfaChallengeRepository implements IMfaChallengeRepository {
         tokenHash: string,
         purpose: EnumMfaChallengePurpose,
         now: Date
-    ): Promise<IMfaChallengeRow | null> {
+    ): Promise<MfaChallenge | null> {
         return this.databaseService.client.mfaChallenge.findFirst({
             where: {
                 tokenHash,

@@ -13,6 +13,7 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserDeletedIdentity,
     IUserList,
+    IUserName,
     IUserProfile,
     IUserRecipient,
     IUserUpdateProfile,
@@ -22,18 +23,13 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IUserRepository {
     findWithPaginationOffset(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
@@ -50,7 +46,7 @@ export interface IUserRepository {
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
     findOneActiveByEmail(email: string): Promise<User | null>;
-    findNameById(userId: string): Promise<IWorkspaceInviteInviter | null>;
+    findNameById(userId: string): Promise<IUserName | null>;
     findEmailByIdInTx(
         tx: IDatabaseTransactionClient,
         userId: string

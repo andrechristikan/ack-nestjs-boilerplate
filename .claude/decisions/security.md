@@ -23,6 +23,12 @@ Rule: `security.md`, Cryptography.
 - bcrypt: it truncates at 72 bytes and is not memory-hard.
 - An argon2 package: the pinned Node ships argon2, so a native dependency adds nothing.
 
+### argon2id hashes run concurrently
+
+Rule: `concurrency.md`.
+
+- One hash at a time: each call draws its own salt, so concurrent hashes stay unique, and the libuv threadpool already bounds how many run at once.
+
 ### A password the user sets never expires
 
 Rule: `credential-policy.md`, Passwords.
@@ -314,3 +320,13 @@ Rule: `docker.md`, Production.
 Rule: `layering.md`, The run surface is a call site.
 
 - The lockfile as the only inventory: it holds the same facts in no standard format an audit tool reads.
+
+## Account deletion
+
+### Self-delete writes `deleted.<id>` to email and username
+
+Rule: `login.md`.
+
+- `deleted-<id>`: it passes the username pattern, so anyone can register it first, and the delete then fails on the unique index.
+- An email-shaped value on a reserved domain: it passes the sign-up email check, so sign-up would need a domain block.
+- The original value kept after the id: the deleted row still holds both identifiers.

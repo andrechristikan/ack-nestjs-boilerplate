@@ -6,10 +6,7 @@ import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import {
-    EnumPaginationFilterDateBetweenType,
-    EnumPaginationFilterEnumOperator,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
 describe('PaginationFilterUtil', () => {
@@ -268,6 +265,18 @@ describe('PaginationFilterUtil', () => {
                 storeFilter: { status: ['active'] },
             });
         });
+
+        it('honors a custom field', () => {
+            const result = util.ninEnum('status', 'active', ['active'], {
+                customField: 'state',
+            });
+
+            expect(result?.where).toEqual({ state: { notIn: ['active'] } });
+        });
+
+        it('returns null for an empty value', () => {
+            expect(util.ninEnum('status', undefined, ['active'])).toBeNull();
+        });
     });
 
     describe('dateBetween', () => {
@@ -451,91 +460,39 @@ describe('PaginationFilterUtil', () => {
         });
     });
 
-    describe('enumFilter', () => {
+    describe('parseEnumValues', () => {
         const defaultEnum = ['active', 'inactive'];
 
         it('returns null for an empty value', () => {
             expect(
-                util['enumFilter'](
-                    'status',
-                    undefined,
-                    defaultEnum,
-                    EnumPaginationFilterEnumOperator.in
-                )
+                util['parseEnumValues']('status', undefined, defaultEnum)
             ).toBeNull();
         });
 
         it('returns null when the allow-list is empty', () => {
-            expect(
-                util['enumFilter'](
-                    'status',
-                    'active',
-                    [],
-                    EnumPaginationFilterEnumOperator.in
-                )
-            ).toBeNull();
+            expect(util['parseEnumValues']('status', 'active', [])).toBeNull();
         });
 
         it('returns null when every entry is empty after filtering', () => {
             expect(
-                util['enumFilter'](
-                    'status',
-                    ',,',
-                    defaultEnum,
-                    EnumPaginationFilterEnumOperator.in
-                )
+                util['parseEnumValues']('status', ',,', defaultEnum)
             ).toBeNull();
         });
 
-        it('builds an in filter from a deduplicated comma-separated list', () => {
-            const result = util['enumFilter'](
-                'status',
-                'active,active,inactive',
-                defaultEnum,
-                EnumPaginationFilterEnumOperator.in
-            );
-
-            expect(result).toEqual({
-                where: { status: { in: ['active', 'inactive'] } },
-                storeFilter: { status: ['active', 'inactive'] },
-            });
-        });
-
-        it('builds a notIn filter for the notIn operator', () => {
-            const result = util['enumFilter'](
-                'status',
-                'active',
-                defaultEnum,
-                EnumPaginationFilterEnumOperator.notIn
-            );
-
-            expect(result).toEqual({
-                where: { status: { notIn: ['active'] } },
-                storeFilter: { status: ['active'] },
-            });
-        });
-
-        it('honors a custom field', () => {
-            const result = util['enumFilter'](
-                'status',
-                'active',
-                defaultEnum,
-                EnumPaginationFilterEnumOperator.in,
-                { customField: 'state' }
-            );
-
-            expect(result?.where).toEqual({ state: { in: ['active'] } });
+        it('returns the deduplicated comma-separated values', () => {
+            expect(
+                util['parseEnumValues'](
+                    'status',
+                    'active,active,inactive',
+                    defaultEnum
+                )
+            ).toEqual(['active', 'inactive']);
         });
 
         it('rejects a value outside the allowed enum', () => {
             let error: unknown;
             try {
-                util['enumFilter'](
-                    'status',
-                    'unknown',
-                    defaultEnum,
-                    EnumPaginationFilterEnumOperator.in
-                );
+                util['parseEnumValues']('status', 'unknown', defaultEnum);
             } catch (caught) {
                 error = caught;
             }

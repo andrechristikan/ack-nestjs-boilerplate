@@ -9,8 +9,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
-import { EnumNotificationEmailProcess } from '@modules/notification/enums/notification.enum';
-import type { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type {
     INotificationEmailBulkOutcome,
@@ -116,7 +115,7 @@ export class NotificationEmailDeliveryService {
         let statuses: BulkEmailDestinationStatus[];
         try {
             const result = await this.awsSESService.sendBulk({
-                templateName: EnumNotificationEmailProcess.publishTermPolicy,
+                templateName: EnumNotificationKind.publishTermPolicy,
                 recipients: destinations,
                 sender: this.noreplyEmail,
                 defaultTemplateData: {

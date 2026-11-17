@@ -46,7 +46,6 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -345,7 +344,7 @@ export class AnalyticAnomalyService {
     async impossibleTravelList(
         startDate: Date | null,
         endDate: Date | null,
-        params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
         const rows = await this.computeImpossibleTravel(startDate, endDate);
         const { data, total } = this.analyticSortUtil.sortPage(
@@ -392,7 +391,7 @@ export class AnalyticAnomalyService {
 
     async loginSpikeIpList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -447,7 +446,7 @@ export class AnalyticAnomalyService {
     }
 
     async failedLoginSpikeList(
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const now = this.helperDateService.create();
 
@@ -489,7 +488,7 @@ export class AnalyticAnomalyService {
     }
 
     async deviceProliferationList(
-        params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         const result =
             await this.deviceAnalyticService.getProliferationOutliers(
@@ -535,7 +534,7 @@ export class AnalyticAnomalyService {
     async loginTimeList(
         startDate: Date | null,
         endDate: Date | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
         const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
         const { data, total } = this.analyticSortUtil.sortPage(

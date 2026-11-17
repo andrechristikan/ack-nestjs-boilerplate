@@ -14,7 +14,6 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type {
     Notification,
     NotificationUserSetting,
-    Prisma,
 } from '@generated/prisma-client/client';
 import {
     EnumActivityLogAction,
@@ -197,6 +196,41 @@ describe('NotificationService', () => {
     });
 
     describe('notify', () => {
+        it('seals a context that carries a null snapshot and a null verificationId for a kind with neither', () => {
+            const result = service.notify(EnumNotificationKind.changePassword, {
+                userId: 'user-id',
+                proceedBy: 'user-id',
+            });
+
+            expect(result.data.context).toEqual({
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                snapshot: null,
+                verificationId: null,
+            });
+        });
+
+        it('seals the snapshot and a null verificationId for a snapshot kind', () => {
+            const snapshot = {
+                username: 'name',
+                encryptedEmail: 'encrypted-email',
+                encryptedTokens: ['encrypted-token'],
+            };
+
+            const result = service.notify(EnumNotificationKind.resetPassword, {
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                snapshot,
+            });
+
+            expect(result.data.context).toEqual({
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                snapshot,
+                verificationId: null,
+            });
+        });
+
         it('returns no idempotency key for a kind that may repeat', () => {
             const result = service.notify(EnumNotificationKind.changePassword, {
                 userId: 'user-id',
@@ -208,7 +242,12 @@ describe('NotificationService', () => {
                 name: EnumNotificationProcess.notify,
                 data: {
                     kind: EnumNotificationKind.changePassword,
-                    context: { userId: 'user-id', proceedBy: 'user-id' },
+                    context: {
+                        userId: 'user-id',
+                        proceedBy: 'user-id',
+                        snapshot: null,
+                        verificationId: null,
+                    },
                     recipient: null,
                     notificationId: null,
                 },
@@ -251,6 +290,7 @@ describe('NotificationService', () => {
                         encryptedOtp: 'encrypted-otp',
                         action: EnumUserReauthenticationAction.deleteSelf,
                         expiredInMinutes: 5,
+                        snapshot: null,
                     },
                     recipient: null,
                     notificationId: null,
@@ -286,7 +326,11 @@ describe('NotificationService', () => {
                 name: EnumNotificationProcess.notify,
                 data: {
                     kind: EnumNotificationKind.loginLocked,
-                    context,
+                    context: {
+                        ...context,
+                        snapshot: null,
+                        verificationId: null,
+                    },
                     recipient: null,
                     notificationId: null,
                 },
@@ -330,6 +374,8 @@ describe('NotificationService', () => {
                         workspaceMemberRole: EnumWorkspaceMemberRole.member,
                         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
                         encryptedInviteAcceptLink: 'encrypted-link',
+                        snapshot: null,
+                        verificationId: null,
                     },
                     recipient: null,
                     notificationId: null,
@@ -385,6 +431,7 @@ describe('NotificationService', () => {
                         encryptedOtp: 'encrypted-otp',
                         reference: 'VRF-abc',
                         expiredInMinutes: 5,
+                        snapshot: null,
                     },
                     recipient: null,
                     notificationId: null,
@@ -429,6 +476,8 @@ describe('NotificationService', () => {
                         created: 0,
                         failed: 2,
                         reasons: ['Username already exists.'],
+                        snapshot: null,
+                        verificationId: null,
                     },
                     recipient: null,
                     notificationId: null,
@@ -690,6 +739,8 @@ describe('NotificationService', () => {
             proceedBy: 'actor-id',
             workspaceName: 'Acme',
             encryptedInviteAcceptLink: 'encrypted-link',
+            snapshot: null,
+            verificationId: null,
         };
 
         it('creates the notification and adds an email and a push row on the same tx', async () => {
@@ -806,6 +857,7 @@ describe('NotificationService', () => {
                 reference: 'VRF-abc',
                 expiredInMinutes: 5,
                 encryptedOtp: 'encrypted-otp',
+                snapshot: null,
             };
 
             await service.createInTx(
@@ -1085,12 +1137,11 @@ describe('NotificationService', () => {
 
     describe('getListCursor', () => {
         it('returns the paginated notification list from the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const paginationResult = {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -1114,12 +1165,11 @@ describe('NotificationService', () => {
         });
 
         it('passes the types the user disabled for inApp so the repository excludes them', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const settings: NotificationUserSetting[] = [
                 {
                     ...setting,

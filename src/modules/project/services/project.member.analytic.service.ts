@@ -1,6 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IAnalyticProjectCount,
     IAnalyticRoleCount,
@@ -15,7 +14,7 @@ export class ProjectMemberAnalyticService {
     ) {}
 
     async getMembershipDistributionOffset(
-        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         return await this.projectMemberAnalyticRepository.groupMembershipDistributionOffset(
             params

@@ -1,9 +1,8 @@
-import { faker } from '@faker-js/faker';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 
 describe('RequestMongoIdSchema', () => {
     it('parses a 24-character hex string', () => {
-        const id = faker.database.mongodbObjectId();
+        const id = '507f1f77bcf86cd799439011';
 
         expect(RequestMongoIdSchema.parse(id)).toBe(id);
     });

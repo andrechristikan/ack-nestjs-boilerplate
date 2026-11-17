@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import {
     FirebaseMaxRateLimitPerDuration,
     FirebaseRateLimitDurationInMs,
@@ -16,9 +15,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { OutboxService } from '@common/outbox/services/outbox.service';
-import { MessageService } from '@common/message/services/message.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
@@ -31,15 +27,11 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 })
 export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
-        protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService,
-        protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService,
         private readonly notificationPushProcessSendUseCase: NotificationPushProcessSendUseCase,
         private readonly notificationPushProcessCleanupTokensUseCase: NotificationPushProcessCleanupTokensUseCase,
         private readonly notificationPushProcessCleanupStaleTokensUseCase: NotificationPushProcessCleanupStaleTokensUseCase
     ) {
-        super(sentryService, messageService, cacheService, outboxService);
+        super();
     }
 
     protected async handle(
@@ -51,10 +43,9 @@ export class NotificationPushProcessor extends QueueProcessorBase {
             switch (job.name) {
                 case EnumNotificationPushProcess.send: {
                     if (outboxId === null) {
-                        const message = this.messageService.setMessage(
+                        this.throwUnrecoverable(
                             'notification.queue.error.outboxIdMissing'
                         );
-                        throw new UnrecoverableError(message);
                     }
 
                     return await this.notificationPushProcessSendUseCase.execute(
@@ -68,13 +59,11 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                     );
                 case EnumNotificationPushProcess.cleanupStaleTokens:
                     return await this.notificationPushProcessCleanupStaleTokensUseCase.execute();
-                default: {
-                    const message = this.messageService.setMessage(
+                default:
+                    this.throwUnknownProcess(
                         'notification.queue.push.error.unknownProcess',
-                        { properties: { process: job.name } }
+                        job.name
                     );
-                    throw new QueueException(message, true);
-                }
             }
         } catch (error: unknown) {
             if (error instanceof HelperDecryptFailedException) {

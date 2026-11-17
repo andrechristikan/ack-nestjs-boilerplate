@@ -35,8 +35,8 @@ export class AnalyticDateService {
     }
 
     optionalRange(
-        startDate: Date | null = null,
-        endDate: Date | null = null
+        startDate: Date | null,
+        endDate: Date | null
     ): IAnalyticOptionalDateRange {
         if (startDate !== null && endDate !== null) {
             return this.requireRange(startDate, endDate);

@@ -1,5 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { Prisma } from '@generated/prisma-client/client';
 
 const CountryData = [
     {
@@ -14,7 +14,7 @@ const CountryData = [
 
 export const MigrationCountryData: Record<
     EnumAppEnvironment,
-    CountryRequestDto[]
+    Prisma.CountryCreateInput[]
 > = {
     [EnumAppEnvironment.local]: CountryData,
     [EnumAppEnvironment.development]: CountryData,

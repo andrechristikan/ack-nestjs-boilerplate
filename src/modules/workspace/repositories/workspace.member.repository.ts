@@ -61,29 +61,29 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async findReviewersByWorkspace(
+    async findReviewerUserIdsByWorkspace(
         workspaceId: string
-    ): Promise<{ userId: string }[]> {
-        return this.databaseService.client.workspaceMember.findMany({
-            where: {
-                workspaceId,
-                role: {
-                    in: [
-                        EnumWorkspaceMemberRole.owner,
-                        EnumWorkspaceMemberRole.admin,
-                    ],
+    ): Promise<string[]> {
+        const reviewers =
+            await this.databaseService.client.workspaceMember.findMany({
+                where: {
+                    workspaceId,
+                    role: {
+                        in: [
+                            EnumWorkspaceMemberRole.owner,
+                            EnumWorkspaceMemberRole.admin,
+                        ],
+                    },
                 },
-            },
-            select: { userId: true },
-        });
+                select: { userId: true },
+            });
+
+        return reviewers.map(reviewer => reviewer.userId);
     }
 
     async findWithPaginationOffset(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         role: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
@@ -108,10 +108,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     async findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         role: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(

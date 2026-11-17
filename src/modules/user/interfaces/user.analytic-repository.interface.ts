@@ -5,7 +5,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
@@ -58,6 +57,6 @@ export interface IUserAnalyticRepository {
     findNearLockoutOffset(
         minAttempt: number,
         now: Date,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>>;
 }

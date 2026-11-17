@@ -11,6 +11,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
     private readonly allowedMethod: string[];
     private readonly allowedHeader: string[];
     private readonly exposedHeader: string[];
+    private readonly maxAgeInSeconds: number;
 
     constructor(private readonly configService: ConfigService) {
         this.allowedOrigin = this.configService.get<
@@ -24,6 +25,9 @@ export class RequestCorsMiddleware implements NestMiddleware {
         )!;
         this.exposedHeader = this.configService.get<string[]>(
             'request.cors.exposedHeader'
+        )!;
+        this.maxAgeInSeconds = this.configService.get<number>(
+            'request.cors.maxAgeInSeconds'
         )!;
     }
 
@@ -196,7 +200,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             preflightContinue: false,
             credentials: isCredentialsAllowed,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
-            maxAge: 86400,
+            maxAge: this.maxAgeInSeconds,
         };
 
         cors(corsOptions)(req, res, next);

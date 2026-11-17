@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheckService } from '@nestjs/terminus';
 import type {

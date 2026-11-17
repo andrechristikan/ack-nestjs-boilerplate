@@ -13,7 +13,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -89,8 +88,8 @@ describe('UserService', () => {
     let service: UserService;
 
     const configValues: Record<string, string> = {
-        'user.deleteSelf.emailPattern': 'removed.{id}.{email}',
-        'user.deleteSelf.usernamePattern': 'removed.{id}.{username}',
+        'user.deleteSelf.emailPattern': 'deleted.{id}',
+        'user.deleteSelf.usernamePattern': 'deleted.{id}',
     };
 
     const tx = {} as IDatabaseTransactionClient;
@@ -371,6 +370,8 @@ describe('UserService', () => {
                     false
                 )
             ).rejects.toMatchObject({
+                module: 'user',
+
                 statusCode: EnumUserStatusCodeError.blockedForbidden,
             });
             expect(roleService.getOne).not.toHaveBeenCalled();
@@ -379,12 +380,11 @@ describe('UserService', () => {
 
     describe('getListOffsetByAdmin', () => {
         it('delegates to the repository', async () => {
-            const params: IPaginationQueryOffsetParams<Prisma.UserWhereInput> =
-                {
-                    skip: 0,
-                    limit: 20,
-                    orderBy: [],
-                };
+            const params: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const listRow: IUserList = {
                 id: 'user-cobalt',
                 name: 'Cobalt Reyes',
@@ -442,8 +442,11 @@ describe('UserService', () => {
         });
 
         it('passes null filters when none is given', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IUserList> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -1281,22 +1284,25 @@ describe('UserService', () => {
     });
 
     describe('createDeletedIdentity', () => {
-        it('fills the configured deleted email and username patterns from the row id', () => {
-            helperStringService.fillPattern
-                .mockReturnValueOnce('deleted.user-cobalt.cobalt@example.com')
-                .mockReturnValueOnce('deleted.user-cobalt.cobaltReyes');
+        it('fills the configured deleted pattern from the row id alone for both fields', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'deleted.user-cobalt'
+            );
 
             expect(service['createDeletedIdentity'](baseUser)).toEqual({
-                email: 'deleted.user-cobalt.cobalt@example.com',
-                username: 'deleted.user-cobalt.cobaltReyes',
+                email: 'deleted.user-cobalt',
+                username: 'deleted.user-cobalt',
             });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'removed.{id}.{email}',
-                { id: 'user-cobalt', email: 'cobalt@example.com' }
+            expect(helperStringService.fillPattern).toHaveBeenCalledTimes(2);
+            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
+                1,
+                'deleted.{id}',
+                { id: 'user-cobalt' }
             );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'removed.{id}.{username}',
-                { id: 'user-cobalt', username: 'cobaltReyes' }
+            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
+                2,
+                'deleted.{id}',
+                { id: 'user-cobalt' }
             );
         });
     });

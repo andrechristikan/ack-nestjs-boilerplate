@@ -11,7 +11,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -103,7 +103,7 @@ export class WorkspaceService {
 
     async getListCursorByMember(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationCursorByMember(
             userId,
@@ -331,6 +331,10 @@ export class WorkspaceService {
                 return workspace;
             });
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             const isSlugCollision = this.databaseUtil.isUniqueCollision(
                 err,
                 'slug'
@@ -387,7 +391,7 @@ export class WorkspaceService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetByAdmin(

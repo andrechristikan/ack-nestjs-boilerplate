@@ -8,26 +8,17 @@ import type {
     IPasswordHistoryCreate,
     IPasswordHistoryList,
 } from '@modules/password-history/interfaces/password-history.interface';
-import {
-    EnumPasswordHistoryType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
 
 export interface IPasswordHistoryRepository {
     findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findActiveUser(userId: string): Promise<PasswordHistory[]>;
     createInTx(

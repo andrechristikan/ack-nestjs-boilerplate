@@ -45,14 +45,16 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const offsetPagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
-        { skip: 0, limit: 20, orderBy: [] };
-    const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const offsetPagination: IPaginationQueryOffsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+    };
+    const cursorPagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
 
     let useCase: RoleGetListOffsetByAdminUseCase;
 

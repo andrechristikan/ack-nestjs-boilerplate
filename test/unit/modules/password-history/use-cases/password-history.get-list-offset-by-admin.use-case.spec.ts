@@ -6,7 +6,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { Prisma } from '@generated/prisma-client/client';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type { PasswordHistoryAdminListRequestDto } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
@@ -19,8 +18,11 @@ describe('PasswordHistoryGetListOffsetByAdminUseCase', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const offsetParams: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput> =
-        { skip: 0, limit: 20, orderBy: [] };
+    const offsetParams: IPaginationQueryOffsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+    };
     const offsetPage = {
         type: EnumPaginationType.offset as const,
         count: 0,

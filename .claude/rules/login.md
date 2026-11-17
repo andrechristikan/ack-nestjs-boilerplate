@@ -29,7 +29,7 @@ MFA and sessions: `session.md`. Role rank and policies: `role.md`. Passwords and
 - A passkey alone signs a user in (`UserLoginWithPasskeyUseCase`): the credential login's account checks, no further factor, `loginWith: passkey`. The `loginWithPasskey` flag alone gates it (`MfaService.checkPasskeyLogin` reads no `mfa` flag); registering a passkey reads the `mfa` flag and its `passkeyAllowed`, never `loginWithPasskey`.
 - A password reset on an account with MFA on proves one enrolled method, a passkey included.
 - A mobile-number verification send inside `verification.resendInMinutes` answers 200 and sends nothing.
-- Self-delete rewrites `email` and `username` from the row id, which frees both for registration. An `admin` or `superAdmin` account cannot delete itself.
+- Self-delete rewrites `email` and `username` to `deleted.<id>` (`user.deleteSelf.emailPattern`, `usernamePattern`), a value no sign-up accepts, which frees both for registration. An `admin` or `superAdmin` account cannot delete itself.
 - A user who owns a workspace with any other member cannot delete their account until they transfer ownership. A workspace with no other member is deleted with the account.
 
 ## Use-case groups

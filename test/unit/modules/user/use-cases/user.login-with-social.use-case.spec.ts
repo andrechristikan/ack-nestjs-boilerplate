@@ -41,6 +41,7 @@ import type {
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -177,7 +178,12 @@ describe('UserLoginWithSocialUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.welcomeSocial,
-            context: { userId: 'user-bramble', proceedBy: 'user-bramble' },
+            context: {
+                userId: 'user-bramble',
+                proceedBy: 'user-bramble',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -1039,7 +1045,10 @@ describe('UserLoginWithSocialUseCase', () => {
                     EnumUserLoginWith.socialGoogle,
                     dto
                 )
-            ).rejects.toMatchObject({ module: 'country' });
+            ).rejects.toMatchObject({
+                module: 'country',
+                statusCode: EnumCountryStatusCodeError.notFound,
+            });
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
         });
 

@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -26,11 +25,9 @@ export class AnalyticAccountTakeoverListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticAccountTakeoverListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
-                query,
-                { availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateService.requireRange(
             query.startDate,

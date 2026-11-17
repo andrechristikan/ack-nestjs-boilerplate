@@ -396,6 +396,8 @@ describe('UserLoginWithPasskeyUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -427,6 +429,8 @@ describe('UserLoginWithPasskeyUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);

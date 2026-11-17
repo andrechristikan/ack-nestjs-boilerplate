@@ -82,7 +82,7 @@ import { AnalyticBackupCodeNewDeviceListUseCase } from '@modules/analytic/use-ca
 import { AnalyticApiKeyBurstSummaryUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-summary.use-case';
 import { AnalyticApiKeyBurstListUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-list.use-case';
 import { AnalyticRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.risk-score.use-case';
-import { AnalyticRiskScoresUseCase } from '@modules/analytic/use-cases/analytic.risk-scores.use-case';
+import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
@@ -176,7 +176,7 @@ import { Module } from '@nestjs/common';
         AnalyticApiKeyBurstSummaryUseCase,
         AnalyticApiKeyBurstListUseCase,
         AnalyticRiskScoreUseCase,
-        AnalyticRiskScoresUseCase,
+        AnalyticRiskScoreListUseCase,
         AnalyticSummaryUseCase,
         AnalyticInviteFunnelUseCase,
         AnalyticJoinOutcomesUseCase,
@@ -267,7 +267,7 @@ import { Module } from '@nestjs/common';
         AnalyticApiKeyBurstSummaryUseCase,
         AnalyticApiKeyBurstListUseCase,
         AnalyticRiskScoreUseCase,
-        AnalyticRiskScoresUseCase,
+        AnalyticRiskScoreListUseCase,
         AnalyticSummaryUseCase,
         AnalyticInviteFunnelUseCase,
         AnalyticJoinOutcomesUseCase,

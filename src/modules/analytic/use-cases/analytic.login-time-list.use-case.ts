@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -26,11 +25,9 @@ export class AnalyticLoginTimeListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticLoginTimeAnomalyListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                { availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateService.optionalRange(
             query.startDate ?? null,

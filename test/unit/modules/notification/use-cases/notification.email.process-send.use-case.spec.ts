@@ -46,6 +46,8 @@ describe('NotificationEmailProcessSendUseCase', () => {
             workspaceMemberRole: EnumWorkspaceMemberRole.member,
             expiredAt: '2024-01-08T00:00:00.000Z',
             encryptedInviteAcceptLink: 'cipher(https://app.test/invite/token)',
+            snapshot: null,
+            verificationId: null,
         },
     };
 
@@ -179,6 +181,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             ).toHaveBeenCalledWith('notification-id', 'actor-id');
             expect(result).toEqual({
                 message: 'notification.queue.email.send',
+                result: null,
             });
         });
     });

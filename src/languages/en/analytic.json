@@ -82,7 +82,7 @@
     "fraudApiKeyBurst": "API-key-burst fraud summary retrieved successfully.",
     "fraudApiKeyBurstList": "API-key-burst fraud list retrieved successfully.",
     "fraudRiskScore": "Fraud risk score retrieved successfully.",
-    "fraudRiskScores": "Fraud risk score queue retrieved successfully.",
+    "fraudRiskScoreList": "Fraud risk score queue retrieved successfully.",
     "workspaceSummary": "Workspace analytic summary retrieved successfully.",
     "workspaceInviteFunnel": "Workspace invite funnel retrieved successfully.",
     "workspaceJoinOutcomes": "Workspace join outcomes retrieved successfully.",

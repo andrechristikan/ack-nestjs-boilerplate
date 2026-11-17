@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 
 /** @public */
 export const AwsS3ResponseSchema = z.object({

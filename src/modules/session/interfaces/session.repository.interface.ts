@@ -13,24 +13,17 @@ import type {
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 
 export interface ISessionRepository {
     findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findActiveWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findLoginById(

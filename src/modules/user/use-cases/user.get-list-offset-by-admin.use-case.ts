@@ -30,11 +30,10 @@ export class UserGetListOffsetByAdminUseCase implements IAppUseCase<
     async execute(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
-                availableSearch: UserDefaultAvailableSearch,
-                availableOrderBy: UserDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
+        });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,

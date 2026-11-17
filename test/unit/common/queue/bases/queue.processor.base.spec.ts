@@ -425,6 +425,39 @@ describe('QueueProcessorBase', () => {
         });
     });
 
+    describe('throwUnknownProcess', () => {
+        it('throws a fatal QueueException whose message is resolved with the process property', () => {
+            const path = 'user.queue.error.unknownProcess';
+
+            expect(() =>
+                processor['throwUnknownProcess'](path, 'noSuchJob')
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: QueueException,
+                    message: path,
+                    isFatal: true,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(path, {
+                properties: { process: 'noSuchJob' },
+            });
+        });
+    });
+
+    describe('throwUnrecoverable', () => {
+        it('throws an UnrecoverableError carrying the resolved message', () => {
+            const path = 'user.queue.error.outboxIdMissing';
+
+            expect(() => processor['throwUnrecoverable'](path)).toThrow(
+                expect.objectContaining({
+                    constructor: UnrecoverableError,
+                    message: path,
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(path);
+        });
+    });
+
     describe('writeJobLog', () => {
         it('writes the message on the job', async () => {
             const job = buildProcessorJob({});

@@ -1,20 +1,22 @@
 import { EnumRoleType } from '@generated/prisma-client/client';
-import type { Policy, Role } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import type {
+    RoleSelect,
+    RoleWithPoliciesInclude,
+    RoleWithPolicyCountInclude,
+} from '@modules/role/constants/role.constant';
 
-export interface IRole {
-    id: string;
-    type: EnumRoleType;
-    name: string;
-    isImmutable: boolean;
-}
+export type IRole = Prisma.RoleGetPayload<{
+    select: typeof RoleSelect;
+}>;
 
-export type IRoleWithPolicies = Role & {
-    policies: Policy[];
-};
+export type IRoleWithPolicies = Prisma.RoleGetPayload<{
+    include: typeof RoleWithPoliciesInclude;
+}>;
 
-export type IRoleWithPolicyCount = Role & {
-    _count: { policies: number };
-};
+export type IRoleWithPolicyCount = Prisma.RoleGetPayload<{
+    include: typeof RoleWithPolicyCountInclude;
+}>;
 
 export type IRoleRank = Record<EnumRoleType, number>;
 

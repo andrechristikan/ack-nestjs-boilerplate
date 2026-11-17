@@ -15,7 +15,6 @@ import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
     Project,
@@ -297,13 +296,12 @@ describe('ProjectMemberService', () => {
     describe('getMembersList', () => {
         it('delegates to the repository for the given project', async () => {
             const project = baseProject;
-            const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    where: {},
-                    orderBy: [],
-                    limit: 20,
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                where: { OR: [] },
+                orderBy: [],
+                limit: 20,
+            };
             const page: IResponsePaginationReturn<IProjectMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

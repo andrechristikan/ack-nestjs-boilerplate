@@ -9,7 +9,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
     Project,
@@ -107,7 +106,7 @@ export class ProjectMemberService {
 
     async getMembersList(
         project: Project,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.projectMemberRepository.findWithPaginationCursor(
             project.id,

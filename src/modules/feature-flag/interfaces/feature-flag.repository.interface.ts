@@ -4,17 +4,18 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import type { IFeatureFlagUpdateStatus } from '@modules/feature-flag/interfaces/feature-flag.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import type {
+    IFeatureFlagUpdateMetadata,
+    IFeatureFlagUpdateStatus,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
 export interface IFeatureFlagRepository {
     findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>>;
     findWithPaginationCursor(
-        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>>;
     findOneByKey(key: string): Promise<FeatureFlag | null>;
     findOneById(id: string): Promise<FeatureFlag | null>;
@@ -26,6 +27,6 @@ export interface IFeatureFlagRepository {
     updateMetadataInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { metadata }: FeatureFlagUpdateMetadataRequestDto
+        { metadata }: IFeatureFlagUpdateMetadata
     ): Promise<FeatureFlag>;
 }

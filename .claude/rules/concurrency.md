@@ -6,7 +6,7 @@ paths:
 
 # Concurrency and errors
 
-Async-first in `src/` and `test/`: independent operations run concurrently, awaited together by `Promise.all` (the default: one failure fails the whole) or `Promise.allSettled` (each outcome handled on its own: a best-effort side effect, a fan-out notification, a cache clear). Write each call as an array element; a promise goes in a `const` only when it must start before another `await`, is used more than once, or joins an array built conditionally (`push`, or a `let` set in if/else). A `.map()` with a multi-statement callback goes in a named `const`; one with a one-expression callback stays inline, `Promise.all(ids.map(id => this.repo.find(id)))`. A dependent chain (start, then use the result) is its own async function or private method whose promise joins the array. A sequential `await` of independent work is a defect outside the cases below; one still in the tree is a sweep finding, not a precedent.
+Async-first in `src/` and `test/`: independent operations run concurrently, awaited together by `Promise.all` (the default: one failure fails the whole) or `Promise.allSettled` (each outcome handled on its own: a best-effort side effect, a fan-out notification, a cache clear). Write each call as an array element; a promise goes in a `const` only when it must start before another `await`, is used more than once, or joins an array built conditionally (`push`, or a `let` set in if/else). A `.map()` with a multi-statement callback goes in a named `const`; one with a one-expression callback stays inline, `Promise.all(ids.map(id => this.repo.find(id)))`, unless the `.map()` is itself a this-call (`this.users.map(...)`): lint lets no this-call be an argument (`eslint.config.mjs`, `thisCallRestrictions`), so it goes in a named `const`. A dependent chain (start, then use the result) is its own async function or private method whose promise joins the array. A sequential `await` of independent work is a defect outside the cases below; one still in the tree is a sweep finding, not a precedent.
 
 ```ts
 const [user, setting] = await Promise.all([
@@ -28,7 +28,7 @@ A sequential `await` whose dependency is visible in the code carries no comment:
 - a gate that decides whether the request proceeds (a feature-flag gate, an existence or permission check) runs before the work it guards, so a closed gate starts no query and its exception is the one the caller sees;
 - side effects whose order is part of the contract (a reset before a boot, seeds that read rows an earlier seed wrote);
 - a fan-out over an unbounded collection: bounded chunks in turn, each concurrent; the size is a config key (`config.md`);
-- an argon2id hash or compare, which holds `helper.argon2` memory per call: one at a time, a compare stopping at the first match.
+- an argon2id compare over several hashes, stopping at the first match. Independent argon2id hashes are no such case: they run under `Promise.all`.
 
 A method carries at most one `// Sequential by design: <case>` line, above its first ordered `await`, naming every case the method has (`gate before the work it guards; write after the gate`); the later `await`s of the same method, a loop body included, carry none. A second marker in one method is a defect.
 

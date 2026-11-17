@@ -13,7 +13,7 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { DeviceRemoveRequestDto } from '@modules/device/dtos/request/device.remove.request.dto';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
-import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -36,7 +36,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly sessionService: SessionService,
-        private readonly deviceService: DeviceService,
+        private readonly deviceUtil: DeviceUtil,
         private readonly userAuthService: UserAuthService,
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
@@ -98,7 +98,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                         now
                     );
 
-                const metadata = this.deviceService.mapActivityLogMetadata(
+                const metadata = this.deviceUtil.mapActivityLogMetadata(
                     deviceOwnership,
                     revokedSessions.length
                 );

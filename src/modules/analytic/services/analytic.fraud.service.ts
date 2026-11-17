@@ -67,7 +67,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
@@ -433,7 +432,9 @@ export class AnalyticFraudService {
                 if (hasDevicePerChange[index]) {
                     flagged.push({
                         userId: change.userId,
-                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        indicatorCodes: [
+                            EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                        ],
                         passwordChangedAt: change.createdAt,
                     });
                 }
@@ -752,7 +753,7 @@ export class AnalyticFraudService {
 
     async credentialStuffingList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -803,7 +804,7 @@ export class AnalyticFraudService {
     async accountTakeoverList(
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
         const rows = await this.computeAccountTakeover(startDate, endDate);
 
@@ -848,7 +849,7 @@ export class AnalyticFraudService {
 
     async massRegistrationList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -897,7 +898,7 @@ export class AnalyticFraudService {
 
     async passwordResetEnumerationList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -942,7 +943,7 @@ export class AnalyticFraudService {
     }
 
     async sharedFingerprintList(
-        params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
         const rows = await this.deviceAnalyticService.getSharedFingerprints(
             this.sharedFingerprintMinUsersPerFingerprint
@@ -990,7 +991,7 @@ export class AnalyticFraudService {
     async sessionAfterAdminList(
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
         const rows = await this.computeSessionAfterAdmin(startDate, endDate);
 
@@ -1035,7 +1036,7 @@ export class AnalyticFraudService {
 
     async forgotPasswordTokenAbuseList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -1084,7 +1085,7 @@ export class AnalyticFraudService {
 
     async refreshSpikeList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -1133,7 +1134,7 @@ export class AnalyticFraudService {
 
     async backupCodeNewDeviceList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -1182,7 +1183,7 @@ export class AnalyticFraudService {
 
     async apiKeyBurstList(
         windowMs: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
         const window = this.analyticDateService.resolveWindow(
             windowMs,
@@ -1208,7 +1209,7 @@ export class AnalyticFraudService {
 
     async riskScores(
         minScore: number | null,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
         const now = this.helperDateService.create();
         const [signals, nearLockout] = await Promise.all([

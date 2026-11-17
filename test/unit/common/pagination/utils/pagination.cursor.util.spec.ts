@@ -83,6 +83,23 @@ describe('PaginationCursorUtil', () => {
         });
     });
 
+    describe('encryptionSecretKey', () => {
+        it('reads the app secret once at construction, not per seal or open', () => {
+            helperEncryptionService.aes256Encrypt.mockReturnValue('sealed');
+            helperEncryptionService.aes256Decrypt.mockReturnValue(
+                JSON.stringify(token)
+            );
+
+            util.seal(token);
+            util.open('sealed');
+
+            expect(configService.get).toHaveBeenCalledTimes(1);
+            expect(configService.get).toHaveBeenCalledWith(
+                'app.encryptionSecretKey'
+            );
+        });
+    });
+
     describe('open', () => {
         it('decrypts the cursor as is under the same arguments and returns the parsed token', () => {
             helperEncryptionService.aes256Decrypt.mockReturnValue(

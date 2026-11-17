@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -31,14 +30,10 @@ export class ActivityLogGetListCursorByWorkspaceUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    scope: ActivityLogSharedWorkspaceListCursorScope,
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: ActivityLogSharedWorkspaceListCursorScope,
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

@@ -5,7 +5,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import type {
     IApiKey,
@@ -14,10 +13,7 @@ import type {
 
 export interface IApiKeyRepository {
     findWithPagination(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         isActive: Record<string, IPaginationEqual> | null,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IApiKey>>;

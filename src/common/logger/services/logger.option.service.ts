@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import type { IncomingMessage } from 'node:http';
 import type { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -27,6 +26,7 @@ import type {
 } from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 
 @Injectable()
 export class LoggerOptionService {
@@ -47,11 +47,11 @@ export class LoggerOptionService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly requestStoreService: RequestStoreService,
-        private readonly loggerUtil: LoggerUtil
+        private readonly loggerUtil: LoggerUtil,
+        private readonly loggerUrlUtil: LoggerUrlUtil
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.name = this.configService.get<string>('app.name')!;
@@ -243,7 +243,7 @@ export class LoggerOptionService {
         return this.autoLogger === true
             ? {
                   ignore: (req: IncomingMessage) =>
-                      this.helperStringService.checkUrlMatchesPatterns(
+                      this.loggerUrlUtil.matchesPatterns(
                           req.url!,
                           this.excludedRoutes
                       ),

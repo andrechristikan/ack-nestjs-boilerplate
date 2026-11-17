@@ -1,9 +1,9 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { EnumMfaChallengePurpose } from '@generated/prisma-client/client';
 import type {
-    IMfaChallengeCreateData,
-    IMfaChallengeRow,
-} from '@modules/mfa/interfaces/mfa.interface';
+    EnumMfaChallengePurpose,
+    MfaChallenge,
+} from '@generated/prisma-client/client';
+import type { IMfaChallengeCreateData } from '@modules/mfa/interfaces/mfa.interface';
 
 export interface IMfaChallengeRepository {
     create(data: IMfaChallengeCreateData): Promise<void>;
@@ -15,7 +15,7 @@ export interface IMfaChallengeRepository {
         tokenHash: string,
         purpose: EnumMfaChallengePurpose,
         now: Date
-    ): Promise<IMfaChallengeRow | null>;
+    ): Promise<MfaChallenge | null>;
     consumeInTx(
         tx: IDatabaseTransactionClient,
         tokenHash: string,

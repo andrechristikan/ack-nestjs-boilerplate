@@ -276,6 +276,35 @@ describe('UserImportService', () => {
                 { temporary: true }
             );
         });
+
+        it('starts every hash before the first resolves and keeps row order', async () => {
+            const first = Promise.withResolvers<typeof password>();
+            const second = { ...password, passwordHash: 'hash-second' };
+            authPasswordUtil.createPassword
+                .mockReturnValueOnce(first.promise)
+                .mockResolvedValueOnce(second);
+
+            const pending = service.prepareImportByAdmin(
+                rows,
+                'admin-thistle',
+                role,
+                'country-thistle'
+            );
+            await Promise.resolve();
+
+            expect(authPasswordUtil.createPassword).toHaveBeenCalledTimes(2);
+            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
+                2,
+                'password-two',
+                { temporary: true }
+            );
+
+            first.resolve(password);
+            const result = await pending;
+
+            expect(result.passwordHasheds[0]).toBe(password);
+            expect(result.passwordHasheds[1]).toBe(second);
+        });
     });
 
     describe('assertImportByAdminRows', () => {

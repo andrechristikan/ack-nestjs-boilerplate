@@ -109,10 +109,10 @@ export class WorkspaceAdminController {
     @ApiKeyProtected()
     @Get('/member/:workspaceId/list')
     async memberList(
-        @Query({ schema: WorkspaceAdminMemberListRequestSchema })
-        query: WorkspaceAdminMemberListRequestDto,
         @Param('workspaceId', { schema: RequestMongoIdSchema })
-        workspaceId: string
+        workspaceId: string,
+        @Query({ schema: WorkspaceAdminMemberListRequestSchema })
+        query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceGetMembersListByAdminUseCase.execute(
             workspaceId,

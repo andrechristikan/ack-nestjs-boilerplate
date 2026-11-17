@@ -30,11 +30,9 @@ export class TermPolicyGetListByAdminUseCase implements IAppUseCase<
     async execute(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
-                query,
-                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+        });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,

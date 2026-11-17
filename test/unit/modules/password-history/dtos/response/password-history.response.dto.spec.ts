@@ -1,15 +1,14 @@
-import { faker } from '@faker-js/faker';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 
 describe('PasswordHistoryResponseSchema', () => {
     const user = {
-        id: faker.database.mongodbObjectId(),
-        createdAt: new Date(),
-        createdBy: faker.database.mongodbObjectId(),
-        updatedAt: new Date(),
-        updatedBy: faker.database.mongodbObjectId(),
+        id: '507f1f77bcf86cd799439011',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: '507f1f77bcf86cd799439011',
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: '507f1f77bcf86cd799439011',
         deletedAt: null,
         deletedBy: null,
         name: 'Nadia Bloom',
@@ -25,13 +24,13 @@ describe('PasswordHistoryResponseSchema', () => {
         },
     };
     const row = {
-        id: faker.database.mongodbObjectId(),
-        userId: faker.database.mongodbObjectId(),
+        id: '507f1f77bcf86cd799439011',
+        userId: '507f1f77bcf86cd799439011',
         user,
         type: EnumPasswordHistoryType.admin,
-        expiredAt: new Date(),
-        createdAt: new Date(),
-        createdBy: faker.database.mongodbObjectId(),
+        expiredAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: '507f1f77bcf86cd799439011',
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -52,10 +51,10 @@ describe('PasswordHistoryResponseSchema', () => {
     it('omits updatedAt, updatedBy, deletedAt, and deletedBy even when present on the input', () => {
         const result = PasswordHistoryResponseSchema.parse({
             ...row,
-            updatedAt: new Date(),
-            updatedBy: faker.database.mongodbObjectId(),
-            deletedAt: new Date(),
-            deletedBy: faker.database.mongodbObjectId(),
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: '507f1f77bcf86cd799439011',
+            deletedAt: new Date('2026-01-01T00:00:00.000Z'),
+            deletedBy: '507f1f77bcf86cd799439011',
         });
 
         expect(result).toEqual(row);

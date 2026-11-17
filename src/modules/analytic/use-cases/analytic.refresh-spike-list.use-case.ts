@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,11 +23,9 @@ export class AnalyticRefreshSpikeListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticRefreshSpikeListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticUserCountAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudService.refreshSpikeList(

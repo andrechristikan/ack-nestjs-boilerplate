@@ -17,8 +17,7 @@ RUN pnpm build
 
 # Main Stage
 FROM base AS main
-ARG NODE_ENV
-ENV NODE_ENV=${NODE_ENV}
+ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
 

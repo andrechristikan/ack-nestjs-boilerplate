@@ -1,12 +1,30 @@
-import { Injectable, StandardSchemaValidationPipe } from '@nestjs/common';
-import type { ArgumentMetadata } from '@nestjs/common';
+import {
+    Injectable,
+    Optional,
+    StandardSchemaValidationPipe,
+} from '@nestjs/common';
+import type {
+    ArgumentMetadata,
+    StandardSchemaValidationPipeOptions,
+} from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestSchemaMissingException } from '@common/request/exceptions/request.schema-missing.exception';
 
 @Injectable()
 export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
+    constructor(
+        @Optional()
+        protected override readonly options?: StandardSchemaValidationPipeOptions
+    ) {
+        super({
+            exceptionFactory: issues => new RequestValidationException(issues),
+            ...options,
+        });
+    }
+
     private stampEmptyIssuePaths(
         issues: readonly StandardSchemaV1.Issue[],
         data: string | undefined

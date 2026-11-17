@@ -12,5 +12,10 @@ export const ActivityLogAnalyticListSelect = {
 } satisfies Prisma.ActivityLogSelect;
 
 /** @public */
+export const ActivityLogAnalyticCreatedAtSelect = {
+    createdAt: true,
+} satisfies Prisma.ActivityLogSelect;
+
+/** @public */
 export const ActivityLogActionRangeCursorScope =
     'ActivityLogActionRangeCursorScope';

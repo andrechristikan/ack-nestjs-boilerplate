@@ -28,7 +28,7 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
 
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],

@@ -11,7 +11,6 @@ import type {
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
     WorkspaceCursorAvailableOrderBy,
@@ -47,14 +46,16 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const offsetPagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
-        { skip: 0, limit: 20, orderBy: [] };
-    const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const offsetPagination: IPaginationQueryOffsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+    };
+    const cursorPagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
     const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
     );

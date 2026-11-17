@@ -3,7 +3,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
@@ -43,10 +43,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
 
     async findWithPaginationCursor(
         projectId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor(
             this.databaseService.client.projectMember,

@@ -22,7 +22,7 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
 
     const windowMs: number = 3600000;
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],

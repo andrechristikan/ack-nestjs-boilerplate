@@ -24,7 +24,6 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
-    Prisma,
     Workspace,
     WorkspaceJoinRequest,
     WorkspaceMember,
@@ -157,7 +156,12 @@ describe('WorkspaceJoinRequestService', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.workspaceJoinRequest,
-            context: { userId: 'reviewer-1', proceedBy: 'user-2' },
+            context: {
+                userId: 'reviewer-1',
+                proceedBy: 'user-2',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -509,11 +513,32 @@ describe('WorkspaceJoinRequestService', () => {
                     notice
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+
                 constructor: WorkspaceJoinRequestDuplicateException,
                 statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
                 messagePath: 'workspace.error.joinRequestDuplicate',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
+        });
+
+        it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
+            const thrown = new WorkspaceJoinRequestAlreadyMemberException();
+            workspaceJoinRequestRepository.createPendingInTx.mockRejectedValue(
+                thrown
+            );
+
+            await expect(
+                service.createJoinRequest(
+                    requestContext,
+                    apiKeyContext,
+                    authContextOfUser2,
+                    create,
+                    notice
+                )
+            ).rejects.toBe(thrown);
+            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
+            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps another create failure in AppUnknownException', async () => {
@@ -539,12 +564,11 @@ describe('WorkspaceJoinRequestService', () => {
     });
 
     describe('getJoinRequestsList', () => {
-        const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
-            {
-                fingerprint: 'aaaaaaaaaaaaaaaa',
-                limit: 20,
-                orderBy: [],
-            };
+        const pagination: IPaginationQueryCursorParams = {
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            limit: 20,
+            orderBy: [],
+        };
         const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
             type: EnumPaginationType.cursor,
             perPage: 20,
@@ -817,6 +841,10 @@ describe('WorkspaceJoinRequestService', () => {
                     'Acme'
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode:
+                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
+
                 constructor: WorkspaceJoinRequestAlreadyProcessedException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -1038,6 +1066,10 @@ describe('WorkspaceJoinRequestService', () => {
                     EnumWorkspaceJoinRejectReason.wrongWorkspace
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode:
+                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
+
                 constructor: WorkspaceJoinRequestAlreadyProcessedException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);

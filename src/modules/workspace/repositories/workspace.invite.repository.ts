@@ -8,10 +8,7 @@ import type {
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import {
-    EnumWorkspaceInviteStatus,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
@@ -231,10 +228,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor(

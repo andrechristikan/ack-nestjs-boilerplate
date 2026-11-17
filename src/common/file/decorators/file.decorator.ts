@@ -6,6 +6,7 @@ import {
 } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import {
+    FileImportDocErrors,
     FileMaxMultiple,
     FileSizeInBytes,
     FileUploadDocErrors,
@@ -43,6 +44,14 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
                 },
             })
         )
+    );
+}
+
+/** @public */
+export function FileImportSingle(options?: IFileUploadSingle): MethodDecorator {
+    return applyDecorators(
+        FileUploadSingle(options),
+        DocErrors(...FileImportDocErrors)
     );
 }
 

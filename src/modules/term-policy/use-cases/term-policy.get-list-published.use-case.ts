@@ -30,14 +30,10 @@ export class TermPolicyGetListPublishedUseCase implements IAppUseCase<
     async execute(
         query: TermPolicyPublicListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(
-                query,
-                {
-                    scope: TermPolicyPublicListCursorScope,
-                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: TermPolicyPublicListCursorScope,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+        });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,

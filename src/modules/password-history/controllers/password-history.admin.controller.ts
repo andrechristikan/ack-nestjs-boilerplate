@@ -54,10 +54,10 @@ export class PasswordHistoryAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Query({ schema: PasswordHistoryAdminListRequestSchema })
-        query: PasswordHistoryAdminListRequestDto,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: PasswordHistoryAdminListRequestSchema })
+        query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryGetListOffsetByAdminUseCase.execute(
             userId,

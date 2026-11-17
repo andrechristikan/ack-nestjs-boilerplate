@@ -13,6 +13,7 @@ import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavai
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationQueryCursorParams,
@@ -30,7 +31,6 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
@@ -61,6 +61,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 
 describe('SessionService', () => {
     const sessionRepository: MockProxy<SessionRepository> =
@@ -76,6 +77,7 @@ describe('SessionService', () => {
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -160,6 +162,7 @@ describe('SessionService', () => {
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: DeviceService, useValue: deviceService },
+                { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -339,8 +342,11 @@ describe('SessionService', () => {
 
     describe('getListOffsetByAdmin', () => {
         it('delegates to the repository with the pagination params and revoked filter', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const isRevoked = { isRevoked: { equals: true } };
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.offset,
@@ -369,8 +375,11 @@ describe('SessionService', () => {
         });
 
         it('passes a null revoked filter when none is given', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -399,12 +408,11 @@ describe('SessionService', () => {
 
     describe('getListCursor', () => {
         it('delegates to the repository with the cursor pagination params', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -1483,10 +1491,10 @@ describe('SessionService', () => {
 
         beforeEach(() => {
             helperDateService.create.mockReturnValue(now);
-            deviceService.mapActivityLogActorMetadata.mockReturnValue({
+            deviceUtil.mapActivityLogActorMetadata.mockReturnValue({
                 targetUserId: 'user-1',
             });
-            deviceService.mapActivityLogTargetMetadata.mockReturnValue({
+            deviceUtil.mapActivityLogTargetMetadata.mockReturnValue({
                 actorUserId: 'admin-1',
             });
             activityLogService.recordEffect
@@ -1540,11 +1548,12 @@ describe('SessionService', () => {
                 'device-ownership-1'
             );
 
+            expect(deviceUtil.mapActivityLogActorMetadata).toHaveBeenCalledWith(
+                deviceOwnership,
+                1
+            );
             expect(
-                deviceService.mapActivityLogActorMetadata
-            ).toHaveBeenCalledWith(deviceOwnership, 1);
-            expect(
-                deviceService.mapActivityLogTargetMetadata
+                deviceUtil.mapActivityLogTargetMetadata
             ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
@@ -1611,6 +1620,8 @@ describe('SessionService', () => {
                     'device-ownership-1'
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumDeviceStatusCodeError.notFound,
+
                 constructor: DeviceNotFoundException,
                 module: 'device',
                 messagePath: 'device.error.notFound',

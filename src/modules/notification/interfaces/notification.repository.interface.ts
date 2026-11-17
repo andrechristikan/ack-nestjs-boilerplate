@@ -17,10 +17,7 @@ import type { Notification } from '@generated/prisma-client/client';
 export interface INotificationRepository {
     findWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
+        { where, ...params }: IPaginationQueryCursorParams,
         excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>>;
     findIsReadById(

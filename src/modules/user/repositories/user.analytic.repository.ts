@@ -1,5 +1,8 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { UserAdminNearLockoutSelect } from '@modules/user/constants/user.constant';
+import {
+    UserAdminNearLockoutSelect,
+    UserAnalyticRefSelect,
+} from '@modules/user/constants/user.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -17,7 +20,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -236,31 +238,21 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
     async findOneById(id: string): Promise<IUserAnalyticRef | null> {
         return this.databaseService.client.user.findFirst({
             where: { id, deletedAt: null },
-            select: {
-                id: true,
-                email: true,
-                passwordAttempt: true,
-                passwordLockedUntil: true,
-            },
+            select: UserAnalyticRefSelect,
         });
     }
 
     async findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]> {
         return this.databaseService.client.user.findMany({
             where: { id: { in: ids }, deletedAt: null },
-            select: {
-                id: true,
-                email: true,
-                passwordAttempt: true,
-                passwordLockedUntil: true,
-            },
+            select: UserAnalyticRefSelect,
         });
     }
 
     async findNearLockoutOffset(
         minAttempt: number,
         now: Date,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { where, ...rest } = params;
         return this.paginationService.offset(this.databaseService.client.user, {

@@ -26,7 +26,6 @@ import type { IActivityLogActionContracts } from '@modules/activity-log/interfac
 
 /** @public */
 export const ActivityLogActionContract: IActivityLogActionContracts = {
-    // Pre-auth / subject-id without JWT / dual-feed subject rows
     [EnumActivityLogAction.userCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
@@ -158,7 +157,6 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogDeviceTargetMetadataSchema,
     },
 
-    // Authenticated self-service
     [EnumActivityLogAction.userUpdateProfile]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -280,7 +278,6 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogEmptyMetadataSchema,
     },
 
-    // Admin platform + admin dual-feed payload rows
     [EnumActivityLogAction.adminSessionRevoke]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -417,7 +414,6 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogSessionAllActorMetadataSchema,
     },
 
-    // Workspace / project — explicit workspaceId staged
     [EnumActivityLogAction.workspaceCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,

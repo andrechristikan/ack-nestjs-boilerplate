@@ -44,14 +44,16 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const offsetPagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
-        { skip: 0, limit: 20, orderBy: [] };
-    const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const offsetPagination: IPaginationQueryOffsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+    };
+    const cursorPagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
     let useCase: WorkspaceGetListOffsetByAdminUseCase;
 
     beforeEach(async () => {

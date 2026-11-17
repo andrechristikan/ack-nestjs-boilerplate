@@ -10,19 +10,22 @@ export class NotificationPushProcessCleanupStaleTokensUseCase implements IAppUse
     [],
     IQueueResponse
 > {
+    private readonly staleTokenThresholdInMs: number;
+
     constructor(
         private readonly deviceService: DeviceService,
         private readonly notificationService: NotificationService,
         private readonly configService: ConfigService
-    ) {}
-
-    async execute(): Promise<IQueueResponse> {
-        const thresholdInMs = this.configService.get<number>(
+    ) {
+        this.staleTokenThresholdInMs = this.configService.get<number>(
             'notification.push.staleTokenThresholdInMs'
         )!;
+    }
+
+    async execute(): Promise<IQueueResponse> {
         const countRemovedTokens =
             await this.deviceService.cleanupStaleNotificationTokens(
-                thresholdInMs
+                this.staleTokenThresholdInMs
             );
 
         return this.notificationService.toCleanupStaleTokensResult(

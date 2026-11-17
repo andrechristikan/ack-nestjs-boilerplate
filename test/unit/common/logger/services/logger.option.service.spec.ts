@@ -3,7 +3,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Response } from 'express';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -12,6 +11,7 @@ import {
     RequestCorrelationIdStoreKey,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerAutoContext } from '@common/logger/constants/logger.constant';
@@ -20,8 +20,6 @@ import { createLoggerOptionService } from '@test/unit/helpers/test.unit.logger.h
 import type { ILoggerOptionServiceDoubles } from '@test/unit/helpers/test.unit.logger.helper';
 
 describe('LoggerOptionService', () => {
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const requestContextService: MockProxy<RequestContextService> =
@@ -29,12 +27,13 @@ describe('LoggerOptionService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const loggerUtil: MockProxy<LoggerUtil> = mock<LoggerUtil>();
+    const loggerUrlUtil: MockProxy<LoggerUrlUtil> = mock<LoggerUrlUtil>();
     const loggerDoubles: ILoggerOptionServiceDoubles = {
-        helperStringService,
         helperDateService,
         requestContextService,
         requestStoreService,
         loggerUtil,
+        loggerUrlUtil,
     };
 
     const baseConfig: Record<string, unknown> = {
@@ -265,7 +264,7 @@ describe('LoggerOptionService', () => {
                 { ...baseConfig, 'logger.auto': true },
                 loggerDoubles
             );
-            helperStringService.checkUrlMatchesPatterns.mockReturnValue(true);
+            loggerUrlUtil.matchesPatterns.mockReturnValue(true);
             const request = { url: '/metrics' } as IRequestApp;
 
             const config = service['createAutoLoggingConfig']() as {
@@ -273,12 +272,10 @@ describe('LoggerOptionService', () => {
             };
 
             expect(config.ignore(request)).toBe(true);
-            expect(
-                helperStringService.checkUrlMatchesPatterns
-            ).toHaveBeenCalledWith('/metrics', [
-                '/api/public/hello',
+            expect(loggerUrlUtil.matchesPatterns).toHaveBeenCalledWith(
                 '/metrics',
-            ]);
+                ['/api/public/hello', '/metrics']
+            );
         });
     });
 
@@ -374,7 +371,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -404,7 +403,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -428,7 +429,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -444,7 +447,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -460,7 +465,9 @@ describe('LoggerOptionService', () => {
                 { ...baseConfig, 'app.env': EnumAppEnvironment.production },
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -476,7 +483,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -500,7 +509,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -518,7 +529,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -537,7 +550,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -556,7 +571,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);
@@ -572,7 +589,9 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             requestContextService.getHostname.mockReturnValue('host-1');
             loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
             loggerUtil.sanitizeMessage.mockImplementation(m => m);

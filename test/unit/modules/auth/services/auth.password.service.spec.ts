@@ -80,6 +80,8 @@ describe('AuthPasswordService', () => {
             await expect(
                 service.assertAllowed('Pre-john-Post-1', ['john.doe'])
             ).rejects.toMatchObject({
+                module: 'auth',
+
                 statusCode: EnumAuthStatusCodeError.passwordContextWord,
             });
         });

@@ -23,7 +23,6 @@ export class UserVerifyEmailUseCase implements IAppUseCase<
         const { verification } =
             await this.userVerificationService.getOneActiveByEmailToken(token);
 
-        // Sequential by design: write must not run if an earlier step throws
         await this.userVerificationService.verifyEmail(
             requestContext,
             apiKeyContext,

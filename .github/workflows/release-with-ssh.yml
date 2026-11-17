@@ -59,11 +59,11 @@ jobs:
             - name: Build & Push
               if: ${{ github.ref_name == matrix.branch }}
               run: |
-                  docker build --build-arg NODE_ENV=${{ matrix.env }} -t ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker build -t ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
                   docker tag ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:sha-${{ steps.git.outputs.short_sha }}
                   docker push ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
-                  
+
                   # Push latest tag only for production
                   if [ "${{ matrix.env }}" = "production" ]; then
                     docker tag ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:latest
@@ -124,7 +124,7 @@ jobs:
                       docker pull ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
                       docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }} || true
                       docker network create app-network --driver=bridge 2>/dev/null || true
-                      docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume $HOME/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+                      docker run -itd --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume $HOME/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
 
     clean:
         needs: [deploy]

@@ -104,7 +104,7 @@ export class NotificationPushDeliveryService {
         const steps = failedSteps.map(({ step }) => step);
 
         return this.messageService.setMessage(
-            'notification.queue.error.stepsFailed',
+            'notification.queue.push.error.stepsFailed',
             { properties: { steps: steps.join(', ') } }
         );
     }

@@ -41,8 +41,8 @@
         "importByAdmin": "Imported users by admin.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",
-            "outboxIdMissing": "The import job carries no outbox row id.",
-            "photoAccessInvalid": "User photo {key} names no S3 bucket access {access}."
+            "importFailed": "The user import job failed.",
+            "outboxIdMissing": "The import job carries no outbox row id."
         }
     },
     "error": {
@@ -58,7 +58,6 @@
         "passwordExpired": "Your password has expired.",
         "passwordAttemptMax": "Maximum password attempts exceeded.",
         "passwordNotMatch": "Passwords do not match.",
-        "passwordMustNew": "New password must be different from previous passwords within the past {period} days.",
         "mobileNumberExist": "This mobile number already exists.",
         "mobileNumberInvalid": "This mobile number is invalid.",
         "mobileNumberNotFound": "Mobile number not found.",

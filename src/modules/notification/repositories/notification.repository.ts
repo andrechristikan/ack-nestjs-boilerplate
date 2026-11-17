@@ -95,10 +95,7 @@ export class NotificationRepository implements INotificationRepository {
 
     async findWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
+        { where, ...params }: IPaginationQueryCursorParams,
         excludedTypes: EnumNotificationType[]
     ): Promise<IResponsePaginationReturn<Notification>> {
         const visibleWhere = this.buildVisibleWhere(userId, excludedTypes);

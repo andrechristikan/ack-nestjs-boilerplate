@@ -20,7 +20,7 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],

@@ -39,12 +39,11 @@ describe('WorkspaceGetInvitesListUseCase', () => {
         mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const cursorPagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const cursorPagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
     const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
         buildWorkspaceMember('user-1')

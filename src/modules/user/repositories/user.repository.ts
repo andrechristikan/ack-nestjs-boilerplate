@@ -16,6 +16,7 @@ import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/use
 import {
     UserActiveRecipientCursorScope,
     UserAdminListSelect,
+    UserNameSelect,
     UserNotDeletedWhere,
     UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
@@ -24,6 +25,7 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserDeletedIdentity,
     IUserList,
+    IUserName,
     IUserProfile,
     IUserRecipient,
     IUserUpdateProfile,
@@ -39,7 +41,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -83,10 +84,7 @@ export class UserRepository implements IUserRepository {
     }
 
     async findWithPaginationOffset(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
@@ -156,12 +154,10 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findNameById(
-        userId: string
-    ): Promise<IWorkspaceInviteInviter | null> {
+    async findNameById(userId: string): Promise<IUserName | null> {
         return this.databaseService.client.user.findUnique({
             where: { id: userId, deletedAt: null },
-            select: { name: true, username: true },
+            select: UserNameSelect,
         });
     }
 

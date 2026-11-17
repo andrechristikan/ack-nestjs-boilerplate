@@ -12,21 +12,15 @@ import type {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
     findWithPaginationOffsetByAdmin(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
+        { where, ...params }: IPaginationQueryCursorParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;

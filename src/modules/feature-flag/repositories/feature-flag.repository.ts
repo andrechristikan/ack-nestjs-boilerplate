@@ -6,11 +6,12 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import type { IFeatureFlagUpdateStatus } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import type {
+    IFeatureFlagUpdateMetadata,
+    IFeatureFlagUpdateStatus,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -21,7 +22,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset(
             this.databaseService.client.featureFlag,
@@ -30,7 +31,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     }
 
     async findWithPaginationCursor(
-        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.cursor(
             this.databaseService.client.featureFlag,
@@ -83,7 +84,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     async updateMetadataInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { metadata }: FeatureFlagUpdateMetadataRequestDto
+        { metadata }: IFeatureFlagUpdateMetadata
     ): Promise<FeatureFlag> {
         return tx.featureFlag.update({
             where: {

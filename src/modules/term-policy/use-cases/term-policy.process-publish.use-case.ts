@@ -2,7 +2,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { ITermPolicyPublishQueueResponse } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type {
@@ -18,7 +18,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class TermPolicyProcessPublishUseCase implements IAppUseCase<
     [ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>],
-    IQueueResponse
+    ITermPolicyPublishQueueResponse
 > {
     constructor(
         private readonly termPolicyRecipientService: TermPolicyRecipientService,
@@ -102,7 +102,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
     async execute({
         data,
         proceedBy,
-    }: ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>): Promise<IQueueResponse> {
+    }: ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>): Promise<ITermPolicyPublishQueueResponse> {
         const createdBefore = this.helperDateService.createFromIso(
             data.recipientCutoffAt
         );

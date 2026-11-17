@@ -59,6 +59,18 @@ Rule: `layering.md`, Dependency order.
 - Password-history in the kernel: its service injects `AuthPasswordUtil`, so it sits above auth.
 - `AuthPasswordUtil` in the kit: it is auth-specific, and the kit takes only a module-agnostic concept with three callers or more.
 
+### A processor injects its use cases only
+
+Rule: `queue.md`, Processors; `injectable.md`.
+
+- A processor constructor forwarding `SentryService`, `MessageService`, `CacheService`, and `OutboxService` to `super(...)`: a processor, like a controller, injects nothing but its use cases.
+
+### A Lua script or a raw query sits in the method that runs it
+
+Rule: `naming.md`, Files.
+
+- The script as a data constant in `constants/`: the script reads apart from the call that runs it.
+
 ### Two modules per feature, processors registered in the processor router
 
 Rule: `module-files.md`, Module files.
@@ -123,6 +135,12 @@ Rule: `transaction.md`, Transactions.
 
 - Two transactions where one suffices: a flow is one transaction, so a failure leaves no committed half.
 - A compensating write after commit: it exists only when Redis is written after commit, and Redis is not the authority.
+
+### A relation scalar no query filters on carries no index
+
+Rule: `repository.md`, Schema.
+
+- An index kept for the seed's hard delete: the seed runs rarely and scans once, while the index costs a write on every login, refresh, and device touch.
 
 ## Outbox and queues
 
@@ -310,3 +328,39 @@ Rule: `injectable.md`, NestJS idiomatic.
 Rule: `file.md`.
 
 - Version-aware list and delete: the bucket is not versioned by design.
+
+## HTTP
+
+### A guard-loaded id is read raw and answers not-found
+
+Rule: `guards.md`, Guards.
+
+- The guard validates and answers 422: the workspace header takes the same raw path and would still answer 404 beside it, and the doc kit has no entry for a param.
+
+### Response metadata is typed by its schema, and an exception adds keys through its `metadata` option
+
+Rule: `filter.md`.
+
+- An open record on the metadata type: any key type-checks as metadata.
+- No `metadata` option on the exception: the owner keeps response metadata as part of the template, and an error answering with extra keys needs the option.
+
+### A file import route documents its errors through `@FileImportSingle`
+
+Rule: `file.md`, CSV import; `http.md`.
+
+- `DocErrors` on the import route's controller method: a controller calls no `DocErrors`.
+- An import option on `FileUploadSingle`: a knob on the upload decorator for one route kind.
+
+### `PaginationQueryUtil` returns the search `where` with no type argument
+
+Rule: `pagination.md`.
+
+- A caller-chosen `TArgsWhere`: the util builds only the search `OR`, so the argument named a type it never produced and needed a cast.
+
+## Tests
+
+### A caller spec names an exception by `module` and `statusCode`
+
+Rule: `testing.md`, Unit.
+
+- Four fields in every caller block: the exception's own spec already pins every field, so a caller repeats them and catches nothing more.

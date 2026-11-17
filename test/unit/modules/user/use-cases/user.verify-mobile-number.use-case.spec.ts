@@ -59,7 +59,12 @@ describe('UserVerifyMobileNumberUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.verifiedMobileNumber,
-            context: { userId: 'user-swift', proceedBy: 'user-swift' },
+            context: {
+                userId: 'user-swift',
+                proceedBy: 'user-swift',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },

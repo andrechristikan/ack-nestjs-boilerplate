@@ -7,6 +7,11 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import {
+    RoleSelect,
+    RoleWithPoliciesInclude,
+    RoleWithPolicyCountInclude,
+} from '@modules/role/constants/role.constant';
 import type {
     IRole,
     IRoleCreate,
@@ -16,7 +21,7 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -26,10 +31,7 @@ export class RoleRepository implements IRoleRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset(this.databaseService.client.role, {
@@ -38,15 +40,12 @@ export class RoleRepository implements IRoleRepository {
                 ...where,
                 ...type,
             },
-            include: { _count: { select: { policies: true } } },
+            include: RoleWithPolicyCountInclude,
         });
     }
 
     async findWithPaginationCursorBySystem(
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
+        { where, ...params }: IPaginationQueryCursorParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor(this.databaseService.client.role, {
@@ -55,7 +54,7 @@ export class RoleRepository implements IRoleRepository {
                 ...where,
                 ...type,
             },
-            include: { _count: { select: { policies: true } } },
+            include: RoleWithPolicyCountInclude,
         });
     }
 
@@ -64,28 +63,28 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            include: { policies: true },
+            include: RoleWithPoliciesInclude,
         });
     }
 
     async findOneById(id: string): Promise<IRole | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            select: { id: true, type: true, name: true, isImmutable: true },
+            select: RoleSelect,
         });
     }
 
     async findOneByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
             where: { name },
-            select: { id: true, type: true, name: true, isImmutable: true },
+            select: RoleSelect,
         });
     }
 
     async findOneByUserId(userId: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
             where: { users: { some: { id: userId, deletedAt: null } } },
-            select: { id: true, type: true, name: true, isImmutable: true },
+            select: RoleSelect,
         });
     }
 
@@ -103,7 +102,7 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRole | null> {
         return tx.role.findUnique({
             where: { id },
-            select: { id: true, type: true, name: true, isImmutable: true },
+            select: RoleSelect,
         });
     }
 
@@ -113,7 +112,7 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRoleWithPolicyCount | null> {
         return tx.role.findUnique({
             where: { id },
-            include: { _count: { select: { policies: true } } },
+            include: RoleWithPolicyCountInclude,
         });
     }
 
@@ -127,7 +126,7 @@ export class RoleRepository implements IRoleRepository {
                 ...data,
                 id: roleId,
             },
-            include: { policies: true },
+            include: RoleWithPoliciesInclude,
         });
     }
 
@@ -147,7 +146,7 @@ export class RoleRepository implements IRoleRepository {
 
         return tx.role.findUnique({
             where: { id },
-            include: { policies: true },
+            include: RoleWithPoliciesInclude,
         });
     }
 

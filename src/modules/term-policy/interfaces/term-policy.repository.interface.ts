@@ -5,8 +5,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type {
     ITermPolicyAcceptanceRow,
     ITermPolicyContent,
@@ -16,32 +15,22 @@ import type {
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 export interface ITermPolicyRepository {
     find(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         type: Record<string, IPaginationIn> | null,
         status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findUserAccepted(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
     findOneById(termPolicyId: string): Promise<TermPolicy | null>;
     findOneByIdInTx(
@@ -81,7 +70,8 @@ export interface ITermPolicyRepository {
     createInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        { type, version }: TermPolicyCreateRequestDto,
+        type: EnumTermPolicyType,
+        version: number,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy>;
     deleteDraftInTx(
@@ -104,7 +94,7 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto,
+        language: EnumMessageLanguage,
         expectedUpdatedAt: Date
     ): Promise<boolean>;
     publishInTx(

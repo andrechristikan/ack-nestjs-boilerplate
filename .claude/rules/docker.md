@@ -24,7 +24,7 @@ paths:
 - It publishes only `apis` and `redis-bullboard`, both bound to `127.0.0.1`, BullBoard behind a login; TLS ends at a proxy in front of the host: the compose files hold no bind-address variable and no proxy service. Ports are in the file.
 - Connections between the compose services are unencrypted.
 - The compose files ship static service credentials, a Vault profile that stays optional, and logs on stdout; short-lived credentials, a mandatory secret manager, and log shipping are the deployment's.
-- `ci/dockerfile.production` builds in a `builder` stage (`pnpm generate` once, then `pnpm build`, whose closing `pnpm typecheck` is the only type check) and starts from a `main` stage holding production dependencies only, as a non-root user, with the exec-form `CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]`: `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck.
+- `ci/dockerfile.production` builds in a `builder` stage (`pnpm generate` once, then `pnpm build`, whose closing `pnpm typecheck` is the only type check) and starts from a `main` stage holding production dependencies only, as a non-root user, with the exec-form `CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]`: `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck. It sets `ENV NODE_ENV=production`; no build argument or run flag carries `NODE_ENV`.
 - A schema or dependency change ships only in a rebuilt image.
 - Before the first `up` of either compose file the owner generates `keys/` and `.env` (`pnpm generate:secret`), writes `.env.docker` (production: its eight credentials), pushes the schema, and runs the seeds (`AGENTS.md`).
 
@@ -39,7 +39,7 @@ paths:
 
 - One pattern in both compose files: a long-syntax object (`type`, `target`, `source` on a bind), `read_only: true` where the container only reads; the development `apis` source binds stay writable.
 - Every bind sets `bind: { create_host_path: false }`, failing the start on a missing host path, except the `generated/vault` output directory (`create_host_path: true`).
-- `apis` mounts root `.env` at `/app/.env`; the app loads it itself (`ConfigModule.forRoot`, `src/common/common.module.ts`).
+- `apis` mounts root `.env` at `/app/.env` and no `keys/` or `logs/` path; the app loads it itself (`ConfigModule.forRoot`, `src/common/common.module.ts`).
 
 ## Mongo
 

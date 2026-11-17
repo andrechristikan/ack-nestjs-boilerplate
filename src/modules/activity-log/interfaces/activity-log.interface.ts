@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -5,6 +6,7 @@ import type {
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { ActivityLog, Prisma } from '@generated/prisma-client/client';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import {
@@ -94,15 +96,9 @@ export interface IActivityLogIpUserGroup {
     count: number;
 }
 
-export interface IActivityLogAnalyticList {
-    id: string;
-    userId: string;
-    action: EnumActivityLogAction;
-    ipAddress: string | null;
-    createdAt: Date;
-    userAgent: Prisma.JsonValue | null;
-    workspaceId: string | null;
-}
+export type IActivityLogAnalyticList = Prisma.ActivityLogGetPayload<{
+    select: typeof ActivityLogAnalyticListSelect;
+}>;
 
 export type IActivityLogActionContracts = Record<
     EnumActivityLogAction,
@@ -113,4 +109,8 @@ export interface IActivityLogCreateManyEffect extends IOutboxEffect {
     queue: EnumActivityLogQueue.activityLog;
     name: EnumActivityLogProcess.createMany;
     data: IActivityLogCreateManyPayload;
+}
+
+export interface IActivityLogCreateManyQueueResponse extends IQueueResponse {
+    countRows: number;
 }

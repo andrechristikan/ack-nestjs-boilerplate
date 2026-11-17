@@ -112,7 +112,12 @@ describe('MfaResetByAdminUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.resetMfaByAdmin,
-            context: { userId: 'user-marten', proceedBy: 'admin-marten' },
+            context: {
+                userId: 'user-marten',
+                proceedBy: 'admin-marten',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },

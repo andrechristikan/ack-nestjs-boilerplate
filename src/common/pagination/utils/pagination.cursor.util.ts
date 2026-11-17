@@ -26,12 +26,18 @@ import type {
 
 @Injectable()
 export class PaginationCursorUtil {
+    private readonly encryptionSecretKey: string;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService
-    ) {}
+    ) {
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
+    }
 
     private terms(
         orderBy: IPaginationOrderBy[]
@@ -75,27 +81,19 @@ export class PaginationCursorUtil {
     }
 
     seal(token: IPaginationCursorToken): string {
-        const secret = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-
         return this.helperEncryptionService.aes256Encrypt(
             JSON.stringify(token),
-            secret,
+            this.encryptionSecretKey,
             PaginationCursorEncryptionPurpose,
             PaginationCursorEncryptionContext
         );
     }
 
     open(cursor: string): IPaginationCursorToken | null {
-        const secret = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-
         try {
             const plain = this.helperEncryptionService.aes256Decrypt(
                 cursor,
-                secret,
+                this.encryptionSecretKey,
                 PaginationCursorEncryptionPurpose,
                 PaginationCursorEncryptionContext
             );

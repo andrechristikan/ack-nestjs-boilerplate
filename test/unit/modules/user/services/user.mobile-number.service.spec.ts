@@ -270,6 +270,7 @@ describe('UserMobileNumberService', () => {
             expect(result).toBe(verified);
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
+                'user-marlin',
                 mobileNumber.id,
                 input,
                 true
@@ -310,6 +311,7 @@ describe('UserMobileNumberService', () => {
 
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
+                'user-marlin',
                 mobileNumber.id,
                 { ...input, number: '5559999' },
                 false
@@ -338,6 +340,31 @@ describe('UserMobileNumberService', () => {
             expect(
                 userVerificationService.expireActiveByMobileNumberInTx
             ).toHaveBeenCalledWith(tx, mobileNumber.id);
+        });
+
+        it('throws UserMobileNumberNotFoundException when the guarded update misses', async () => {
+            userMobileNumberRepository.updateInTx.mockResolvedValue(null);
+
+            await expect(
+                service.updateMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber,
+                    input,
+                    country.phoneCode,
+                    false
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+            });
+            expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberExistException when another row already has the number', async () => {
@@ -397,6 +424,7 @@ describe('UserMobileNumberService', () => {
             expect(result).toBe(mobileNumber);
             expect(userMobileNumberRepository.deleteInTx).toHaveBeenCalledWith(
                 tx,
+                'user-marlin',
                 mobileNumber.id
             );
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(

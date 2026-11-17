@@ -29,7 +29,6 @@ describe('AppBaseException', () => {
 
             expect(exception.rawError).toBe(rawError);
             expect(exception.messageProperties).toBeNull();
-            expect(exception.metadata).toBeNull();
             expect(exception).not.toHaveProperty('data');
         });
 
@@ -46,9 +45,7 @@ describe('AppBaseException', () => {
 
         it('assigns metadata from the options', () => {
             const metadata = { source: 'serialization' };
-            const exception = new ResponseSerializationException({
-                metadata,
-            });
+            const exception = new ResponseSerializationException({ metadata });
 
             expect(exception.metadata).toBe(metadata);
             expect(exception.messageProperties).toBeNull();

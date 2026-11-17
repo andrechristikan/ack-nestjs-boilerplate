@@ -13,10 +13,7 @@ import {
     EnumNotificationChannel,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import {
-    EnumNotificationEmailProcess,
-    EnumNotificationKind,
-} from '@modules/notification/enums/notification.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import type { INotificationTermPolicyBatchRecipientEncryptedPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
@@ -178,7 +175,7 @@ describe('NotificationEmailDeliveryService', () => {
             );
             expect(awsSESService.sendBulk).toHaveBeenCalledTimes(1);
             expect(awsSESService.sendBulk).toHaveBeenCalledWith({
-                templateName: EnumNotificationEmailProcess.publishTermPolicy,
+                templateName: EnumNotificationKind.publishTermPolicy,
                 recipients: [
                     {
                         recipient: 'nadia@example.com',

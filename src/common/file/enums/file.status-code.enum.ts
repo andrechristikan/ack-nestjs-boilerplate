@@ -10,4 +10,5 @@ export enum EnumFileStatusCodeError {
     exceedMaxFiles = 50107,
     fieldUnexpected = 50108,
     multipartInvalid = 50109,
+    importInvalid = 50110,
 }

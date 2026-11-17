@@ -103,6 +103,8 @@ describe('MfaService', () => {
                 method: EnumNotificationLoginLockedMethod.mfa,
                 methodLabel: 'Label',
                 lockedUntil: '2026-03-01T00:15:00.000Z',
+                snapshot: null,
+                verificationId: null,
             },
             recipient: null,
             notificationId: null,
@@ -267,6 +269,8 @@ describe('MfaService', () => {
                         'challenge-quartz'
                     )
                 ).rejects.toMatchObject({
+                    module: 'mfa',
+
                     statusCode: EnumMfaStatusCodeError.methodUnavailable,
                 });
                 expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
@@ -288,6 +292,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
             expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
@@ -360,6 +366,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodRequired,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -380,6 +388,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
@@ -404,6 +414,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
         });
@@ -464,6 +476,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
             expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(2);
@@ -483,6 +497,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
             expect(helperHashService.argon2Compare).not.toHaveBeenCalled();
@@ -504,6 +520,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -521,6 +539,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
         });
@@ -607,6 +627,8 @@ describe('MfaService', () => {
                     'challenge-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
         });
@@ -625,6 +647,8 @@ describe('MfaService', () => {
                     'challenge-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -642,6 +666,8 @@ describe('MfaService', () => {
                     null
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
@@ -679,6 +705,8 @@ describe('MfaService', () => {
                         null
                     )
                 ).rejects.toMatchObject({
+                    module: 'mfa',
+
                     statusCode: EnumMfaStatusCodeError.invalid,
                 });
             }
@@ -692,6 +720,8 @@ describe('MfaService', () => {
                     'challenge-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(5);
@@ -748,6 +778,8 @@ describe('MfaService', () => {
                     'challenge-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
@@ -765,6 +797,8 @@ describe('MfaService', () => {
                     'challenge-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
             expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
@@ -806,6 +840,8 @@ describe('MfaService', () => {
                     '000000'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
             expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
@@ -825,6 +861,8 @@ describe('MfaService', () => {
                     '000000'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
         });
@@ -843,6 +881,8 @@ describe('MfaService', () => {
                     '123456'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaTotpService.checkSetupCode).not.toHaveBeenCalled();
@@ -886,6 +926,8 @@ describe('MfaService', () => {
             await expect(
                 service.assertAttemptAvailable('user-quartz')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
         });
@@ -1005,6 +1047,8 @@ describe('MfaService', () => {
                     'user-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
         });
@@ -1142,6 +1186,8 @@ describe('MfaService', () => {
                     passkey: null,
                 })
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
         });
@@ -1157,6 +1203,8 @@ describe('MfaService', () => {
                     passkey: null,
                 })
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
         });
@@ -1380,6 +1428,8 @@ describe('MfaService', () => {
             await expect(
                 service.assertEnabled('user-quartz')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.notEnabled,
             });
         });
@@ -1525,7 +1575,7 @@ describe('MfaService', () => {
             expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
-        it('hashes one code at a time', async () => {
+        it('starts every code hash together', async () => {
             let running = 0;
             let peak = 0;
             helperStringService.randomUppercase.mockReturnValue('CODE');
@@ -1545,7 +1595,7 @@ describe('MfaService', () => {
 
             await service.createBackupCodesInTx(tx, 'user-quartz');
 
-            expect(peak).toBe(1);
+            expect(peak).toBe(3);
         });
 
         it('answers null when the row holds codes', async () => {
@@ -1607,6 +1657,8 @@ describe('MfaService', () => {
             await expect(
                 service.regenerateBackupCodesInTx(tx, 'user-quartz')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.notEnabled,
             });
         });

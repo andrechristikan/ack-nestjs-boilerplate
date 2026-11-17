@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
-import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 import { CacheService } from '@common/cache/services/cache.service';
 import {
@@ -290,7 +289,7 @@ describe('CacheService', () => {
             expect(redis.set).toHaveBeenCalledBefore(loader);
         });
 
-        it('sets the entry through CacheLeaseSetScript while the lease holds the token', async () => {
+        it('sets the entry through the lease script while the lease holds the token', async () => {
             redis.get.mockResolvedValue(null);
             redis.set.mockResolvedValue('OK');
             redis.eval.mockResolvedValue(1);
@@ -306,7 +305,7 @@ describe('CacheService', () => {
 
             expect(result).toEqual(entry);
             expect(redis.eval).toHaveBeenCalledWith(
-                CacheLeaseSetScript,
+                expect.stringContaining("redis.call('SET', KEYS[1]"),
                 2,
                 key,
                 'lease',

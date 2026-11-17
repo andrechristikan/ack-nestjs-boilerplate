@@ -5,7 +5,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IAnalyticRoleCount,
     IAnalyticWorkspaceCount,
@@ -77,8 +76,11 @@ describe('WorkspaceMemberAnalyticService', () => {
 
     describe('getMembershipDistributionOffset', () => {
         it('delegates to the repository offset membership distribution', async () => {
-            const params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput> =
-                { limit: 20, skip: 0, orderBy: [] };
+            const params: IPaginationQueryOffsetParams = {
+                limit: 20,
+                skip: 0,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IAnalyticWorkspaceCount> = {
                 type: EnumPaginationType.offset,
                 count: 1,

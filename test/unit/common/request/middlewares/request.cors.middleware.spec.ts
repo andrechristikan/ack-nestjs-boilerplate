@@ -27,6 +27,7 @@ describe('RequestCorsMiddleware', () => {
                     allowedMethod: ['GET', 'POST'],
                     allowedHeader: ['content-type'],
                     exposedHeader: ['x-request-id'],
+                    maxAgeInSeconds: 600,
                 });
 
             middleware.use(req, res, next);
@@ -38,7 +39,7 @@ describe('RequestCorsMiddleware', () => {
                 preflightContinue: false,
                 credentials: true,
                 optionsSuccessStatus: HttpStatus.NO_CONTENT,
-                maxAge: 86400,
+                maxAge: 600,
             });
             expect(typeof captured.options.origin).toBe('function');
             expect(handler).toHaveBeenCalledWith(req, res, next);
@@ -51,6 +52,7 @@ describe('RequestCorsMiddleware', () => {
                     allowedMethod: [],
                     allowedHeader: [],
                     exposedHeader: [],
+                    maxAgeInSeconds: 86400,
                 });
 
             middleware.use(req, res, next);
@@ -65,6 +67,7 @@ describe('RequestCorsMiddleware', () => {
                     allowedMethod: [],
                     allowedHeader: [],
                     exposedHeader: [],
+                    maxAgeInSeconds: 86400,
                 });
 
             middleware.use(req, res, next);
@@ -88,6 +91,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -102,6 +106,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -116,6 +121,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -130,6 +136,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -144,6 +151,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -158,6 +166,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -172,6 +181,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -186,6 +196,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
@@ -202,6 +213,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(middleware['shouldAllowCredentials']()).toBe(false);
@@ -213,6 +225,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(middleware['shouldAllowCredentials']()).toBe(true);
@@ -224,6 +237,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(middleware['shouldAllowCredentials']()).toBe(false);
@@ -235,6 +249,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(middleware['shouldAllowCredentials']()).toBe(true);
@@ -246,6 +261,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(middleware['shouldAllowCredentials']()).toBe(true);
@@ -259,6 +275,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -274,6 +291,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -289,6 +307,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -304,6 +323,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -319,6 +339,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -334,6 +355,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -354,6 +376,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -374,6 +397,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -394,6 +418,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -409,6 +434,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -424,6 +450,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -439,6 +466,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -454,6 +482,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
 
             expect(
@@ -473,6 +502,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
         });
 
@@ -520,6 +550,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
         });
 
@@ -559,6 +590,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
         });
 
@@ -598,6 +630,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
         });
 
@@ -623,6 +656,7 @@ describe('RequestCorsMiddleware', () => {
                 allowedMethod: [],
                 allowedHeader: [],
                 exposedHeader: [],
+                maxAgeInSeconds: 86400,
             });
         });
 

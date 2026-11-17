@@ -416,6 +416,8 @@ describe('MfaChallengeService', () => {
                     'user-other'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
         });
@@ -432,6 +434,8 @@ describe('MfaChallengeService', () => {
                     'user-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
         });
@@ -470,6 +474,8 @@ describe('MfaChallengeService', () => {
                     'user-quartz'
                 )
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
         });

@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
@@ -28,11 +29,6 @@ export interface IWorkspaceMember extends WorkspaceMember {
 export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
     select: typeof WorkspaceInviteUserListSelect;
 }>;
-
-export interface IWorkspaceInviteInviter {
-    name: string | null;
-    username: string;
-}
 
 export interface IWorkspaceInviteNotice {
     workspaceName: string;
@@ -118,4 +114,12 @@ export interface IWorkspaceJoinRequestCreateData {
     message: string | null;
     expiredAt: Date;
     nonce: string;
+}
+
+export interface IWorkspaceExpireStaleInvitesQueueResponse extends IQueueResponse {
+    countExpiredInvites: number;
+}
+
+export interface IWorkspaceExpireStaleJoinRequestsQueueResponse extends IQueueResponse {
+    countExpiredJoinRequests: number;
 }

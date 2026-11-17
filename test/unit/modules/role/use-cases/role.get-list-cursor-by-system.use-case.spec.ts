@@ -7,7 +7,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
     RoleDefaultAvailableOrderBy,
@@ -45,14 +45,16 @@ describe('RoleGetListCursorBySystemUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const offsetPagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
-        { skip: 0, limit: 20, orderBy: [] };
-    const cursorPagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const offsetPagination: IPaginationQueryOffsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [],
+    };
+    const cursorPagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
 
     let useCase: RoleGetListCursorBySystemUseCase;
 

@@ -36,4 +36,4 @@ The class shape, status codes, and `messagePath`: `exception-class.md`. The filt
 
 ## Messages
 
-A `QueueException` message is `setMessage('<module>.queue.[<channel>.]error.<descriptor>', { properties })` (channel segment: `i18n.md`), built by its thrower (a use case or service injecting `MessageService`; a processor's `default`: `queue.md`, Processors), never a literal or a template literal. The unknown-error wrap's message is `queue.error.unknown` (`src/languages/<lang>/queue.json`), built by `throwUnknownException`.
+A `QueueException` message is `setMessage('<module>.queue.[<channel>.]error.<descriptor>', { properties })` (channel segment: `i18n.md`), built by its thrower (a use case or service injecting `MessageService`; a processor's `default` through the base's `throwUnknownProcess`: `queue.md`, Processors), never a literal or a template literal. The unknown-error wrap's message is `queue.error.unknown` (`src/languages/<lang>/queue.json`), built by `throwUnknownException`.

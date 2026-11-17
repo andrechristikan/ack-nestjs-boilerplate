@@ -64,18 +64,26 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
     async updateInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
-    ): Promise<IUserMobileNumber> {
-        return tx.userMobileNumber.update({
-            where: { id: mobileNumberId },
+    ): Promise<IUserMobileNumber | null> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: { id: mobileNumberId, userId },
             data: {
                 countryId,
                 number,
                 phoneCode,
                 isVerified,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.userMobileNumber.findFirst({
+            where: { id: mobileNumberId, userId },
             include: {
                 country: true,
             },
@@ -98,10 +106,11 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
     async deleteInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumber | null> {
         const row = await tx.userMobileNumber.findFirst({
-            where: { id: mobileNumberId },
+            where: { id: mobileNumberId, userId },
             include: {
                 country: true,
             },
@@ -111,7 +120,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         }
 
         const { count } = await tx.userMobileNumber.deleteMany({
-            where: { id: mobileNumberId },
+            where: { id: mobileNumberId, userId },
         });
 
         return count > 0 ? row : null;

@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -26,10 +25,9 @@ export class AnalyticImpossibleTravelListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticImpossibleTravelListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
-                availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateService.optionalRange(
             query.startDate ?? null,

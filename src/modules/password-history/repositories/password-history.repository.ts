@@ -30,10 +30,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.offset(
             this.databaseService.client.passwordHistory,
@@ -50,10 +47,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
 
     async findWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.cursor(
             this.databaseService.client.passwordHistory,

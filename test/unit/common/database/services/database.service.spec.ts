@@ -394,7 +394,7 @@ describe('DatabaseService', () => {
         it('logs a Prisma error event', () => {
             expect(() =>
                 service['logError']({
-                    timestamp: new Date(),
+                    timestamp: new Date('2026-01-01T00:00:00.000Z'),
                     message: 'boom',
                     target: 'quaint::pooled',
                 })
@@ -406,7 +406,7 @@ describe('DatabaseService', () => {
         it('logs a Prisma warning event', () => {
             expect(() =>
                 service['logWarn']({
-                    timestamp: new Date(),
+                    timestamp: new Date('2026-01-01T00:00:00.000Z'),
                     message: 'careful',
                     target: 'quaint::pooled',
                 })
@@ -418,7 +418,7 @@ describe('DatabaseService', () => {
         it('logs a Prisma info event', () => {
             expect(() =>
                 service['logInfo']({
-                    timestamp: new Date(),
+                    timestamp: new Date('2026-01-01T00:00:00.000Z'),
                     message: 'starting',
                     target: 'quaint::pooled',
                 })

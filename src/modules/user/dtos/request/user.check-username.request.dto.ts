@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
-/** @public */
+/** @alias */
 export const UserCheckUsernameRequestSchema = UserClaimUsernameRequestSchema;
 
 /** @public */

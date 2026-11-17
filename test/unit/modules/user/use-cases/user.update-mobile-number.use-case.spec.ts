@@ -28,6 +28,7 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -371,6 +372,8 @@ describe('UserUpdateMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.invalid,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.invalid',
             });

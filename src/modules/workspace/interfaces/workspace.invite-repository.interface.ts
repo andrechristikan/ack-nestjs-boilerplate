@@ -4,7 +4,6 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type {
     IWorkspaceInviteCreateData,
@@ -39,10 +38,7 @@ export interface IWorkspaceInviteRepository {
     ): Promise<WorkspaceInvite | null>;
     findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>>;
     createPendingInTx(

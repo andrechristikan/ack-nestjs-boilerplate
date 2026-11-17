@@ -43,7 +43,7 @@ export default registerAs('user', (): IConfigUser => ({
     },
     deleteSelf: {
         timeoutInMs: ms('30s'),
-        emailPattern: 'deleted.{id}.{email}',
-        usernamePattern: 'deleted.{id}.{username}',
+        emailPattern: 'deleted.{id}',
+        usernamePattern: 'deleted.{id}',
     },
 }));

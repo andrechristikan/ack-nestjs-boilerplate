@@ -7,7 +7,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -30,13 +30,12 @@ describe('ProjectGetMembersListUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            where: {},
-            orderBy: [],
-            limit: 20,
-        };
+    const pagination: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        where: { OR: [] },
+        orderBy: [],
+        limit: 20,
+    };
 
     let useCase: ProjectGetMembersListUseCase;
 

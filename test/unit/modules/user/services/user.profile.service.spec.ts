@@ -15,7 +15,7 @@ import {
 import type { Country, UserPhoto } from '@generated/prisma-client/client';
 import { NotFound } from '@aws-sdk/client-s3';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type {
     IAwsS3,
     IAwsS3Presign,
@@ -46,12 +46,16 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { UserService } from '@modules/user/services/user.service';
+import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
+import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import type { IUserCheckUsername } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 
 describe('UserProfileService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
@@ -174,7 +178,7 @@ describe('UserProfileService', () => {
             providers: [
                 UserProfileService,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserUtil, useValue: userUtil },
+                { provide: UserService, useValue: userService },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -408,6 +412,8 @@ describe('UserProfileService', () => {
             );
 
             await expect(call).rejects.toMatchObject({
+                module: 'aws',
+
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
             expect(
@@ -770,6 +776,22 @@ describe('UserProfileService', () => {
             );
         });
 
+        it('throws FileExtensionInvalidException for an extension outside the image list', async () => {
+            fileService.extractExtensionFromFilename.mockReturnValue('exe');
+
+            const call = service.uploadPhotoProfile(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                file
+            );
+
+            await expect(call).rejects.toBeInstanceOf(
+                FileExtensionInvalidException
+            );
+            expect(awsS3Service.putItem).not.toHaveBeenCalled();
+        });
+
         it('writes the photo and adds the previous photo delete row on one outbox tx when a different photo exists', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue(
                 EnumFileExtensionImage.png
@@ -1004,6 +1026,16 @@ describe('UserProfileService', () => {
 
     describe('claimUsername', () => {
         const username: Lowercase<string> = 'persimmon';
+        const available: IUserCheckUsername = {
+            pattern: false,
+            badWord: false,
+            exist: false,
+        };
+        const taken: IUserCheckUsername = {
+            pattern: true,
+            badWord: true,
+            exist: true,
+        };
 
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(
@@ -1012,9 +1044,7 @@ describe('UserProfileService', () => {
         });
 
         it('claims the username', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(available);
 
             await service.claimUsername(
                 requestContext,
@@ -1023,6 +1053,11 @@ describe('UserProfileService', () => {
                 username
             );
 
+            expect(userService.checkUsername).toHaveBeenCalledWith(username);
+            expect(userService.assertUsernameAvailable).toHaveBeenCalledWith(
+                available
+            );
+            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
             expect(userRepository.claimUsernameInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -1039,9 +1074,10 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameNotAllowedException when the pattern rejects it', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(true);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(taken);
+            userService.assertUsernameAvailable.mockImplementation(() => {
+                throw new UserUsernameNotAllowedException();
+            });
 
             const call = service.claimUsername(
                 requestContext,
@@ -1062,9 +1098,10 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameContainBadWordException when the word is blocked', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(true);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(taken);
+            userService.assertUsernameAvailable.mockImplementation(() => {
+                throw new UserUsernameContainBadWordException();
+            });
 
             const call = service.claimUsername(
                 requestContext,
@@ -1085,9 +1122,10 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameExistException when the username is taken', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(true);
+            userService.checkUsername.mockResolvedValue(taken);
+            userService.assertUsernameAvailable.mockImplementation(() => {
+                throw new UserUsernameExistException();
+            });
 
             const call = service.claimUsername(
                 requestContext,
@@ -1108,9 +1146,7 @@ describe('UserProfileService', () => {
         });
 
         it('maps a username unique collision to UserUsernameExistException', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(available);
             const collision = new Error('unique');
             userRepository.claimUsernameInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -1134,9 +1170,7 @@ describe('UserProfileService', () => {
         });
 
         it('rethrows an AppBaseException raised while claiming', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(available);
             const error = new UserUsernameExistException();
             userRepository.claimUsernameInTx.mockRejectedValue(error);
 
@@ -1160,9 +1194,7 @@ describe('UserProfileService', () => {
         });
 
         it('wraps an unknown error raised while claiming', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
-            userUtil.hasBadWord.mockReturnValue(false);
-            userRepository.existsByUsername.mockResolvedValue(false);
+            userService.checkUsername.mockResolvedValue(available);
             const error = new Error('boom');
             userRepository.claimUsernameInTx.mockRejectedValue(error);
 

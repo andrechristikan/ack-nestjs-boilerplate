@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,

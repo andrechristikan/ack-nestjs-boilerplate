@@ -1,9 +1,13 @@
 import { z } from 'zod';
-import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 
 /** @public */
-export const WorkspaceUpdateIsPublicRequestSchema =
-    WorkspaceResponseSchema.pick({ isPublic: true }).strict();
+export const WorkspaceUpdateIsPublicRequestSchema = z.strictObject({
+    isPublic: z.boolean().meta({
+        description:
+            'Whether the workspace is publicly discoverable for join requests',
+        example: false,
+    }),
+});
 
 /** @public */
 export type WorkspaceUpdateIsPublicRequestDto = z.infer<

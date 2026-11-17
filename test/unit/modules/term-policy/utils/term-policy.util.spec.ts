@@ -3,7 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -210,7 +210,7 @@ describe('TermPolicyUtil', () => {
             size: 10,
         };
 
-        it('returns the contents typed when every language and access is known', () => {
+        it('returns the contents typed when every language is known', () => {
             const result = util.toContents([stored]);
 
             expect(result).toEqual([stored]);
@@ -218,12 +218,6 @@ describe('TermPolicyUtil', () => {
 
         it('returns TermPolicyContentInvalidException for an unknown language', () => {
             const result = util.toContents([{ ...stored, language: 'xx' }]);
-
-            expect(result).toBeInstanceOf(TermPolicyContentInvalidException);
-        });
-
-        it('returns TermPolicyContentInvalidException for an unknown access', () => {
-            const result = util.toContents([{ ...stored, access: 'open' }]);
 
             expect(result).toBeInstanceOf(TermPolicyContentInvalidException);
         });

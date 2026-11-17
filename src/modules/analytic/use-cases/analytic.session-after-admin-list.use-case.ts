@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -26,11 +25,9 @@ export class AnalyticSessionAfterAdminListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticSessionAfterAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                { availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateService.requireRange(
             query.startDate,

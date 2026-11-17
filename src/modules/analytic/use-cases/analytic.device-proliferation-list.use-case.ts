@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,14 +23,9 @@ export class AnalyticDeviceProliferationListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticDeviceProliferationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query,
-                {
-                    availableOrderBy:
-                        AnalyticDeviceProliferationAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticDeviceProliferationAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticAnomalyService.deviceProliferationList(params);

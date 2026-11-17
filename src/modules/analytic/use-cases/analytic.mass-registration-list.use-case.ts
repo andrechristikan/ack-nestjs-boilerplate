@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,10 +23,9 @@ export class AnalyticMassRegistrationListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticMassRegistrationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
-                availableOrderBy: AnalyticKeyCountAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudService.massRegistrationList(

@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Response } from 'express';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import {
     LoggerRedactedValue,
@@ -28,11 +29,17 @@ describe('LoggerUtil', () => {
         headers: {},
     };
 
+    const loggerUrlUtil: MockProxy<LoggerUrlUtil> = mock<LoggerUrlUtil>();
+
     let util: LoggerUtil;
 
     beforeEach(async () => {
+        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
-            providers: [LoggerUtil],
+            providers: [
+                LoggerUtil,
+                { provide: LoggerUrlUtil, useValue: loggerUrlUtil },
+            ],
         }).compile();
 
         util = module.get(LoggerUtil);
@@ -104,8 +111,15 @@ describe('LoggerUtil', () => {
                 params: { id: '1' },
             } as unknown as IRequestApp;
 
+            loggerUrlUtil.maskUrl.mockReturnValue(
+                `https://host.com/api/user/${LoggerRedactedValue}`
+            );
+
             const result = util.serializeRequest(request);
 
+            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
+                'https://host.com/api/user/507f1f77bcf86cd799439011'
+            );
             expect(result).not.toHaveProperty('id');
             expect(result).not.toHaveProperty('user');
             expect(result).toMatchObject({
@@ -361,54 +375,6 @@ describe('LoggerUtil', () => {
         });
     });
 
-    describe('maskUrl', () => {
-        it('masks the pathname of a parseable absolute url', () => {
-            const result = util['maskUrl'](
-                'https://host.com/api/user/507f1f77bcf86cd799439011'
-            );
-
-            expect(result).toBe(
-                `https://host.com/api/user/${LoggerRedactedValue}`
-            );
-        });
-
-        it('falls back to a manual split for a url that fails to parse', () => {
-            const result = util['maskUrl'](
-                '/api/user/507f1f77bcf86cd799439011?x=1#f'
-            );
-
-            expect(result).toBe(`/api/user/${LoggerRedactedValue}`);
-        });
-    });
-
-    describe('maskPath', () => {
-        it('keeps an empty segment', () => {
-            expect(util['maskPath']('/')).toBe('/');
-        });
-
-        it('keeps a route parameter segment', () => {
-            expect(util['maskPath']('/:userId')).toBe('/:userId');
-        });
-
-        it('keeps a version segment', () => {
-            expect(util['maskPath']('/v1')).toBe('/v1');
-        });
-
-        it('keeps a static kebab-case segment', () => {
-            expect(util['maskPath']('/sign-up')).toBe('/sign-up');
-        });
-
-        it('redacts a purely numeric segment', () => {
-            expect(util['maskPath']('/123')).toBe(`/${LoggerRedactedValue}`);
-        });
-
-        it('redacts a Mongo-id-shaped segment', () => {
-            expect(util['maskPath']('/507f1f77bcf86cd799439011')).toBe(
-                `/${LoggerRedactedValue}`
-            );
-        });
-    });
-
     describe('extractClientIP', () => {
         it('returns request.ip when present', () => {
             const request = {
@@ -483,9 +449,15 @@ describe('LoggerUtil', () => {
                 route: undefined,
                 originalUrl: '/api/user/507f1f77bcf86cd799439011',
             } as unknown as IRequestApp;
+            loggerUrlUtil.maskUrl.mockReturnValue(
+                `/api/user/${LoggerRedactedValue}`
+            );
 
             expect(util['serializeRoute'](request)).toBe(
                 `/api/user/${LoggerRedactedValue}`
+            );
+            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
+                '/api/user/507f1f77bcf86cd799439011'
             );
         });
 
@@ -496,9 +468,15 @@ describe('LoggerUtil', () => {
                 originalUrl: undefined,
                 url: '/api/user/507f1f77bcf86cd799439011',
             } as unknown as IRequestApp;
+            loggerUrlUtil.maskUrl.mockReturnValue(
+                `/api/user/${LoggerRedactedValue}`
+            );
 
             expect(util['serializeRoute'](request)).toBe(
                 `/api/user/${LoggerRedactedValue}`
+            );
+            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
+                '/api/user/507f1f77bcf86cd799439011'
             );
         });
     });

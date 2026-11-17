@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -29,11 +28,10 @@ export class SessionGetListCursorUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query, {
-                scope: SessionSharedListCursorScope,
-                availableOrderBy: SessionCursorAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: SessionSharedListCursorScope,
+            availableOrderBy: SessionCursorAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.sessionService.getListCursor(

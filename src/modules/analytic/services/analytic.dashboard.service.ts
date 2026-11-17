@@ -1,6 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
@@ -11,7 +10,6 @@ import {
     AnalyticBlockedUsersCacheSchema,
     AnalyticBucketsResultCacheSchema,
     AnalyticCountRanges,
-    AnalyticDashboardPagedMetricPattern,
     AnalyticForgotPasswordConversionCacheSchema,
     AnalyticLockoutMetricsCacheSchema,
     AnalyticMetricCountCacheSchema,
@@ -28,7 +26,10 @@ import {
     AnalyticVerificationFunnelsCacheSchema,
     AnalyticWorkspaceCountPageCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
-import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
+import {
+    EnumAnalyticDashboardMetric,
+    EnumAnalyticGroupKey,
+} from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
@@ -65,6 +66,7 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
+import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { MfaAnalyticService } from '@modules/mfa/services/mfa.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
@@ -79,7 +81,6 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -93,10 +94,10 @@ export class AnalyticDashboardService {
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
         private readonly userAnalyticService: UserAnalyticService,
         private readonly userForgotPasswordAnalyticService: UserForgotPasswordAnalyticService,
         private readonly mfaAnalyticService: MfaAnalyticService,
+        private readonly mfaUtil: MfaUtil,
         private readonly userVerificationAnalyticService: UserVerificationAnalyticService,
         private readonly userMobileNumberAnalyticService: UserMobileNumberAnalyticService,
         private readonly activityLogAnalyticService: ActivityLogAnalyticService,
@@ -136,7 +137,7 @@ export class AnalyticDashboardService {
             const key =
                 session.userAgent.browser?.name ??
                 session.userAgent.os?.name ??
-                'unknown';
+                EnumAnalyticGroupKey.unknown;
             counts.set(key, (counts.get(key) ?? 0) + 1);
         }
 
@@ -156,16 +157,22 @@ export class AnalyticDashboardService {
         }));
     }
 
-    private pagedMetricToken(
+    private dashboardPageKey(
         metric: EnumAnalyticDashboardMetric,
+        startDate: Date | null,
+        endDate: Date | null,
         skip: number,
         limit: number
     ): string {
-        const page = Math.floor(skip / limit) + 1;
+        const start = this.analyticDateUtil.cacheToken(startDate);
+        const end = this.analyticDateUtil.cacheToken(endDate);
 
-        return this.helperStringService.fillPattern(
-            AnalyticDashboardPagedMetricPattern,
-            { metric, page: String(page), perPage: String(limit) }
+        return this.analyticCache.buildDashboardPageKey(
+            metric,
+            start,
+            end,
+            Math.floor(skip / limit) + 1,
+            limit
         );
     }
 
@@ -827,10 +834,7 @@ export class AnalyticDashboardService {
                     this.mfaAnalyticService.getEnabledCount(),
                 ]);
 
-                return this.mfaAnalyticService.mapAdoption(
-                    enabled,
-                    activeUserCount
-                );
+                return this.mfaUtil.mapAdoption(enabled, activeUserCount);
             }
         );
     }
@@ -1172,8 +1176,8 @@ export class AnalyticDashboardService {
             this.analyticCache.dashboardTtlInMs,
             () =>
                 this.termPolicyAcceptanceAnalyticService.getTimeToAccept(
-                    startDate ?? null,
-                    endDate ?? null
+                    startDate,
+                    endDate
                 )
         );
     }
@@ -1259,14 +1263,15 @@ export class AnalyticDashboardService {
     }
 
     async workspacesMembership(
-        params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.pagedMetricToken(
+        const key = this.dashboardPageKey(
             EnumAnalyticDashboardMetric.workspacesMembership,
+            null,
+            null,
             params.skip,
             params.limit
         );
-        const key = this.dashboardKey(metric, null, null);
 
         return this.cacheService.readThrough<
             IResponsePaginationReturn<IAnalyticWorkspaceCount>,
@@ -1285,14 +1290,15 @@ export class AnalyticDashboardService {
     async workspacesActivityVolume(
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const metric = this.pagedMetricToken(
+        const key = this.dashboardPageKey(
             EnumAnalyticDashboardMetric.workspacesActivity,
+            startDate,
+            endDate,
             params.skip,
             params.limit
         );
-        const key = this.dashboardKey(metric, startDate, endDate);
 
         return this.cacheService.readThrough<
             IResponsePaginationReturn<IAnalyticWorkspaceCount>,
@@ -1326,14 +1332,15 @@ export class AnalyticDashboardService {
     }
 
     async projectsMembership(
-        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        const metric = this.pagedMetricToken(
+        const key = this.dashboardPageKey(
             EnumAnalyticDashboardMetric.projectsMembership,
+            null,
+            null,
             params.skip,
             params.limit
         );
-        const key = this.dashboardKey(metric, null, null);
 
         return this.cacheService.readThrough<
             IResponsePaginationReturn<IAnalyticProjectCount>,

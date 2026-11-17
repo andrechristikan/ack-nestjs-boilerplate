@@ -14,7 +14,6 @@ import { TermPolicySharedController } from '@modules/term-policy/controllers/ter
 import { TermPolicyUseCaseModule } from '@modules/term-policy/term-policy.use-case.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserUseCaseModule } from '@modules/user/user.use-case.module';
-import { WorkspaceUseCaseModule } from '@modules/workspace/workspace.use-case.module';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
@@ -41,7 +40,6 @@ import { Module } from '@nestjs/common';
         TermPolicyUseCaseModule,
         NotificationUseCaseModule,
         MfaUseCaseModule,
-        WorkspaceUseCaseModule,
 
         UserModule,
         WorkspaceModule,

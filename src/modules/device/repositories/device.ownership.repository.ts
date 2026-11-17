@@ -189,10 +189,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         isRevoked: Record<string, IPaginationEqual> | null,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
@@ -216,10 +213,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
     async findActiveWithPaginationCursor(
         userId: string,
         sessionId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const today = this.helperDateService.create();

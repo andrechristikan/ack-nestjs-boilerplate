@@ -1,5 +1,5 @@
 import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
 import type { Prisma } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -9,19 +9,22 @@ import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IOutboxJobPayload } from '@common/outbox/interfaces/outbox.interface';
-import type { OutboxService } from '@common/outbox/services/outbox.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 
 export abstract class QueueProcessorBase extends WorkerHost {
     private readonly logger = new Logger(QueueProcessorBase.name);
 
-    constructor(
-        protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService,
-        protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService
-    ) {
-        super();
-    }
+    @Inject(SentryService)
+    protected readonly sentryService: SentryService;
+
+    @Inject(MessageService)
+    protected readonly messageService: MessageService;
+
+    @Inject(CacheService)
+    protected readonly cacheService: CacheService;
+
+    @Inject(OutboxService)
+    protected readonly outboxService: OutboxService;
 
     private async writeJobLog(job: Job, message: string): Promise<void> {
         try {
@@ -106,6 +109,20 @@ export abstract class QueueProcessorBase extends WorkerHost {
         const message = this.messageService.setMessage('queue.error.unknown');
 
         throw new QueueException(message, true, error);
+    }
+
+    protected throwUnknownProcess(messagePath: string, process: string): never {
+        const message = this.messageService.setMessage(messagePath, {
+            properties: { process },
+        });
+
+        throw new QueueException(message, true);
+    }
+
+    protected throwUnrecoverable(messagePath: string): never {
+        const message = this.messageService.setMessage(messagePath);
+
+        throw new UnrecoverableError(message);
     }
 
     async process(job: Job): Promise<IQueueResponse> {

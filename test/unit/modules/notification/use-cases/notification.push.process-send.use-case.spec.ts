@@ -56,6 +56,8 @@ describe('NotificationPushProcessSendUseCase', () => {
             workspaceMemberRole: EnumWorkspaceMemberRole.member,
             expiredAt: '2024-01-08T00:00:00.000Z',
             encryptedLink: 'cipher(https://app.test/invite/token)',
+            snapshot: null,
+            verificationId: null,
         },
         completedSteps: [],
         encryptedPendingTokens: null,
@@ -123,6 +125,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                     userId: 'user-id',
                     proceedBy: 'actor-id',
                     passwordExpiredAt: '2026-06-01T00:00:00.000Z',
+                    snapshot: null,
+                    verificationId: null,
                 },
             });
 

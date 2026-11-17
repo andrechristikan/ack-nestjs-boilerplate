@@ -1,11 +1,11 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
+import type { IUserImportByAdminQueueResponse } from '@modules/user/interfaces/user.interface';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { CountryService } from '@modules/country/services/country.service';
@@ -33,7 +33,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class UserProcessImportByAdminUseCase implements IAppUseCase<
     [string, IUserImportByAdminPayload],
-    IQueueResponse
+    IUserImportByAdminQueueResponse
 > {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
@@ -151,7 +151,11 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                     throw mapped;
                 }
 
-                throw new AppUnknownException(mapped);
+                const message = this.messageService.setMessage(
+                    'user.queue.error.importFailed'
+                );
+
+                throw new QueueException(message, true, mapped);
             }
         }
 
@@ -161,7 +165,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
     async execute(
         outboxId: string,
         { rows, activityLog }: IUserImportByAdminPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<IUserImportByAdminQueueResponse> {
         const { actorUserId } = activityLog;
         // Sequential by design: gate before the work it guards; write after the preparation
         const [role, countryId] = await Promise.all([

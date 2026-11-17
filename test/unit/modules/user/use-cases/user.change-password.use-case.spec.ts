@@ -42,7 +42,7 @@ import type { ISessionRef } from '@modules/session/interfaces/session.interface'
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
+import { PasswordHistoryMustNewException } from '@modules/password-history/exceptions/password-history.must-new.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
@@ -54,6 +54,7 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -111,7 +112,12 @@ describe('UserChangePasswordUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.changePassword,
-            context: { userId: 'user-linden', proceedBy: 'user-linden' },
+            context: {
+                userId: 'user-linden',
+                proceedBy: 'user-linden',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -473,7 +479,7 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('opens no transaction when the new password repeats an old one', async () => {
-            const failure = new UserPasswordMustNewException(3);
+            const failure = new PasswordHistoryMustNewException(3);
             passwordHistoryService.assertNew.mockRejectedValue(failure);
 
             await expect(
@@ -527,6 +533,8 @@ describe('UserChangePasswordUseCase', () => {
                     dto
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.invalid,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.invalid',
             });

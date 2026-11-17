@@ -19,7 +19,6 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
-    Prisma,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
@@ -303,15 +302,15 @@ describe('WorkspaceMemberService', () => {
     });
     describe('getReviewerUserIds', () => {
         it('returns the user ids of the workspace reviewers', async () => {
-            workspaceMemberRepository.findReviewersByWorkspace.mockResolvedValue(
-                [{ userId: 'user-1' }, { userId: 'user-2' }]
+            workspaceMemberRepository.findReviewerUserIdsByWorkspace.mockResolvedValue(
+                ['user-1', 'user-2']
             );
 
             const result = await service.getReviewerUserIds('workspace-1');
 
             expect(result).toEqual(['user-1', 'user-2']);
             expect(
-                workspaceMemberRepository.findReviewersByWorkspace
+                workspaceMemberRepository.findReviewerUserIdsByWorkspace
             ).toHaveBeenCalledWith('workspace-1');
         });
     });
@@ -546,6 +545,9 @@ describe('WorkspaceMemberService', () => {
                     'user-2'
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -572,6 +574,9 @@ describe('WorkspaceMemberService', () => {
                     'user-2'
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -666,12 +671,11 @@ describe('WorkspaceMemberService', () => {
 
     describe('getMembersList', () => {
         it('delegates to the repository cursor listing', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -697,12 +701,11 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('passes a null role filter when none is given', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -787,6 +790,9 @@ describe('WorkspaceMemberService', () => {
                     EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(
@@ -898,6 +904,9 @@ describe('WorkspaceMemberService', () => {
                     EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
         });
@@ -925,6 +934,9 @@ describe('WorkspaceMemberService', () => {
                     EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
         });
@@ -994,6 +1006,9 @@ describe('WorkspaceMemberService', () => {
             await expect(
                 service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
             expect(
@@ -1051,14 +1066,20 @@ describe('WorkspaceMemberService', () => {
             await expect(
                 service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
         });
     });
 
     describe('getMembersListByAdmin', () => {
-        const pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput> =
-            { limit: 20, skip: 0, orderBy: [] };
+        const pagination: IPaginationQueryOffsetParams = {
+            limit: 20,
+            skip: 0,
+            orderBy: [],
+        };
 
         it('throws WorkspaceNotFoundException when the workspace does not exist', async () => {
             workspaceRepository.findByIdByAdmin.mockResolvedValue(null);

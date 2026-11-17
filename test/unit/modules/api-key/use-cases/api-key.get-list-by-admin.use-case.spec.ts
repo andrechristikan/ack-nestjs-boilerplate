@@ -47,7 +47,7 @@ describe('ApiKeyGetListByAdminUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],

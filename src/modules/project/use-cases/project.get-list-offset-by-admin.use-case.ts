@@ -1,4 +1,5 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -21,28 +22,34 @@ export class ProjectGetListOffsetByAdminUseCase implements IAppUseCase<
     constructor(
         private readonly projectService: ProjectService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly paginationFilterUtil: PaginationFilterUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async execute(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
-                availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectDefaultAvailableOrderBy,
-            });
-        const workspaceId = query.workspaceId ?? null;
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectDefaultAvailableOrderBy,
+        });
+        const workspaceFilter = this.paginationFilterUtil.equalString(
+            Prisma.ProjectScalarFieldEnum.workspaceId,
+            query.workspaceId
+        );
         this.requestStoreService.merge(PaginationStoreKey, {
             ...storePatch,
             filters: {
                 ...storePatch.filters,
-                ...(workspaceId ? { workspaceId } : {}),
+                ...(workspaceFilter?.storeFilter ?? {}),
             },
         });
 
         const { data, ...others } =
-            await this.projectService.getListOffsetByAdmin(params, workspaceId);
+            await this.projectService.getListOffsetByAdmin(
+                params,
+                workspaceFilter?.where ?? null
+            );
 
         return {
             data,

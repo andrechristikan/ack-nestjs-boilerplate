@@ -19,7 +19,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
     ) {}
 
     async groupMembershipDistributionOffset(
-        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { where, skip, limit } = params;
         const scopedWhere: Prisma.ProjectMemberWhereInput = {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 
 /** @public */
 export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
@@ -12,7 +13,7 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         example: 50,
     }),
     targetUserIds: z
-        .array(z.string().regex(/^[0-9a-fA-F]{24}$/))
+        .array(RequestMongoIdSchema)
         .max(1000)
         .meta({
             description:

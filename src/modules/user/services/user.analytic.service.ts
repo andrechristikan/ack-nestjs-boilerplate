@@ -17,7 +17,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -153,7 +152,7 @@ export class UserAnalyticService {
     async getListNearLockoutOffset(
         minAttempt: number,
         now: Date,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         return await this.userAnalyticRepository.findNearLockoutOffset(
             minAttempt,

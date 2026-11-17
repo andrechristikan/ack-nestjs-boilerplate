@@ -373,7 +373,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             ]);
         });
 
-        it('updateStatusByAdmin to active revokes no session', async () => {
+        it('revokes no session when the status becomes active', async () => {
             userService.revokesSessionsOn.mockReturnValue(false);
             userService.updateStatusByAdminInTx.mockResolvedValue(row);
 
@@ -397,7 +397,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
         });
 
-        it('updateStatusByAdmin to blocked revokes sessions and records userBlocked', async () => {
+        it('revokes sessions when the status becomes blocked and records userBlocked', async () => {
             userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userBlocked
             );

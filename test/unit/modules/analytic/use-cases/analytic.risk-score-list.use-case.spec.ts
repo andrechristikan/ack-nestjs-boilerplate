@@ -12,9 +12,9 @@ import {
 } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
-import { AnalyticRiskScoresUseCase } from '@modules/analytic/use-cases/analytic.risk-scores.use-case';
+import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
 
-describe('AnalyticRiskScoresUseCase', () => {
+describe('AnalyticRiskScoreListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
@@ -24,7 +24,7 @@ describe('AnalyticRiskScoresUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],
@@ -40,7 +40,7 @@ describe('AnalyticRiskScoresUseCase', () => {
         hasPrevious: false,
     };
 
-    let useCase: AnalyticRiskScoresUseCase;
+    let useCase: AnalyticRiskScoreListUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -51,7 +51,7 @@ describe('AnalyticRiskScoresUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                AnalyticRiskScoresUseCase,
+                AnalyticRiskScoreListUseCase,
                 {
                     provide: AnalyticFraudService,
                     useValue: analyticFraudService,
@@ -61,7 +61,7 @@ describe('AnalyticRiskScoresUseCase', () => {
             ],
         }).compile();
 
-        useCase = module.get(AnalyticRiskScoresUseCase);
+        useCase = module.get(AnalyticRiskScoreListUseCase);
     });
 
     describe('execute', () => {

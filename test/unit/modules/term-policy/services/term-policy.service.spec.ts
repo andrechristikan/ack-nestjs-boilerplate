@@ -6,7 +6,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
@@ -250,8 +250,11 @@ describe('TermPolicyService', () => {
         });
 
         it('passes null filters when none is given', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<TermPolicy> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -302,12 +305,11 @@ describe('TermPolicyService', () => {
         });
 
         it('passes a null type filter when none is given', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<TermPolicy> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -618,17 +620,8 @@ describe('TermPolicyService', () => {
             expect(termPolicyRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
-                {
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/en.hbs',
-                        },
-                    ],
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                },
+                EnumTermPolicyType.privacy,
+                1,
                 [{ language: EnumMessageLanguage.en, ...mapped }]
             );
         });
@@ -1284,6 +1277,8 @@ describe('TermPolicyService', () => {
                         'term-policy-1'
                     )
                 ).rejects.toMatchObject({
+                    module: 'termPolicy',
+
                     constructor: TermPolicyStatusInvalidException,
                     statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
                 });
@@ -1801,7 +1796,25 @@ describe('TermPolicyService', () => {
             );
         });
 
-        it('throws a fatal QueueException when a content copy failed', async () => {
+        it('throws a fatal QueueException carrying the S3 rejection as rawError', async () => {
+            const copyError = new Error('copy failed');
+            awsS3Service.copyItems.mockRejectedValue(copyError);
+
+            await expect(
+                service.copyContent({
+                    termPolicyId: 'term-policy-1',
+                    contents: [contentEn],
+                    destination: 'public/term-policies/privacy/1',
+                })
+            ).rejects.toMatchObject({
+                constructor: QueueException,
+                message: 'termPolicy.queue.error.copyContent',
+                isFatal: true,
+                rawError: copyError,
+            });
+        });
+
+        it('throws a fatal QueueException when S3 is not configured and no content was copied', async () => {
             awsS3Service.copyItems.mockResolvedValue([]);
 
             await expect(

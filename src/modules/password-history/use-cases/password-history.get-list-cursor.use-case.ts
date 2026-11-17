@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -29,14 +28,10 @@ export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         query: PasswordHistorySharedListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.PasswordHistoryWhereInput>(
-                query,
-                {
-                    scope: PasswordHistorySharedListCursorScope,
-                    availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: PasswordHistorySharedListCursorScope,
+            availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

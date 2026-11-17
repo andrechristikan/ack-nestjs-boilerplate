@@ -5,12 +5,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
+import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -113,7 +113,12 @@ describe('UserProcessImportByAdminUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.welcomeByAdmin,
-            context: { userId: 'entry', proceedBy: 'entry' },
+            context: {
+                userId: 'entry',
+                proceedBy: 'entry',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -543,7 +548,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.add).not.toHaveBeenCalled();
         });
 
-        it('throws an AppUnknownException wrapping an unmapped error and adds no result', async () => {
+        it('throws a QueueException wrapping an unmapped error and adds no result', async () => {
             const unexpected = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(unexpected);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -552,7 +557,9 @@ describe('UserProcessImportByAdminUseCase', () => {
             await expect(
                 useCase.execute('outbox-bramble', payload)
             ).rejects.toMatchObject({
-                constructor: AppUnknownException,
+                constructor: QueueException,
+                message: 'user.queue.error.importFailed',
+                isFatal: true,
                 rawError: unexpected,
             });
             expect(outboxService.add).not.toHaveBeenCalled();

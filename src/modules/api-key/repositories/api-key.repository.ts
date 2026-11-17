@@ -14,7 +14,6 @@ import type {
 } from '@modules/api-key/interfaces/api-key.interface';
 import type { IApiKeyRepository } from '@modules/api-key/interfaces/api-key.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -25,10 +24,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
     ) {}
 
     async findWithPagination(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
+        { where, ...params }: IPaginationQueryOffsetParams,
         isActive: Record<string, IPaginationEqual> | null,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IApiKey>> {

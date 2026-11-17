@@ -48,20 +48,14 @@ export interface IDeviceOwnershipRepository {
     ): Promise<void>;
     findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         isRevoked: Record<string, IPaginationEqual> | null,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,
         sessionId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
     findTokensByUserId(

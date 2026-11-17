@@ -9,7 +9,6 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { createFileCsvValidationPipe } from '@test/unit/helpers/test.unit.file.helper';
 
 const RowSchema = z.strictObject({ name: z.string() });
@@ -163,12 +162,12 @@ describe('FileCsvValidationPipe', () => {
 
             expect(caught).toMatchObject({
                 module: 'file',
-                statusCode: EnumRequestStatusCodeError.validation,
+                statusCode: EnumFileStatusCodeError.importInvalid,
                 statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.validation
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.importInvalid
                     ],
-                messagePath: 'file.error.validationDto',
+                messagePath: 'file.error.importInvalid',
             });
             expect(caught?.errors).toHaveLength(2);
             expect(caught?.errors[0]!.row).toBe(1);
@@ -243,12 +242,12 @@ describe('FileCsvValidationPipe', () => {
 
             expect(caught).toMatchObject({
                 module: 'file',
-                statusCode: EnumRequestStatusCodeError.validation,
+                statusCode: EnumFileStatusCodeError.importInvalid,
                 statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.validation
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.importInvalid
                     ],
-                messagePath: 'file.error.validationDto',
+                messagePath: 'file.error.importInvalid',
             });
             expect(caught?.errors).toHaveLength(2);
         });

@@ -1,5 +1,5 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';

@@ -223,7 +223,7 @@ import { AnalyticBackupCodeNewDeviceListUseCase } from '@modules/analytic/use-ca
 import { AnalyticApiKeyBurstSummaryUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-summary.use-case';
 import { AnalyticApiKeyBurstListUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-list.use-case';
 import { AnalyticRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.risk-score.use-case';
-import { AnalyticRiskScoresUseCase } from '@modules/analytic/use-cases/analytic.risk-scores.use-case';
+import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
 import { AnalyticImpossibleTravelSummaryUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-summary.use-case';
 import { AnalyticImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-list.use-case';
 import { AnalyticLoginSpikeIpSummaryUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-summary.use-case';
@@ -315,7 +315,7 @@ export class AnalyticAdminController {
         private readonly analyticApiKeyBurstSummaryUseCase: AnalyticApiKeyBurstSummaryUseCase,
         private readonly analyticApiKeyBurstListUseCase: AnalyticApiKeyBurstListUseCase,
         private readonly analyticRiskScoreUseCase: AnalyticRiskScoreUseCase,
-        private readonly analyticRiskScoresUseCase: AnalyticRiskScoresUseCase,
+        private readonly analyticRiskScoreListUseCase: AnalyticRiskScoreListUseCase,
         private readonly analyticImpossibleTravelSummaryUseCase: AnalyticImpossibleTravelSummaryUseCase,
         private readonly analyticImpossibleTravelListUseCase: AnalyticImpossibleTravelListUseCase,
         private readonly analyticLoginSpikeIpSummaryUseCase: AnalyticLoginSpikeIpSummaryUseCase,
@@ -1902,6 +1902,28 @@ export class AnalyticAdminController {
         return this.analyticApiKeyBurstListUseCase.execute(query);
     }
 
+    @Doc({ summary: 'admin get all user fraud risk scores' })
+    @ResponsePagination('analytic.fraudRiskScoreList', {
+        schema: AnalyticFraudRiskScoreResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @PolicyProtected({
+        subject: EnumPolicySubject.analytic,
+        action: [EnumPolicyAction.read],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @RequestThrottle({ user: true })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/fraud/risk-score/list')
+    async riskScoreList(
+        @Query({ schema: AnalyticFraudRiskScoresListRequestSchema })
+        query: AnalyticFraudRiskScoresListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
+        return this.analyticRiskScoreListUseCase.execute(query);
+    }
+
     @Doc({ summary: 'admin get fraud risk score of a user (report-only)' })
     @Response('analytic.fraudRiskScore', {
         schema: AnalyticFraudRiskScoreResponseSchema,
@@ -1916,34 +1938,12 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/fraud/risk-score/:userId')
+    @Get('/fraud/risk-score/user/:userId')
     async riskScore(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<IAnalyticFraudRiskScore>> {
         return this.analyticRiskScoreUseCase.execute(userId);
-    }
-
-    @Doc({ summary: 'admin get all user fraud risk scores' })
-    @ResponsePagination('analytic.fraudRiskScores', {
-        schema: AnalyticFraudRiskScoreResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/risk-scores')
-    async riskScores(
-        @Query({ schema: AnalyticFraudRiskScoresListRequestSchema })
-        query: AnalyticFraudRiskScoresListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        return this.analyticRiskScoresUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get impossible travel anomaly summary' })

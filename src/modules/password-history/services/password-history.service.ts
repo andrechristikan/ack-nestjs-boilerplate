@@ -4,18 +4,15 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumPasswordHistoryType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import type {
     IPasswordHistoryCreate,
     IPasswordHistoryList,
 } from '@modules/password-history/interfaces/password-history.interface';
+import { PasswordHistoryMustNewException } from '@modules/password-history/exceptions/password-history.must-new.exception';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -27,7 +24,7 @@ export class PasswordHistoryService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
             userId,
@@ -37,7 +34,7 @@ export class PasswordHistoryService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationCursor(
             userId,
@@ -56,7 +53,7 @@ export class PasswordHistoryService {
             const passwordPeriodInDays =
                 this.authPasswordUtil.getPasswordPeriodInDays();
 
-            throw new UserPasswordMustNewException(passwordPeriodInDays);
+            throw new PasswordHistoryMustNewException(passwordPeriodInDays);
         }
     }
 

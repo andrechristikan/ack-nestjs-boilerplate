@@ -27,7 +27,6 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
-    Prisma,
     Project,
     Workspace,
     WorkspaceInvite,
@@ -51,7 +50,10 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { UserService } from '@modules/user/services/user.service';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserName,
+    IUserSignUpWorkspaceInvite,
+} from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
@@ -65,7 +67,6 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
-    IWorkspaceInviteInviter,
     IWorkspaceInviteNotice,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -78,6 +79,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 describe('WorkspaceInviteService', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
@@ -210,7 +212,12 @@ describe('WorkspaceInviteService', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.workspaceInvite,
-            context: { userId: 'user-2', proceedBy: 'user-1' },
+            context: {
+                userId: 'user-2',
+                proceedBy: 'user-1',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -288,7 +295,7 @@ describe('WorkspaceInviteService', () => {
 
     describe('getInviterName', () => {
         it("resolves the inviter's name against the workspace", async () => {
-            const inviter: IWorkspaceInviteInviter = {
+            const inviter: IUserName = {
                 name: 'Bramble',
                 username: 'bramble',
             };
@@ -310,6 +317,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.validateInviteToken('raw-token')
             ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 messagePath: 'featureFlag.error.disabled',
@@ -378,6 +387,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.validateInviteForEmail('raw-token', 'user@example.com')
             ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 messagePath: 'featureFlag.error.disabled',
@@ -592,12 +603,11 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('getInvitesList', () => {
-        const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
-            {
-                fingerprint: 'aaaaaaaaaaaaaaaa',
-                limit: 20,
-                orderBy: [],
-            };
+        const pagination: IPaginationQueryCursorParams = {
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            limit: 20,
+            orderBy: [],
+        };
         const page: IResponsePaginationReturn<never> = {
             type: EnumPaginationType.cursor,
             perPage: 20,
@@ -613,6 +623,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.getInvitesList('workspace-1', pagination)
             ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 messagePath: 'featureFlag.error.disabled',
@@ -681,6 +693,8 @@ describe('WorkspaceInviteService', () => {
                     projectId: 'project-1',
                 })
             ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 messagePath: 'featureFlag.error.disabled',
@@ -718,6 +732,9 @@ describe('WorkspaceInviteService', () => {
                     projectRole: EnumProjectMemberRole.member,
                 })
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
+
                 constructor: WorkspaceInviteRoleRequiredException,
             });
         });
@@ -1207,6 +1224,8 @@ describe('WorkspaceInviteService', () => {
                     unregisteredNotice
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+
                 constructor: WorkspaceInviteDuplicateException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
                 messagePath: 'workspace.error.inviteDuplicate',
@@ -1252,6 +1271,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.getPendingById('invite-1', 'workspace-1')
             ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 messagePath: 'featureFlag.error.disabled',
@@ -1346,6 +1367,9 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.getResendableById('invite-1', 'workspace-1')
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
         });
@@ -1633,6 +1657,9 @@ describe('WorkspaceInviteService', () => {
                     unregisteredNotice
                 )
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -1836,6 +1863,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
             ).rejects.toMatchObject({
+                module: 'workspace',
+
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
@@ -1852,6 +1881,9 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
             ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -1896,6 +1928,8 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
             ).rejects.toMatchObject({
+                module: 'workspace',
+
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
                 messagePath: 'workspace.error.inviteAlreadyProcessed',
@@ -1952,7 +1986,7 @@ describe('WorkspaceInviteService', () => {
 
     describe('mapInvitePreview', () => {
         it('uses the inviter name when present', () => {
-            const inviter: IWorkspaceInviteInviter = {
+            const inviter: IUserName = {
                 name: 'Jane Doe',
                 username: 'jane',
             };
@@ -1972,7 +2006,7 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('falls back to the inviter username when the name is null', () => {
-            const inviter: IWorkspaceInviteInviter = {
+            const inviter: IUserName = {
                 name: null,
                 username: 'jane',
             };

@@ -4,10 +4,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    EnumWorkspaceJoinRejectReason,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceJoinRejectReason } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 
@@ -19,10 +16,7 @@ export interface IWorkspaceJoinRequestRepository {
     ): Promise<WorkspaceJoinRequest | null>;
     findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
     createPendingInTx(

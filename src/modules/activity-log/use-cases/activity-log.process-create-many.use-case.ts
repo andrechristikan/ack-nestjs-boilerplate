@@ -5,14 +5,14 @@ import type {
     IActivityLogCreateManyPayload,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { IActivityLogCreateManyQueueResponse } from '@modules/activity-log/interfaces/activity-log.interface';
 import { MessageService } from '@common/message/services/message.service';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ActivityLogProcessCreateManyUseCase implements IAppUseCase<
     [IActivityLogCreateManyPayload],
-    IQueueResponse
+    IActivityLogCreateManyQueueResponse
 > {
     constructor(
         private readonly activityLogService: ActivityLogService,
@@ -22,7 +22,7 @@ export class ActivityLogProcessCreateManyUseCase implements IAppUseCase<
 
     async execute(
         data: IActivityLogCreateManyPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<IActivityLogCreateManyQueueResponse> {
         const rows: IActivityLogCreate[] = [];
         for (const row of data.rows) {
             const createdAt = this.helperDateService.createFromIso(

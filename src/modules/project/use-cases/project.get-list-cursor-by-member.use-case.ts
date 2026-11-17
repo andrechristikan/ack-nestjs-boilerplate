@@ -2,7 +2,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import {
     ProjectCursorAvailableOrderBy,
@@ -30,12 +29,11 @@ export class ProjectGetListCursorByMemberUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
-                scope: ProjectUserListCursorScope,
-                availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectCursorAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: ProjectUserListCursorScope,
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectCursorAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

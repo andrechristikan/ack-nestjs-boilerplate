@@ -26,7 +26,6 @@ export class UserSendVerificationEmailUseCase implements IAppUseCase<
             return {};
         }
 
-        // Sequential by design: write must not run if an earlier step throws
         await this.userVerificationService.sendEmail(
             requestContext,
             apiKeyContext,

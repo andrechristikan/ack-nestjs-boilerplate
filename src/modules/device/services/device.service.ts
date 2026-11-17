@@ -15,9 +15,7 @@ import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-    Prisma,
 } from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
@@ -76,7 +74,7 @@ export class DeviceService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const now = this.helperDateService.create();
@@ -96,7 +94,7 @@ export class DeviceService {
     async getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const now = this.helperDateService.create();
         const idleSince = this.helperDateService.backward(
@@ -363,50 +361,5 @@ export class DeviceService {
 
             throw new AppUnknownException(err);
         }
-    }
-
-    mapActivityLogMetadata(
-        deviceOwnership: IDeviceOwnership,
-        sessionCount: number
-    ): IActivityLogMetadata {
-        return {
-            deviceOwnershipId: deviceOwnership.id,
-            deviceId: deviceOwnership.device.id,
-            sessionCount,
-        };
-    }
-
-    mapActivityLogActorMetadata(
-        deviceOwnership: IDeviceOwnership,
-        sessionCount: number
-    ): IActivityLogMetadata {
-        const metadata = this.mapActivityLogMetadata(
-            deviceOwnership,
-            sessionCount
-        );
-
-        return {
-            ...metadata,
-            targetUserId: deviceOwnership.userId,
-            targetUsername: deviceOwnership.user.username,
-            timestamp: deviceOwnership.updatedAt,
-        };
-    }
-
-    mapActivityLogTargetMetadata(
-        deviceOwnership: IDeviceOwnership,
-        actorUserId: string,
-        sessionCount: number
-    ): IActivityLogMetadata {
-        const metadata = this.mapActivityLogMetadata(
-            deviceOwnership,
-            sessionCount
-        );
-
-        return {
-            ...metadata,
-            actorUserId,
-            timestamp: deviceOwnership.updatedAt,
-        };
     }
 }

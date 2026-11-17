@@ -8,35 +8,15 @@ import {
     LoggerSentryRedactMaxDepth,
     LoggerSentryUrlKeys,
     LoggerUrlEncodedPairRegex,
-    LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
+import type { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 
 export class SentryUtil {
     private readonly sensitiveFields = new Set(
         LoggerSensitiveFields.map(field => field.toLowerCase())
     );
 
-    private maskPath(path: string): string {
-        return path
-            .split('/')
-            .map(segment =>
-                !segment || LoggerUrlStaticSegmentRegex.test(segment)
-                    ? segment
-                    : LoggerRedactedValue
-            )
-            .join('/');
-    }
-
-    private maskUrl(url: string): string {
-        try {
-            const parsed = new URL(url);
-            const path = this.maskPath(parsed.pathname);
-
-            return `${parsed.origin}${path}`;
-        } catch {
-            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
-        }
-    }
+    constructor(private readonly loggerUrlUtil: LoggerUrlUtil) {}
 
     private maskName(name: string): string {
         const separator = name.indexOf(' ');
@@ -49,7 +29,7 @@ export class SentryUtil {
             return name;
         }
 
-        const maskedTarget = this.maskUrl(target);
+        const maskedTarget = this.loggerUrlUtil.maskUrl(target);
 
         return `${name.slice(0, separator)} ${maskedTarget}`;
     }
@@ -163,7 +143,7 @@ export class SentryUtil {
         for (const key of LoggerSentryUrlKeys) {
             const value = data[key];
             if (typeof value === 'string') {
-                data[key] = this.maskUrl(value);
+                data[key] = this.loggerUrlUtil.maskUrl(value);
             }
         }
 
@@ -191,7 +171,7 @@ export class SentryUtil {
         }
 
         if (request.url) {
-            request.url = this.maskUrl(request.url);
+            request.url = this.loggerUrlUtil.maskUrl(request.url);
         }
 
         delete request.query_string;
@@ -263,39 +243,5 @@ export class SentryUtil {
         log.attributes = attributes;
 
         return log;
-    }
-
-    isExcludedUrl(url: string | null, patterns: string[]): boolean {
-        if (!url || !patterns.length) {
-            return false;
-        }
-
-        let pathname: string;
-        try {
-            pathname = new URL(url).pathname;
-        } catch {
-            pathname = url.split('?')[0]!.split('#')[0]!;
-        }
-
-        const normalizedPath = pathname.toLowerCase();
-
-        return patterns.some(pattern => {
-            if (!pattern) {
-                return false;
-            }
-
-            const normalizedPattern = pattern.toLowerCase();
-
-            if (normalizedPath === normalizedPattern) {
-                return true;
-            }
-
-            if (normalizedPattern.endsWith('*')) {
-                const base = normalizedPattern.slice(0, -1);
-                return base ? normalizedPath.startsWith(base) : true;
-            }
-
-            return false;
-        });
     }
 }

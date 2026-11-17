@@ -6,8 +6,8 @@ import {
     LoggerRedactMaxDepth,
     LoggerRedactedValue,
     LoggerSensitiveFields,
-    LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { ILoggerError } from '@common/logger/interfaces/logger.interface';
@@ -17,6 +17,8 @@ export class LoggerUtil {
     private readonly sensitiveFields = new Set(
         LoggerSensitiveFields.map(field => field.toLowerCase())
     );
+
+    constructor(private readonly loggerUrlUtil: LoggerUrlUtil) {}
 
     private redactNested(value: unknown, depth: number): unknown {
         if (
@@ -72,17 +74,6 @@ export class LoggerUtil {
         );
     }
 
-    private maskPath(path: string): string {
-        return path
-            .split('/')
-            .map(segment =>
-                !segment || LoggerUrlStaticSegmentRegex.test(segment)
-                    ? segment
-                    : LoggerRedactedValue
-            )
-            .join('/');
-    }
-
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
             return request.ip;
@@ -101,7 +92,7 @@ export class LoggerUtil {
             return `${request.baseUrl}${routePath}`;
         }
 
-        return this.maskUrl(request.originalUrl ?? request.url);
+        return this.loggerUrlUtil.maskUrl(request.originalUrl ?? request.url);
     }
 
     private serializeParams(
@@ -110,17 +101,6 @@ export class LoggerUtil {
         return Object.fromEntries(
             Object.keys(params ?? {}).map(key => [key, LoggerRedactedValue])
         );
-    }
-
-    private maskUrl(url: string): string {
-        try {
-            const parsed = new URL(url);
-            const maskedPath = this.maskPath(parsed.pathname);
-
-            return `${parsed.origin}${maskedPath}`;
-        } catch {
-            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
-        }
     }
 
     sanitizeMessage(message: unknown): unknown {
@@ -144,7 +124,7 @@ export class LoggerUtil {
         const route = this.serializeRoute(request);
         let referer: string | null = null;
         if (request.headers.referer) {
-            referer = this.maskUrl(request.headers.referer);
+            referer = this.loggerUrlUtil.maskUrl(request.headers.referer);
         }
         const clientIp = this.extractClientIP(request);
         const query = this.redactValue(request.query);

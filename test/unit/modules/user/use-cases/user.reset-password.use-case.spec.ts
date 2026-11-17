@@ -167,6 +167,7 @@ describe('UserResetPasswordUseCase', () => {
                 userId: 'user-linden',
                 proceedBy: 'user-linden',
                 snapshot,
+                verificationId: null,
             },
             recipient: null,
             notificationId: null,

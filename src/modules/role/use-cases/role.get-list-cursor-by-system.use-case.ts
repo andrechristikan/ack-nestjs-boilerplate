@@ -31,12 +31,11 @@ export class RoleGetListCursorBySystemUseCase implements IAppUseCase<
     async execute(
         query: RoleSystemListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.RoleWhereInput>(query, {
-                scope: RoleSystemListCursorScope,
-                availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: RoleSystemListCursorScope,
+            availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
+        });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,
             query.type,

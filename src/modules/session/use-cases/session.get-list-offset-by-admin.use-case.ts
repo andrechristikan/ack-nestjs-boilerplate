@@ -27,10 +27,9 @@ export class SessionGetListOffsetByAdminUseCase implements IAppUseCase<
         userId: string,
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
-                availableOrderBy: SessionDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: SessionDefaultAvailableOrderBy,
+        });
         const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.SessionScalarFieldEnum.isRevoked,
             query.isRevoked

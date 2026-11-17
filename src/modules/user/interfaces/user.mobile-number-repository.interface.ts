@@ -22,10 +22,11 @@ export interface IUserMobileNumberRepository {
     ): Promise<IUserMobileNumber>;
     updateInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
-    ): Promise<IUserMobileNumber>;
+    ): Promise<IUserMobileNumber | null>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -34,6 +35,7 @@ export interface IUserMobileNumberRepository {
     ): Promise<boolean>;
     deleteInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumber | null>;
     deleteByUserInTx(

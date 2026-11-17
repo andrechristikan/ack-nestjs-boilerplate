@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationFilterValueSeparator } from '@common/pagination/constants/pagination.constant';
-import {
-    EnumPaginationFilterDateBetweenType,
-    EnumPaginationFilterEnumOperator,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
 import type {
@@ -31,7 +28,7 @@ export class PaginationFilterUtil {
         field: TField,
         value: unknown,
         options?: IPaginationQueryFilterEqualOptions
-    ): IPaginationQueryFilterResult | null {
+    ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
         if (typeof value !== 'string' || value.trim() === '') {
             return null;
         }
@@ -75,13 +72,11 @@ export class PaginationFilterUtil {
         return value.trim();
     }
 
-    private enumFilter<T, TField extends string>(
+    private parseEnumValues<T, TField extends string>(
         field: TField,
         value: unknown,
-        defaultEnum: T[],
-        operator: EnumPaginationFilterEnumOperator,
-        options?: IPaginationQueryFilterOptions
-    ): IPaginationQueryFilterResult | null {
+        defaultEnum: T[]
+    ): string[] | null {
         if (
             typeof value !== 'string' ||
             value.trim() === '' ||
@@ -109,17 +104,7 @@ export class PaginationFilterUtil {
             );
         }
 
-        const customField = options?.customField ?? field;
-
-        return {
-            where: {
-                [customField]:
-                    operator === EnumPaginationFilterEnumOperator.in
-                        ? { in: finalValue }
-                        : { notIn: finalValue },
-            },
-            storeFilter: { [field]: finalValue },
-        };
+        return finalValue;
     }
 
     equalBoolean<TField extends string>(
@@ -143,9 +128,7 @@ export class PaginationFilterUtil {
         return this.equal(field, value, {
             ...options,
             isBoolean: true,
-        }) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
+        });
     }
 
     equalString<TField extends string>(
@@ -153,13 +136,7 @@ export class PaginationFilterUtil {
         value: unknown,
         options?: IPaginationQueryFilterOptions
     ): IPaginationQueryFilterResult<Record<string, IPaginationEqual>> | null {
-        return this.equal(
-            field,
-            value,
-            options
-        ) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
+        return this.equal(field, value, options);
     }
 
     equalNumber<TField extends string>(
@@ -170,9 +147,7 @@ export class PaginationFilterUtil {
         return this.equal(field, value, {
             ...options,
             isNumber: true,
-        }) as IPaginationQueryFilterResult<
-            Record<string, IPaginationEqual>
-        > | null;
+        });
     }
 
     notEqual<TField extends string>(
@@ -205,13 +180,17 @@ export class PaginationFilterUtil {
         defaultEnum: T[],
         options?: IPaginationQueryFilterOptions
     ): IPaginationQueryFilterResult<Record<string, IPaginationIn>> | null {
-        return this.enumFilter(
-            field,
-            value,
-            defaultEnum,
-            EnumPaginationFilterEnumOperator.in,
-            options
-        ) as IPaginationQueryFilterResult<Record<string, IPaginationIn>> | null;
+        const values = this.parseEnumValues(field, value, defaultEnum);
+        if (values === null) {
+            return null;
+        }
+
+        const customField = options?.customField ?? field;
+
+        return {
+            where: { [customField]: { in: values } },
+            storeFilter: { [field]: values },
+        };
     }
 
     ninEnum<T, TField extends string>(
@@ -220,15 +199,17 @@ export class PaginationFilterUtil {
         defaultEnum: T[],
         options?: IPaginationQueryFilterOptions
     ): IPaginationQueryFilterResult<Record<string, IPaginationNin>> | null {
-        return this.enumFilter(
-            field,
-            value,
-            defaultEnum,
-            EnumPaginationFilterEnumOperator.notIn,
-            options
-        ) as IPaginationQueryFilterResult<
-            Record<string, IPaginationNin>
-        > | null;
+        const values = this.parseEnumValues(field, value, defaultEnum);
+        if (values === null) {
+            return null;
+        }
+
+        const customField = options?.customField ?? field;
+
+        return {
+            where: { [customField]: { notIn: values } },
+            storeFilter: { [field]: values },
+        };
     }
 
     dateBetween<TField extends string>(

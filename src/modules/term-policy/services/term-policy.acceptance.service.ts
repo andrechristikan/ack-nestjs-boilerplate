@@ -26,7 +26,6 @@ import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -94,7 +93,7 @@ export class TermPolicyAcceptanceService {
 
     async getListUserAccepted(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         return this.termPolicyRepository.findUserAccepted(userId, pagination);
     }

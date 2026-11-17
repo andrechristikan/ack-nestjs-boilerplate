@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { Outbox } from '@generated/prisma-client/client';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
@@ -16,4 +17,8 @@ export interface IOutboxJobPayload {
 export interface IOutboxReconcileResult {
     stamped: boolean;
     missingRow: Outbox | null;
+}
+
+export interface IOutboxQueueResponse extends IQueueResponse {
+    count: number;
 }

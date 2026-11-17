@@ -11,7 +11,6 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
@@ -99,10 +98,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
 
     async findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
         return this.paginationService.cursor(

@@ -1,12 +1,11 @@
-import { faker } from '@faker-js/faker';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
 describe('CountryResponseSchema', () => {
     const row = {
-        id: faker.database.mongodbObjectId(),
-        createdAt: new Date(),
+        id: '507f1f77bcf86cd799439011',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
-        updatedAt: new Date(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
         name: 'Indonesia',
         alpha2Code: 'ID',

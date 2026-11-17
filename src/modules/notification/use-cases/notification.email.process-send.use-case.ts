@@ -1,7 +1,7 @@
 import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { MessageService } from '@common/message/services/message.service';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { INotificationEmailSendQueueResponse } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type { INotificationEmailSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
@@ -12,7 +12,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class NotificationEmailProcessSendUseCase implements IAppUseCase<
     [string, INotificationEmailSendPayload],
-    IQueueResponse
+    INotificationEmailSendQueueResponse
 > {
     constructor(
         private readonly notificationEmailDeliveryService: NotificationEmailDeliveryService,
@@ -32,7 +32,7 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
             context,
             completedSteps,
         }: INotificationEmailSendPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<INotificationEmailSendQueueResponse> {
         let result: SendTemplatedEmailCommandOutput | null = null;
         if (!completedSteps.includes(EnumNotificationStep.sendEmail)) {
             // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, the step recorded after its success, sentAt last)
@@ -74,6 +74,6 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
             { properties: { process: kind } }
         );
 
-        return result === null ? { message } : { message, result };
+        return { message, result };
     }
 }

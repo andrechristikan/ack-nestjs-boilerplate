@@ -156,7 +156,12 @@ describe('UserVerificationService', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.verifiedEmail,
-            context: { userId: 'user-flint', proceedBy: 'user-flint' },
+            context: {
+                userId: 'user-flint',
+                proceedBy: 'user-flint',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },
@@ -1145,6 +1150,8 @@ describe('UserVerificationService', () => {
                     'user-flint'
                 )
             ).rejects.toMatchObject({
+                module: 'user',
+
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
             });
         });

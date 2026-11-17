@@ -42,6 +42,7 @@ describe('NotificationSmsProcessSendUseCase', () => {
             reference: 'VRF-abc',
             expiredInMinutes: 5,
             encryptedOtp: 'cipher(482913)',
+            snapshot: null,
         },
     };
 

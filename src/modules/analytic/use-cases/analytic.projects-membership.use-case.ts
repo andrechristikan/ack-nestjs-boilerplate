@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -23,11 +22,9 @@ export class AnalyticProjectsMembershipUseCase implements IAppUseCase<
     async execute(
         query: AnalyticProjectsMembershipListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ProjectMemberWhereInput>(
-                query,
-                { availableOrderBy: [] }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: [],
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticDashboardService.projectsMembership(params);

@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { EnumAnalyticGroupKey } from '@modules/analytic/enums/analytic.enum';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { IWorkspaceAnalyticRepository } from '@modules/workspace/interfaces/workspace.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -23,7 +24,9 @@ export class WorkspaceAnalyticRepository implements IWorkspaceAnalyticRepository
             _count: { _all: true },
         });
         return rows.map(r => ({
-            key: r.isPublic ? 'public' : 'private',
+            key: r.isPublic
+                ? EnumAnalyticGroupKey.public
+                : EnumAnalyticGroupKey.private,
             count: r._count._all,
         }));
     }

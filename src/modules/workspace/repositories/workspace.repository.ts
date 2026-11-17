@@ -76,10 +76,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async findWithPaginationCursorByMember(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>> {
         return this.paginationService.cursor(
             this.databaseService.client.workspace,
@@ -97,10 +94,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     }
 
     async findWithPaginationOffsetByAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         isPublic: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset(

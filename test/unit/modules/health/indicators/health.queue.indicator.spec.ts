@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -126,9 +127,13 @@ describe('HealthQueueIndicator', () => {
             );
         });
 
-        it('reports down when reading the backend throws', async () => {
+        it('logs the cause and reports down when reading the backend throws', async () => {
+            const failure = new Error('backend unavailable');
+            const loggerError = vi
+                .spyOn(Logger.prototype, 'error')
+                .mockImplementation(() => undefined);
             getBackend.mockImplementation(() => {
-                throw new Error('backend unavailable');
+                throw failure;
             });
             session.down.mockReturnValue({ queue: { status: 'down' } });
 
@@ -137,8 +142,12 @@ describe('HealthQueueIndicator', () => {
             );
 
             expect(result).toEqual({ queue: { status: 'down' } });
+            expect(loggerError).toHaveBeenCalledWith(
+                failure,
+                'Queue health check failed'
+            );
             expect(session.down).toHaveBeenCalledWith(
-                'HealthQueueIndicator Failed - Unknown error'
+                'BullMQ queue is unreachable'
             );
         });
     });

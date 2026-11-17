@@ -3,10 +3,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { DeviceService } from '@modules/device/services/device.service';
-import type {
-    INotificationNotifyPayload,
-    INotificationSnapshot,
-} from '@modules/notification/interfaces/notification.interface';
+import type { INotificationNotifyPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -38,11 +35,11 @@ export class NotificationProcessUseCase implements IAppUseCase<
         const properties = { process: kind };
         let { recipient, notificationId } = recorded;
         const { snapshot } = context;
-        if (recipient === null && snapshot !== undefined) {
+        if (recipient === null && snapshot !== null) {
             recipient = this.notificationService.toSnapshotRecipientRecord(
                 kind,
                 context.userId,
-                snapshot as INotificationSnapshot
+                snapshot
             );
         } else if (recipient === null) {
             // Sequential by design: write must not run if an earlier step throws
@@ -74,10 +71,13 @@ export class NotificationProcessUseCase implements IAppUseCase<
             }
 
             let mobileNumber: string | null = null;
-            if (channels.includes(EnumNotificationChannel.sms)) {
+            if (
+                channels.includes(EnumNotificationChannel.sms) &&
+                context.verificationId !== null
+            ) {
                 mobileNumber =
                     await this.userVerificationService.getOneActiveMobileRecipient(
-                        String(context.verificationId)
+                        context.verificationId
                     );
             }
 

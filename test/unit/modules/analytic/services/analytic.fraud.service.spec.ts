@@ -1,3 +1,4 @@
+import type { UserAgent } from '@generated/prisma-client/client';
 import { chunk } from 'lodash-es';
 import { Duration } from 'luxon';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -63,6 +64,15 @@ import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.f
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('AnalyticFraudService', () => {
+    const userAgent: UserAgent = {
+        ua: null,
+        browser: null,
+        cpu: { architecture: null },
+        device: { type: null, vendor: null, model: null },
+        engine: { name: null, version: null },
+        os: { name: null, version: null },
+    };
+
     const fraudSummaryTtlInMs = 900000;
     const riskScoreTtlInMs = 600000;
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
@@ -433,12 +443,16 @@ describe('AnalyticFraudService', () => {
             const sorted = [
                 {
                     userId: 'user-1',
-                    indicatorCodes: ['newDevice'],
+                    indicatorCodes: [
+                        EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                    ],
                     passwordChangedAt: startDate,
                 },
                 {
                     userId: 'user-2',
-                    indicatorCodes: ['newDevice'],
+                    indicatorCodes: [
+                        EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                    ],
                     passwordChangedAt: endDate,
                 },
             ];
@@ -1469,7 +1483,9 @@ describe('AnalyticFraudService', () => {
             expect(result).toEqual([
                 {
                     userId: 'user-1',
-                    indicatorCodes: ['newDeviceAfterPasswordChange'],
+                    indicatorCodes: [
+                        EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                    ],
                     passwordChangedAt: startDate,
                 },
             ]);
@@ -1608,7 +1624,7 @@ describe('AnalyticFraudService', () => {
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,
-                            userAgent: null,
+                            userAgent,
                         },
                     ],
                 })
@@ -1622,7 +1638,7 @@ describe('AnalyticFraudService', () => {
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,
-                            userAgent: null,
+                            userAgent,
                         },
                     ],
                 });
@@ -1634,7 +1650,7 @@ describe('AnalyticFraudService', () => {
                     ipAddress: null,
                     createdAt: windowEnd,
                     workspaceId: null,
-                    userAgent: null,
+                    userAgent,
                 })
                 .mockResolvedValueOnce(null);
 
@@ -1751,7 +1767,7 @@ describe('AnalyticFraudService', () => {
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,
-                            userAgent: null,
+                            userAgent,
                         },
                     ],
                 })
@@ -1765,7 +1781,7 @@ describe('AnalyticFraudService', () => {
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,
-                            userAgent: null,
+                            userAgent,
                         },
                     ],
                 });
@@ -2038,7 +2054,9 @@ describe('AnalyticFraudService', () => {
                 accountTakeover: [
                     {
                         userId: 'user-3',
-                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        indicatorCodes: [
+                            EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                        ],
                         passwordChangedAt: createdAt,
                     },
                 ],

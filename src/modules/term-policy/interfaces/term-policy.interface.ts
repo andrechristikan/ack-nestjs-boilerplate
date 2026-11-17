@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
@@ -159,4 +160,18 @@ export interface ITermPolicyRecipientBatch {
 export interface ITermPolicyRecipientClaim {
     claimNonce: string;
     userIds: string[];
+}
+
+export interface ITermPolicyCopyContentQueueResponse extends IQueueResponse {
+    destination: string;
+}
+
+export interface ITermPolicyDeleteContentQueueResponse extends IQueueResponse {
+    path: string;
+}
+
+export interface ITermPolicyPublishQueueResponse extends IQueueResponse {
+    candidateCounts: number;
+    createdCounts: number;
+    batches: number;
 }

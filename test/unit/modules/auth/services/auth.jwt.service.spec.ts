@@ -686,8 +686,12 @@ describe('AuthJwtService', () => {
         });
 
         it('falls back to milliseconds when the duration carries no whole seconds', () => {
-            helperDateService.create.mockReturnValue(new Date());
-            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
+            helperDateService.createFromTimestamp.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             helperDateService.diff.mockReturnValue(
                 Duration.fromObject({ milliseconds: 2500 })
             );
@@ -696,8 +700,12 @@ describe('AuthJwtService', () => {
         });
 
         it('treats a missing expiry as the epoch', () => {
-            helperDateService.create.mockReturnValue(new Date());
-            helperDateService.createFromTimestamp.mockReturnValue(new Date());
+            helperDateService.create.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
+            helperDateService.createFromTimestamp.mockReturnValue(
+                new Date('2026-01-01T00:00:00.000Z')
+            );
             helperDateService.diff.mockReturnValue(
                 Duration.fromObject({ milliseconds: 0 })
             );

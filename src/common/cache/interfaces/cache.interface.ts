@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumCacheProcess,
     EnumCacheQueue,
@@ -21,4 +22,8 @@ export interface ICacheInvalidateEffect extends IOutboxEffect {
     queue: EnumCacheQueue.cache;
     name: EnumCacheProcess.invalidate;
     data: ICacheInvalidatePayload;
+}
+
+export interface ICacheQueueResponse extends IQueueResponse {
+    countKeys: number;
 }

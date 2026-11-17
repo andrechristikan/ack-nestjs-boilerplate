@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Country, Prisma } from '@generated/prisma-client/client';
+import type { Country } from '@generated/prisma-client/client';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -37,7 +37,7 @@ describe('CountryGetListCursorUseCase', () => {
         updatedBy: null,
     };
 
-    const pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput> = {
+    const pagination: IPaginationQueryCursorParams = {
         fingerprint: 'aaaaaaaaaaaaaaaa',
         limit: 20,
         orderBy: [],

@@ -22,7 +22,7 @@ describe('AnalyticFailedLoginSpikeListUseCase', () => {
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],

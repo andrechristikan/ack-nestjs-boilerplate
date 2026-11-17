@@ -1,4 +1,4 @@
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyContentSchema } from '@modules/term-policy/dtos/term-policy.content.dto';
 

@@ -78,10 +78,10 @@ export class DeviceAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Query({ schema: DeviceAdminListRequestSchema })
-        query: DeviceAdminListRequestDto,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: DeviceAdminListRequestSchema })
+        query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         return this.deviceGetListOffsetByAdminUseCase.execute(userId, query);
     }

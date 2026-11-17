@@ -2,7 +2,6 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
 import type { ZodType } from 'zod';
-import { CacheLeaseSetScript } from '@common/cache/constants/cache.constant';
 import {
     EnumCacheProcess,
     EnumCacheQueue,
@@ -107,9 +106,18 @@ export class CacheService {
         lease: ICacheLease,
         token: string
     ): Promise<void> {
+        const script = `
+            if redis.call('GET', KEYS[2]) ~= ARGV[1] then
+                return 0
+            end
+            redis.call('SET', KEYS[1], ARGV[2], 'PX', ARGV[3])
+            redis.call('DEL', KEYS[2])
+            return 1
+        `;
+
         try {
             await this.redis.eval(
-                CacheLeaseSetScript,
+                script,
                 2,
                 key,
                 lease.key,

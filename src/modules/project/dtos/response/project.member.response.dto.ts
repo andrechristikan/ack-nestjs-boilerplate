@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';

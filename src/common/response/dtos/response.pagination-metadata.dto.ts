@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { z } from 'zod';
 import { ResponseMetadataSchema } from '@common/response/dtos/response.metadata.dto';
-import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
@@ -103,5 +102,4 @@ export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
 /** @public */
 export type ResponsePaginationMetadataDto = z.infer<
     typeof ResponsePaginationMetadataSchema
-> &
-    ResponseMetadataDto;
+>;

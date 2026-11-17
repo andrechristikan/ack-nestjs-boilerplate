@@ -29,11 +29,10 @@ export class WorkspaceGetListOffsetByAdminUseCase implements IAppUseCase<
     async execute(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.WorkspaceWhereInput>(query, {
-                availableSearch: WorkspaceDefaultAvailableSearch,
-                availableOrderBy: WorkspaceDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: WorkspaceDefaultAvailableSearch,
+            availableOrderBy: WorkspaceDefaultAvailableOrderBy,
+        });
         const isPublic = this.paginationFilterUtil.equalBoolean(
             Prisma.WorkspaceScalarFieldEnum.isPublic,
             query.isPublic

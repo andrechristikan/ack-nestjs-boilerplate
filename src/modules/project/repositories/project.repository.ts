@@ -2,12 +2,12 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectDeletedSlugPattern } from '@modules/project/constants/project.constant';
 import type {
@@ -52,10 +52,7 @@ export class ProjectRepository implements IProjectRepository {
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor(
             this.databaseService.client.project,
@@ -76,11 +73,8 @@ export class ProjectRepository implements IProjectRepository {
     }
 
     async findWithPaginationOffsetByAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId: string | null
+        { where, ...others }: IPaginationQueryOffsetParams,
+        workspaceFilter: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset(
             this.databaseService.client.project,
@@ -88,7 +82,7 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     ...where,
-                    ...(workspaceId ? { workspaceId } : {}),
+                    ...workspaceFilter,
                 },
             }
         );

@@ -83,13 +83,9 @@ export class MfaService {
         const codes = Array.from({ length: this.backupCodesCount }, () =>
             this.helperStringService.randomUppercase(this.backupCodesLength)
         );
-        const hashes: string[] = [];
-
-        // Sequential by design: argon2id hashes hold helper.argon2 memory per call, one at a time
-        for (const code of codes) {
-            const hash = await this.helperHashService.argon2Hash(code);
-            hashes.push(hash);
-        }
+        const hashes = await Promise.all(
+            codes.map(code => this.helperHashService.argon2Hash(code))
+        );
 
         return { codes, hashes };
     }
@@ -98,7 +94,7 @@ export class MfaService {
         backupCodes: string[],
         input: string
     ): Promise<IMfaBackupCodesVerifyResult> {
-        // Sequential by design: argon2id compares hold helper.argon2 memory per call, one at a time, stopping at the first match
+        // Sequential by design: an argon2id compare over several hashes, stopping at the first match
         for (const [index, hash] of backupCodes.entries()) {
             const isMatch = await this.helperHashService.argon2Compare(
                 input,

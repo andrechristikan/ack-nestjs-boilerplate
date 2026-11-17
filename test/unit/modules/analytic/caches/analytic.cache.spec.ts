@@ -27,6 +27,10 @@ describe('AnalyticCache', () => {
             const values: Record<string, string | number> = {
                 'analytic.cache.keyPatterns.dashboard':
                     'Dashboard:{metric}:{start}:{end}',
+                'analytic.cache.keyPatterns.dashboardPage':
+                    'Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
+                'analytic.cache.keyPatterns.workspaceSummary':
+                    'Workspace:{workspaceId}:Summary:{start}:{end}',
                 'analytic.cache.keyPatterns.anomalySummary':
                     'Anomaly:{signal}:{window}',
                 'analytic.cache.keyPatterns.fraudSummary':
@@ -106,6 +110,46 @@ describe('AnalyticCache', () => {
                     start: 'start',
                     end: 'end',
                 }
+            );
+        });
+    });
+
+    describe('buildDashboardPageKey', () => {
+        it('builds the paged dashboard key from its own pattern', () => {
+            const result = cache.buildDashboardPageKey(
+                'workspaces.membership',
+                'start',
+                'end',
+                2,
+                20
+            );
+
+            expect(result).toBe('workspaces.membership:start:end:2:20');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
+                {
+                    metric: 'workspaces.membership',
+                    start: 'start',
+                    end: 'end',
+                    page: '2',
+                    perPage: '20',
+                }
+            );
+        });
+    });
+
+    describe('buildWorkspaceSummaryKey', () => {
+        it('builds the workspace summary key from its own pattern', () => {
+            const result = cache.buildWorkspaceSummaryKey(
+                'ws-1',
+                'start',
+                'end'
+            );
+
+            expect(result).toBe('ws-1:start:end');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'Workspace:{workspaceId}:Summary:{start}:{end}',
+                { workspaceId: 'ws-1', start: 'start', end: 'end' }
             );
         });
     });

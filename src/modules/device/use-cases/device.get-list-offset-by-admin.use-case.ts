@@ -27,11 +27,9 @@ export class DeviceGetListOffsetByAdminUseCase implements IAppUseCase<
         userId: string,
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query,
-                { availableOrderBy: DeviceDefaultAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: DeviceDefaultAvailableOrderBy,
+        });
         const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
             query.isRevoked

@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AnalyticCache {
     private readonly dashboardKeyPattern: string;
+    private readonly dashboardPageKeyPattern: string;
+    private readonly workspaceSummaryKeyPattern: string;
     private readonly anomalySummaryKeyPattern: string;
     private readonly fraudSummaryKeyPattern: string;
     private readonly riskScoreKeyPattern: string;
@@ -23,6 +25,12 @@ export class AnalyticCache {
     ) {
         this.dashboardKeyPattern = this.configService.get<string>(
             'analytic.cache.keyPatterns.dashboard'
+        )!;
+        this.dashboardPageKeyPattern = this.configService.get<string>(
+            'analytic.cache.keyPatterns.dashboardPage'
+        )!;
+        this.workspaceSummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.keyPatterns.workspaceSummary'
         )!;
         this.anomalySummaryKeyPattern = this.configService.get<string>(
             'analytic.cache.keyPatterns.anomalySummary'
@@ -83,5 +91,35 @@ export class AnalyticCache {
             start,
             end,
         });
+    }
+
+    buildDashboardPageKey(
+        metric: string,
+        start: string,
+        end: string,
+        page: number,
+        perPage: number
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.dashboardPageKeyPattern,
+            {
+                metric,
+                start,
+                end,
+                page: String(page),
+                perPage: String(perPage),
+            }
+        );
+    }
+
+    buildWorkspaceSummaryKey(
+        workspaceId: string,
+        start: string,
+        end: string
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.workspaceSummaryKeyPattern,
+            { workspaceId, start, end }
+        );
     }
 }

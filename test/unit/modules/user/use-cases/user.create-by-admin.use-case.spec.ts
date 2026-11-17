@@ -101,7 +101,12 @@ describe('UserCreateByAdminUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.welcomeByAdmin,
-            context: { userId: 'user-bramble', proceedBy: 'admin-bramble' },
+            context: {
+                userId: 'user-bramble',
+                proceedBy: 'admin-bramble',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },

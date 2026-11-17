@@ -338,6 +338,9 @@ export class NotificationService {
         const { secrets, keyPattern, queuePriority } =
             NotificationKindContract[kind];
         const sealed = this.sealContext(context, secrets, userId);
+        const snapshot = 'snapshot' in context ? context.snapshot : null;
+        const verificationId =
+            'verificationId' in context ? context.verificationId : null;
         let idempotencyKey: string | null = null;
         if (keyPattern !== null) {
             const values = this.toKeyValues(kind, sealed);
@@ -352,7 +355,13 @@ export class NotificationService {
             name: EnumNotificationProcess.notify,
             data: {
                 kind,
-                context: { ...sealed, userId, proceedBy },
+                context: {
+                    ...sealed,
+                    userId,
+                    proceedBy,
+                    snapshot,
+                    verificationId,
+                },
                 recipient: null,
                 notificationId: null,
             },
@@ -593,7 +602,7 @@ export class NotificationService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Notification>> {
         const excludedTypes = await this.findMutedInAppTypes(userId);
 

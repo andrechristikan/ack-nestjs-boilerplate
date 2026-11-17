@@ -2,7 +2,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
@@ -25,11 +24,9 @@ export class WorkspaceGetMembersListByAdminUseCase implements IAppUseCase<
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
-                query,
-                { availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

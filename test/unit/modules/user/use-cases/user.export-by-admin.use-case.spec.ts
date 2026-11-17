@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumAwsS3Accessibility,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -123,7 +124,7 @@ describe('UserExportByAdminUseCase', () => {
                     completedUrl: 'https://cdn.example.com/photo.png',
                     mime: 'image/png',
                     extension: 'png',
-                    access: 'public',
+                    access: EnumAwsS3Accessibility.public,
                 },
             };
             userImportService.exportByAdmin.mockResolvedValue([user]);

@@ -1,12 +1,7 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticCacheEmptyToken,
-    AnalyticWorkspaceSummaryCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
-import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
+import { AnalyticWorkspaceSummaryCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
@@ -19,61 +14,31 @@ import { WorkspaceInviteAnalyticService } from '@modules/workspace/services/work
 import { WorkspaceJoinRequestAnalyticService } from '@modules/workspace/services/workspace.join-request.analytic.service';
 import { WorkspaceMemberAnalyticService } from '@modules/workspace/services/workspace.member.analytic.service';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AnalyticWorkspaceUserService {
-    private readonly workspaceWindowTokenPattern: string;
-
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
         private readonly analyticDateUtil: AnalyticDateUtil,
-        private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
         private readonly workspaceMemberAnalyticService: WorkspaceMemberAnalyticService,
         private readonly workspaceInviteAnalyticService: WorkspaceInviteAnalyticService,
         private readonly workspaceJoinRequestAnalyticService: WorkspaceJoinRequestAnalyticService,
         private readonly projectAnalyticService: ProjectAnalyticService,
         private readonly activityLogAnalyticService: ActivityLogAnalyticService
-    ) {
-        this.workspaceWindowTokenPattern = this.configService.get<string>(
-            'analytic.cache.workspaceWindowTokenPattern'
-        )!;
-    }
-
-    private workspaceWindowToken(
-        workspaceId: string,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const startToken = this.analyticDateUtil.cacheToken(startDate);
-        const endToken = this.analyticDateUtil.cacheToken(endDate);
-
-        return this.helperStringService.fillPattern(
-            this.workspaceWindowTokenPattern,
-            {
-                workspaceId,
-                start: startToken,
-                end: endToken,
-            }
-        );
-    }
+    ) {}
 
     async summary(
         workspaceId: string,
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticWorkspaceSummary> {
-        const windowToken = this.workspaceWindowToken(
+        const start = this.analyticDateUtil.cacheToken(startDate);
+        const end = this.analyticDateUtil.cacheToken(endDate);
+        const key = this.analyticCache.buildWorkspaceSummaryKey(
             workspaceId,
-            startDate,
-            endDate
-        );
-        const key = this.analyticCache.buildDashboardKey(
-            EnumAnalyticDashboardMetric.workspaceSummary,
-            windowToken,
-            AnalyticCacheEmptyToken
+            start,
+            end
         );
 
         return this.cacheService.readThrough(

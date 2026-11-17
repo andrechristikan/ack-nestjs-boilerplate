@@ -50,3 +50,17 @@ export const FileUploadDocErrors: IDocResponseEntry[] = [
         messagePath: 'file.error.multipartInvalid',
     },
 ];
+
+/** @public */
+export const FileImportDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        statusCode: EnumFileStatusCodeError.importInvalid,
+        messagePath: 'file.error.importInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        statusCode: EnumFileStatusCodeError.exceedMaxDataImport,
+        messagePath: 'file.error.exceedMaxDataImport',
+    },
+];

@@ -2,6 +2,7 @@ export type {
     IAnalyticDateRange,
     IAnalyticOptionalDateRange,
     IAnalyticCountBucket,
+    IAnalyticCounted,
     IAnalyticCountRange,
     IAnalyticBucketsResult,
     IAnalyticSortedPage,

@@ -9,12 +9,13 @@ export interface IConfigAnalytic {
         riskScoreTtlInMs: number;
         keyPatterns: {
             dashboard: string;
+            dashboardPage: string;
+            workspaceSummary: string;
             anomalySummary: string;
             fraudSummary: string;
             riskScore: string;
         };
         windowTokenPattern: string;
-        workspaceWindowTokenPattern: string;
     };
     maxWindowInMs: number;
     anomaly: {
@@ -113,12 +114,15 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         riskScoreTtlInMs: ms('15m'),
         keyPatterns: {
             dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
+            dashboardPage:
+                'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
+            workspaceSummary:
+                'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
             anomalySummary: 'Analytic:Anomaly:{signal}:{window}',
             fraudSummary: 'Analytic:Fraud:{signal}:{window}',
             riskScore: 'Analytic:Fraud:Risk:{userId}',
         },
         windowTokenPattern: '{start}:{end}',
-        workspaceWindowTokenPattern: '{workspaceId}:{start}:{end}',
     },
     maxWindowInMs: ms('90d'),
     anomaly: {

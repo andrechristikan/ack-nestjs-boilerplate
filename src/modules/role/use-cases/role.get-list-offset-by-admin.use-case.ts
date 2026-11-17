@@ -30,11 +30,10 @@ export class RoleGetListOffsetByAdminUseCase implements IAppUseCase<
     async execute(
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
-                availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
+        });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,
             query.type,

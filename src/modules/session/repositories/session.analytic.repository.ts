@@ -1,6 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { SessionAnalyticSelect } from '@modules/session/constants/session.constant';
+import { EnumAnalyticGroupKey } from '@modules/analytic/enums/analytic.enum';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { ISessionAnalyticRepository } from '@modules/session/interfaces/session.analytic-repository.interface';
 import type {
@@ -103,7 +104,8 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         );
         const map = new Map<string, number>();
         for (const s of sessions) {
-            const country = s.geoLocation?.country ?? 'unknown';
+            const country =
+                s.geoLocation?.country ?? EnumAnalyticGroupKey.unknown;
             map.set(country, (map.get(country) ?? 0) + 1);
         }
         return [...map.entries()].map(([key, count]) => ({ key, count }));

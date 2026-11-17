@@ -9,6 +9,7 @@ import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     ActivityLogActionRangeCursorScope,
+    ActivityLogAnalyticCreatedAtSelect,
     ActivityLogAnalyticListSelect,
 } from '@modules/activity-log/constants/activity-log.constant';
 import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
@@ -115,7 +116,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
                 action: { in: actions },
                 createdAt: { gte: startDate, lt: endDate },
             },
-            select: { createdAt: true },
+            select: ActivityLogAnalyticCreatedAtSelect,
             orderBy: { createdAt: EnumPaginationOrderDirectionType.desc },
             take: limit,
         });
@@ -226,7 +227,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         excludedActions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { skip, limit } = params;
         const scopedWhere: Prisma.ActivityLogWhereInput = {

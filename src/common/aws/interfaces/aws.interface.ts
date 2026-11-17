@@ -1,4 +1,4 @@
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { StreamingBlobTypes } from '@smithy/types';
 
 export interface IAwsS3 {

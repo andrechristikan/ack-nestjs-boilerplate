@@ -34,5 +34,4 @@ export const ResponseMetadataSchema = z.object({
 });
 
 /** @public */
-export type ResponseMetadataDto = z.infer<typeof ResponseMetadataSchema> &
-    Record<string, unknown>;
+export type ResponseMetadataDto = z.infer<typeof ResponseMetadataSchema>;

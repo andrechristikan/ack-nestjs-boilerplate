@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -11,7 +10,7 @@ import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/consta
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
-export class AnalyticRiskScoresUseCase implements IAppUseCase<
+export class AnalyticRiskScoreListUseCase implements IAppUseCase<
     [AnalyticFraudRiskScoresListRequestDto],
     IResponsePaginationReturn<IAnalyticFraudRiskScore>
 > {
@@ -24,10 +23,9 @@ export class AnalyticRiskScoresUseCase implements IAppUseCase<
     async execute(
         query: AnalyticFraudRiskScoresListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
-                availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudService.riskScores(

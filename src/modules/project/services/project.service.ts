@@ -6,12 +6,13 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -102,7 +103,7 @@ export class ProjectService {
     async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Project>> {
         const hasWorkspaceBypass =
             this.projectUtil.hasWorkspaceBypass(workspaceMember);
@@ -238,6 +239,10 @@ export class ProjectService {
                 return updated;
             });
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             const isSlugCollision = this.databaseUtil.isUniqueCollision(
                 err,
                 'slug'
@@ -282,12 +287,12 @@ export class ProjectService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId: string | null
+        pagination: IPaginationQueryOffsetParams,
+        workspaceFilter: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            workspaceId
+            workspaceFilter
         );
     }
 

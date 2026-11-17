@@ -1,9 +1,8 @@
-import { faker } from '@faker-js/faker';
 import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
 
 describe('RequestUserAgentResponseSchema', () => {
     const payload = {
-        ua: faker.internet.userAgent(),
+        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X)',
         browser: {
             name: 'Chrome',
             version: '112.0.5615.49',

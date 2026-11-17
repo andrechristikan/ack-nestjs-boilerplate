@@ -41,19 +41,20 @@ describe('AppGeneralFilter', () => {
     > = mock<ReturnType<ArgumentsHost['switchToHttp']>>();
     const argumentsHost: MockProxy<ArgumentsHost> = mock<ArgumentsHost>();
 
-    let metadata: ResponseMetadataDto;
     let filter: AppGeneralFilter;
 
-    beforeAll(() => {
-        metadata = {
-            language: EnumMessageLanguage.en,
-            timestamp: 1758153600000,
-            timezone: 'Asia/Jakarta',
-            version: '1',
-            repoVersion: '1.0.0',
-            requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
-            correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
-        };
+    const metadata: ResponseMetadataDto = {
+        language: EnumMessageLanguage.en,
+        timestamp: 1758153600000,
+        timezone: 'Asia/Jakarta',
+        version: '1',
+        repoVersion: '1.0.0',
+        requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+        correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
+    };
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     beforeEach(async () => {
@@ -450,13 +451,8 @@ describe('AppGeneralFilter', () => {
             );
         });
 
-        it('spreads exception metadata under the response metadata and carries no data', async () => {
-            const exception = new ResponseSerializationException({
-                metadata: {
-                    source: 'serialization',
-                    language: 'id',
-                },
-            });
+        it('answers metadata holding exactly the schema keys and carries no data', async () => {
+            const exception = new ResponseSerializationException();
 
             let body: unknown = null;
             response.json.mockImplementationOnce(sent => {
@@ -470,10 +466,21 @@ describe('AppGeneralFilter', () => {
             expect(body).not.toHaveProperty('data');
             expect(response.json).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    metadata: {
-                        ...metadata,
-                        source: 'serialization',
-                    },
+                    metadata,
+                })
+            );
+        });
+
+        it('spreads exception metadata under the response metadata, a schema key winning', async () => {
+            const exception = new ResponseSerializationException({
+                metadata: { extra: 1, language: 'id' },
+            });
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    metadata: { ...metadata, extra: 1 },
                 })
             );
         });

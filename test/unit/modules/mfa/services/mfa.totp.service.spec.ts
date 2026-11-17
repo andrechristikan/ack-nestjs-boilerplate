@@ -269,6 +269,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.setupInTx(tx, 'user-quartz', 'quartz@example.com')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpAlreadyEnabled,
             });
             expect(mfaTotpRepository.setupInTx).not.toHaveBeenCalled();
@@ -350,11 +352,15 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkCode('user-quartz', '123456')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
             await expect(
                 service.checkCode('user-quartz', '123456')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
         });
@@ -368,6 +374,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkCode('user-quartz', '123456')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpSecretUnavailable,
             });
             expect(sentryService.captureException).toHaveBeenCalledWith(cause);
@@ -425,6 +433,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkSetupCode('user-quartz', '123456')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpAlreadyEnabled,
             });
         });
@@ -435,6 +445,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkSetupCode('user-quartz', '123456')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpSetupRequired,
             });
         });
@@ -461,6 +473,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.markUsedInTx(tx, 'user-quartz', 10)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
         });
@@ -492,6 +506,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.enableInTx(tx, 'user-quartz', 7)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpSetupRequired,
             });
             expect(mfaTotpRepository.enableInTx).not.toHaveBeenCalled();
@@ -506,6 +522,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.enableInTx(tx, 'user-quartz', 7)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpSetupRequired,
             });
         });
@@ -529,6 +547,8 @@ describe('MfaTotpService', () => {
             await expect(
                 service.disableInTx(tx, 'user-quartz')
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.totpNotEnabled,
             });
         });

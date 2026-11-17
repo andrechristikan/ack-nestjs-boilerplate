@@ -35,15 +35,11 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
-                query,
-                {
-                    scope: WorkspaceInviteUserListCursorScope,
-                    availableSearch: WorkspaceInviteDefaultAvailableSearch,
-                    availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: WorkspaceInviteUserListCursorScope,
+            availableSearch: WorkspaceInviteDefaultAvailableSearch,
+            availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
+        });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceInviteScalarFieldEnum.status,
             query.status,

@@ -53,6 +53,7 @@ describe('NotificationPushProcessCleanupStaleTokensUseCase', () => {
                 notificationService.toCleanupStaleTokensResult
             ).toHaveBeenCalledWith(3);
             expect(result).toEqual(cleanupResult);
+            expect(configService.get).toHaveBeenCalledTimes(1);
         });
     });
 });

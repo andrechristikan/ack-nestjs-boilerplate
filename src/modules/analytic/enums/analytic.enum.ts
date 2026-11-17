@@ -93,7 +93,13 @@ export enum EnumAnalyticDashboardMetric {
     workspacesJoinOutcomes = 'workspaces.joinOutcomes',
     workspacesMembership = 'workspaces.membership',
     workspacesActivity = 'workspaces.activity',
-    workspaceSummary = 'workspace.summary',
     projectsCreation = 'projects.creation',
     projectsMembership = 'projects.membership',
+}
+
+/** @public */
+export enum EnumAnalyticGroupKey {
+    unknown = 'unknown',
+    public = 'public',
+    private = 'private',
 }

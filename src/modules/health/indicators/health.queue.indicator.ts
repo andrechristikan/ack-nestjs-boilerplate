@@ -48,10 +48,10 @@ export class HealthQueueIndicator {
             }
 
             return indicator.up();
-        } catch {
-            return indicator.down(
-                'HealthQueueIndicator Failed - Unknown error'
-            );
+        } catch (err: unknown) {
+            this.logger.error(err, 'Queue health check failed');
+
+            return indicator.down('BullMQ queue is unreachable');
         }
     }
 }

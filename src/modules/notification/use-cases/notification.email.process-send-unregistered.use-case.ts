@@ -1,6 +1,6 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { MessageService } from '@common/message/services/message.service';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { INotificationEmailSendUnregisteredQueueResponse } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationEmailSendUnregisteredPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
@@ -10,7 +10,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class NotificationEmailProcessSendUnregisteredUseCase implements IAppUseCase<
     [INotificationEmailSendUnregisteredPayload],
-    IQueueResponse
+    INotificationEmailSendUnregisteredQueueResponse
 > {
     constructor(
         private readonly notificationEmailDeliveryService: NotificationEmailDeliveryService,
@@ -21,7 +21,7 @@ export class NotificationEmailProcessSendUnregisteredUseCase implements IAppUseC
     async execute({
         encryptedEmail,
         context,
-    }: INotificationEmailSendUnregisteredPayload): Promise<IQueueResponse> {
+    }: INotificationEmailSendUnregisteredPayload): Promise<INotificationEmailSendUnregisteredQueueResponse> {
         const kind = EnumNotificationKind.workspaceInvite;
         const email = this.notificationUtil.decryptPayload(
             encryptedEmail,

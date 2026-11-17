@@ -9,8 +9,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     TermPolicyAcceptanceInclude,
     TermPolicyRefSelect,
@@ -51,10 +50,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     }
 
     async find(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         type: Record<string, IPaginationIn> | null,
         status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
@@ -72,10 +68,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     }
 
     async findPublished(
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.cursor(
@@ -93,10 +86,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
 
     async findUserAccepted(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         return this.paginationService.cursor(
             this.databaseService.client.termPolicyUserAcceptance,
@@ -239,7 +229,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async createInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        { type, version }: TermPolicyCreateRequestDto,
+        type: EnumTermPolicyType,
+        version: number,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
@@ -330,7 +321,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto,
+        language: EnumMessageLanguage,
         expectedUpdatedAt: Date
     ): Promise<boolean> {
         const contentIndex = contents.findIndex(c => c.language === language);

@@ -13,7 +13,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     EnumActivityLogAction,
     EnumWorkspaceMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -251,12 +250,9 @@ export class WorkspaceMemberService {
     }
 
     async getReviewerUserIds(workspaceId: string): Promise<string[]> {
-        const reviewers =
-            await this.workspaceMemberRepository.findReviewersByWorkspace(
-                workspaceId
-            );
-
-        return reviewers.map(reviewer => reviewer.userId);
+        return this.workspaceMemberRepository.findReviewerUserIdsByWorkspace(
+            workspaceId
+        );
     }
 
     /** Swaps the owner and adds both activity entries in one transaction, dispatched after the commit. */
@@ -318,7 +314,7 @@ export class WorkspaceMemberService {
 
     async getMembersList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
+        pagination: IPaginationQueryCursorParams,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationCursor(
@@ -446,7 +442,7 @@ export class WorkspaceMemberService {
 
     async getMembersListByAdmin(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const [workspace, paginated] = await Promise.all([
             this.workspaceRepository.findByIdByAdmin(workspaceId),

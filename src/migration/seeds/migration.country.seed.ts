@@ -4,7 +4,7 @@ import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationCountryData } from '@migration/data/migration.country.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { Prisma } from '@generated/prisma-client/client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -22,7 +22,7 @@ export class MigrationCountrySeed
     private readonly logger = new Logger(MigrationCountrySeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly countries: CountryRequestDto[] = [];
+    private readonly countries: Prisma.CountryCreateInput[] = [];
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(

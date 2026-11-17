@@ -1,3 +1,4 @@
+import type { UserAgent } from '@generated/prisma-client/client';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +11,15 @@ import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contra
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 
 describe('ActivityLogAnalyticService', () => {
+    const userAgent: UserAgent = {
+        ua: null,
+        browser: null,
+        cpu: { architecture: null },
+        device: { type: null, vendor: null, model: null },
+        engine: { name: null, version: null },
+        os: { name: null, version: null },
+    };
+
     const activityLogAnalyticRepository: MockProxy<ActivityLogAnalyticRepository> =
         mock<ActivityLogAnalyticRepository>();
 
@@ -117,7 +127,7 @@ describe('ActivityLogAnalyticService', () => {
             ipAddress: null,
             createdAt: startDate,
             workspaceId: null,
-            userAgent: null,
+            userAgent,
         };
 
         it('reads one page from the repository at the configured page size', async () => {
@@ -267,7 +277,7 @@ describe('ActivityLogAnalyticService', () => {
                 ipAddress: null,
                 createdAt: startDate,
                 workspaceId: null,
-                userAgent: null,
+                userAgent,
             };
             activityLogAnalyticRepository.findOneByUserActionsInRange.mockResolvedValue(
                 row

@@ -1000,6 +1000,8 @@ describe('MfaPasskeyService', () => {
             await expect(
                 service.assertHasPasskey('user-quartz')
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodUnavailable,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.methodUnavailable',
             });

@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import type { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 
@@ -17,14 +17,15 @@ describe('FileImportException', () => {
             expect(exception).toBeInstanceOf(AppBaseException);
             expect(exception).toMatchObject({
                 module: 'file',
-                statusCode: EnumRequestStatusCodeError.validation,
+                statusCode: EnumFileStatusCodeError.importInvalid,
                 statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.validation
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.importInvalid
                     ],
                 httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                messagePath: 'file.error.validationDto',
+                messagePath: 'file.error.importInvalid',
             });
+            expect(exception.statusCode).toBe(50110);
             expect(exception.errors).toBe(errors);
         });
 

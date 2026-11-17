@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,11 +23,9 @@ export class AnalyticLoginSpikeIpListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticLoginSpikeIpListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                { availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticAnomalyService.loginSpikeIpList(

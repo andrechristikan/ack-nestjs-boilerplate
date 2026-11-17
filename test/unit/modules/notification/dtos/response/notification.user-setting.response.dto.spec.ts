@@ -1,4 +1,3 @@
-import { faker } from '@faker-js/faker';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
@@ -7,15 +6,15 @@ import { NotificationUserSettingResponseSchema } from '@modules/notification/dto
 
 describe('NotificationUserSettingResponseSchema', () => {
     const setting = {
-        id: faker.database.mongodbObjectId(),
-        userId: faker.database.mongodbObjectId(),
+        id: '507f1f77bcf86cd799439011',
+        userId: '507f1f77bcf86cd799439011',
         type: EnumNotificationType.userActivity,
         channel: EnumNotificationChannel.email,
         isActive: true,
-        createdAt: new Date(),
-        createdBy: faker.database.mongodbObjectId(),
-        updatedAt: new Date(),
-        updatedBy: faker.database.mongodbObjectId(),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: '507f1f77bcf86cd799439011',
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: '507f1f77bcf86cd799439011',
     };
     const payload = { settings: [setting] };
 

@@ -8,7 +8,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { PasswordHistory, Prisma } from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type {
@@ -17,7 +17,7 @@ import type {
 } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumPasswordHistoryStatusCodeError } from '@modules/password-history/enums/password-history.status-code.enum';
 
 describe('PasswordHistoryService', () => {
     const passwordHistoryRepository: MockProxy<PasswordHistoryRepository> =
@@ -43,8 +43,11 @@ describe('PasswordHistoryService', () => {
 
     describe('getListOffsetByAdmin', () => {
         it('returns the offset-paginated list from the repository', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const paginationResult: IResponsePaginationReturn<IPasswordHistoryList> =
                 {
                     type: EnumPaginationType.offset,
@@ -74,12 +77,11 @@ describe('PasswordHistoryService', () => {
 
     describe('getListCursor', () => {
         it('returns the cursor-paginated list from the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const paginationResult: IResponsePaginationReturn<IPasswordHistoryList> =
                 {
                     type: EnumPaginationType.cursor,
@@ -206,7 +208,7 @@ describe('PasswordHistoryService', () => {
             );
         });
 
-        it('throws UserPasswordMustNewException with the period when the new password repeats a history entry', async () => {
+        it('throws PasswordHistoryMustNewException with the period when the new password repeats a history entry', async () => {
             passwordHistoryRepository.findActiveUser.mockResolvedValue([
                 history,
             ]);
@@ -216,9 +218,9 @@ describe('PasswordHistoryService', () => {
             await expect(
                 service.assertNew('user-id', 'old-password')
             ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordMustNew,
-                messagePath: 'user.error.passwordMustNew',
+                module: 'passwordHistory',
+                statusCode: EnumPasswordHistoryStatusCodeError.mustNew,
+                messagePath: 'passwordHistory.error.mustNew',
                 messageProperties: { period: 90 },
             });
         });

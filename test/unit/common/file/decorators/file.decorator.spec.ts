@@ -5,11 +5,14 @@ import {
     FilesInterceptor,
 } from '@nestjs/platform-express';
 import {
+    FileImportDocErrors,
     FileMaxMultiple,
     FileSizeInBytes,
 } from '@common/file/constants/file.constant';
 import type { IFileUploadMultipleField } from '@common/file/interfaces/file.interface';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import {
+    FileImportSingle,
     FileUploadMultiple,
     FileUploadMultipleFields,
     FileUploadSingle,
@@ -19,6 +22,15 @@ vi.mock('@nestjs/swagger', async importOriginal => {
     const actual = await importOriginal<typeof import('@nestjs/swagger')>();
 
     return { ...actual, ApiConsumes: vi.fn(), ApiBody: vi.fn() };
+});
+
+vi.mock('@common/doc/decorators/doc.decorator', async importOriginal => {
+    const actual =
+        await importOriginal<
+            typeof import('@common/doc/decorators/doc.decorator')
+        >();
+
+    return { ...actual, DocErrors: vi.fn(actual.DocErrors) };
 });
 
 vi.mock('@nestjs/platform-express', async importOriginal => {
@@ -70,6 +82,17 @@ describe('file.decorator', () => {
             expect(FileInterceptor).toHaveBeenCalledWith('avatar', {
                 limits: { fileSize: 123, files: 1 },
             });
+        });
+    });
+
+    describe('FileImportSingle', () => {
+        it('applies the single upload and documents the import errors', () => {
+            FileImportSingle({ field: 'csv', fileSize: 123 });
+
+            expect(FileInterceptor).toHaveBeenCalledWith('csv', {
+                limits: { fileSize: 123, files: 1 },
+            });
+            expect(DocErrors).toHaveBeenCalledWith(...FileImportDocErrors);
         });
     });
 

@@ -1,4 +1,4 @@
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 
 describe('SessionResponseSchema', () => {

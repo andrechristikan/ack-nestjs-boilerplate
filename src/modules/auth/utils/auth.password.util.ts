@@ -100,7 +100,7 @@ export class AuthPasswordUtil {
         histories: PasswordHistory[],
         password: string
     ): Promise<PasswordHistory | null> {
-        // Sequential by design: an argon2id compare holds helper.argon2 memory, one at a time, stopping at the first match.
+        // Sequential by design: an argon2id compare over several hashes, stopping at the first match.
         for (const history of histories) {
             const matched = await this.helperHashService.argon2Compare(
                 password,

@@ -90,6 +90,8 @@ describe('TermPolicyAcceptanceService', () => {
                 termPolicyId: 'term-policy-1',
                 type: EnumTermPolicyType.privacy,
                 version: 1,
+                snapshot: null,
+                verificationId: null,
             },
             recipient: null,
             notificationId: null,
@@ -518,6 +520,8 @@ describe('TermPolicyAcceptanceService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyAlreadyAcceptedException,
                 statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
                 httpStatus: HttpStatus.BAD_REQUEST,

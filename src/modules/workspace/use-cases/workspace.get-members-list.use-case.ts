@@ -34,14 +34,10 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
-                query,
-                {
-                    scope: WorkspaceMemberUserListCursorScope,
-                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: WorkspaceMemberUserListCursorScope,
+            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+        });
         const role = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceMemberScalarFieldEnum.role,
             query.role,

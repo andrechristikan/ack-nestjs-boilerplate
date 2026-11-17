@@ -95,7 +95,7 @@ import {
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
@@ -1216,24 +1216,14 @@ export class AwsS3Service implements OnModuleInit {
             throw new AwsS3KeyInvalidException();
         }
 
-        const promises: Promise<IAwsS3>[] = [];
-
-        const accessibility = options.access;
-        for (const source of sources) {
-            const copiedItem = this.copyItemInitialized(source, destination, {
-                accessTo: accessibility,
-                accessFrom: source.access,
-            });
-            promises.push(copiedItem);
-        }
-
-        const copiedItems = await Promise.allSettled(promises);
-        return copiedItems
-            .filter(
-                (item): item is PromiseFulfilledResult<IAwsS3> =>
-                    item.status === 'fulfilled'
+        return Promise.all(
+            sources.map(source =>
+                this.copyItemInitialized(source, destination, {
+                    accessTo: options.access,
+                    accessFrom: source.access,
+                })
             )
-            .map(item => item.value);
+        );
     }
 
     async settingBucketExpiredObjectLifecycle(

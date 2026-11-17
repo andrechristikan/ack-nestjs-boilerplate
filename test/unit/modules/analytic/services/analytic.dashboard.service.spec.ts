@@ -1,6 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -42,7 +41,10 @@ import {
     AnalyticWorkspaceCountPageCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
+import {
+    EnumAnalyticDashboardMetric,
+    EnumAnalyticGroupKey,
+} from '@modules/analytic/enums/analytic.enum';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ApiKeyAnalyticService } from '@modules/api-key/services/api-key.analytic.service';
@@ -56,6 +58,7 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
+import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { MfaAnalyticService } from '@modules/mfa/services/mfa.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
@@ -80,14 +83,13 @@ describe('AnalyticDashboardService', () => {
         mock<PasswordHistoryAnalyticService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const userAnalyticService: MockProxy<UserAnalyticService> =
         mock<UserAnalyticService>();
     const userForgotPasswordAnalyticService: MockProxy<UserForgotPasswordAnalyticService> =
         mock<UserForgotPasswordAnalyticService>();
     const mfaAnalyticService: MockProxy<MfaAnalyticService> =
         mock<MfaAnalyticService>();
+    const mfaUtil: MockProxy<MfaUtil> = mock<MfaUtil>();
     const userVerificationAnalyticService: MockProxy<UserVerificationAnalyticService> =
         mock<UserVerificationAnalyticService>();
     const userMobileNumberAnalyticService: MockProxy<UserMobileNumberAnalyticService> =
@@ -159,7 +161,10 @@ describe('AnalyticDashboardService', () => {
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        helperStringService.fillPattern.mockReturnValue('paged-token');
+        analyticCache.buildDashboardPageKey.mockImplementation(
+            (metric, start, end, page, perPage) =>
+                `${metric}:${start}:${end}:${page}:${perPage}`
+        );
         helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -171,7 +176,6 @@ describe('AnalyticDashboardService', () => {
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperStringService, useValue: helperStringService },
                 {
                     provide: PasswordHistoryAnalyticService,
                     useValue: passwordHistoryAnalyticService,
@@ -185,6 +189,7 @@ describe('AnalyticDashboardService', () => {
                     provide: MfaAnalyticService,
                     useValue: mfaAnalyticService,
                 },
+                { provide: MfaUtil, useValue: mfaUtil },
                 {
                     provide: UserVerificationAnalyticService,
                     useValue: userVerificationAnalyticService,
@@ -1249,12 +1254,12 @@ describe('AnalyticDashboardService', () => {
 
                 return 3;
             });
-            mfaAnalyticService.mapAdoption.mockReturnValue(adoption);
+            mfaUtil.mapAdoption.mockReturnValue(adoption);
 
             const result = await service.authMfaAdoption();
 
             expect(result).toEqual(adoption);
-            expect(mfaAnalyticService.mapAdoption).toHaveBeenCalledWith(3, 9);
+            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(3, 9);
         });
 
         it('reads through with the dashboard key, AnalyticMfaAdoptionCacheSchema, and the dashboard TTL', async () => {
@@ -1961,18 +1966,12 @@ describe('AnalyticDashboardService', () => {
             const result = await service.workspacesMembership(pagination);
 
             expect(result).toEqual(offsetPage);
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{metric}:page={page}:perPage={perPage}',
-                {
-                    metric: EnumAnalyticDashboardMetric.workspacesMembership,
-                    page: '1',
-                    perPage: '20',
-                }
-            );
-            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
-                'paged-token',
+            expect(analyticCache.buildDashboardPageKey).toHaveBeenCalledWith(
+                EnumAnalyticDashboardMetric.workspacesMembership,
                 '_',
-                '_'
+                '_',
+                1,
+                20
             );
         });
 
@@ -1983,7 +1982,7 @@ describe('AnalyticDashboardService', () => {
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'paged-token:_:_',
+                `${EnumAnalyticDashboardMetric.workspacesMembership}:_:_:1:20`,
                 AnalyticWorkspaceCountPageCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -2004,6 +2003,13 @@ describe('AnalyticDashboardService', () => {
             );
 
             expect(result).toEqual(offsetPage);
+            expect(analyticCache.buildDashboardPageKey).toHaveBeenCalledWith(
+                EnumAnalyticDashboardMetric.workspacesActivity,
+                startToken,
+                endToken,
+                1,
+                20
+            );
             expect(
                 activityLogAnalyticService.getGroupActivityByWorkspaceOffset
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
@@ -2020,7 +2026,7 @@ describe('AnalyticDashboardService', () => {
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `paged-token:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.workspacesActivity}:${startToken}:${endToken}:1:20`,
                 AnalyticWorkspaceCountPageCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -2069,18 +2075,12 @@ describe('AnalyticDashboardService', () => {
             const result = await service.projectsMembership(pagination);
 
             expect(result).toEqual(page);
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{metric}:page={page}:perPage={perPage}',
-                {
-                    metric: EnumAnalyticDashboardMetric.projectsMembership,
-                    page: '1',
-                    perPage: '20',
-                }
-            );
-            expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
-                'paged-token',
+            expect(analyticCache.buildDashboardPageKey).toHaveBeenCalledWith(
+                EnumAnalyticDashboardMetric.projectsMembership,
                 '_',
-                '_'
+                '_',
+                1,
+                20
             );
         });
 
@@ -2091,30 +2091,10 @@ describe('AnalyticDashboardService', () => {
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'paged-token:_:_',
+                `${EnumAnalyticDashboardMetric.projectsMembership}:_:_:1:20`,
                 AnalyticProjectCountPageCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
-            );
-        });
-    });
-
-    describe('pagedMetricToken', () => {
-        it('fills the paged metric pattern with the one-based page and the page size', () => {
-            const result = service['pagedMetricToken'](
-                EnumAnalyticDashboardMetric.workspacesMembership,
-                20,
-                10
-            );
-
-            expect(result).toBe('paged-token');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{metric}:page={page}:perPage={perPage}',
-                {
-                    metric: EnumAnalyticDashboardMetric.workspacesMembership,
-                    page: '3',
-                    perPage: '10',
-                }
             );
         });
     });
@@ -2155,7 +2135,7 @@ describe('AnalyticDashboardService', () => {
             expect(service['toBucketsByBrowser'](sessions)).toEqual([
                 { key: 'Chrome', count: 2 },
                 { key: 'iOS', count: 1 },
-                { key: 'unknown', count: 1 },
+                { key: EnumAnalyticGroupKey.unknown, count: 1 },
             ]);
         });
 

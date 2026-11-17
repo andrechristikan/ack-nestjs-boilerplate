@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,11 +23,9 @@ export class AnalyticCredentialStuffingListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticCredentialStuffingListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                { availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudService.credentialStuffingList(

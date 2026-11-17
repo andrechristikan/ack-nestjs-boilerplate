@@ -50,10 +50,6 @@ export const AnalyticMassRegistrationActions = [
 export const AnalyticCacheEmptyToken = '_';
 
 /** @public */
-export const AnalyticDashboardPagedMetricPattern =
-    '{metric}:page={page}:perPage={perPage}';
-
-/** @public */
 export const AnalyticCountRanges: IAnalyticCountRange[] = [
     { key: '1', min: 1, max: 1 },
     { key: '2', min: 2, max: 2 },

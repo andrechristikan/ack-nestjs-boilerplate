@@ -2,10 +2,9 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { MessageService } from '@common/message/services/message.service';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 
@@ -19,7 +18,7 @@ describe('UserProcessDeletePhotoUseCase', () => {
     const payload: IUserDeletePhotoPayload = {
         userId: 'user-1',
         key: 'photo-profile/user-1/old.png',
-        access: 'public',
+        access: EnumAwsS3Accessibility.public,
     };
 
     beforeEach(async () => {
@@ -58,19 +57,6 @@ describe('UserProcessDeletePhotoUseCase', () => {
             const rejection = useCase.execute(payload);
 
             await expect(rejection).rejects.toBe(failure);
-        });
-
-        it('throws a fatal QueueException when the access names no bucket', async () => {
-            const rejection = useCase.execute({
-                ...payload,
-                access: 'unknown',
-            });
-
-            await expect(rejection).rejects.toMatchObject({
-                constructor: QueueException,
-                isFatal: true,
-            });
-            expect(userProfileService.deletePhotoObject).not.toHaveBeenCalled();
         });
     });
 });

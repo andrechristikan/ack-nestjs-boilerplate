@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type {
     ITermPolicyBulkQueuePayload,
@@ -11,26 +10,18 @@ import { TermPolicyProcessDeleteContentUseCase } from '@modules/term-policy/use-
 import { TermPolicyProcessPublishUseCase } from '@modules/term-policy/use-cases/term-policy.process-publish.use-case';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { OutboxService } from '@common/outbox/services/outbox.service';
-import { MessageService } from '@common/message/services/message.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
 @QueueProcessor(EnumTermPolicyQueue.termPolicy)
 export class TermPolicyProcessor extends QueueProcessorBase {
     constructor(
-        protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService,
-        protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService,
         private readonly termPolicyProcessDeleteContentUseCase: TermPolicyProcessDeleteContentUseCase,
         private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase,
         private readonly termPolicyProcessPublishUseCase: TermPolicyProcessPublishUseCase
     ) {
-        super(sentryService, messageService, cacheService, outboxService);
+        super();
     }
 
     protected async handle(
@@ -50,14 +41,11 @@ export class TermPolicyProcessor extends QueueProcessorBase {
                 return await this.termPolicyProcessPublishUseCase.execute(
                     data as ITermPolicyBulkQueuePayload<ITermPolicyPublishPayload>
                 );
-            default: {
-                const message = this.messageService.setMessage(
+            default:
+                this.throwUnknownProcess(
                     'termPolicy.queue.error.unknownProcess',
-                    { properties: { process: job.name } }
+                    job.name
                 );
-
-                throw new QueueException(message, true);
-            }
         }
     }
 }

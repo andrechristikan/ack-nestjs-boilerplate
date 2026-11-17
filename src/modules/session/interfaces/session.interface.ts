@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumSessionProcess,
     EnumSessionQueue,
@@ -58,4 +59,8 @@ export interface ISessionPurgeLoginsEffect extends IOutboxEffect {
     queue: EnumSessionQueue.session;
     name: EnumSessionProcess.purgeLogins;
     data: ISessionPurgeLoginsPayload;
+}
+
+export interface ISessionPurgeLoginsQueueResponse extends IQueueResponse {
+    countSessions: number;
 }

@@ -13,7 +13,7 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import {
     EnumActivityLogProcess,
@@ -273,7 +273,7 @@ export class ActivityLogService {
 
     async getListOffsetByUser(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findUserScopedWithPaginationOffset(
             userId,
@@ -283,7 +283,7 @@ export class ActivityLogService {
 
     async getListCursorByUser(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findUserScopedWithPaginationCursor(
             userId,
@@ -294,7 +294,7 @@ export class ActivityLogService {
     async getListOffsetByWorkspace(
         workspaceId: string,
         userId: string | null,
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findByWorkspaceWithPaginationOffset(
             workspaceId,
@@ -306,7 +306,7 @@ export class ActivityLogService {
     async getListCursorByWorkspace(
         workspaceId: string,
         userId: string | null,
-        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findByWorkspaceWithPaginationCursor(
             workspaceId,

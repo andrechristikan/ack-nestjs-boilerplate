@@ -2,7 +2,8 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type {
@@ -53,7 +54,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -191,7 +191,7 @@ export class TermPolicyService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
@@ -203,7 +203,7 @@ export class TermPolicyService {
     }
 
     async getListPublished(
-        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
+        pagination: IPaginationQueryCursorParams,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.termPolicyRepository.findPublished(
@@ -282,7 +282,8 @@ export class TermPolicyService {
                 const created = await this.termPolicyRepository.createInTx(
                     tx,
                     termPolicyId,
-                    { contents, type, version },
+                    type,
+                    version,
                     mappedContents
                 );
 
@@ -541,17 +542,21 @@ export class TermPolicyService {
         contents,
         destination,
     }: ITermPolicyCopyContentPayload): Promise<void> {
-        const copied = await this.awsS3Service.copyItems(
-            contents,
-            destination,
-            { access: EnumAwsS3Accessibility.public }
+        const message = this.messageService.setMessage(
+            'termPolicy.queue.error.copyContent',
+            { properties: { termPolicyId } }
         );
-        if (copied.length !== contents.length) {
-            const message = this.messageService.setMessage(
-                'termPolicy.queue.error.copyContent',
-                { properties: { termPolicyId } }
-            );
 
+        let copied: IAwsS3[];
+        try {
+            copied = await this.awsS3Service.copyItems(contents, destination, {
+                access: EnumAwsS3Accessibility.public,
+            });
+        } catch (err: unknown) {
+            throw new QueueException(message, true, err);
+        }
+
+        if (copied.length !== contents.length) {
             throw new QueueException(message, true);
         }
     }

@@ -1,3 +1,4 @@
+import { EnumAnalyticFraudContributingSignal } from '@modules/analytic/enums/analytic.enum';
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
@@ -7,9 +8,12 @@ export const AnalyticAccountTakeoverResponseSchema = z.object({
         description: 'Identifier of the taken over user',
         example: faker.database.mongodbObjectId(),
     }),
-    indicatorCodes: z.array(z.string()).meta({
+    indicatorCodes: z.array(z.enum(EnumAnalyticFraudContributingSignal)).meta({
         description: 'Indicator codes that raised the detection',
-        example: ['passwordChanged', 'newDevice'],
+        example: [
+            EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+            EnumAnalyticFraudContributingSignal.nearLockout,
+        ],
     }),
     passwordChangedAt: z.date().meta({
         description: 'When the password of the user was changed',

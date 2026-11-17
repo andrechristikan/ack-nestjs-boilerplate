@@ -41,7 +41,7 @@ export interface IAnalyticCredentialStuffing {
 
 export interface IAnalyticAccountTakeover {
     userId: string;
-    indicatorCodes: string[];
+    indicatorCodes: EnumAnalyticFraudContributingSignal[];
     passwordChangedAt: Date;
 }
 

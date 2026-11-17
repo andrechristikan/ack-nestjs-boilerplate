@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -25,11 +24,9 @@ export class PasswordHistoryGetListOffsetByAdminUseCase implements IAppUseCase<
         userId: string,
         query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
-                query,
-                { availableOrderBy: PasswordHistoryDefaultAvailableOrderBy }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

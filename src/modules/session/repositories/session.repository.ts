@@ -25,7 +25,6 @@ import type {
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -39,10 +38,7 @@ export class SessionRepository implements ISessionRepository {
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
+        { where, ...others }: IPaginationQueryOffsetParams,
         isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.offset(
@@ -61,10 +57,7 @@ export class SessionRepository implements ISessionRepository {
 
     async findActiveWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
+        { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const now = this.helperDateService.create();

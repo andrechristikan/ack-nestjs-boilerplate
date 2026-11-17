@@ -14,7 +14,7 @@ import type {
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -25,6 +25,7 @@ import type {
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 import {
     EnumSessionProcess,
     EnumSessionQueue,
@@ -66,6 +67,7 @@ export class SessionService {
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly deviceService: DeviceService,
+        private readonly deviceUtil: DeviceUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
@@ -177,7 +179,7 @@ export class SessionService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
@@ -189,7 +191,7 @@ export class SessionService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const now = this.helperDateService.create();
         const idleSince = this.helperDateService.backward(
@@ -661,7 +663,7 @@ export class SessionService {
                     );
 
                 const actorMetadata =
-                    this.deviceService.mapActivityLogActorMetadata(
+                    this.deviceUtil.mapActivityLogActorMetadata(
                         deviceOwnership,
                         revokedSessions.length
                     );
@@ -679,7 +681,7 @@ export class SessionService {
 
                 if (userId !== removedBy) {
                     const targetMetadata =
-                        this.deviceService.mapActivityLogTargetMetadata(
+                        this.deviceUtil.mapActivityLogTargetMetadata(
                             deviceOwnership,
                             removedBy,
                             revokedSessions.length

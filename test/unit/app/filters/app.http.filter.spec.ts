@@ -23,20 +23,17 @@ describe('AppHttpFilter', () => {
     > = mock<ReturnType<ArgumentsHost['switchToHttp']>>();
     const argumentsHost: MockProxy<ArgumentsHost> = mock<ArgumentsHost>();
 
-    let metadata: ResponseMetadataDto;
     let filter: AppHttpFilter;
 
-    beforeAll(() => {
-        metadata = {
-            language: EnumMessageLanguage.en,
-            timestamp: 1758153600000,
-            timezone: 'Asia/Jakarta',
-            version: '1',
-            repoVersion: '1.0.0',
-            requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
-            correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
-        };
-    });
+    const metadata: ResponseMetadataDto = {
+        language: EnumMessageLanguage.en,
+        timestamp: 1758153600000,
+        timezone: 'Asia/Jakarta',
+        version: '1',
+        repoVersion: '1.0.0',
+        requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+        correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();

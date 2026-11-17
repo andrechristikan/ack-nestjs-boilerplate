@@ -336,6 +336,8 @@ describe('UserPasswordService', () => {
                     method: EnumNotificationLoginLockedMethod.password,
                     methodLabel: 'Label',
                     lockedUntil: '2026-03-01T00:15:00.000Z',
+                    snapshot: null,
+                    verificationId: null,
                 },
                 recipient: null,
                 notificationId: null,
@@ -595,7 +597,12 @@ describe('UserPasswordService', () => {
             name: EnumNotificationProcess.notify,
             data: {
                 kind: EnumNotificationKind.forgotPassword,
-                context: { userId: 'user-hollow', proceedBy: 'user-hollow' },
+                context: {
+                    userId: 'user-hollow',
+                    proceedBy: 'user-hollow',
+                    snapshot: null,
+                    verificationId: null,
+                },
                 recipient: null,
                 notificationId: null,
             },

@@ -9,7 +9,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { UserSchema } from '@modules/user/dtos/user.dto';
 
 describe('UserSchema', () => {

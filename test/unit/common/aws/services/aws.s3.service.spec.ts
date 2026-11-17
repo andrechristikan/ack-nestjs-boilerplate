@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { NotFound } from '@aws-sdk/client-s3';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import type {
@@ -1787,21 +1787,38 @@ describe('AwsS3Service', () => {
             );
         });
 
-        it('filters out a copy that fails', async () => {
+        it('rejects with the S3 error when one copy fails', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
                 s3Doubles
             );
+            const copyError = new Error('copy failed');
             send.mockResolvedValueOnce({});
-            send.mockRejectedValueOnce(new Error('copy failed'));
+            send.mockRejectedValueOnce(copyError);
+
+            await expect(
+                service.copyItems(sources, 'archive', {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toBe(copyError);
+        });
+
+        it('returns every copied item when all copies succeed', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValue({});
 
             const result = await service.copyItems(sources, 'archive', {
                 access: EnumAwsS3Accessibility.public,
             });
 
-            expect(result).toHaveLength(1);
+            expect(result).toHaveLength(2);
             expect(result[0]).toMatchObject({ key: 'archive/one.jpg' });
+            expect(result[1]).toMatchObject({ key: 'archive/two.jpg' });
         });
     });
 

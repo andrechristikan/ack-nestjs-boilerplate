@@ -88,6 +88,20 @@ describe('RequestSchemaValidationPipe', () => {
             });
         });
 
+        it('throws RequestValidationException by default when constructed with no options', async () => {
+            const pipe = new RequestSchemaValidationPipe();
+            const metadata: ArgumentMetadata = {
+                type: 'query',
+                schema: z.string(),
+            } as unknown as ArgumentMetadata;
+
+            const promise = pipe.transform(5, metadata);
+
+            await expect(promise).rejects.toBeInstanceOf(
+                RequestValidationException
+            );
+        });
+
         it('wraps a non-AppBaseException exceptionFactory result in AppUnknownException', async () => {
             const factoryResult = new Error('factory result');
             const pipe = new RequestSchemaValidationPipe({

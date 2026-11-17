@@ -6,12 +6,14 @@ import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { LoggerHttpMethodPrefixRegex } from '@common/logger/constants/logger.constant';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { SentryUtil } from '@common/sentry/utils/sentry.util';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 
 const appConfigs = appConfigFunction();
 const loggerConfigs = loggerConfigFunction();
-const sentryUtil = new SentryUtil();
+const loggerUrlUtil = new LoggerUrlUtil();
+const sentryUtil = new SentryUtil(loggerUrlUtil);
 
 const sentryLogLevels: LogSeverityLevel[] =
     appConfigs.env === EnumAppEnvironment.production
@@ -54,10 +56,13 @@ if (loggerConfigs.sentry.dsn) {
             }
 
             if (event.request) {
-                const url = event.request.url ?? null;
+                const url = event.request.url ?? '';
 
                 if (
-                    sentryUtil.isExcludedUrl(url, loggerConfigs.excludedRoutes)
+                    loggerUrlUtil.matchesPatterns(
+                        url,
+                        loggerConfigs.excludedRoutes
+                    )
                 ) {
                     return null;
                 }
@@ -87,11 +92,11 @@ if (loggerConfigs.sentry.dsn) {
         },
         tracesSampler: samplingContext => {
             if (
-                sentryUtil.isExcludedUrl(
-                    samplingContext.normalizedRequest?.url ?? null,
+                loggerUrlUtil.matchesPatterns(
+                    samplingContext.normalizedRequest?.url ?? '',
                     loggerConfigs.excludedRoutes
                 ) ||
-                sentryUtil.isExcludedUrl(
+                loggerUrlUtil.matchesPatterns(
                     samplingContext.name.replace(
                         LoggerHttpMethodPrefixRegex,
                         ''

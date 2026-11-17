@@ -1,21 +1,16 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import type { Breadcrumb, Event, Log } from '@sentry/nestjs';
 import {
     LoggerRedactedValue,
     LoggerSentryRedactMaxDepth,
 } from '@common/logger/constants/logger.constant';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { SentryUtil } from '@common/sentry/utils/sentry.util';
 
 describe('SentryUtil', () => {
     let util: SentryUtil;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [SentryUtil],
-        }).compile();
-
-        util = module.get(SentryUtil);
+        util = new SentryUtil(new LoggerUrlUtil());
     });
 
     describe('scrubEvent', () => {
@@ -264,30 +259,6 @@ describe('SentryUtil', () => {
         });
     });
 
-    describe('maskPath', () => {
-        it('keeps a route parameter name, a version, and a kebab-case word and redacts the rest', () => {
-            expect(util['maskPath']('/api/v1/:userId/sign-up/1a2b')).toBe(
-                `/api/v1/:userId/sign-up/${LoggerRedactedValue}`
-            );
-        });
-    });
-
-    describe('maskUrl', () => {
-        it('keeps the origin of an absolute url and masks its path', () => {
-            expect(
-                util['maskUrl'](
-                    'https://example.com/api/v1/user/507f1f77bcf86cd799439011?x=1#top'
-                )
-            ).toBe(`https://example.com/api/v1/user/${LoggerRedactedValue}`);
-        });
-
-        it('masks a relative path and drops its query and fragment', () => {
-            expect(
-                util['maskUrl']('/api/v1/user/507f1f77bcf86cd799439011?x=1#top')
-            ).toBe(`/api/v1/user/${LoggerRedactedValue}`);
-        });
-    });
-
     describe('redactBody', () => {
         it('redacts an object body by key', () => {
             expect(util['redactBody']({ password: 'secret' })).toEqual({
@@ -349,40 +320,6 @@ describe('SentryUtil', () => {
             expect(util['redactValue'](null, 0)).toBeNull();
             expect(util['redactValue']('text', 0)).toBe('text');
             expect(util['redactValue'](3, 0)).toBe(3);
-        });
-    });
-
-    describe('isExcludedUrl', () => {
-        it('matches an exact path or a wildcard prefix, ignoring case', () => {
-            expect(util.isExcludedUrl('/Health', ['/health'])).toBe(true);
-            expect(util.isExcludedUrl('/docs/ui', ['/docs/*'])).toBe(true);
-            expect(util.isExcludedUrl('/docs/ui', ['*'])).toBe(true);
-        });
-
-        it('returns false on a miss or an empty pattern', () => {
-            expect(util.isExcludedUrl('/user', ['/health', '/docs/*'])).toBe(
-                false
-            );
-            expect(util.isExcludedUrl('/user', [''])).toBe(false);
-        });
-
-        it('returns false for a null url or an empty pattern list', () => {
-            expect(util.isExcludedUrl(null, ['/health'])).toBe(false);
-            expect(util.isExcludedUrl('/health', [])).toBe(false);
-        });
-
-        it('drops the query and the hash of an absolute url', () => {
-            expect(
-                util.isExcludedUrl('https://api.example.com/Health?x=1#top', [
-                    '/health',
-                ])
-            ).toBe(true);
-        });
-
-        it('falls back to splitting a url that fails new URL', () => {
-            expect(util.isExcludedUrl('/health?x=1#top', ['/health'])).toBe(
-                true
-            );
         });
     });
 });

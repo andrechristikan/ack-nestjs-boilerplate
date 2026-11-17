@@ -22,3 +22,14 @@ export const DeviceOwnershipDeviceIdSelect = {
 export const DeviceOwnershipSessionIdSelect = {
     id: true,
 } satisfies Prisma.SessionSelect;
+
+/** @public */
+export const DeviceOwnershipAnalyticFingerprintSelect = {
+    userId: true,
+    device: { select: { fingerprint: true } },
+} satisfies Prisma.DeviceOwnershipSelect;
+
+/** @public */
+export const DeviceOwnershipAnalyticIdSelect = {
+    id: true,
+} satisfies Prisma.DeviceOwnershipSelect;

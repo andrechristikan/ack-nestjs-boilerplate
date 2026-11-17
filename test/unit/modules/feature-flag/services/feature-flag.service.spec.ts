@@ -18,7 +18,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
@@ -481,6 +480,8 @@ describe('FeatureFlagService', () => {
                     EnumFeatureFlagMetadataKey.signUpAllowed
                 )
             ).rejects.toMatchObject({
+                module: 'featureFlag',
+
                 constructor: FeatureFlagNotConfiguredException,
                 statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
             });
@@ -648,13 +649,12 @@ describe('FeatureFlagService', () => {
 
     describe('getListByAdmin', () => {
         it('delegates to the offset pagination repository query', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput> =
-                {
-                    where: {},
-                    orderBy: [],
-                    limit: 20,
-                    skip: 0,
-                };
+            const pagination: IPaginationQueryOffsetParams = {
+                where: { OR: [] },
+                orderBy: [],
+                limit: 20,
+                skip: 0,
+            };
             const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -680,13 +680,12 @@ describe('FeatureFlagService', () => {
 
     describe('getListCursor', () => {
         it('delegates to the cursor pagination repository query', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    where: {},
-                    orderBy: [],
-                    limit: 20,
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                where: { OR: [] },
+                orderBy: [],
+                limit: 20,
+            };
             const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

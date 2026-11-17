@@ -10,7 +10,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumApiKeyType, Prisma } from '@generated/prisma-client/client';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
@@ -138,7 +138,7 @@ export class ApiKeyService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IApiKey>> {

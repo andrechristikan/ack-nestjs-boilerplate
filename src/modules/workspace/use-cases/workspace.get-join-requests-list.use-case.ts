@@ -35,15 +35,10 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
         // Sequential by design: gate before the work it guards
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
 
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
-                query,
-                {
-                    scope: WorkspaceJoinRequestUserListCursorScope,
-                    availableOrderBy:
-                        WorkspaceJoinRequestDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: WorkspaceJoinRequestUserListCursorScope,
+            availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
+        });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
             query.status,

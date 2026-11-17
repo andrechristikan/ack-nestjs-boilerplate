@@ -35,6 +35,7 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -376,6 +377,8 @@ describe('MfaEnableTotpUseCase', () => {
                     enableDto
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.totpSetupRequired,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.totpSetupRequired',
             });

@@ -1,5 +1,4 @@
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -82,15 +81,11 @@ export class TermPolicyUtil {
                 Object.values(EnumMessageLanguage).find(
                     value => value === content.language
                 ) ?? null;
-            const access =
-                Object.values(EnumAwsS3Accessibility).find(
-                    value => value === content.access
-                ) ?? null;
-            if (language === null || access === null) {
+            if (language === null) {
                 return new TermPolicyContentInvalidException();
             }
 
-            mapped.push({ ...content, language, access });
+            mapped.push({ ...content, language });
         }
 
         return mapped;

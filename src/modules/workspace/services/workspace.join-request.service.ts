@@ -18,7 +18,6 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
     Workspace,
@@ -34,6 +33,7 @@ import { NotificationService } from '@modules/notification/services/notification
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import type { IUserName } from '@modules/user/interfaces/user.interface';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -42,7 +42,6 @@ import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/except
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import type {
-    IWorkspaceInviteInviter,
     IWorkspaceJoinRequestCreate,
     IWorkspaceJoinRequestNotice,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -239,6 +238,10 @@ export class WorkspaceJoinRequestService {
                 return joinRequest;
             });
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             const isDuplicate = this.databaseUtil.isUniqueCollision(
                 err,
                 'nonce'
@@ -258,7 +261,7 @@ export class WorkspaceJoinRequestService {
 
     async getJoinRequestsList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
+        pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
@@ -465,7 +468,7 @@ export class WorkspaceJoinRequestService {
         );
     }
 
-    resolveRequesterName(requester: IWorkspaceInviteInviter | null): string {
+    resolveRequesterName(requester: IUserName | null): string {
         const name = requester?.name ?? requester?.username ?? null;
         if (name !== null) {
             return name;

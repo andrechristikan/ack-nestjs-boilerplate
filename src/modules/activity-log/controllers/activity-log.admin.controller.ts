@@ -58,10 +58,10 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/user/:userId/list')
     async listByUser(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: ActivityLogAdminListRequestSchema })
+        query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogGetListOffsetByUserUseCase.execute(
             userId,
@@ -91,10 +91,10 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
-        @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })
-        query: ActivityLogAdminWorkspaceListRequestDto,
         @Param('workspaceId', { schema: RequestMongoIdSchema })
-        workspaceId: string
+        workspaceId: string,
+        @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })
+        query: ActivityLogAdminWorkspaceListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogGetListOffsetByWorkspaceUseCase.execute(
             workspaceId,

@@ -309,7 +309,7 @@ describe('NotificationPushDeliveryService', () => {
                     },
                 ])
             ).toBe(
-                `notification.queue.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
+                `notification.queue.push.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
             );
         });
     });

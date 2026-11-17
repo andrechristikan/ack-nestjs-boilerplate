@@ -15,9 +15,3 @@ export enum EnumPaginationType {
     offset = 'offset',
     cursor = 'cursor',
 }
-
-/** @public */
-export enum EnumPaginationFilterEnumOperator {
-    in = 'in',
-    notIn = 'notIn',
-}

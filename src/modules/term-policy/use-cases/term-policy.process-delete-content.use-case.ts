@@ -2,13 +2,13 @@ import { MessageService } from '@common/message/services/message.service';
 import type { ITermPolicyDeleteContentPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { ITermPolicyDeleteContentQueueResponse } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class TermPolicyProcessDeleteContentUseCase implements IAppUseCase<
     [ITermPolicyDeleteContentPayload],
-    IQueueResponse
+    ITermPolicyDeleteContentQueueResponse
 > {
     constructor(
         private readonly termPolicyService: TermPolicyService,
@@ -17,7 +17,7 @@ export class TermPolicyProcessDeleteContentUseCase implements IAppUseCase<
 
     async execute(
         data: ITermPolicyDeleteContentPayload
-    ): Promise<IQueueResponse> {
+    ): Promise<ITermPolicyDeleteContentQueueResponse> {
         const { path } = data;
         await this.termPolicyService.deleteContentDir(path);
 

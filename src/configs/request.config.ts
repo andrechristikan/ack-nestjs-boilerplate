@@ -40,6 +40,7 @@ export interface IConfigRequest {
         allowedOrigin: string[];
         allowedHeader: string[];
         exposedHeader: string[];
+        maxAgeInSeconds: number;
     };
     helmet: {
         maxAgeInSeconds: number;
@@ -133,6 +134,7 @@ export default registerAs('request', (): IConfigRequest => {
                 RequestIdHeaderName,
                 RequestCorrelationIdHeaderName,
             ],
+            maxAgeInSeconds: ms('1d') / 1000,
         },
         helmet: {
             maxAgeInSeconds: ms('365d') / 1000,

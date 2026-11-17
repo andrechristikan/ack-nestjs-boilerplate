@@ -30,11 +30,10 @@ export class ApiKeyGetListByAdminUseCase implements IAppUseCase<
     async execute(
         query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKey>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ApiKeyWhereInput>(query, {
-                availableSearch: ApiKeyDefaultAvailableSearch,
-                availableOrderBy: ApiKeyDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: ApiKeyDefaultAvailableSearch,
+            availableOrderBy: ApiKeyDefaultAvailableOrderBy,
+        });
         const isActive = this.paginationFilterUtil.equalBoolean(
             Prisma.ApiKeyScalarFieldEnum.isActive,
             query.isActive

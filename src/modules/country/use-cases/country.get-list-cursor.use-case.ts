@@ -2,7 +2,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
 import {
     CountryDefaultAvailableOrderBy,
@@ -28,12 +27,11 @@ export class CountryGetListCursorUseCase implements IAppUseCase<
     async execute(
         query: CountryListRequestDto
     ): Promise<IResponsePaginationReturn<Country>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.CountryWhereInput>(query, {
-                scope: CountryPublicListCursorScope,
-                availableSearch: CountryDefaultAvailableSearch,
-                availableOrderBy: CountryDefaultAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: CountryPublicListCursorScope,
+            availableSearch: CountryDefaultAvailableSearch,
+            availableOrderBy: CountryDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.countryService.getListCursor(params);

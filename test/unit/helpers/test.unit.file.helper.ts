@@ -37,13 +37,13 @@ export async function createFileCsvValidationPipe<
 ): Promise<
     PipeTransform<
         unknown[],
-        Promise<StandardSchemaV1.InferOutput<TSchema>[] | undefined>
+        Promise<StandardSchemaV1.InferOutput<TSchema>[] | null>
     >
 > {
     const PipeClass: Type<
         PipeTransform<
             unknown[],
-            Promise<StandardSchemaV1.InferOutput<TSchema>[] | undefined>
+            Promise<StandardSchemaV1.InferOutput<TSchema>[] | null>
         >
     > = FileCsvValidationPipe(schema, options);
 

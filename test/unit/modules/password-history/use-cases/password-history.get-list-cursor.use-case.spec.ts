@@ -6,7 +6,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { Prisma } from '@generated/prisma-client/client';
 import {
     PasswordHistoryCursorAvailableOrderBy,
     PasswordHistorySharedListCursorScope,
@@ -27,12 +26,11 @@ describe('PasswordHistoryGetListCursorUseCase', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const cursorParams: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            limit: 20,
-            orderBy: [],
-        };
+    const cursorParams: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        limit: 20,
+        orderBy: [],
+    };
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
         perPage: 20,

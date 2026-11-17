@@ -16,7 +16,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
     Project,
@@ -34,7 +33,10 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
-import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserName,
+    IUserSignUpWorkspaceInvite,
+} from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
@@ -46,7 +48,6 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
-    IWorkspaceInviteInviter,
     IWorkspaceInviteIssued,
     IWorkspaceInviteList,
     IWorkspaceInviteNotice,
@@ -113,7 +114,7 @@ export class WorkspaceInviteService {
     }
 
     private resolveInviterName(
-        inviter: IWorkspaceInviteInviter | null,
+        inviter: IUserName | null,
         workspace: Workspace
     ): string {
         return inviter?.name ?? inviter?.username ?? workspace.name;
@@ -242,7 +243,7 @@ export class WorkspaceInviteService {
     mapInvitePreview(
         workspace: Workspace,
         invite: WorkspaceInvite,
-        inviter: IWorkspaceInviteInviter | null
+        inviter: IUserName | null
     ): IWorkspaceInvitePreviewSummary {
         const inviterName = this.resolveInviterName(inviter, workspace);
 
@@ -367,7 +368,7 @@ export class WorkspaceInviteService {
 
     async getInvitesList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
+        pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         // Sequential by design: gate before the work it guards

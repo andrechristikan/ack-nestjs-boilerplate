@@ -343,6 +343,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.methodRequired,
             });
             expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
@@ -355,6 +357,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -386,6 +390,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
+                module: 'mfa',
+
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);

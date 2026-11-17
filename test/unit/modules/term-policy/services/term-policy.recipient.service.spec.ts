@@ -429,7 +429,12 @@ describe('TermPolicyRecipientService', () => {
                 service['listPendingBatchIds'](users, [
                     buildTermPolicyMarker('u1', 'b1', null, null),
                     buildTermPolicyMarker('u2', 'b1', null, null),
-                    buildTermPolicyMarker('u3', 'b2', new Date(), null),
+                    buildTermPolicyMarker(
+                        'u3',
+                        'b2',
+                        new Date('2026-01-01T00:00:00.000Z'),
+                        null
+                    ),
                 ])
             ).toEqual(['b1']);
         });
@@ -437,7 +442,12 @@ describe('TermPolicyRecipientService', () => {
         it('skips a claimed marker and a marker of a user off the page', () => {
             expect(
                 service['listPendingBatchIds'](users, [
-                    buildTermPolicyMarker('u1', 'b1', null, new Date()),
+                    buildTermPolicyMarker(
+                        'u1',
+                        'b1',
+                        null,
+                        new Date('2026-01-01T00:00:00.000Z')
+                    ),
                     buildTermPolicyMarker('u9', 'b3', null, null),
                 ])
             ).toEqual([]);

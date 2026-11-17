@@ -53,6 +53,7 @@ export interface ICorsConfig {
     allowedMethod: string[];
     allowedHeader: string[];
     exposedHeader: string[];
+    maxAgeInSeconds: number;
 }
 
 export interface IFreshCorsMiddleware {
@@ -309,6 +310,7 @@ export async function createRequestCorsMiddleware(
         'request.cors.allowedMethod': config.allowedMethod,
         'request.cors.allowedHeader': config.allowedHeader,
         'request.cors.exposedHeader': config.exposedHeader,
+        'request.cors.maxAgeInSeconds': config.maxAgeInSeconds,
     });
 
     const module = await Test.createTestingModule({
@@ -342,6 +344,7 @@ export async function createFreshRequestCorsMiddleware(
         'request.cors.allowedMethod': config.allowedMethod,
         'request.cors.allowedHeader': config.allowedHeader,
         'request.cors.exposedHeader': config.exposedHeader,
+        'request.cors.maxAgeInSeconds': config.maxAgeInSeconds,
     });
     const module = await Test.createTestingModule({
         providers: [

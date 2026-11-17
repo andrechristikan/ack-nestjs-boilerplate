@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
 /** @public */
@@ -16,24 +17,18 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
             example: faker.internet.email(),
         })
         .transform(value => value as Lowercase<string>),
-    roleId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .meta({
-            description: 'Identifier of the role to assign',
-            example: faker.database.mongodbObjectId(),
-        }),
+    roleId: RequestMongoIdSchema.meta({
+        description: 'Identifier of the role to assign',
+        example: faker.database.mongodbObjectId(),
+    }),
     name: z.string().min(1).max(100).optional().meta({
         description: 'Display name of the user to create',
         example: faker.person.fullName(),
     }),
-    countryId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .meta({
-            description: 'Identifier of the user country',
-            example: faker.database.mongodbObjectId(),
-        }),
+    countryId: RequestMongoIdSchema.meta({
+        description: 'Identifier of the user country',
+        example: faker.database.mongodbObjectId(),
+    }),
 });
 
 /** @public */

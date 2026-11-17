@@ -1,11 +1,7 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { OutboxService } from '@common/outbox/services/outbox.service';
-import { MessageService } from '@common/message/services/message.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
@@ -19,13 +15,9 @@ import { NotificationSmsProcessSendUseCase } from '@modules/notification/use-cas
 @QueueProcessor(EnumNotificationQueue.notificationSms)
 export class NotificationSmsProcessor extends QueueProcessorBase {
     constructor(
-        protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService,
-        protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService,
         private readonly notificationSmsProcessSendUseCase: NotificationSmsProcessSendUseCase
     ) {
-        super(sentryService, messageService, cacheService, outboxService);
+        super();
     }
 
     protected async handle(
@@ -38,10 +30,9 @@ export class NotificationSmsProcessor extends QueueProcessorBase {
             switch (jobName) {
                 case EnumNotificationSmsProcess.send: {
                     if (outboxId === null) {
-                        const message = this.messageService.setMessage(
+                        this.throwUnrecoverable(
                             'notification.queue.error.outboxIdMissing'
                         );
-                        throw new UnrecoverableError(message);
                     }
 
                     return await this.notificationSmsProcessSendUseCase.execute(
@@ -50,13 +41,11 @@ export class NotificationSmsProcessor extends QueueProcessorBase {
                     );
                 }
 
-                default: {
-                    const message = this.messageService.setMessage(
+                default:
+                    this.throwUnknownProcess(
                         'notification.queue.sms.error.unknownProcess',
-                        { properties: { process: job.name } }
+                        job.name
                     );
-                    throw new QueueException(message, true);
-                }
             }
         } catch (error: unknown) {
             if (error instanceof HelperDecryptFailedException) {

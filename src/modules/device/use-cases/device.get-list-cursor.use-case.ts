@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -29,14 +28,10 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         query: DeviceSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
-                query,
-                {
-                    scope: DeviceSharedListCursorScope,
-                    availableOrderBy: DeviceCursorAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
+            scope: DeviceSharedListCursorScope,
+            availableOrderBy: DeviceCursorAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.deviceService.getListCursor(

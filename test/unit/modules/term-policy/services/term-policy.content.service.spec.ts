@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import type {
@@ -538,6 +538,8 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyContentNotFoundException,
                 statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
             });
@@ -776,6 +778,8 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
@@ -892,6 +896,8 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyContentKeyInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
@@ -1175,6 +1181,8 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
@@ -1399,7 +1407,7 @@ describe('TermPolicyContentService', () => {
                 tx,
                 'term-policy-1',
                 [existingContent],
-                { language: EnumMessageLanguage.en },
+                EnumMessageLanguage.en,
                 draftTermPolicy.updatedAt
             );
             expect(result).toBe(draftTermPolicy);
@@ -1423,7 +1431,7 @@ describe('TermPolicyContentService', () => {
                 tx,
                 'term-policy-1',
                 [existingContent],
-                { language: EnumMessageLanguage.en },
+                EnumMessageLanguage.en,
                 editedDraftTermPolicy.updatedAt
             );
         });
@@ -1441,6 +1449,8 @@ describe('TermPolicyContentService', () => {
             );
 
             await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+
                 constructor: TermPolicyStatusInvalidException,
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });

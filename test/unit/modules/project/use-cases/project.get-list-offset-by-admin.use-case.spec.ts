@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -24,16 +25,23 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
 
+    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
+        mock<PaginationFilterUtil>();
+
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const paginationOffset: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput> =
-        {
-            where: {},
-            orderBy: [],
-            limit: 20,
-            skip: 0,
-        };
+    const paginationOffset: IPaginationQueryOffsetParams = {
+        where: { OR: [] },
+        orderBy: [],
+        limit: 20,
+        skip: 0,
+    };
+
+    const workspaceFilter = {
+        where: { workspaceId: { equals: '507f1f77bcf86cd799439012' } },
+        storeFilter: { workspaceId: '507f1f77bcf86cd799439012' },
+    };
 
     let useCase: ProjectGetListOffsetByAdminUseCase;
 
@@ -59,6 +67,10 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 ProjectGetListOffsetByAdminUseCase,
                 { provide: ProjectService, useValue: projectService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                {
+                    provide: PaginationFilterUtil,
+                    useValue: paginationFilterUtil,
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -67,7 +79,7 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('merges the workspaceId into the store filters when present', async () => {
+        it('builds the workspaceId filter through the filter util and merges its store filter when present', async () => {
             const query: ProjectAdminListRequestDto = {
                 page: 1,
                 perPage: 20,
@@ -77,6 +89,7 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 params: paginationOffset,
                 storePatch: { page: 1, filters: { existing: true } },
             });
+            paginationFilterUtil.equalString.mockReturnValue(workspaceFilter);
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -96,6 +109,10 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 availableSearch: ProjectDefaultAvailableSearch,
                 availableOrderBy: ProjectDefaultAvailableOrderBy,
             });
+            expect(paginationFilterUtil.equalString).toHaveBeenCalledWith(
+                Prisma.ProjectScalarFieldEnum.workspaceId,
+                '507f1f77bcf86cd799439012'
+            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
@@ -108,7 +125,7 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
             );
             expect(projectService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 paginationOffset,
-                '507f1f77bcf86cd799439012'
+                workspaceFilter.where
             );
         });
 
@@ -121,6 +138,7 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 params: paginationOffset,
                 storePatch: { page: 1 },
             });
+            paginationFilterUtil.equalString.mockReturnValue(null);
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.offset,
                 count: 0,

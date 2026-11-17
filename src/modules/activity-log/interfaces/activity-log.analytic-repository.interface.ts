@@ -3,7 +3,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticList,
@@ -77,6 +77,6 @@ export interface IActivityLogAnalyticRepository {
         excludedActions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>>;
 }

@@ -980,6 +980,8 @@ describe('UserAuthService', () => {
                 context: {
                     userId: 'user-halcyon',
                     proceedBy: 'user-halcyon',
+                    snapshot: null,
+                    verificationId: null,
                 },
                 recipient: null,
                 notificationId: null,
@@ -1887,6 +1889,8 @@ describe('UserAuthService', () => {
                     { ...input, method: null }
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodRequired,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.methodRequired',
             });
@@ -1983,6 +1987,8 @@ describe('UserAuthService', () => {
                     }
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodRequired,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.methodRequired',
             });
@@ -2243,6 +2249,8 @@ describe('UserAuthService', () => {
                     }
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.challengeInvalid,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.challengeInvalid',
             });
@@ -2269,6 +2277,8 @@ describe('UserAuthService', () => {
                     }
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodUnavailable,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.methodUnavailable',
             });
@@ -2468,6 +2478,8 @@ describe('UserAuthService', () => {
                     }
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.challengeInvalid,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.challengeInvalid',
             });
@@ -2501,6 +2513,8 @@ describe('UserAuthService', () => {
                     both
                 )
             ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.invalid,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.invalid',
             });

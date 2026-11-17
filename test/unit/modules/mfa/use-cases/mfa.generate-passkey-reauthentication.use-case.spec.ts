@@ -10,6 +10,7 @@ import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaGeneratePasskeyReauthenticationUseCase } from '@modules/mfa/use-cases/mfa.generate-passkey-reauthentication.use-case';
 import { buildAuthJwtAccessContext } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 
 describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
@@ -80,6 +81,8 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
             );
 
             await expect(useCase.execute(authContext)).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodUnavailable,
+
                 module: 'mfa',
                 messagePath: 'mfa.error.methodUnavailable',
             });

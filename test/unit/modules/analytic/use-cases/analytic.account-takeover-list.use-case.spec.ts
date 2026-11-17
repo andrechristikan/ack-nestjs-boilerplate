@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { EnumAnalyticFraudContributingSignal } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
@@ -28,7 +29,7 @@ describe('AnalyticAccountTakeoverListUseCase', () => {
 
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
-    const pagination: IPaginationQueryOffsetParams<unknown> = {
+    const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],
@@ -80,7 +81,9 @@ describe('AnalyticAccountTakeoverListUseCase', () => {
                 data: [
                     {
                         userId: 'user-1',
-                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        indicatorCodes: [
+                            EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+                        ],
                         passwordChangedAt: startDate,
                     },
                 ],

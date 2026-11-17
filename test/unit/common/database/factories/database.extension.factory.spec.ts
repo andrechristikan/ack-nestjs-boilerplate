@@ -433,7 +433,9 @@ describe('DatabaseExtensionFactory', () => {
         });
 
         it('returns false for a Date', () => {
-            expect(factory['isWritePayload'](new Date())).toBe(false);
+            expect(
+                factory['isWritePayload'](new Date('2026-01-01T00:00:00.000Z'))
+            ).toBe(false);
         });
 
         it('returns true for a plain object', () => {

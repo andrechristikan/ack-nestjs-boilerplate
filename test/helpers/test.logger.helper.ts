@@ -1,6 +1,6 @@
 import { ConsoleLogger, Logger } from '@nestjs/common';
 
-const silent = (): undefined => undefined;
+const silent = (): void => {};
 
 Logger.overrideLogger(false);
 

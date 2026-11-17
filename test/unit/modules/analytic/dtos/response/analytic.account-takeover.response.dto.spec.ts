@@ -1,3 +1,4 @@
+import { EnumAnalyticFraudContributingSignal } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticAccountTakeoverResponseSchema } from '@modules/analytic/dtos/response/analytic.account-takeover.response.dto';
 
 describe('AnalyticAccountTakeoverResponseSchema', () => {
@@ -5,7 +6,10 @@ describe('AnalyticAccountTakeoverResponseSchema', () => {
 
     const row = {
         userId: 'user-1',
-        indicatorCodes: ['passwordChanged', 'newDevice'],
+        indicatorCodes: [
+            EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
+            EnumAnalyticFraudContributingSignal.nearLockout,
+        ],
         passwordChangedAt,
     };
 
@@ -13,6 +17,15 @@ describe('AnalyticAccountTakeoverResponseSchema', () => {
         const result = AnalyticAccountTakeoverResponseSchema.parse(row);
 
         expect(result).toEqual(row);
+    });
+
+    it('rejects an indicator code that is no contributing signal', () => {
+        expect(() =>
+            AnalyticAccountTakeoverResponseSchema.parse({
+                ...row,
+                indicatorCodes: ['newDevice'],
+            })
+        ).toThrow();
     });
 
     it('rejects a passwordChangedAt that is not a Date', () => {

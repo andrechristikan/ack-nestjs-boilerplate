@@ -19,7 +19,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import type {
@@ -57,6 +56,7 @@ import type {
     IUserDeletedIdentity,
     IUserImport,
     IUserList,
+    IUserName,
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
@@ -64,7 +64,6 @@ import { RoleService } from '@modules/role/services/role.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -99,18 +98,14 @@ export class UserService {
         )!;
     }
 
-    private createDeletedIdentity({
-        id,
-        email,
-        username,
-    }: IUser): IUserDeletedIdentity {
+    private createDeletedIdentity({ id }: IUser): IUserDeletedIdentity {
         const deletedEmail = this.helperStringService.fillPattern(
             this.deleteSelfEmailPattern,
-            { id, email }
+            { id }
         );
         const deletedUsername = this.helperStringService.fillPattern(
             this.deleteSelfUsernamePattern,
-            { id, username }
+            { id }
         );
 
         return { email: deletedEmail, username: deletedUsername };
@@ -161,7 +156,7 @@ export class UserService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
+        pagination: IPaginationQueryOffsetParams,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
@@ -182,7 +177,7 @@ export class UserService {
         return this.userRepository.findOneActiveByEmail(email);
     }
 
-    async getNameById(userId: string): Promise<IWorkspaceInviteInviter | null> {
+    async getNameById(userId: string): Promise<IUserName | null> {
         return this.userRepository.findNameById(userId);
     }
 

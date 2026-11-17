@@ -29,15 +29,13 @@ export function buildQueueProcessor(
     outboxService: OutboxService
 ): IQueueProcessorDoubles {
     const handle = vi.fn();
-    const processor = Object.assign(
-        Reflect.construct(QueueProcessorBase, [
-            sentryService,
-            messageService,
-            cacheService,
-            outboxService,
-        ]),
-        { handle }
-    );
+    const processor = Object.assign(Reflect.construct(QueueProcessorBase, []), {
+        sentryService,
+        messageService,
+        cacheService,
+        outboxService,
+        handle,
+    });
 
     return { processor, handle };
 }

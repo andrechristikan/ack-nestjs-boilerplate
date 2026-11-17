@@ -4,7 +4,6 @@ import type {
     EnumMfaPasskeyDeviceType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    MfaChallenge,
     MfaChallengeDevice,
 } from '@generated/prisma-client/client';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -102,8 +101,6 @@ export interface IMfaChallengeCreateData {
     loginWith: EnumUserLoginWith | null;
     expiredAt: Date;
 }
-
-export type IMfaChallengeRow = MfaChallenge;
 
 export interface IMfaChallengePrepared {
     challengeToken: string;

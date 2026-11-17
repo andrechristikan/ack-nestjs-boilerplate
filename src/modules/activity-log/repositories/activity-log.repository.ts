@@ -89,10 +89,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
     async findUserScopedWithPaginationOffset(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildUserScopedWhere(userId, where);
 
@@ -112,10 +109,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
     async findUserScopedWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         const scopedWhere = this.buildUserScopedWhere(userId, where);
 
@@ -136,10 +130,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
     async findByWorkspaceWithPaginationOffset(
         workspaceId: string,
         userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
@@ -164,10 +155,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
     async findByWorkspaceWithPaginationCursor(
         workspaceId: string,
         userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,

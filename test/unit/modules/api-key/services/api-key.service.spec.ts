@@ -22,7 +22,7 @@ import {
     EnumCacheQueue,
 } from '@common/cache/enums/cache.enum';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
-import type { ApiKey, Prisma } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
@@ -109,12 +109,11 @@ describe('ApiKeyService', () => {
 
     describe('getListByAdmin', () => {
         it('delegates the offset pagination read to the repository', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput> =
-                {
-                    skip: 0,
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -138,8 +137,11 @@ describe('ApiKeyService', () => {
         });
 
         it('forwards the active and type filters to the repository', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -816,6 +818,8 @@ describe('ApiKeyService', () => {
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
             ).rejects.toMatchObject({
+                module: 'apiKey',
+
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
             });
         });
@@ -830,6 +834,8 @@ describe('ApiKeyService', () => {
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
             ).rejects.toMatchObject({
+                module: 'apiKey',
+
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
             });
         });

@@ -3,7 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotFound } from '@aws-sdk/client-s3';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type {
     IAwsS3,
@@ -23,9 +23,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
-import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
-import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
 import type {
     IUserGeneratePhotoProfile,
     IUserProfile,
@@ -33,7 +31,8 @@ import type {
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { UserService } from '@modules/user/services/user.service';
+import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -54,7 +53,7 @@ export class UserProfileService {
 
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly userUtil: UserUtil,
+        private readonly userService: UserService,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
         private readonly databaseUtil: DatabaseUtil,
@@ -320,10 +319,16 @@ export class UserProfileService {
         }
 
         try {
-            const extension: EnumFileExtensionImage =
-                this.fileService.extractExtensionFromFilename(
-                    file.originalname
-                ) as EnumFileExtensionImage;
+            const rawExtension = this.fileService.extractExtensionFromFilename(
+                file.originalname
+            );
+            const extension =
+                Object.values(EnumFileExtensionImage).find(
+                    value => value === rawExtension
+                ) ?? null;
+            if (extension === null) {
+                throw new FileExtensionInvalidException();
+            }
 
             const key: string = this.createRandomFilenamePhotoProfileWithPath(
                 userId,
@@ -357,7 +362,7 @@ export class UserProfileService {
                     awsKey: aws.key,
                     awsBucket: aws.bucket,
                 },
-                `Photo profile uploaded to S3 with key: ${key}`
+                'Photo profile uploaded to S3'
             );
 
             await this.replacePhotoProfile(
@@ -385,20 +390,8 @@ export class UserProfileService {
         username: Lowercase<string>
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
-        const [isUsernamePatternInvalid, hasBadWord, exist] = await Promise.all(
-            [
-                this.userUtil.isUsernamePatternInvalid(username),
-                this.userUtil.hasBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]
-        );
-        if (isUsernamePatternInvalid) {
-            throw new UserUsernameNotAllowedException();
-        } else if (hasBadWord) {
-            throw new UserUsernameContainBadWordException();
-        } else if (exist) {
-            throw new UserUsernameExistException();
-        }
+        const check = await this.userService.checkUsername(username);
+        this.userService.assertUsernameAvailable(check);
 
         try {
             await this.outboxService.withTransaction(async tx => {

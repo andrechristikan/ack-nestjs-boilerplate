@@ -15,7 +15,7 @@ import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositorie
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogAnalyticService {
@@ -171,7 +171,7 @@ export class ActivityLogAnalyticService {
     async getGroupActivityByWorkspaceOffset(
         startDate: Date,
         endDate: Date,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return await this.activityLogAnalyticRepository.groupActivityByWorkspaceOffset(
             [...ActivityLogWorkspaceVolumeContract],

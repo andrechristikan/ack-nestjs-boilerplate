@@ -183,6 +183,7 @@ export class UserMobileNumberService {
 
         const mobileNumber = await this.userMobileNumberRepository.updateInTx(
             tx,
+            userId,
             current.id,
             {
                 number,
@@ -191,6 +192,10 @@ export class UserMobileNumberService {
             },
             isVerified
         );
+        if (!mobileNumber) {
+            throw new UserMobileNumberNotFoundException();
+        }
+
         await this.userService.touchUpdatedByInTx(tx, userId);
         if (isChanged) {
             await this.userVerificationService.expireActiveByMobileNumberInTx(
@@ -224,6 +229,7 @@ export class UserMobileNumberService {
         const userId = authContext.userId;
         const mobileNumber = await this.userMobileNumberRepository.deleteInTx(
             tx,
+            userId,
             mobileNumberId
         );
         if (!mobileNumber) {

@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
+import type { Prisma } from '@generated/prisma-client/client';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -15,6 +16,24 @@ import type {
 
 /** @public */
 export const RoleRequiredMetaKey = 'RoleRequiredMetaKey';
+
+/** @public */
+export const RoleSelect = {
+    id: true,
+    type: true,
+    name: true,
+    isImmutable: true,
+} satisfies Prisma.RoleSelect;
+
+/** @public */
+export const RoleWithPoliciesInclude = {
+    policies: true,
+} satisfies Prisma.RoleInclude;
+
+/** @public */
+export const RoleWithPolicyCountInclude = {
+    _count: { select: { policies: true } },
+} satisfies Prisma.RoleInclude;
 
 /** @public */
 export const RoleRank: IRoleRank = {

@@ -128,7 +128,12 @@ describe('UserSignUpUseCase', () => {
         name: EnumNotificationProcess.notify,
         data: {
             kind: EnumNotificationKind.welcome,
-            context: { userId: 'user-bramble', proceedBy: 'user-bramble' },
+            context: {
+                userId: 'user-bramble',
+                proceedBy: 'user-bramble',
+                snapshot: null,
+                verificationId: null,
+            },
             recipient: null,
             notificationId: null,
         },

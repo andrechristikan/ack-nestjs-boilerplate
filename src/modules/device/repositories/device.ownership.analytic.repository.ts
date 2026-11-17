@@ -1,4 +1,8 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import {
+    DeviceOwnershipAnalyticFingerprintSelect,
+    DeviceOwnershipAnalyticIdSelect,
+} from '@modules/device/constants/device.constant';
 import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
 import type { IDeviceOwnershipAnalyticUserCount } from '@modules/device/interfaces/device.interface';
 import type { IDeviceOwnershipAnalyticRepository } from '@modules/device/interfaces/device.ownership-analytic-repository.interface';
@@ -49,7 +53,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
                     userId,
                     createdAt: { gte: startDate, lt: endDate },
                 },
-                select: { id: true },
+                select: DeviceOwnershipAnalyticIdSelect,
             });
         return ownership !== null;
     }
@@ -74,10 +78,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
                     isRevoked: false,
                     deviceId: { in: shared.map(row => row.deviceId) },
                 },
-                select: {
-                    userId: true,
-                    device: { select: { fingerprint: true } },
-                },
+                select: DeviceOwnershipAnalyticFingerprintSelect,
             });
         const map = new Map<string, Set<string>>();
         for (const ownership of ownerships) {

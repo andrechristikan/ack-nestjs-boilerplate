@@ -8,6 +8,10 @@ export interface IAnalyticOptionalDateRange {
     endDate: Date | null;
 }
 
+export interface IAnalyticCounted {
+    count: number;
+}
+
 export interface IAnalyticCountBucket {
     key: string;
     count: number;

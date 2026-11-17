@@ -114,7 +114,6 @@
         "error": {
             "noChannel": "Notification {process} skipped, no channel enabled.",
             "unknownProcess": "No {process} job handler exists.",
-            "stepsFailed": "Notification steps failed: {steps}",
             "noRecipient": "Notification {process} skipped, no active recipient.",
             "outboxIdMissing": "Notification job has no outbox row."
         },
@@ -136,7 +135,8 @@
                 "firebaseNotInitialized": "Firebase not initialized, skipping {process} notification.",
                 "unknownProcess": "No {process} job handler exists.",
                 "deliveryNotFound": "Push delivery for {process} notification not found.",
-                "tokensPending": "{count} push tokens pending retry."
+                "tokensPending": "{count} push tokens pending retry.",
+                "stepsFailed": "Notification steps failed: {steps}"
             },
             "send": "Push notification {process} sent."
         },

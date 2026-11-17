@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
@@ -10,9 +9,6 @@ import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.pr
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { OutboxService } from '@common/outbox/services/outbox.service';
-import { MessageService } from '@common/message/services/message.service';
-import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
@@ -20,14 +16,10 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 @QueueProcessor(EnumUserQueue.user)
 export class UserProcessor extends QueueProcessorBase {
     constructor(
-        protected readonly sentryService: SentryService,
-        protected readonly messageService: MessageService,
-        protected readonly cacheService: CacheService,
-        protected readonly outboxService: OutboxService,
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
         private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase
     ) {
-        super(sentryService, messageService, cacheService, outboxService);
+        super();
     }
 
     protected async handle(
@@ -63,10 +55,7 @@ export class UserProcessor extends QueueProcessorBase {
                 }
             case EnumUserProcess.importByAdmin: {
                 if (outboxId === null) {
-                    const message = this.messageService.setMessage(
-                        'user.queue.error.outboxIdMissing'
-                    );
-                    throw new UnrecoverableError(message);
+                    this.throwUnrecoverable('user.queue.error.outboxIdMissing');
                 }
 
                 return await this.userProcessImportByAdminUseCase.execute(
@@ -74,14 +63,11 @@ export class UserProcessor extends QueueProcessorBase {
                     data as IUserImportByAdminPayload
                 );
             }
-            default: {
-                const message = this.messageService.setMessage(
+            default:
+                this.throwUnknownProcess(
                     'user.queue.error.unknownProcess',
-                    { properties: { process: job.name } }
+                    job.name
                 );
-
-                throw new QueueException(message, true);
-            }
         }
     }
 }

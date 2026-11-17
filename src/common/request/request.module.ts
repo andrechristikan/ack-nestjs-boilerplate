@@ -1,8 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
@@ -35,12 +33,7 @@ export class RequestModule {
                 },
                 {
                     provide: APP_PIPE,
-                    useFactory: () =>
-                        new RequestSchemaValidationPipe({
-                            exceptionFactory: (
-                                issues: readonly StandardSchemaV1.Issue[]
-                            ) => new RequestValidationException(issues),
-                        }),
+                    useClass: RequestSchemaValidationPipe,
                 },
             ],
             exports: [

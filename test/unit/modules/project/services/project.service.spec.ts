@@ -19,13 +19,13 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     EnumActivityLogAction,
     EnumWorkspaceMemberRole,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectCreate,
     IProjectUpdate,
@@ -40,6 +40,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
@@ -202,13 +203,12 @@ describe('ProjectService', () => {
     });
 
     describe('getListCursorByMember', () => {
-        const pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
-            {
-                fingerprint: 'aaaaaaaaaaaaaaaa',
-                where: {},
-                orderBy: [],
-                limit: 20,
-            };
+        const pagination: IPaginationQueryCursorParams = {
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            where: { OR: [] },
+            orderBy: [],
+            limit: 20,
+        };
 
         it('passes a null memberUserId when the caller is the workspace owner', async () => {
             const page: IResponsePaginationReturn<Project> = {
@@ -397,6 +397,9 @@ describe('ProjectService', () => {
                     create
                 )
             ).rejects.toMatchObject({
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+
                 constructor: DatabaseUniqueValueGenerationFailedException,
                 module: 'database',
             });
@@ -495,6 +498,23 @@ describe('ProjectService', () => {
                 collision,
                 'slug'
             );
+        });
+
+        it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
+            const project = baseProject;
+            const thrown = new ProjectNotFoundException();
+            projectRepository.updateSlugInTx.mockRejectedValue(thrown);
+
+            await expect(
+                service.updateProjectSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    project,
+                    'p-new-slug'
+                )
+            ).rejects.toBe(thrown);
+            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('wraps a non-collision write error in AppUnknownException', async () => {
@@ -624,10 +644,14 @@ describe('ProjectService', () => {
     });
 
     describe('getListOffsetByAdmin', () => {
-        const pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput> =
-            { where: {}, orderBy: [], limit: 20, skip: 0 };
+        const pagination: IPaginationQueryOffsetParams = {
+            where: { OR: [] },
+            orderBy: [],
+            limit: 20,
+            skip: 0,
+        };
 
-        it('delegates to the repository with an optional workspaceId', async () => {
+        it('delegates to the repository with the workspace filter', async () => {
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -642,15 +666,19 @@ describe('ProjectService', () => {
                 page
             );
 
+            const workspaceFilter = {
+                workspaceId: { equals: '507f1f77bcf86cd799439012' },
+            };
+
             const result = await service.getListOffsetByAdmin(
                 pagination,
-                '507f1f77bcf86cd799439012'
+                workspaceFilter
             );
 
             expect(result).toBe(page);
             expect(
                 projectRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, '507f1f77bcf86cd799439012');
+            ).toHaveBeenCalledWith(pagination, workspaceFilter);
         });
     });
 

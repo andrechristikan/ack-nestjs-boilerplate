@@ -2,7 +2,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
@@ -27,14 +26,10 @@ export class FeatureFlagGetListByAdminUseCase implements IAppUseCase<
     async execute(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
-                query,
-                {
-                    availableSearch: FeatureFlagDefaultAvailableSearch,
-                    availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
-                }
-            );
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableSearch: FeatureFlagDefaultAvailableSearch,
+            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =

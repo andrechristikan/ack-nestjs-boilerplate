@@ -27,11 +27,7 @@ import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
-import type {
-    Device,
-    DeviceOwnership,
-    Prisma,
-} from '@generated/prisma-client/client';
+import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
@@ -180,8 +176,11 @@ describe('DeviceService', () => {
         });
 
         it('passes a null revoked filter when none is given', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IDeviceOwnership> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -249,7 +248,7 @@ describe('DeviceService', () => {
     });
 
     describe('getNotificationTokens', () => {
-        it('getNotificationTokens returns the notification token of each ownership that has one', async () => {
+        it('returns the notification token of each ownership that has one', async () => {
             deviceOwnershipRepository.findTokensByUserId.mockResolvedValue([
                 'a',
                 'b',
@@ -977,57 +976,6 @@ describe('DeviceService', () => {
                         EnumDeviceStatusCodeError.notFound
                     ],
                 messagePath: 'device.error.notFound',
-            });
-        });
-    });
-
-    describe('mapActivityLogMetadata', () => {
-        it('projects the ownership id, device id, and session count', () => {
-            const result = service.mapActivityLogMetadata(
-                deviceOwnershipDetail,
-                3
-            );
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-            });
-        });
-    });
-
-    describe('mapActivityLogActorMetadata', () => {
-        it('extends the base metadata with the target user and timestamp', () => {
-            const result = service.mapActivityLogActorMetadata(
-                deviceOwnershipDetail,
-                3
-            );
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-                targetUserId: 'user-1',
-                targetUsername: 'jane',
-                timestamp: now,
-            });
-        });
-    });
-
-    describe('mapActivityLogTargetMetadata', () => {
-        it('extends the base metadata with the actor user and timestamp', () => {
-            const result = service.mapActivityLogTargetMetadata(
-                deviceOwnershipDetail,
-                'admin-1',
-                3
-            );
-
-            expect(result).toEqual({
-                deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
-                sessionCount: 3,
-                actorUserId: 'admin-1',
-                timestamp: now,
             });
         });
     });

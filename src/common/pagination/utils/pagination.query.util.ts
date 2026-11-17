@@ -5,7 +5,7 @@ import {
     PaginationDefaultPerPage,
     PaginationOrderBySeparator,
 } from '@common/pagination/constants/pagination.constant';
-import type { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
@@ -54,7 +54,12 @@ export class PaginationQueryUtil {
 
         const [field, direction] = orderBy.split(PaginationOrderBySeparator);
 
-        return [{ [field!]: direction as EnumPaginationOrderDirectionType }];
+        const resolved =
+            direction === EnumPaginationOrderDirectionType.desc
+                ? EnumPaginationOrderDirectionType.desc
+                : EnumPaginationOrderDirectionType.asc;
+
+        return [{ [field!]: resolved }];
     }
 
     private validateAndParsePage(page?: number | string): number {
@@ -117,11 +122,11 @@ export class PaginationQueryUtil {
         return trimmed;
     }
 
-    offset<TArgsWhere = unknown>(
+    offset(
         dto: PaginationOffsetQueryDto & { orderBy?: IPaginationOrderByQuery },
         options: IPaginationQueryOffsetOptions
     ): {
-        params: IPaginationQueryOffsetParams<TArgsWhere>;
+        params: IPaginationQueryOffsetParams;
         storePatch: IPaginationQueryPatch;
     } {
         const availableSearch = options.availableSearch ?? [];
@@ -145,7 +150,7 @@ export class PaginationQueryUtil {
                 limit: perPage,
                 skip,
                 orderBy,
-            } as IPaginationQueryOffsetParams<TArgsWhere>,
+            },
             storePatch: {
                 page,
                 perPage,
@@ -157,11 +162,11 @@ export class PaginationQueryUtil {
         };
     }
 
-    cursor<TArgsWhere = unknown>(
+    cursor(
         dto: PaginationCursorQueryDto & { orderBy?: IPaginationOrderByQuery },
         options: IPaginationQueryCursorOptions
     ): {
-        params: IPaginationQueryCursorParams<TArgsWhere>;
+        params: IPaginationQueryCursorParams;
         storePatch: IPaginationQueryPatch;
     } {
         const availableSearch = options.availableSearch ?? [];
@@ -190,7 +195,7 @@ export class PaginationQueryUtil {
                 ...(cursor && { cursor }),
                 orderBy,
                 fingerprint,
-            } as IPaginationQueryCursorParams<TArgsWhere>,
+            },
             storePatch: {
                 perPage,
                 ...(cursor && { cursor }),

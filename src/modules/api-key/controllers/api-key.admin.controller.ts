@@ -182,10 +182,10 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Body({ schema: ApiKeyUpdateRequestSchema })
-        body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @Body({ schema: ApiKeyUpdateRequestSchema })
+        body: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateByAdminUseCase.execute(
             requestContext,
@@ -215,10 +215,10 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Body({ schema: ApiKeyUpdateDateRequestSchema })
-        body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
-        apiKeyId: string
+        apiKeyId: string,
+        @Body({ schema: ApiKeyUpdateDateRequestSchema })
+        body: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyUpdateDatesByAdminUseCase.execute(
             requestContext,

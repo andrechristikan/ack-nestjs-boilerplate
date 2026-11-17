@@ -31,7 +31,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { Prisma, Role } from '@generated/prisma-client/client';
+import type { Role } from '@generated/prisma-client/client';
 import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleWithPoliciesCacheSchema } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
@@ -133,12 +133,11 @@ describe('RoleService', () => {
 
     describe('getListOffsetByAdmin', () => {
         it('delegates the offset pagination read to the repository', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
-                {
-                    skip: 0,
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IPaginationOffsetReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -162,8 +161,11 @@ describe('RoleService', () => {
         });
 
         it('forwards the type filter to the repository', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -190,12 +192,11 @@ describe('RoleService', () => {
 
     describe('getListCursorBySystem', () => {
         it('delegates the cursor pagination read to the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IPaginationCursorReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -215,12 +216,11 @@ describe('RoleService', () => {
         });
 
         it('forwards the type filter to the repository', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -598,6 +598,8 @@ describe('RoleService', () => {
                     superAdminActor
                 )
             ).rejects.toMatchObject({
+                module: 'role',
+
                 statusCode: EnumRoleStatusCodeError.immutable,
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();

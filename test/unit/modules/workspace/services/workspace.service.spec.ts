@@ -17,7 +17,7 @@ import type {
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Prisma, Workspace } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -48,6 +48,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('WorkspaceService', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
@@ -172,12 +173,11 @@ describe('WorkspaceService', () => {
 
     describe('getListCursorByMember', () => {
         it('delegates to the repository cursor listing', async () => {
-            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput> =
-                {
-                    fingerprint: 'aaaaaaaaaaaaaaaa',
-                    limit: 20,
-                    orderBy: [],
-                };
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -486,6 +486,9 @@ describe('WorkspaceService', () => {
                     create
                 )
             ).rejects.toMatchObject({
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+
                 constructor: DatabaseUniqueValueGenerationFailedException,
                 module: 'database',
             });
@@ -634,6 +637,22 @@ describe('WorkspaceService', () => {
                 collision,
                 'slug'
             );
+        });
+
+        it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
+            const thrown = new WorkspaceNotFoundException();
+            workspaceRepository.updateSlugInTx.mockRejectedValue(thrown);
+
+            await expect(
+                service.updateWorkspaceSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    'new-slug'
+                )
+            ).rejects.toBe(thrown);
+            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('wraps a non-collision write error in AppUnknownException', async () => {
@@ -787,8 +806,11 @@ describe('WorkspaceService', () => {
 
     describe('getListOffsetByAdmin', () => {
         it('delegates to the repository offset listing with the isPublic filter', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
-                { limit: 20, skip: 0, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                limit: 20,
+                skip: 0,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -814,8 +836,11 @@ describe('WorkspaceService', () => {
         });
 
         it('passes a null isPublic filter when none is given', async () => {
-            const pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
-                { skip: 0, limit: 20, orderBy: [] };
+            const pagination: IPaginationQueryOffsetParams = {
+                skip: 0,
+                limit: 20,
+                orderBy: [],
+            };
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.offset,
                 count: 0,

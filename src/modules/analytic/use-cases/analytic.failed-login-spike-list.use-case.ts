@@ -1,4 +1,3 @@
-import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -24,10 +23,9 @@ export class AnalyticFailedLoginSpikeListUseCase implements IAppUseCase<
     async execute(
         query: AnalyticNearLockoutListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
-                availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
-            });
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
+        });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticAnomalyService.failedLoginSpikeList(params);

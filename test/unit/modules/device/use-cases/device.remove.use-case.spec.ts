@@ -24,7 +24,7 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
-import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
@@ -52,7 +52,7 @@ const passkeyResponse = {
 
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -133,7 +133,7 @@ describe('DeviceRemoveUseCase', () => {
         userAuthService.assertReauthentication.mockResolvedValue(check);
         helperDateService.create.mockReturnValue(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
-        deviceService.mapActivityLogMetadata.mockReturnValue(metadata);
+        deviceUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
             deviceOwnership,
             revokedSessions: [{ id: 'session-1' }, { id: 'session-2' }],
@@ -143,7 +143,7 @@ describe('DeviceRemoveUseCase', () => {
             providers: [
                 DeviceRemoveUseCase,
                 { provide: SessionService, useValue: sessionService },
-                { provide: DeviceService, useValue: deviceService },
+                { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
@@ -236,7 +236,7 @@ describe('DeviceRemoveUseCase', () => {
                 'user-1',
                 now
             );
-            expect(deviceService.mapActivityLogMetadata).toHaveBeenCalledWith(
+            expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 deviceOwnership,
                 1
             );

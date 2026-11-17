@@ -1,3 +1,4 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumUserProcess,
     EnumUserQueue,
@@ -14,6 +15,7 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
@@ -24,6 +26,7 @@ import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import type {
     Country,
+    EnumAwsS3Accessibility,
     EnumUserReauthenticationAction,
     ForgotPassword,
     Prisma,
@@ -34,7 +37,9 @@ import type {
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
+    UserAnalyticRefSelect,
     UserMobileNumberSummarySelect,
+    UserNameSelect,
     UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
 import type {
@@ -70,6 +75,10 @@ export interface IUserPasswordSet extends IUser {
 
 export type IUserList = Prisma.UserGetPayload<{
     select: typeof UserAdminListSelect;
+}>;
+
+export type IUserName = Prisma.UserGetPayload<{
+    select: typeof UserNameSelect;
 }>;
 
 export type IUserRecipient = Prisma.UserGetPayload<{
@@ -114,7 +123,7 @@ export interface IUserSignUpPrepared {
 }
 
 export interface IUserVerificationEmailCreate {
-    type: 'email';
+    type: typeof EnumVerificationType.email;
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
@@ -362,12 +371,9 @@ export interface IUserAnalyticGroupCount<T extends string = string> {
     count: number;
 }
 
-export interface IUserAnalyticRef {
-    id: string;
-    email: string;
-    passwordAttempt: number;
-    passwordLockedUntil: Date | null;
-}
+export type IUserAnalyticRef = Prisma.UserGetPayload<{
+    select: typeof UserAnalyticRefSelect;
+}>;
 
 export interface IUserForgotPasswordAnalyticUserCount {
     userId: string;
@@ -382,7 +388,7 @@ export interface IUserVerificationAnalyticUsedBucket {
 export interface IUserDeletePhotoPayload {
     userId: string;
     key: string;
-    access: string;
+    access: EnumAwsS3Accessibility;
 }
 
 export interface IUserImportByAdminPayload {
@@ -406,4 +412,13 @@ export interface IUserImportByAdminEffect extends IOutboxEffect {
     queue: EnumUserQueue.user;
     name: EnumUserProcess.importByAdmin;
     data: IUserImportByAdminPayload;
+}
+
+export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
+    key: string;
+}
+
+export interface IUserImportByAdminQueueResponse extends IQueueResponse {
+    created: number;
+    failed: number;
 }

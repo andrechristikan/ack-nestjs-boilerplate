@@ -78,10 +78,10 @@ export class SessionAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Query({ schema: SessionAdminListRequestSchema })
-        query: SessionAdminListRequestDto,
         @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: SessionAdminListRequestSchema })
+        query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionGetListOffsetByAdminUseCase.execute(userId, query);
     }

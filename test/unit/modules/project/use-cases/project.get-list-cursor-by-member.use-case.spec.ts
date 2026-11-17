@@ -7,10 +7,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -35,13 +32,12 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const paginationCursor: IPaginationQueryCursorParams<Prisma.ProjectWhereInput> =
-        {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            where: {},
-            orderBy: [],
-            limit: 20,
-        };
+    const paginationCursor: IPaginationQueryCursorParams = {
+        fingerprint: 'aaaaaaaaaaaaaaaa',
+        where: { OR: [] },
+        orderBy: [],
+        limit: 20,
+    };
 
     let useCase: ProjectGetListCursorByMemberUseCase;
 

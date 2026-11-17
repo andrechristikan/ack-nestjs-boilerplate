@@ -45,32 +45,21 @@ export interface IPaginationQueryCursorOptions {
     defaultPerPage?: number;
 }
 
-export interface IPaginationQueryDefaultWhere {
-    or?: Record<string, { contains?: string }>[];
-    [key: string]: unknown;
-}
-
 export interface IPaginationSearchWhere {
     OR: Array<Record<string, Prisma.StringFilter>>;
 }
 
-export interface IPaginationQueryReturn<
-    TArgsWhere = IPaginationQueryDefaultWhere,
-> {
-    where?: TArgsWhere;
+export interface IPaginationQueryReturn {
+    where?: IPaginationSearchWhere;
     orderBy: IPaginationOrderBy[];
     limit: number;
 }
 
-export interface IPaginationQueryOffsetParams<
-    TArgsWhere = unknown,
-> extends IPaginationQueryReturn<TArgsWhere> {
+export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {
     skip: number;
 }
 
-export interface IPaginationQueryCursorParams<
-    TArgsWhere = unknown,
-> extends IPaginationQueryReturn<TArgsWhere> {
+export interface IPaginationQueryCursorParams extends IPaginationQueryReturn {
     cursor?: string;
     fingerprint: string;
 }
@@ -110,13 +99,20 @@ export type IPaginationDelegateRow<TDelegate, TShape> =
         ? TRow
         : never;
 
-export type IPaginationOffsetArgs<TDelegate> = IPaginationQueryOffsetParams<
-    NonNullable<IPaginationDelegateArgs<TDelegate>['where']>
->;
+export type IPaginationOffsetArgs<TDelegate> = Omit<
+    IPaginationQueryOffsetParams,
+    'where'
+> & {
+    where?: NonNullable<IPaginationDelegateArgs<TDelegate>['where']>;
+};
 
-export type IPaginationCursorArgs<TDelegate> = IPaginationQueryCursorParams<
-    NonNullable<IPaginationDelegateArgs<TDelegate>['where']>
-> & { includeCount?: boolean };
+export type IPaginationCursorArgs<TDelegate> = Omit<
+    IPaginationQueryCursorParams,
+    'where'
+> & {
+    where?: NonNullable<IPaginationDelegateArgs<TDelegate>['where']>;
+    includeCount?: boolean;
+};
 
 export type IPaginationPageException =
     | PaginationInvalidPageException
@@ -201,7 +197,7 @@ export interface IPaginationCursorToken {
 }
 
 export interface IPaginationQueryFilterResult<
-    TWhere extends Record<string, unknown> = Record<string, unknown>,
+    TWhere extends Record<string, unknown>,
 > {
     where: TWhere;
     storeFilter: IPaginationQueryFilter;
