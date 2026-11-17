@@ -19,6 +19,7 @@ import {
     UserNameSelect,
     UserNotDeletedWhere,
     UserRecipientSelect,
+    UserWithRoleInclude,
 } from '@modules/user/constants/user.constant';
 import type {
     IUser,
@@ -176,9 +177,7 @@ export class UserRepository implements IUserRepository {
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -186,7 +185,7 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
                 mobileNumbers: {
                     include: {
@@ -201,7 +200,7 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
                 mobileNumbers: {
                     include: {
@@ -215,9 +214,7 @@ export class UserRepository implements IUserRepository {
     async findOneWithRoleById(id: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -226,9 +223,7 @@ export class UserRepository implements IUserRepository {
             where: {
                 email: { in: emails },
             },
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -237,9 +232,7 @@ export class UserRepository implements IUserRepository {
             where: {
                 username: { in: usernames },
             },
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -256,9 +249,7 @@ export class UserRepository implements IUserRepository {
                 ...roleId,
                 deletedAt: null,
             },
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
             take,
         });
     }
@@ -286,9 +277,7 @@ export class UserRepository implements IUserRepository {
         const createData = this.buildUserCreateData(input);
         const user = await tx.user.create({
             data: createData,
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
 
         return user;

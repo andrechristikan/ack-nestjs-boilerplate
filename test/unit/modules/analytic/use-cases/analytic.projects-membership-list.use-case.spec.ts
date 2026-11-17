@@ -7,15 +7,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
-import { AnalyticWorkspacesActivityVolumeUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume.use-case';
+import { AnalyticProjectsMembershipListUseCase } from '@modules/analytic/use-cases/analytic.projects-membership-list.use-case';
 
-describe('AnalyticWorkspacesActivityVolumeUseCase', () => {
+describe('AnalyticProjectsMembershipListUseCase', () => {
     const analyticDashboardService: MockProxy<AnalyticDashboardService> =
         mock<AnalyticDashboardService>();
-
-    const analyticDateService: MockProxy<AnalyticDateService> =
-        mock<AnalyticDateService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -23,17 +19,13 @@ describe('AnalyticWorkspacesActivityVolumeUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
         orderBy: [],
     };
 
-    let useCase: AnalyticWorkspacesActivityVolumeUseCase;
+    let useCase: AnalyticProjectsMembershipListUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -44,26 +36,21 @@ describe('AnalyticWorkspacesActivityVolumeUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                AnalyticWorkspacesActivityVolumeUseCase,
+                AnalyticProjectsMembershipListUseCase,
                 {
                     provide: AnalyticDashboardService,
                     useValue: analyticDashboardService,
                 },
-                { provide: AnalyticDateService, useValue: analyticDateService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
 
-        useCase = module.get(AnalyticWorkspacesActivityVolumeUseCase);
+        useCase = module.get(AnalyticProjectsMembershipListUseCase);
     });
 
     describe('execute', () => {
         it('returns the domain page unchanged', async () => {
-            analyticDateService.requireRange.mockReturnValue({
-                startDate,
-                endDate,
-            });
             const page = {
                 type: EnumPaginationType.offset as const,
                 count: 1,
@@ -72,23 +59,19 @@ describe('AnalyticWorkspacesActivityVolumeUseCase', () => {
                 totalPage: 1,
                 hasNext: false,
                 hasPrevious: false,
-                data: [{ workspaceId: 'workspace-1', count: 3 }],
+                data: [{ projectId: 'project-1', count: 4 }],
             };
-            analyticDashboardService.workspacesActivityVolume.mockResolvedValue(
-                page
-            );
+            analyticDashboardService.projectsMembership.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                startDate,
-                endDate,
                 page: 1,
                 perPage: 20,
             });
 
             expect(result).toEqual(page);
             expect(
-                analyticDashboardService.workspacesActivityVolume
-            ).toHaveBeenCalledWith(startDate, endDate, pagination);
+                analyticDashboardService.projectsMembership
+            ).toHaveBeenCalledWith(pagination);
         });
     });
 });

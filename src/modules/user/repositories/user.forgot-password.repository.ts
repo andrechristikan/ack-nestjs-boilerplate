@@ -9,6 +9,7 @@ import type {
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserForgotPasswordRepository } from '@modules/user/interfaces/user.forgot-password-repository.interface';
+import { UserWithRoleInclude } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -36,11 +37,7 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
                 },
             },
             include: {
-                user: {
-                    include: {
-                        role: { include: { policies: true } },
-                    },
-                },
+                user: { include: UserWithRoleInclude },
             },
         });
     }

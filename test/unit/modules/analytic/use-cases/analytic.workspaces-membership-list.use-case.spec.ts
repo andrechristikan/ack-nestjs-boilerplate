@@ -7,9 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import { AnalyticProjectsMembershipUseCase } from '@modules/analytic/use-cases/analytic.projects-membership.use-case';
+import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
 
-describe('AnalyticProjectsMembershipUseCase', () => {
+describe('AnalyticWorkspacesMembershipListUseCase', () => {
     const analyticDashboardService: MockProxy<AnalyticDashboardService> =
         mock<AnalyticDashboardService>();
 
@@ -25,7 +25,7 @@ describe('AnalyticProjectsMembershipUseCase', () => {
         orderBy: [],
     };
 
-    let useCase: AnalyticProjectsMembershipUseCase;
+    let useCase: AnalyticWorkspacesMembershipListUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -36,7 +36,7 @@ describe('AnalyticProjectsMembershipUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                AnalyticProjectsMembershipUseCase,
+                AnalyticWorkspacesMembershipListUseCase,
                 {
                     provide: AnalyticDashboardService,
                     useValue: analyticDashboardService,
@@ -46,7 +46,7 @@ describe('AnalyticProjectsMembershipUseCase', () => {
             ],
         }).compile();
 
-        useCase = module.get(AnalyticProjectsMembershipUseCase);
+        useCase = module.get(AnalyticWorkspacesMembershipListUseCase);
     });
 
     describe('execute', () => {
@@ -59,9 +59,11 @@ describe('AnalyticProjectsMembershipUseCase', () => {
                 totalPage: 1,
                 hasNext: false,
                 hasPrevious: false,
-                data: [{ projectId: 'project-1', count: 4 }],
+                data: [{ workspaceId: 'workspace-1', count: 3 }],
             };
-            analyticDashboardService.projectsMembership.mockResolvedValue(page);
+            analyticDashboardService.workspacesMembership.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -70,7 +72,7 @@ describe('AnalyticProjectsMembershipUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticDashboardService.projectsMembership
+                analyticDashboardService.workspacesMembership
             ).toHaveBeenCalledWith(pagination);
         });
     });

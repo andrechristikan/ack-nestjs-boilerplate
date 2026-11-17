@@ -3,6 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { RoleWithPoliciesInclude } from '@modules/role/constants/role.constant';
 
 /** @public */
 export const UserContextStoreKey = 'UserContextStoreKey';
@@ -65,6 +66,11 @@ export const UserMobileNumberSummarySelect = {
 } satisfies Prisma.UserMobileNumberSelect;
 
 /** @public */
+export const UserWithRoleInclude = {
+    role: { include: RoleWithPoliciesInclude },
+} satisfies Prisma.UserInclude;
+
+/** @public */
 export const UserAdminListSelect = {
     id: true,
     name: true,
@@ -96,9 +102,7 @@ export const UserAdminListSelect = {
     deletedAt: true,
     deletedBy: true,
     role: {
-        include: {
-            policies: true,
-        },
+        include: RoleWithPoliciesInclude,
     },
 } satisfies Prisma.UserSelect;
 

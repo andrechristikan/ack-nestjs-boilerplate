@@ -2,41 +2,31 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
+import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
 import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
+import type { IAnalyticProjectCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
-export class AnalyticWorkspacesActivityVolumeUseCase implements IAppUseCase<
-    [AnalyticWorkspacesActivityVolumeListRequestDto],
-    IResponsePaginationReturn<IAnalyticWorkspaceCount>
+export class AnalyticProjectsMembershipListUseCase implements IAppUseCase<
+    [AnalyticProjectsMembershipListRequestDto],
+    IResponsePaginationReturn<IAnalyticProjectCount>
 > {
     constructor(
         private readonly analyticDashboardService: AnalyticDashboardService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async execute(
-        query: AnalyticWorkspacesActivityVolumeListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
+        query: AnalyticProjectsMembershipListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableOrderBy: [],
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
-        const range = this.analyticDateService.requireRange(
-            query.startDate,
-            query.endDate
-        );
 
-        return this.analyticDashboardService.workspacesActivityVolume(
-            range.startDate,
-            range.endDate,
-            params
-        );
+        return this.analyticDashboardService.projectsMembership(params);
     }
 }

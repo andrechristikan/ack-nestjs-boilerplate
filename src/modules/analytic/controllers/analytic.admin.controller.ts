@@ -198,10 +198,10 @@ import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/a
 import { AnalyticWorkspacesVisibilityUseCase } from '@modules/analytic/use-cases/analytic.workspaces-visibility.use-case';
 import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
 import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
-import { AnalyticWorkspacesMembershipUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership.use-case';
-import { AnalyticWorkspacesActivityVolumeUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume.use-case';
+import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
+import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
 import { AnalyticProjectsCreationUseCase } from '@modules/analytic/use-cases/analytic.projects-creation.use-case';
-import { AnalyticProjectsMembershipUseCase } from '@modules/analytic/use-cases/analytic.projects-membership.use-case';
+import { AnalyticProjectsMembershipListUseCase } from '@modules/analytic/use-cases/analytic.projects-membership-list.use-case';
 import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
 import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
@@ -290,10 +290,10 @@ export class AnalyticAdminController {
         private readonly analyticWorkspacesVisibilityUseCase: AnalyticWorkspacesVisibilityUseCase,
         private readonly analyticWorkspacesInviteFunnelUseCase: AnalyticWorkspacesInviteFunnelUseCase,
         private readonly analyticWorkspacesJoinOutcomesUseCase: AnalyticWorkspacesJoinOutcomesUseCase,
-        private readonly analyticWorkspacesMembershipUseCase: AnalyticWorkspacesMembershipUseCase,
-        private readonly analyticWorkspacesActivityVolumeUseCase: AnalyticWorkspacesActivityVolumeUseCase,
+        private readonly analyticWorkspacesMembershipListUseCase: AnalyticWorkspacesMembershipListUseCase,
+        private readonly analyticWorkspacesActivityVolumeListUseCase: AnalyticWorkspacesActivityVolumeListUseCase,
         private readonly analyticProjectsCreationUseCase: AnalyticProjectsCreationUseCase,
-        private readonly analyticProjectsMembershipUseCase: AnalyticProjectsMembershipUseCase,
+        private readonly analyticProjectsMembershipListUseCase: AnalyticProjectsMembershipListUseCase,
         private readonly analyticCredentialStuffingSummaryUseCase: AnalyticCredentialStuffingSummaryUseCase,
         private readonly analyticCredentialStuffingListUseCase: AnalyticCredentialStuffingListUseCase,
         private readonly analyticAccountTakeoverSummaryUseCase: AnalyticAccountTakeoverSummaryUseCase,
@@ -1364,7 +1364,7 @@ export class AnalyticAdminController {
     }
 
     @Doc({ summary: 'admin get member counts per workspace' })
-    @ResponsePagination('analytic.workspacesMembership', {
+    @ResponsePagination('analytic.workspacesMembershipList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1377,16 +1377,16 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/membership')
-    async workspacesMembership(
+    @Get('/workspaces/membership/list')
+    async workspacesMembershipList(
         @Query({ schema: AnalyticWorkspacesMembershipListRequestSchema })
         query: AnalyticWorkspacesMembershipListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.analyticWorkspacesMembershipUseCase.execute(query);
+        return this.analyticWorkspacesMembershipListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get activity volume per workspace by date range' })
-    @ResponsePagination('analytic.workspacesActivityVolume', {
+    @ResponsePagination('analytic.workspacesActivityVolumeList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1399,12 +1399,12 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/activity-volume')
-    async workspacesActivityVolume(
+    @Get('/workspaces/activity-volume/list')
+    async workspacesActivityVolumeList(
         @Query({ schema: AnalyticWorkspacesActivityVolumeListRequestSchema })
         query: AnalyticWorkspacesActivityVolumeListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.analyticWorkspacesActivityVolumeUseCase.execute(query);
+        return this.analyticWorkspacesActivityVolumeListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get project creation counts by date range' })
@@ -1430,7 +1430,7 @@ export class AnalyticAdminController {
     }
 
     @Doc({ summary: 'admin get member counts per project' })
-    @ResponsePagination('analytic.projectsMembership', {
+    @ResponsePagination('analytic.projectsMembershipList', {
         schema: AnalyticProjectCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1443,12 +1443,12 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/projects/membership')
-    async projectsMembership(
+    @Get('/projects/membership/list')
+    async projectsMembershipList(
         @Query({ schema: AnalyticProjectsMembershipListRequestSchema })
         query: AnalyticProjectsMembershipListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        return this.analyticProjectsMembershipUseCase.execute(query);
+        return this.analyticProjectsMembershipListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get credential stuffing fraud summary' })

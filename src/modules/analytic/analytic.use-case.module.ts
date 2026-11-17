@@ -57,10 +57,10 @@ import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/a
 import { AnalyticWorkspacesVisibilityUseCase } from '@modules/analytic/use-cases/analytic.workspaces-visibility.use-case';
 import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
 import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
-import { AnalyticWorkspacesMembershipUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership.use-case';
-import { AnalyticWorkspacesActivityVolumeUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume.use-case';
+import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
+import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
 import { AnalyticProjectsCreationUseCase } from '@modules/analytic/use-cases/analytic.projects-creation.use-case';
-import { AnalyticProjectsMembershipUseCase } from '@modules/analytic/use-cases/analytic.projects-membership.use-case';
+import { AnalyticProjectsMembershipListUseCase } from '@modules/analytic/use-cases/analytic.projects-membership-list.use-case';
 import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
 import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
@@ -151,10 +151,10 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspacesVisibilityUseCase,
         AnalyticWorkspacesInviteFunnelUseCase,
         AnalyticWorkspacesJoinOutcomesUseCase,
-        AnalyticWorkspacesMembershipUseCase,
-        AnalyticWorkspacesActivityVolumeUseCase,
+        AnalyticWorkspacesMembershipListUseCase,
+        AnalyticWorkspacesActivityVolumeListUseCase,
         AnalyticProjectsCreationUseCase,
-        AnalyticProjectsMembershipUseCase,
+        AnalyticProjectsMembershipListUseCase,
         AnalyticCredentialStuffingSummaryUseCase,
         AnalyticCredentialStuffingListUseCase,
         AnalyticAccountTakeoverSummaryUseCase,
@@ -242,10 +242,10 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspacesVisibilityUseCase,
         AnalyticWorkspacesInviteFunnelUseCase,
         AnalyticWorkspacesJoinOutcomesUseCase,
-        AnalyticWorkspacesMembershipUseCase,
-        AnalyticWorkspacesActivityVolumeUseCase,
+        AnalyticWorkspacesMembershipListUseCase,
+        AnalyticWorkspacesActivityVolumeListUseCase,
         AnalyticProjectsCreationUseCase,
-        AnalyticProjectsMembershipUseCase,
+        AnalyticProjectsMembershipListUseCase,
         AnalyticCredentialStuffingSummaryUseCase,
         AnalyticCredentialStuffingListUseCase,
         AnalyticAccountTakeoverSummaryUseCase,
