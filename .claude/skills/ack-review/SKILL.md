@@ -86,4 +86,4 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the pin's files, 
 
 ## Next
 
-A fresh session, then `/ack-doc .scratch/<feature>/plan.md`. Then the owner commits, then `/ack-pr`.
+`/ack-doc .scratch/<feature>/plan.md`: brings the docs in line with the code. Then the owner commits, then `/ack-pr`: writes the pull request text and opens it on the owner's word.

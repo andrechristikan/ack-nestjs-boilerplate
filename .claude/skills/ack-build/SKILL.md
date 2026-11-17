@@ -32,6 +32,7 @@ For each ticket whose blockers are `done`, in number order:
 ```
 Agent: coder
 Ticket: <the ticket path>
+Position: <n>/<total>
 Spec: <the spec path>
 Seam: <the ticket's Seam line>
 First failing spec: <the ticket's line>
@@ -40,7 +41,9 @@ Decisions to honour: <the plan's line>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the modules the ticket touches, pasted>
 ```
 
-2. A `DONE` hand-back that quotes each spec failing, then passing: tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
+`Position` counts the tickets `done` plus this one, over every ticket of the plan; a second dispatch on a ticket repeats its `Position`. Each time a ticket becomes `done`, tell the owner `<n>/<total>`.
+
+2. A `DONE <n>/<total>` hand-back that quotes each spec failing, then passing: tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
 3. `NEEDS_CONTEXT`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: answer from the spec when it answers. Otherwise ask the owner with `AskUserQuestion`; the answer joins the spec's `## Owner decisions` before the next dispatch.
 4. One check still failing after two coder dispatches: dispatch `debugger` with the symptom, then one `coder` with its pin. Stop with the evidence when the cause stays unknown.
 5. A schema delta in a hand-back: add the owner's `pnpm db:migrate` to the plan's `## Owner commands`.
@@ -69,4 +72,4 @@ Stop before the last ticket only when:
 
 ## Next
 
-A fresh session, then `/ack-review .scratch/<feature>/plan.md`.
+`/ack-review .scratch/<feature>/plan.md`: reviews the build into `review.md`, then settles and fixes the findings.

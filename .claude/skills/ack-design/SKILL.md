@@ -71,4 +71,4 @@ Ask the owner to approve the spec with `AskUserQuestion`. A change request revis
 
 ## Next
 
-A fresh session, then `/ack-plan .scratch/<feature>/spec.md`.
+`/ack-plan .scratch/<feature>/spec.md`: breaks the spec into tickets and the plan index, then asks for approval.

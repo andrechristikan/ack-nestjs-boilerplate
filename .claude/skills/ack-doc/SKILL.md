@@ -91,4 +91,4 @@ A CONFLICT is a doc and the code disagreeing about a decision, where the code ma
 
 ## Next
 
-`/ack-debug` for a CONFLICT resolved as the code being wrong. Otherwise the owner commits, then `/ack-pr`.
+`/ack-debug` for a CONFLICT resolved as the code being wrong: finds the root cause and fixes it. Otherwise the owner commits, then `/ack-pr`: writes the pull request text and opens it on the owner's word.

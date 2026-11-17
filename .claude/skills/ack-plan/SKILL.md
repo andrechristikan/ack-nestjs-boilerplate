@@ -102,4 +102,4 @@ Open: <each question and mismatch of both rounds, with the fix tried>
 
 ## Next
 
-A fresh session, then `/ack-harness .scratch/<feature>/plan.md` when `## Harness changes` holds an item, otherwise `/ack-build .scratch/<feature>/plan.md`.
+`/ack-harness .scratch/<feature>/plan.md` when `## Harness changes` holds an item: writes the rule and decision changes. Otherwise `/ack-build .scratch/<feature>/plan.md`: builds every ticket test-first.

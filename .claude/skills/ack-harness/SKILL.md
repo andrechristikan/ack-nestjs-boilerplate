@@ -64,4 +64,4 @@ bash .claude/hooks/check.sh
 
 ## Next
 
-After a plan's `## Harness changes`: `/ack-build <the plan path>`, or `/ack-review <the plan path>` when a review added the line. `/ack-debug` with the symptom for a recorded `src/` finding.
+After a plan's `## Harness changes`, `/ack-build <the plan path>`: builds every ticket test-first. `/ack-review <the plan path>` when a review added the line: reviews the build and settles the findings. `/ack-debug` with the symptom for a recorded `src/` finding: finds the root cause and fixes it.

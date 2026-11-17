@@ -73,4 +73,4 @@ Dispatch `reviewer` with `Depth: task`, the pin as the requirement, the changed 
 
 ## Next
 
-`/ack-pr` once the work is committed, or `/ack-design` when step 3 named it.
+`/ack-pr` once the work is committed: writes the pull request text and opens it on the owner's word. `/ack-design` when step 3 named it: settles the flow change into a spec.

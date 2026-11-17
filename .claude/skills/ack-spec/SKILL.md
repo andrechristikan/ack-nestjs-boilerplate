@@ -81,4 +81,4 @@ pnpm test:cov <scope>
 
 ## Next
 
-`/ack-debug` for a red spec whose cause is unknown, or for a sweep row the owner wants fixed. `/ack-design` when the fix changes a flow.
+`/ack-debug` for a red spec whose cause is unknown, or for a sweep row the owner wants fixed: finds the root cause and fixes it. `/ack-design` when the fix changes a flow: settles the change into a spec.

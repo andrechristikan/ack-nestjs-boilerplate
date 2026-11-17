@@ -113,6 +113,16 @@ Rule: `session.md`, MFA.
 
 - `requiredSetup` and enrolment at the next login: MFA is optional for everyone else, and a reset serves a user who lost the device.
 
+### The `mfa` flag switches enrolled factors off
+
+Rule: `feature-flag.md`, Gating.
+
+- A flag that closes enrolment only: a product that drops MFA would still challenge every enrolled user.
+- A switched-off method refused while MFA stays required: a user holding only that method is locked out until an admin reset.
+- Two flag keys, one per method: no single switch turns MFA off.
+- One passkey flag for every passkey role: switching MFA off would leave the passkey a second factor.
+- Passkey registration open when either flag is on: one route would read two flags, and a toggle's effect could not be told without the code.
+
 ### A passkey alone signs a user in
 
 Rule: `login.md`.
@@ -192,6 +202,14 @@ Rule: `credential-policy.md`, Re-authentication.
 - One code and one window for every action: a two-step flow waits, and a code for one action could serve another.
 - A time-boxed re-authenticated session: it adds session state and drops the one-use code.
 - A passkey standing for the code only: a passkey with user verification proves possession and the user at once, so a password beside it adds nothing.
+
+### TOTP enable proves an enrolled factor when no password was checked
+
+Rule: `credential-policy.md`, Re-authentication.
+
+- The session alone: a stolen or unlocked device could confirm its holder's authenticator on a passwordless account with a passkey.
+- A password required before enrolment: a social account would gain a phishable password and a forgot-password path.
+- A password or an email code alone when MFA is on: whoever holds the session and the password, or the inbox, could add a passkey that signs in alone.
 
 ## Verification
 

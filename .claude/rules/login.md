@@ -26,7 +26,7 @@ MFA and sessions: `session.md`. Role rank and policies: `role.md`. Passwords and
 - An admin-created or imported user is verified at create, whatever the role; the temporary password reaches only that inbox.
 - Admin import is a job: the route answers with its `outboxId`, and the admin is notified with `userImportResult`. Export answers with the file.
 - Every sensitive flow re-authenticates (`credential-policy.md`); a passwordless change-password sets the first password.
-- A passkey alone signs a user in (`UserLoginWithPasskeyUseCase`): the credential login's account checks, no further factor, `loginWith: passkey`.
+- A passkey alone signs a user in (`UserLoginWithPasskeyUseCase`): the credential login's account checks, no further factor, `loginWith: passkey`. The `loginWithPasskey` flag alone gates it (`MfaService.checkPasskeyLogin` reads no `mfa` flag); registering a passkey reads the `mfa` flag and its `passkeyAllowed`, never `loginWithPasskey`.
 - A password reset on an account with MFA on proves one enrolled method, a passkey included.
 - A mobile-number verification send inside `verification.resendInMinutes` answers 200 and sends nothing.
 - Self-delete rewrites `email` and `username` from the row id, which frees both for registration. An `admin` or `superAdmin` account cannot delete itself.

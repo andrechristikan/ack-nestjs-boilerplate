@@ -6,7 +6,7 @@
 
 ## Overview
 
-- A feature moves through `/ack-design`, `/ack-plan`, `/ack-harness`, `/ack-build`, `/ack-review`, and `/ack-doc`, then the owner's commit and `/ack-pr`. Each command ends by naming the next.
+- A feature moves through `/ack-design`, `/ack-plan`, `/ack-harness`, `/ack-build`, `/ack-review`, and `/ack-doc`, then the owner's commit and `/ack-pr`. Each command but `/ack-pr`, the last, ends by naming the next and what it does.
 - The owner approves the spec, the plan, and the fix list of the review. Nothing is committed without the owner's word.
 - Every behaviour is built test-first, at a seam agreed during design.
 - A fact that has to hold every time is a hook or a `deny` entry in `.claude/settings.json`, not a sentence.
@@ -89,11 +89,11 @@ Each command runs in a fresh session, so it starts from the files the previous o
 
 `/ack-build .scratch/<feature>/plan.md` runs in the session and does not stop until every ticket is done and the gates are green.
 
-1. One `coder` builds one ticket, test-first: a failing unit spec, then the code that turns it green.
-2. The session ticks the ticket and records the evidence in `plan.md`, then moves to the next ticket whose blockers are done.
+1. One `coder` builds one ticket, test-first: a failing unit spec, then the code that turns it green. Each dispatch carries the ticket's position, and the hand-back returns it (`DONE 3/10`).
+2. The session ticks the ticket, records the evidence in `plan.md`, and reports the position to the owner (`3/10`), then moves to the next ticket whose blockers are done.
 3. A check that still fails after two attempts goes to `debugger` for a root cause.
 4. The session runs the gates (`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, coverage per changed file) and boots the app when wiring changed.
-5. The session hands back the result and names `/ack-review`.
+5. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings.
 
 A build that was interrupted resumes from the first ticket that is not done.
 
@@ -107,7 +107,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 4. The session writes the fix list into `review.md` and the owner approves it.
 5. `coder` applies each kept finding as written. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature to the sweep log.
 6. The gates run again and a second `reviewer` reads the fixed findings. A finding still open goes to the owner.
-7. The session names `/ack-doc`, which ends by proposing the commit subject.
+7. The session names `/ack-doc`, which brings the docs in line with the code and ends by proposing the commit subject.
 
 ## Standalone Commands
 
