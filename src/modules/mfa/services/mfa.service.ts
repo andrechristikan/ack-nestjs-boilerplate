@@ -27,6 +27,11 @@ import type {
     IMfaStatus,
     IMfaVerifyInput,
 } from '@modules/mfa/interfaces/mfa.interface';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { MfaRepository } from '@modules/mfa/repositories/mfa.repository';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
@@ -37,6 +42,7 @@ import {
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -58,7 +64,8 @@ export class MfaService {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly featureFlagService: FeatureFlagService
     ) {
         this.maxAttempt = this.configService.get<number>('mfa.maxAttempt')!;
         this.lockDurationInMs = this.configService.get<number>(
@@ -164,13 +171,122 @@ export class MfaService {
             : null;
     }
 
-    async isEnabled(userId: string): Promise<boolean> {
+    private getMetadataKey(
+        method: EnumMfaMethod.totp | EnumMfaMethod.passkey
+    ): EnumFeatureFlagMetadataKey {
+        return method === EnumMfaMethod.totp
+            ? EnumFeatureFlagMetadataKey.totpAllowed
+            : EnumFeatureFlagMetadataKey.passkeyAllowed;
+    }
+
+    private async isFactorEffective(
+        isStored: boolean,
+        metadataKey: EnumFeatureFlagMetadataKey
+    ): Promise<boolean> {
+        if (!isStored) {
+            return false;
+        }
+
+        return this.featureFlagService.isMetadataAllowed(
+            EnumFeatureFlagKey.mfa,
+            metadataKey
+        );
+    }
+
+    private async checkProof(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        userId: string,
+        method: EnumMfaMethod,
+        { code, backupCode, passkeyResponse }: IMfaVerifyInput,
+        webAuthnChallenge: string | null
+    ): Promise<IMfaCheck> {
+        // Sequential by design: gate before the work it guards
+        const mfa = await this.mfaRepository.findOneByUserId(userId);
+        this.assertNotLocked(mfa);
+
+        let checked: IMfaCheck | null;
+        if (method === EnumMfaMethod.totp) {
+            const totpStep = await this.mfaTotpService.checkCode(userId, code);
+            checked =
+                totpStep === null
+                    ? null
+                    : {
+                          method,
+                          totpStep,
+                          backupCodeIndex: null,
+                          passkey: null,
+                      };
+        } else if (method === EnumMfaMethod.passkey) {
+            const passkey = await this.mfaPasskeyService.checkAssertion(
+                userId,
+                passkeyResponse,
+                webAuthnChallenge
+            );
+            checked =
+                passkey === null
+                    ? null
+                    : {
+                          method,
+                          totpStep: null,
+                          backupCodeIndex: null,
+                          passkey,
+                      };
+        } else {
+            checked = await this.checkBackupCode(mfa, backupCode);
+        }
+
+        if (checked === null) {
+            return this.throwFailedAttempt(
+                requestContext,
+                apiKeyContext,
+                userId,
+                method
+            );
+        }
+
+        return checked;
+    }
+
+    async assertEnrolmentAllowed(
+        method: EnumMfaMethod.totp | EnumMfaMethod.passkey
+    ): Promise<void> {
+        const metadataKey = this.getMetadataKey(method);
+
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            EnumFeatureFlagKey.mfa,
+            metadataKey
+        );
+    }
+
+    async assertHasFactor(userId: string): Promise<void> {
         const [hasTotp, hasPasskey] = await Promise.all([
             this.mfaTotpService.existsConfirmed(userId),
             this.mfaPasskeyService.existsByUser(userId),
         ]);
 
-        return hasTotp || hasPasskey;
+        if (!hasTotp && !hasPasskey) {
+            throw new MfaNotEnabledException();
+        }
+    }
+
+    async isEnabled(userId: string): Promise<boolean> {
+        const [hasTotp, hasPasskey] = await Promise.all([
+            this.mfaTotpService.existsConfirmed(userId),
+            this.mfaPasskeyService.existsByUser(userId),
+        ]);
+        const [isTotpEffective, isPasskeyEffective] = await Promise.all([
+            this.isFactorEffective(
+                hasTotp,
+                EnumFeatureFlagMetadataKey.totpAllowed
+            ),
+            this.isFactorEffective(
+                hasPasskey,
+                EnumFeatureFlagMetadataKey.passkeyAllowed
+            ),
+        ]);
+
+        return isTotpEffective || isPasskeyEffective;
     }
 
     async assertEnabled(userId: string): Promise<void> {
@@ -180,22 +296,32 @@ export class MfaService {
         }
     }
 
-    /** Answers the methods a login can finish with: totp with a confirmed TOTP, passkey with any passkey, backupCode while codes remain; empty when MFA is off. */
+    /** Answers the methods a login can finish with: totp and passkey for the factors the mfa flag allows, backupCode while one is effective and codes remain; empty when MFA is off. */
     async getLoginMethods(userId: string): Promise<EnumMfaMethod[]> {
         const [mfa, hasTotp, hasPasskey] = await Promise.all([
             this.mfaRepository.findOneByUserId(userId),
             this.mfaTotpService.existsConfirmed(userId),
             this.mfaPasskeyService.existsByUser(userId),
         ]);
-        if (!hasTotp && !hasPasskey) {
+        const [isTotpEffective, isPasskeyEffective] = await Promise.all([
+            this.isFactorEffective(
+                hasTotp,
+                EnumFeatureFlagMetadataKey.totpAllowed
+            ),
+            this.isFactorEffective(
+                hasPasskey,
+                EnumFeatureFlagMetadataKey.passkeyAllowed
+            ),
+        ]);
+        if (!isTotpEffective && !isPasskeyEffective) {
             return [];
         }
 
         const methods: EnumMfaMethod[] = [];
-        if (hasTotp) {
+        if (isTotpEffective) {
             methods.push(EnumMfaMethod.totp);
         }
-        if (hasPasskey) {
+        if (isPasskeyEffective) {
             methods.push(EnumMfaMethod.passkey);
         }
         if ((mfa?.backupCodes.length ?? 0) > 0) {
@@ -211,9 +337,19 @@ export class MfaService {
             this.mfaTotpService.getStatus(userId),
             this.mfaPasskeyService.getList(userId),
         ]);
+        const [isTotpEffective, isPasskeyEffective] = await Promise.all([
+            this.isFactorEffective(
+                totp.isEnabled,
+                EnumFeatureFlagMetadataKey.totpAllowed
+            ),
+            this.isFactorEffective(
+                passkeys.length > 0,
+                EnumFeatureFlagMetadataKey.passkeyAllowed
+            ),
+        ]);
 
         return {
-            isEnabled: totp.isEnabled || passkeys.length > 0,
+            isEnabled: isTotpEffective || isPasskeyEffective,
             backupCodesRemaining: mfa?.backupCodes.length ?? 0,
             totp,
             passkeys,
@@ -326,63 +462,64 @@ export class MfaService {
         }
     }
 
-    /** Checks the method's proof and writes nothing on a match; a missing method or an unavailable one throws uncounted, a lock throws MfaAttemptMaxException, and a mismatch counts one failure and throws MfaAttemptMaxException when it locked, else MfaPasskeyInvalidException for a passkey and MfaInvalidException for a code. */
+    /** Checks the method's proof and writes nothing on a match; a missing method, a method the mfa flag does not allow or the user has not enrolled, and a backup code with no effective factor or no code left throw uncounted, a lock throws MfaAttemptMaxException, and a mismatch counts one failure and throws MfaAttemptMaxException when it locked, else MfaPasskeyInvalidException for a passkey and MfaInvalidException for a code. */
     async check(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         userId: string,
-        { method, code, backupCode, passkeyResponse }: IMfaVerifyInput,
+        input: IMfaVerifyInput,
         webAuthnChallenge: string | null
     ): Promise<IMfaCheck> {
-        if (method === null) {
+        if (input.method === null) {
             throw new MfaMethodRequiredException();
         }
 
         // Sequential by design: gate before the work it guards
-        const mfa = await this.mfaRepository.findOneByUserId(userId);
-        this.assertNotLocked(mfa);
-
-        let checked: IMfaCheck | null;
-        if (method === EnumMfaMethod.totp) {
-            const totpStep = await this.mfaTotpService.checkCode(userId, code);
-            checked =
-                totpStep === null
-                    ? null
-                    : {
-                          method,
-                          totpStep,
-                          backupCodeIndex: null,
-                          passkey: null,
-                      };
-        } else if (method === EnumMfaMethod.passkey) {
-            const passkey = await this.mfaPasskeyService.checkAssertion(
-                userId,
-                passkeyResponse,
-                webAuthnChallenge
-            );
-            checked =
-                passkey === null
-                    ? null
-                    : {
-                          method,
-                          totpStep: null,
-                          backupCodeIndex: null,
-                          passkey,
-                      };
+        let isAllowed: boolean;
+        if (input.method === EnumMfaMethod.backupCode) {
+            isAllowed = await this.isEnabled(userId);
         } else {
-            checked = await this.checkBackupCode(mfa, backupCode);
-        }
-
-        if (checked === null) {
-            return this.throwFailedAttempt(
-                requestContext,
-                apiKeyContext,
-                userId,
-                method
+            const metadataKey = this.getMetadataKey(input.method);
+            isAllowed = await this.featureFlagService.isMetadataAllowed(
+                EnumFeatureFlagKey.mfa,
+                metadataKey
             );
         }
+        if (!isAllowed) {
+            throw new MfaMethodUnavailableException();
+        }
 
-        return checked;
+        return this.checkProof(
+            requestContext,
+            apiKeyContext,
+            userId,
+            input.method,
+            input,
+            webAuthnChallenge
+        );
+    }
+
+    /** Checks a passkey assertion for the passkey sign-in without reading the mfa flag; the lock and the failed-attempt count are those of check. */
+    async checkPasskeyLogin(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        userId: string,
+        passkeyResponse: AuthenticationResponseJSON,
+        webAuthnChallenge: string | null
+    ): Promise<IMfaCheck> {
+        return this.checkProof(
+            requestContext,
+            apiKeyContext,
+            userId,
+            EnumMfaMethod.passkey,
+            {
+                method: EnumMfaMethod.passkey,
+                code: null,
+                backupCode: null,
+                passkeyResponse,
+            },
+            webAuthnChallenge
+        );
     }
 
     /** Answers the TOTP step of a setup code against the pending secret; a mismatch counts one failure and throws as check does. */

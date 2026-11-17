@@ -171,23 +171,32 @@ export class FeatureFlagService {
         this.assertRollout(featureFlag.rolloutPercent, key, anonymousId);
     }
 
-    async validateFeatureFlagMetadata(
+    /** Answers true only for an enabled flag whose sub-key holds true; ignores rollout and targeting. */
+    async isMetadataAllowed(
         key: EnumFeatureFlagKey,
         metadataKey: EnumFeatureFlagMetadataKey
-    ): Promise<void> {
+    ): Promise<boolean> {
         const featureFlag = await this.getByKey(key);
         if (!featureFlag) {
             throw new FeatureFlagNotConfiguredException(key);
         } else if (!featureFlag.isEnable) {
-            throw new FeatureFlagDisabledException();
+            return false;
         }
 
         const metadata: unknown =
-            (featureFlag.metadata as Record<string, unknown>)?.[metadataKey] ??
-            null;
-        if (typeof metadata !== 'boolean') {
-            throw new FeatureFlagDisabledException();
-        } else if (!metadata) {
+            (featureFlag.metadata as Record<string, unknown> | null)?.[
+                metadataKey
+            ] ?? null;
+
+        return metadata === true;
+    }
+
+    async validateFeatureFlagMetadata(
+        key: EnumFeatureFlagKey,
+        metadataKey: EnumFeatureFlagMetadataKey
+    ): Promise<void> {
+        const isAllowed = await this.isMetadataAllowed(key, metadataKey);
+        if (!isAllowed) {
             throw new FeatureFlagDisabledException();
         }
     }

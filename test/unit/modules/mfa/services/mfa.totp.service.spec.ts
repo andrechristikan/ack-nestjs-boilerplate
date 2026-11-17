@@ -151,6 +151,32 @@ describe('MfaTotpService', () => {
         });
     });
 
+    describe('assertConfirmed', () => {
+        it('resolves when the user has a confirmed TOTP', async () => {
+            mfaTotpRepository.existsConfirmed.mockResolvedValue(true);
+
+            await expect(
+                service.assertConfirmed('user-quartz')
+            ).resolves.toBeUndefined();
+            expect(mfaTotpRepository.existsConfirmed).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+        });
+
+        it('throws MfaTotpNotEnabledException when the user has none', async () => {
+            mfaTotpRepository.existsConfirmed.mockResolvedValue(false);
+
+            await expect(
+                service.assertConfirmed('user-quartz')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.totpNotEnabled,
+                statusCodeKey: 'totpNotEnabled',
+                messagePath: 'mfa.error.totpNotEnabled',
+            });
+        });
+    });
+
     describe('existsConfirmedInTx', () => {
         it('reads on the tx', async () => {
             mfaTotpRepository.existsConfirmedInTx.mockResolvedValue(false);

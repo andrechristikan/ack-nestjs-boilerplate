@@ -12,6 +12,8 @@ import {
     ApiKeyContext,
     ApiKeyProtected,
 } from '@modules/api-key/decorators/api-key.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import {
     AuthJwtAccessContext,
@@ -96,6 +98,7 @@ export class MfaSharedController {
     @Response('mfa.status', { schema: MfaStatusResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -113,6 +116,7 @@ export class MfaSharedController {
     @Response('mfa.totp.setup', { schema: MfaTotpSetupResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -142,6 +146,7 @@ export class MfaSharedController {
     @Response('mfa.totp.enable', { schema: MfaBackupCodesResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -168,6 +173,7 @@ export class MfaSharedController {
     @Response('mfa.totp.disable')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -195,6 +201,7 @@ export class MfaSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -226,6 +233,7 @@ export class MfaSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -250,6 +258,7 @@ export class MfaSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -269,6 +278,7 @@ export class MfaSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -295,6 +305,7 @@ export class MfaSharedController {
     @Response('mfa.passkey.update')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -321,6 +332,7 @@ export class MfaSharedController {
     @Response('mfa.passkey.delete')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

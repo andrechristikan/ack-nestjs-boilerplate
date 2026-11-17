@@ -1,3 +1,4 @@
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -18,6 +19,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
@@ -106,6 +108,30 @@ describe('MfaEnableTotpUseCase', () => {
             mfaService.checkTotpSetupCode.mockResolvedValue(42);
             mfaService.createBackupCodesInTx.mockResolvedValue(['CODE000001']);
             activityLogService.recordEffect.mockReturnValue(entryEffect);
+        });
+
+        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+            const failure = new FeatureFlagDisabledException();
+            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toBe(failure);
+
+            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+                EnumMfaMethod.totp
+            );
+            expect(
+                userAuthService.assertReauthentication
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkTotpSetupCode).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('asserts the password with no old MFA proof, then checks the code of the new authenticator', async () => {
@@ -225,6 +251,27 @@ describe('MfaEnableTotpUseCase', () => {
                 apiKeyContext,
                 user,
                 expect.objectContaining({ password: null })
+            );
+        });
+
+        it('passes the backup code of the request on with the backupCode method', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                { code: '654321', backupCode: 'ABCD1234EF' }
+            );
+
+            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                user,
+                expect.objectContaining({
+                    method: EnumMfaMethod.backupCode,
+                    code: null,
+                    backupCode: 'ABCD1234EF',
+                })
             );
         });
 

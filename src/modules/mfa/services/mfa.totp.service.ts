@@ -145,6 +145,14 @@ export class MfaTotpService {
         return this.mfaTotpRepository.existsConfirmed(userId);
     }
 
+    async assertConfirmed(userId: string): Promise<void> {
+        const isConfirmed =
+            await this.mfaTotpRepository.existsConfirmed(userId);
+        if (!isConfirmed) {
+            throw new MfaTotpNotEnabledException();
+        }
+    }
+
     async existsConfirmedInTx(
         tx: IDatabaseTransactionClient,
         userId: string

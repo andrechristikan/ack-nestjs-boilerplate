@@ -29,6 +29,12 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { stubBackupCodes } from '@test/unit/helpers/test.unit.mfa.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
 import { MfaRepository } from '@modules/mfa/repositories/mfa.repository';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -65,6 +71,8 @@ describe('MfaService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const configGet = vi.fn<(key: string) => number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -182,15 +190,108 @@ describe('MfaService', () => {
                 { provide: MessageService, useValue: messageService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
+                { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
         service = module.get(MfaService);
+    });
+
+    describe('assertEnrolmentAllowed', () => {
+        it('asserts the mfa flag with totpAllowed for totp', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockResolvedValue();
+
+            await expect(
+                service.assertEnrolmentAllowed(EnumMfaMethod.totp)
+            ).resolves.toBeUndefined();
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.totpAllowed
+            );
+        });
+
+        it('asserts the mfa flag with passkeyAllowed for passkey', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockResolvedValue();
+
+            await service.assertEnrolmentAllowed(EnumMfaMethod.passkey);
+
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.passkeyAllowed
+            );
+        });
+
+        it('surfaces the exception the flag assert throws', async () => {
+            featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
+                new FeatureFlagDisabledException()
+            );
+
+            await expect(
+                service.assertEnrolmentAllowed(EnumMfaMethod.totp)
+            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+        });
     });
 
     describe('check', () => {
         beforeEach(() => {
             mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
+            mfaTotpService.existsConfirmed.mockResolvedValue(true);
+            mfaPasskeyService.existsByUser.mockResolvedValue(true);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
+        });
+
+        it.each([
+            ['totp', totpInput, EnumFeatureFlagMetadataKey.totpAllowed],
+            [
+                'passkey',
+                passkeyInput,
+                EnumFeatureFlagMetadataKey.passkeyAllowed,
+            ],
+        ])(
+            'throws MfaMethodUnavailableException uncounted for a %s the flag does not allow',
+            async (_label, input, metadataKey) => {
+                featureFlagService.isMetadataAllowed.mockImplementation(
+                    async (_key, key) => key !== metadataKey
+                );
+
+                await expect(
+                    service.check(
+                        requestContext,
+                        apiKeyContext,
+                        'user-quartz',
+                        input,
+                        'challenge-quartz'
+                    )
+                ).rejects.toMatchObject({
+                    statusCode: EnumMfaStatusCodeError.methodUnavailable,
+                });
+                expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+                expect(
+                    mfaRepository.incrementAttemptInTx
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it('throws MfaMethodUnavailableException uncounted for a backup code while no factor is effective', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(false);
+
+            await expect(
+                service.check(
+                    requestContext,
+                    apiKeyContext,
+                    'user-quartz',
+                    backupInput,
+                    null
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.methodUnavailable,
+            });
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
         it('counts one failure on the Mfa row and throws MfaInvalidException for a wrong totp code', async () => {
@@ -429,6 +530,7 @@ describe('MfaService', () => {
         beforeEach(() => {
             mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
         });
 
         it('counts one failure on the Mfa row and throws MfaPasskeyInvalidException for a library verification failure', async () => {
@@ -593,6 +695,80 @@ describe('MfaService', () => {
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(5);
+        });
+    });
+
+    describe('checkPasskeyLogin', () => {
+        beforeEach(() => {
+            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+            mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(false);
+        });
+
+        it('answers the passkey check of a matching assertion with both sub-keys off', async () => {
+            mfaPasskeyService.checkAssertion.mockResolvedValue({
+                id: 'passkey-one',
+                counter: 8,
+            });
+
+            await expect(
+                service.checkPasskeyLogin(
+                    requestContext,
+                    apiKeyContext,
+                    'user-quartz',
+                    passkeyResponse,
+                    'challenge-quartz'
+                )
+            ).resolves.toEqual({
+                method: EnumMfaMethod.passkey,
+                totpStep: null,
+                backupCodeIndex: null,
+                passkey: { id: 'passkey-one', counter: 8 },
+            });
+            expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
+                'user-quartz',
+                passkeyResponse,
+                'challenge-quartz'
+            );
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaAttemptMaxException under a lock', async () => {
+            mfaRepository.findOneByUserId.mockResolvedValue({
+                ...baseMfa,
+                lockedUntil: new Date('2026-03-01T00:10:00.000Z'),
+            });
+
+            await expect(
+                service.checkPasskeyLogin(
+                    requestContext,
+                    apiKeyContext,
+                    'user-quartz',
+                    passkeyResponse,
+                    'challenge-quartz'
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.attemptMax,
+            });
+            expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
+        });
+
+        it('counts one failure and throws MfaPasskeyInvalidException on a mismatch', async () => {
+            mfaPasskeyService.checkAssertion.mockResolvedValue(null);
+
+            await expect(
+                service.checkPasskeyLogin(
+                    requestContext,
+                    apiKeyContext,
+                    'user-quartz',
+                    passkeyResponse,
+                    'challenge-quartz'
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+            });
+            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
         });
     });
 
@@ -1017,6 +1193,7 @@ describe('MfaService', () => {
                 mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
                 mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
                 mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
+                featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
                 await expect(
                     service.getLoginMethods('user-quartz')
@@ -1031,16 +1208,72 @@ describe('MfaService', () => {
             });
             mfaTotpService.existsConfirmed.mockResolvedValue(true);
             mfaPasskeyService.existsByUser.mockResolvedValue(true);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
                 service.getLoginMethods('user-quartz')
             ).resolves.toEqual([EnumMfaMethod.totp, EnumMfaMethod.passkey]);
         });
 
+        it('reads no flag for a user with no stored factor', async () => {
+            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+            mfaTotpService.existsConfirmed.mockResolvedValue(false);
+            mfaPasskeyService.existsByUser.mockResolvedValue(false);
+
+            await expect(
+                service.getLoginMethods('user-quartz')
+            ).resolves.toEqual([]);
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            [
+                true,
+                true,
+                false,
+                true,
+                [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
+            ],
+            [
+                true,
+                true,
+                true,
+                false,
+                [EnumMfaMethod.totp, EnumMfaMethod.backupCode],
+            ],
+            [true, true, false, false, []],
+            [true, false, false, true, []],
+            [false, true, true, false, []],
+        ])(
+            'with a TOTP %s, a passkey %s, totpAllowed %s, and passkeyAllowed %s answers only the effective methods',
+            async (
+                hasTotp,
+                hasPasskey,
+                totpAllowed,
+                passkeyAllowed,
+                expected
+            ) => {
+                mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+                mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
+                mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
+                featureFlagService.isMetadataAllowed.mockImplementation(
+                    async (_key, metadataKey) =>
+                        metadataKey === EnumFeatureFlagMetadataKey.totpAllowed
+                            ? totpAllowed
+                            : passkeyAllowed
+                );
+
+                await expect(
+                    service.getLoginMethods('user-quartz')
+                ).resolves.toEqual(expected);
+            }
+        );
+
         it('leaves out backupCode when the user has no Mfa row', async () => {
             mfaRepository.findOneByUserId.mockResolvedValue(null);
             mfaTotpService.existsConfirmed.mockResolvedValue(true);
             mfaPasskeyService.existsByUser.mockResolvedValue(false);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
                 service.getLoginMethods('user-quartz')
@@ -1049,16 +1282,44 @@ describe('MfaService', () => {
     });
 
     describe('isEnabled', () => {
+        it('answers false and reads no flag for a user with no stored factor', async () => {
+            mfaTotpService.existsConfirmed.mockResolvedValue(false);
+            mfaPasskeyService.existsByUser.mockResolvedValue(false);
+
+            await expect(service.isEnabled('user-quartz')).resolves.toBe(false);
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
+        });
+
         it.each([
-            [true, false, true],
-            [false, true, true],
-            [true, true, true],
-            [false, false, false],
+            [true, false, true, true, true],
+            [true, false, false, true, false],
+            [true, false, true, false, true],
+            [true, false, false, false, false],
+            [false, true, true, true, true],
+            [false, true, false, true, true],
+            [false, true, true, false, false],
+            [false, true, false, false, false],
+            [true, true, true, true, true],
+            [true, true, false, true, true],
+            [true, true, true, false, true],
+            [true, true, false, false, false],
         ])(
-            'with a confirmed TOTP %s and a passkey %s answers %s',
-            async (hasTotp, hasPasskey, expected) => {
+            'with a confirmed TOTP %s, a passkey %s, totpAllowed %s, and passkeyAllowed %s answers %s',
+            async (
+                hasTotp,
+                hasPasskey,
+                totpAllowed,
+                passkeyAllowed,
+                expected
+            ) => {
                 mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
                 mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
+                featureFlagService.isMetadataAllowed.mockImplementation(
+                    async (_key, metadataKey) =>
+                        metadataKey === EnumFeatureFlagMetadataKey.totpAllowed
+                            ? totpAllowed
+                            : passkeyAllowed
+                );
 
                 await expect(service.isEnabled('user-quartz')).resolves.toBe(
                     expected
@@ -1067,10 +1328,45 @@ describe('MfaService', () => {
         );
     });
 
+    describe('assertHasFactor', () => {
+        it.each([
+            [true, false],
+            [false, true],
+        ])(
+            'resolves with a confirmed TOTP %s and a passkey %s without reading the flag',
+            async (hasTotp, hasPasskey) => {
+                mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
+                mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
+
+                await expect(
+                    service.assertHasFactor('user-quartz')
+                ).resolves.toBeUndefined();
+                expect(
+                    featureFlagService.isMetadataAllowed
+                ).not.toHaveBeenCalled();
+            }
+        );
+
+        it('throws MfaNotEnabledException with neither factor stored', async () => {
+            mfaTotpService.existsConfirmed.mockResolvedValue(false);
+            mfaPasskeyService.existsByUser.mockResolvedValue(false);
+
+            await expect(
+                service.assertHasFactor('user-quartz')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.notEnabled,
+                statusCodeKey: 'notEnabled',
+                messagePath: 'mfa.error.notEnabled',
+            });
+        });
+    });
+
     describe('assertEnabled', () => {
         it('answers nothing with MFA on', async () => {
             mfaTotpService.existsConfirmed.mockResolvedValue(false);
             mfaPasskeyService.existsByUser.mockResolvedValue(true);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
                 service.assertEnabled('user-quartz')
@@ -1114,6 +1410,7 @@ describe('MfaService', () => {
         ];
 
         it('answers the totp state, the passkeys, and the remaining backup codes', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
             mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaTotpService.getStatus.mockResolvedValue(confirmedTotp);
             mfaPasskeyService.getList.mockResolvedValue(passkeys);
@@ -1130,6 +1427,7 @@ describe('MfaService', () => {
         });
 
         it('is enabled through a passkey alone', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
             mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaTotpService.getStatus.mockResolvedValue(noTotp);
             mfaPasskeyService.getList.mockResolvedValue(passkeys);
@@ -1139,6 +1437,20 @@ describe('MfaService', () => {
                 backupCodesRemaining: 2,
                 totp: noTotp,
                 passkeys,
+            });
+        });
+
+        it('is not enabled while the only stored factor is switched off, and reports the stored state', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(false);
+            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+            mfaTotpService.getStatus.mockResolvedValue(confirmedTotp);
+            mfaPasskeyService.getList.mockResolvedValue([]);
+
+            await expect(service.getStatus('user-quartz')).resolves.toEqual({
+                isEnabled: false,
+                backupCodesRemaining: 2,
+                totp: confirmedTotp,
+                passkeys: [],
             });
         });
 
@@ -1371,6 +1683,15 @@ describe('MfaService', () => {
                 tx,
                 'user-quartz'
             );
+        });
+    });
+
+    describe('getMetadataKey', () => {
+        it.each([
+            [EnumMfaMethod.totp, EnumFeatureFlagMetadataKey.totpAllowed],
+            [EnumMfaMethod.passkey, EnumFeatureFlagMetadataKey.passkeyAllowed],
+        ] as const)('answers the sub-key of %s', (method, metadataKey) => {
+            expect(service['getMetadataKey'](method)).toBe(metadataKey);
         });
     });
 });

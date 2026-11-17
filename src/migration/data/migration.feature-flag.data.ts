@@ -37,6 +37,16 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         isEnable: true,
     },
     {
+        key: EnumFeatureFlagKey.mfa,
+        description: 'Enable multi-factor authentication, per method',
+        rolloutPercent: 100,
+        isEnable: true,
+        metadata: {
+            [EnumFeatureFlagMetadataKey.totpAllowed]: true,
+            [EnumFeatureFlagMetadataKey.passkeyAllowed]: true,
+        },
+    },
+    {
         key: EnumFeatureFlagKey.signUp,
         description: 'Enable user sign up',
         rolloutPercent: 100,

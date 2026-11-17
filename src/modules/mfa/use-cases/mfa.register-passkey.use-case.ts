@@ -16,6 +16,7 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-register.request.dto';
 import type { MfaPasskeyRegisterResponseDto } from '@modules/mfa/dtos/response/mfa.passkey-register.response.dto';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
@@ -65,6 +66,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         }: MfaPasskeyRegisterRequestDto
     ): Promise<IResponseReturn<MfaPasskeyRegisterResponseDto>> {
         // Sequential by design: gates before the work they guard
+        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey);
         const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,

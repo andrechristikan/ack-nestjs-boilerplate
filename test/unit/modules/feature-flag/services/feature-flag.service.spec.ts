@@ -404,6 +404,89 @@ describe('FeatureFlagService', () => {
         });
     });
 
+    describe('isMetadataAllowed', () => {
+        it('returns true for an enabled flag whose sub-key holds true', async () => {
+            cacheService.readThrough.mockResolvedValue({
+                ...baseFlag,
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: true },
+            });
+
+            await expect(
+                service.isMetadataAllowed(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
+            ).resolves.toBe(true);
+        });
+
+        it('returns false for an enabled flag whose sub-key holds false', async () => {
+            cacheService.readThrough.mockResolvedValue({
+                ...baseFlag,
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: false },
+            });
+
+            await expect(
+                service.isMetadataAllowed(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
+            ).resolves.toBe(false);
+        });
+
+        it('returns false for a disabled flag', async () => {
+            cacheService.readThrough.mockResolvedValue({
+                ...baseFlag,
+                isEnable: false,
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: true },
+            });
+
+            await expect(
+                service.isMetadataAllowed(
+                    EnumFeatureFlagKey.loginWithGoogle,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
+            ).resolves.toBe(false);
+        });
+
+        it('returns false for a missing sub-key, a non-boolean sub-key, and null metadata', async () => {
+            cacheService.readThrough.mockResolvedValueOnce({
+                ...baseFlag,
+                metadata: {},
+            });
+            cacheService.readThrough.mockResolvedValueOnce({
+                ...baseFlag,
+                metadata: { [EnumFeatureFlagMetadataKey.signUpAllowed]: 'yes' },
+            });
+            cacheService.readThrough.mockResolvedValueOnce({
+                ...baseFlag,
+                metadata: null,
+            });
+
+            for (let i = 0; i < 3; i++) {
+                await expect(
+                    service.isMetadataAllowed(
+                        EnumFeatureFlagKey.loginWithGoogle,
+                        EnumFeatureFlagMetadataKey.signUpAllowed
+                    )
+                ).resolves.toBe(false);
+            }
+        });
+
+        it('throws FeatureFlagNotConfiguredException when the flag is unregistered', async () => {
+            cacheService.readThrough.mockResolvedValue(null);
+
+            await expect(
+                service.isMetadataAllowed(
+                    EnumFeatureFlagKey.workspace,
+                    EnumFeatureFlagMetadataKey.signUpAllowed
+                )
+            ).rejects.toMatchObject({
+                constructor: FeatureFlagNotConfiguredException,
+                statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+            });
+        });
+    });
+
     describe('validateFeatureFlagMetadata', () => {
         it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
             cacheService.readThrough.mockResolvedValue(null);

@@ -5,7 +5,6 @@ import { UserReauthenticationRequestSchema } from '@modules/user/dtos/request/us
 export const MfaTotpEnableRequestSchema =
     UserReauthenticationRequestSchema.omit({
         method: true,
-        backupCode: true,
     }).extend({
         code: z
             .string()

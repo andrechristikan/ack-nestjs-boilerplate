@@ -243,7 +243,7 @@ export class UserAuthService {
         }
     }
 
-    /** Asserts one passkey proof as the whole re-authentication when both passkey fields are present; otherwise the current password when the account has one, an MFA proof when MFA is on except for the mfaTotpEnable action, and the email code of the action for an account with neither, writing nothing on a match. */
+    /** Asserts one passkey proof as the whole re-authentication when both passkey fields are present; otherwise the current password when the account has one, an MFA proof when MFA is on except for the mfaTotpEnable action after a password check, and the email code of the action for an account with neither, writing nothing on a match. */
     async assertReauthentication(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
@@ -282,7 +282,8 @@ export class UserAuthService {
         const isMfaEnabled = await this.mfaService.isEnabled(user.id);
         const requiresMfa =
             isMfaEnabled &&
-            action !== EnumUserReauthenticationAction.mfaTotpEnable;
+            (action !== EnumUserReauthenticationAction.mfaTotpEnable ||
+                !isPasswordChecked);
         let mfaCheck: IMfaCheck | null = null;
         if (requiresMfa) {
             mfaCheck = await this.mfaService.check(

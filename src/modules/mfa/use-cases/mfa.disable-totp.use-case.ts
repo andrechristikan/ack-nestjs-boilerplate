@@ -62,7 +62,7 @@ export class MfaDisableTotpUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         // Sequential by design: gate before the work it guards
-        await this.mfaService.assertEnabled(authContext.userId);
+        await this.mfaTotpService.assertConfirmed(authContext.userId);
         const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,

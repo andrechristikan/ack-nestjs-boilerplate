@@ -10,6 +10,7 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
@@ -50,6 +51,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         {
             code,
             password,
+            backupCode,
             passkeyChallengeToken,
             passkeyResponse,
             otp,
@@ -57,6 +59,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<MfaBackupCodesResponseDto>> {
         const { user } = userContext;
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
+        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp);
         const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,
@@ -64,9 +67,10 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
             {
                 action: EnumUserReauthenticationAction.mfaTotpEnable,
                 password: password ?? null,
-                method: null,
+                method:
+                    backupCode === undefined ? null : EnumMfaMethod.backupCode,
                 code: null,
-                backupCode: null,
+                backupCode: backupCode ?? null,
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,

@@ -23,7 +23,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
+import { MfaTotpNotEnabledException } from '@modules/mfa/exceptions/mfa.totp-not-enabled.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -99,6 +99,7 @@ describe('MfaDisableTotpUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
+        mfaTotpService.assertConfirmed.mockResolvedValue();
         userAuthService.assertReauthentication.mockResolvedValue(check);
         sessionService.revokeActiveByUserExceptInTx.mockResolvedValue(revoked);
 
@@ -177,9 +178,11 @@ describe('MfaDisableTotpUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(mfaService.assertEnabled).toHaveBeenCalledWith(
+            expect(mfaTotpService.assertConfirmed).toHaveBeenCalledWith(
                 'user-marten'
             );
+            expect(mfaService.isEnabled).not.toHaveBeenCalled();
+            expect(mfaService.assertEnabled).not.toHaveBeenCalled();
             expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -325,9 +328,10 @@ describe('MfaDisableTotpUseCase', () => {
             );
         });
 
-        it('asserts nothing and writes nothing when MFA is not enabled', async () => {
-            const failure = new MfaNotEnabledException();
-            mfaService.assertEnabled.mockRejectedValue(failure);
+        it('asserts nothing and writes nothing when the user has no confirmed TOTP', async () => {
+            mfaTotpService.assertConfirmed.mockRejectedValue(
+                new MfaTotpNotEnabledException()
+            );
 
             await expect(
                 useCase.execute(
@@ -337,7 +341,7 @@ describe('MfaDisableTotpUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toBe(failure);
+            ).rejects.toBeInstanceOf(MfaTotpNotEnabledException);
 
             expect(
                 userAuthService.assertReauthentication

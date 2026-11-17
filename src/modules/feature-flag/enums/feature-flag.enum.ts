@@ -7,6 +7,7 @@ export enum EnumFeatureFlagKey {
     signUp = 'signUp',
     changePassword = 'changePassword',
     workspace = 'workspace',
+    mfa = 'mfa',
 }
 
 /** @public */
@@ -15,4 +16,6 @@ export enum EnumFeatureFlagMetadataKey {
     forgotAllowed = 'forgotAllowed',
     invitationAllowed = 'invitationAllowed',
     joinRequestAllowed = 'joinRequestAllowed',
+    totpAllowed = 'totpAllowed',
+    passkeyAllowed = 'passkeyAllowed',
 }

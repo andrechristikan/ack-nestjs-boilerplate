@@ -1919,6 +1919,102 @@ describe('UserAuthService', () => {
             expect(mfaService.check).not.toHaveBeenCalled();
         });
 
+        it('checks the backup code of a passwordless account with MFA on for the mfaTotpEnable action', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue({
+                method: EnumMfaMethod.backupCode,
+                totpStep: null,
+                backupCodeIndex: 0,
+                passkey: null,
+            });
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        password: null,
+                        method: EnumMfaMethod.backupCode,
+                        code: null,
+                        backupCode: 'ABCD1234EF',
+                    }
+                )
+            ).resolves.toMatchObject({
+                isPasswordChecked: false,
+                mfa: { method: EnumMfaMethod.backupCode },
+                verificationId: null,
+            });
+            expect(mfaService.check).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                'user-halcyon',
+                {
+                    method: EnumMfaMethod.backupCode,
+                    code: null,
+                    backupCode: 'ABCD1234EF',
+                    passkeyResponse: null,
+                },
+                null
+            );
+        });
+
+        it('passes on the MfaMethodRequiredException for a passwordless account with MFA on and no proof at mfaTotpEnable', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockRejectedValue(
+                new MfaMethodRequiredException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        password: null,
+                        method: null,
+                        code: null,
+                    }
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                messagePath: 'mfa.error.methodRequired',
+            });
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).not.toHaveBeenCalled();
+        });
+
+        it('asks the email code of a passwordless account with MFA off for the mfaTotpEnable action', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+            userVerificationService.getOneActiveReauthentication.mockResolvedValue(
+                { id: 'verification-halcyon' } as never
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        password: null,
+                        otp: '123456',
+                    }
+                )
+            ).resolves.toMatchObject({
+                verificationId: 'verification-halcyon',
+            });
+            expect(mfaService.check).not.toHaveBeenCalled();
+        });
+
         it('asks no MFA code and returns no check with MFA off', async () => {
             await expect(
                 service.assertReauthentication(

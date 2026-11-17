@@ -12,6 +12,8 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import type { IMfaTotpSetup } from '@modules/mfa/interfaces/mfa.interface';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { MfaTotpSetupRequestDto } from '@modules/mfa/dtos/request/mfa.totp-setup.request.dto';
@@ -33,6 +35,7 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
     IResponseReturn<IMfaTotpSetup>
 > {
     constructor(
+        private readonly mfaService: MfaService,
         private readonly mfaTotpService: MfaTotpService,
         private readonly userAuthService: UserAuthService,
         private readonly activityLogService: ActivityLogService,
@@ -56,7 +59,8 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         }: MfaTotpSetupRequestDto
     ): Promise<IResponseReturn<IMfaTotpSetup>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: gates before the work they guard
+        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp);
         const check = await this.userAuthService.assertReauthentication(
             requestContext,
             apiKeyContext,

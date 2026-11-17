@@ -57,7 +57,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         );
         this.userService.assertUnblocked(target);
 
-        await this.mfaService.assertEnabled(userId);
+        await this.mfaService.assertHasFactor(userId);
 
         const now = this.helperDateService.create();
         await this.outboxService.withTransaction(async tx => {

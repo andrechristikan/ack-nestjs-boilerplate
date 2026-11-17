@@ -1,3 +1,4 @@
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -137,6 +138,32 @@ describe('MfaRegisterPasskeyUseCase', () => {
     });
 
     describe('execute', () => {
+        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+            const failure = new FeatureFlagDisabledException();
+            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(failure);
+
+            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+                EnumMfaMethod.passkey
+            );
+            expect(
+                userAuthService.assertReauthentication
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaChallengeService.getWebAuthnChallengeForUser
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication, then reads the registration challenge', async () => {
             await useCase.execute(
                 requestContext,

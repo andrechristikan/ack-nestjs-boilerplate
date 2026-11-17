@@ -1,3 +1,6 @@
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -15,6 +18,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('MfaGeneratePasskeyRegistrationUseCase', () => {
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
         mock<MfaPasskeyService>();
     const mfaChallengeService: MockProxy<MfaChallengeService> =
@@ -43,6 +47,7 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 MfaGeneratePasskeyRegistrationUseCase,
+                { provide: MfaService, useValue: mfaService },
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: DatabaseService, useValue: databaseService },
@@ -52,6 +57,23 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
     });
 
     describe('execute', () => {
+        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+            const failure = new FeatureFlagDisabledException();
+            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(authContext, userContext)
+            ).rejects.toBe(failure);
+
+            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+                EnumMfaMethod.passkey
+            );
+            expect(
+                mfaPasskeyService.getRegistrationOptions
+            ).not.toHaveBeenCalled();
+            expect(mfaChallengeService.create).not.toHaveBeenCalled();
+        });
+
         it('reads the options for the caller, stores the challenge of the options as a registration challenge without a transaction, and answers the token with the options', async () => {
             await expect(
                 useCase.execute(authContext, userContext)

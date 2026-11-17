@@ -139,7 +139,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
         mfaChallengeService.get.mockResolvedValue(challenge);
         mfaPasskeyService.getOneForLogin.mockResolvedValue(storedPasskey);
         userAuthService.getOneForPasskeyLogin.mockResolvedValue(baseUser);
-        mfaService.check.mockResolvedValue(checked);
+        mfaService.checkPasskeyLogin.mockResolvedValue(checked);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(
             'workspace-bramble'
         );
@@ -224,7 +224,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             mfaService.assertAttemptAvailable.mockImplementation(async () => {
                 callOrder.push('assertAttemptAvailable');
             });
-            mfaService.check.mockImplementation(async () => {
+            mfaService.checkPasskeyLogin.mockImplementation(async () => {
                 callOrder.push('check');
 
                 return checked;
@@ -265,18 +265,14 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(mfaService.assertAttemptAvailable).toHaveBeenCalledWith(
                 'user-bramble'
             );
-            expect(mfaService.check).toHaveBeenCalledWith(
+            expect(mfaService.checkPasskeyLogin).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 'user-bramble',
-                {
-                    method: EnumMfaMethod.passkey,
-                    code: null,
-                    backupCode: null,
-                    passkeyResponse,
-                },
+                passkeyResponse,
                 'challenge-webauthn'
             );
+            expect(mfaService.check).not.toHaveBeenCalled();
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
             ).toHaveBeenCalledWith('user-bramble', 'workspace-bramble');
@@ -356,7 +352,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(
                 userAuthService.getOneForPasskeyLogin
             ).not.toHaveBeenCalled();
-            expect(mfaService.check).not.toHaveBeenCalled();
+            expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
             expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -373,7 +369,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
             });
             expect(mfaService.assertAttemptAvailable).not.toHaveBeenCalled();
-            expect(mfaService.check).not.toHaveBeenCalled();
+            expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -388,12 +384,12 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
-            expect(mfaService.check).not.toHaveBeenCalled();
+            expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('issues nothing and opens no transaction when the check fails', async () => {
-            mfaService.check.mockRejectedValue(
+            mfaService.checkPasskeyLogin.mockRejectedValue(
                 new MfaPasskeyInvalidException()
             );
 

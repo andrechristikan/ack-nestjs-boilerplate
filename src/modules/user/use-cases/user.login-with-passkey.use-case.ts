@@ -13,7 +13,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
@@ -64,16 +63,11 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
             passkey.userId
         );
         await this.mfaService.assertAttemptAvailable(user.id);
-        const checked = await this.mfaService.check(
+        const checked = await this.mfaService.checkPasskeyLogin(
             requestContext,
             apiKeyContext,
             user.id,
-            {
-                method: EnumMfaMethod.passkey,
-                code: null,
-                backupCode: null,
-                passkeyResponse,
-            },
+            passkeyResponse,
             webAuthnChallenge
         );
         const lastWorkspaceId =

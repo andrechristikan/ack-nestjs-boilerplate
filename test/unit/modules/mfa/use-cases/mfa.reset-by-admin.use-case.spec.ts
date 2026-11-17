@@ -176,6 +176,7 @@ describe('MfaResetByAdminUseCase', () => {
         const authContext = buildAuthJwtAccessContext(admin.id);
 
         beforeEach(() => {
+            mfaService.assertHasFactor.mockResolvedValue();
             userService.getOneWithRole.mockResolvedValue(user);
             userUtil.mapActivityLogActorMetadata.mockReturnValue({
                 targetUserId: 'user-marten',
@@ -236,9 +237,10 @@ describe('MfaResetByAdminUseCase', () => {
             expect(userService.getOneWithRole).toHaveBeenCalledWith(
                 'user-marten'
             );
-            expect(mfaService.assertEnabled).toHaveBeenCalledWith(
+            expect(mfaService.assertHasFactor).toHaveBeenCalledWith(
                 'user-marten'
             );
+            expect(mfaService.isEnabled).not.toHaveBeenCalled();
             expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
             expect(mfaService.resetByAdminInTx).toHaveBeenCalledWith(
                 tx,
@@ -386,9 +388,10 @@ describe('MfaResetByAdminUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('throws MfaNotEnabledException before the transaction when the target has MFA off', async () => {
-            const failure = new MfaNotEnabledException();
-            mfaService.assertEnabled.mockRejectedValue(failure);
+        it('throws MfaNotEnabledException before the transaction when the target stores no factor', async () => {
+            mfaService.assertHasFactor.mockRejectedValue(
+                new MfaNotEnabledException()
+            );
 
             await expect(
                 useCase.execute(
@@ -398,9 +401,9 @@ describe('MfaResetByAdminUseCase', () => {
                     userContext,
                     'user-marten'
                 )
-            ).rejects.toBe(failure);
+            ).rejects.toBeInstanceOf(MfaNotEnabledException);
             expect(userService.assertUnblocked).toHaveBeenCalledBefore(
-                mfaService.assertEnabled
+                mfaService.assertHasFactor
             );
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });

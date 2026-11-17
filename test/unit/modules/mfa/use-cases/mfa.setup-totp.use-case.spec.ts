@@ -1,3 +1,5 @@
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -46,6 +48,7 @@ const passkeyResponse = {
 } as const;
 
 describe('MfaSetupTotpUseCase', () => {
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -102,6 +105,7 @@ describe('MfaSetupTotpUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 MfaSetupTotpUseCase,
+                { provide: MfaService, useValue: mfaService },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -113,6 +117,30 @@ describe('MfaSetupTotpUseCase', () => {
     });
 
     describe('execute', () => {
+        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+            const failure = new FeatureFlagDisabledException();
+            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { password: 'Current-pass1' }
+                )
+            ).rejects.toBe(failure);
+
+            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+                EnumMfaMethod.totp
+            );
+            expect(
+                userAuthService.assertReauthentication
+            ).not.toHaveBeenCalled();
+            expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('asserts the whole re-authentication request, the MFA proof included', async () => {
             await useCase.execute(
                 requestContext,

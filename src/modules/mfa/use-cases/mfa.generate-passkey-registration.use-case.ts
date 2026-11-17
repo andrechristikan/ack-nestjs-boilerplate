@@ -3,8 +3,10 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumMfaChallengePurpose } from '@generated/prisma-client/client';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyRegistrationGenerateResponseDto } from '@modules/mfa/dtos/response/mfa.passkey-registration-generate.response.dto';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -14,6 +16,7 @@ export class MfaGeneratePasskeyRegistrationUseCase implements IAppUseCase<
     IResponseReturn<MfaPasskeyRegistrationGenerateResponseDto>
 > {
     constructor(
+        private readonly mfaService: MfaService,
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly mfaChallengeService: MfaChallengeService
     ) {}
@@ -22,6 +25,8 @@ export class MfaGeneratePasskeyRegistrationUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         { user }: IUserContext
     ): Promise<IResponseReturn<MfaPasskeyRegistrationGenerateResponseDto>> {
+        // Sequential by design: gate before the work it guards
+        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey);
         const passkeyOptions =
             await this.mfaPasskeyService.getRegistrationOptions(
                 authContext.userId,

@@ -51,14 +51,20 @@ describe('MfaTotpEnableRequestSchema', () => {
         ).toThrow();
     });
 
-    it.each([
-        ['method', 'code'],
-        ['backupCode', 'ABCD1234EF'],
-    ])('rejects the discarded %s field', (key, value) => {
+    it('keeps an optional backup code', () => {
+        const result = MfaTotpEnableRequestSchema.parse({
+            ...payload,
+            backupCode: 'ABCD1234EF',
+        });
+
+        expect(result).toMatchObject({ backupCode: 'ABCD1234EF' });
+    });
+
+    it('rejects the discarded method field', () => {
         expect(() =>
             MfaTotpEnableRequestSchema.parse({
                 ...payload,
-                [key]: value,
+                method: 'code',
             })
         ).toThrow();
     });
