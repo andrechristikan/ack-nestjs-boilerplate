@@ -22,8 +22,8 @@ describe('AwsSESService', () => {
     let SESClient: typeof import('@aws-sdk/client-ses').SESClient;
 
     const configValues: Record<string, unknown> = {
-        'aws.ses.iam.key': 'ses-key',
-        'aws.ses.iam.secret': 'ses-secret',
+        'aws.ses.accessKeyId': 'ses-key',
+        'aws.ses.secretAccessKey': 'ses-secret',
         'aws.ses.identityArn': null,
         'aws.ses.region': 'us-east-1',
         'aws.ses.endpoint': null,
@@ -43,7 +43,7 @@ describe('AwsSESService', () => {
     describe('onModuleInit', () => {
         it('does not create a client when the key is missing', async () => {
             const service = await createAwsSesService(configValues, {
-                'aws.ses.iam.key': null,
+                'aws.ses.accessKeyId': null,
             });
 
             service.onModuleInit();
@@ -54,7 +54,7 @@ describe('AwsSESService', () => {
 
         it('does not create a client when the secret is missing', async () => {
             const service = await createAwsSesService(configValues, {
-                'aws.ses.iam.secret': null,
+                'aws.ses.secretAccessKey': null,
             });
 
             service.onModuleInit();

@@ -11,13 +11,13 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class UserVerificationUtil {
-    private readonly homeUrl: string;
-    private readonly verificationReferencePrefix: string;
-    private readonly verificationReferenceLength: number;
-    private readonly verificationExpiredInMinutes: number;
-    private readonly verificationTokenLength: number;
-    readonly verificationResendInMinutes: number;
-    private readonly verificationLinkPattern: string;
+    private readonly baseUrl: string;
+    private readonly referencePrefix: string;
+    private readonly referenceLength: number;
+    private readonly expiresInMinutes: number;
+    private readonly tokenLength: number;
+    readonly resendInMinutes: number;
+    private readonly linkPattern: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -25,38 +25,36 @@ export class UserVerificationUtil {
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService
     ) {
-        this.homeUrl = this.configService.get<string>('home.url')!;
+        this.baseUrl = this.configService.get<string>('frontend.baseUrl')!;
 
-        this.verificationReferencePrefix = this.configService.get<string>(
+        this.referencePrefix = this.configService.get<string>(
             'verification.reference.prefix'
         )!;
-        this.verificationReferenceLength = this.configService.get<number>(
+        this.referenceLength = this.configService.get<number>(
             'verification.reference.length'
         )!;
-        this.verificationExpiredInMinutes = this.configService.get<number>(
-            'verification.expiredInMinutes'
+        this.expiresInMinutes = this.configService.get<number>(
+            'verification.expiresInMinutes'
         )!;
-        this.verificationTokenLength = this.configService.get<number>(
+        this.tokenLength = this.configService.get<number>(
             'verification.tokenLength'
         )!;
-        this.verificationResendInMinutes = this.configService.get<number>(
+        this.resendInMinutes = this.configService.get<number>(
             'verification.resendInMinutes'
         )!;
-        this.verificationLinkPattern = this.configService.get<string>(
+        this.linkPattern = this.configService.get<string>(
             'verification.linkPattern'
         )!;
     }
 
     private createToken(): string {
-        return this.helperStringService.random(this.verificationTokenLength);
+        return this.helperStringService.random(this.tokenLength);
     }
 
     createReference(): string {
-        const random = this.helperStringService.random(
-            this.verificationReferenceLength
-        );
+        const random = this.helperStringService.random(this.referenceLength);
 
-        return `${this.verificationReferencePrefix}-${random}`;
+        return `${this.referencePrefix}-${random}`;
     }
 
     createExpiredAt(): Date {
@@ -64,17 +62,17 @@ export class UserVerificationUtil {
 
         return this.helperDateService.forward(
             now,
-            Duration.fromObject({ minutes: this.verificationExpiredInMinutes })
+            Duration.fromObject({ minutes: this.expiresInMinutes })
         );
     }
 
     createEmail(): IUserVerificationEmailCreate {
         const token = this.createToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = this.helperStringService.fillPattern(
-            this.verificationLinkPattern,
-            { homeUrl: this.homeUrl, token }
-        );
+        const link = this.helperStringService.fillPattern(this.linkPattern, {
+            frontendBaseUrl: this.baseUrl,
+            token,
+        });
         const reference = this.createReference();
         const expiredAt = this.createExpiredAt();
 
@@ -84,9 +82,9 @@ export class UserVerificationUtil {
             type: EnumVerificationType.email,
             token,
             hashedToken,
-            expiredInMinutes: this.verificationExpiredInMinutes,
+            expiredInMinutes: this.expiresInMinutes,
             link,
-            resendInMinutes: this.verificationResendInMinutes,
+            resendInMinutes: this.resendInMinutes,
         };
     }
 

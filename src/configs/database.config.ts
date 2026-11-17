@@ -3,7 +3,7 @@ import ms from 'ms';
 
 export interface IConfigDatabase {
     url: string;
-    debug: boolean;
+    debugEnabled: boolean;
     seedTransactionTimeoutInMs: number;
     seedBatchSize: number;
     serverSelectionTimeoutInMs: number;
@@ -15,7 +15,7 @@ export interface IConfigDatabase {
 export default registerAs('database', (): IConfigDatabase => {
     return {
         url: process.env.DATABASE_URL!,
-        debug: process.env.DATABASE_DEBUG === 'true',
+        debugEnabled: process.env.DATABASE_DEBUG_ENABLED === 'true',
         seedTransactionTimeoutInMs: ms('60s'),
         seedBatchSize: 1000,
         serverSelectionTimeoutInMs: ms('5s'),

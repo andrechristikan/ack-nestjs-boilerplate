@@ -27,7 +27,7 @@ describe('HealthSentryIndicator', () => {
 
         indicator = await createHealthSentryIndicator(
             buildConfigService({
-                'logger.sentry.dsn': 'https://key@sentry.io/1',
+                'sentry.dsn': 'https://key@sentry.io/1',
             }),
             healthIndicatorService
         );
@@ -36,7 +36,7 @@ describe('HealthSentryIndicator', () => {
     describe('isHealthy', () => {
         it('reports down as not configured when no DSN is set', async () => {
             const bare = await createHealthSentryIndicator(
-                buildConfigService({ 'logger.sentry.dsn': null }),
+                buildConfigService({ 'sentry.dsn': null }),
                 healthIndicatorService
             );
             session.down.mockReturnValue({ sentry: { status: 'down' } });

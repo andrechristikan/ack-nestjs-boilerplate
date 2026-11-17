@@ -40,8 +40,8 @@ import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.
 export class AwsSESService implements OnModuleInit {
     private readonly logger = new Logger(AwsSESService.name);
 
-    private readonly iamKey: string | null;
-    private readonly iamSecret: string | null;
+    private readonly accessKeyId: string | null;
+    private readonly secretAccessKey: string | null;
     private readonly identityArn: string | null;
     private readonly region: string | null;
     private readonly endpoint: string | null;
@@ -49,12 +49,14 @@ export class AwsSESService implements OnModuleInit {
     private sesClient: SESClient;
 
     constructor(private readonly configService: ConfigService) {
-        const iamKey = this.configService.get<string | null>('aws.ses.iam.key');
-        this.iamKey = iamKey ?? null;
-        const iamSecret = this.configService.get<string | null>(
-            'aws.ses.iam.secret'
+        const accessKeyId = this.configService.get<string | null>(
+            'aws.ses.accessKeyId'
         );
-        this.iamSecret = iamSecret ?? null;
+        this.accessKeyId = accessKeyId ?? null;
+        const secretAccessKey = this.configService.get<string | null>(
+            'aws.ses.secretAccessKey'
+        );
+        this.secretAccessKey = secretAccessKey ?? null;
         const identityArn = this.configService.get<string | null>(
             'aws.ses.identityArn'
         );
@@ -68,7 +70,7 @@ export class AwsSESService implements OnModuleInit {
     }
 
     onModuleInit(): void {
-        if (!this.iamKey || !this.iamSecret || !this.region) {
+        if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -78,8 +80,8 @@ export class AwsSESService implements OnModuleInit {
 
         this.sesClient = new SESClient({
             credentials: {
-                accessKeyId: this.iamKey,
-                secretAccessKey: this.iamSecret,
+                accessKeyId: this.accessKeyId,
+                secretAccessKey: this.secretAccessKey,
             },
             region: this.region,
             ...(this.endpoint ? { endpoint: this.endpoint } : {}),

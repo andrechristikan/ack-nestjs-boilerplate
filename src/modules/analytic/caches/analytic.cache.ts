@@ -24,22 +24,22 @@ export class AnalyticCache {
         private readonly helperStringService: HelperStringService
     ) {
         this.dashboardKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.dashboard'
+            'analytic.cache.dashboardKeyPattern'
         )!;
         this.dashboardPageKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.dashboardPage'
+            'analytic.cache.dashboardPageKeyPattern'
         )!;
         this.workspaceSummaryKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.workspaceSummary'
+            'analytic.cache.workspaceSummaryKeyPattern'
         )!;
         this.anomalySummaryKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.anomalySummary'
+            'analytic.cache.anomalySummaryKeyPattern'
         )!;
         this.fraudSummaryKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.fraudSummary'
+            'analytic.cache.fraudSummaryKeyPattern'
         )!;
         this.riskScoreKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.riskScore'
+            'analytic.cache.riskScoreKeyPattern'
         )!;
         this.dashboardTtlInMs = this.configService.get<number>(
             'analytic.cache.dashboardTtlInMs'

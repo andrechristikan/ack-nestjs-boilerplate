@@ -61,9 +61,9 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class TermPolicyService {
-    private readonly copyContentIdempotencyKeyPattern: string;
-    private readonly publishIdempotencyKeyPattern: string;
-    private readonly resendPublishIdempotencyKeyPattern: string;
+    private readonly copyContentPattern: string;
+    private readonly publishPattern: string;
+    private readonly resendPublishPattern: string;
 
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
@@ -79,16 +79,15 @@ export class TermPolicyService {
         private readonly activityLogService: ActivityLogService,
         private readonly termPolicyContentService: TermPolicyContentService
     ) {
-        this.copyContentIdempotencyKeyPattern = this.configService.get<string>(
+        this.copyContentPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.copyContentPattern'
         )!;
-        this.publishIdempotencyKeyPattern = this.configService.get<string>(
+        this.publishPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.publishPattern'
         )!;
-        this.resendPublishIdempotencyKeyPattern =
-            this.configService.get<string>(
-                'termPolicy.idempotencyKey.resendPublishPattern'
-            )!;
+        this.resendPublishPattern = this.configService.get<string>(
+            'termPolicy.idempotencyKey.resendPublishPattern'
+        )!;
     }
 
     private deleteContentEffect(path: string): ITermPolicyDeleteContentEffect {
@@ -105,7 +104,7 @@ export class TermPolicyService {
         payload: ITermPolicyCopyContentPayload
     ): ITermPolicyCopyContentEffect {
         const idempotencyKey = this.helperStringService.fillPattern(
-            this.copyContentIdempotencyKeyPattern,
+            this.copyContentPattern,
             {
                 process: EnumTermPolicyProcess.copyContent,
                 termPolicyId: payload.termPolicyId,
@@ -126,7 +125,7 @@ export class TermPolicyService {
         proceedBy: string
     ): ITermPolicyPublishEffect {
         const idempotencyKey = this.helperStringService.fillPattern(
-            this.publishIdempotencyKeyPattern,
+            this.publishPattern,
             {
                 process: EnumTermPolicyProcess.publish,
                 termPolicyId: payload.termPolicyId,
@@ -173,7 +172,7 @@ export class TermPolicyService {
     ): ITermPolicyPublishEffect {
         const resendNonce = this.databaseUtil.createId();
         const idempotencyKey = this.helperStringService.fillPattern(
-            this.resendPublishIdempotencyKeyPattern,
+            this.resendPublishPattern,
             {
                 process: EnumTermPolicyProcess.publish,
                 termPolicyId: payload.termPolicyId,

@@ -13,7 +13,7 @@ export class HealthGoogleIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {
         const clientId = this.configService.get<string | null>(
-            'auth.google.clientId'
+            'auth.social.google.clientId'
         );
 
         this.clientId = clientId ?? null;

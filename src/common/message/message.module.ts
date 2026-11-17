@@ -26,8 +26,9 @@ export class MessageModule {
                         new HeaderResolver([RequestCustomLangHeaderName]),
                     ],
                     useFactory: (configService: ConfigService) => ({
-                        fallbackLanguage:
-                            configService.get<string>('message.language')!,
+                        fallbackLanguage: configService.get<string>(
+                            'message.defaultLanguage'
+                        )!,
                         fallbacks: Object.values(EnumMessageLanguage).reduce(
                             (a, v) => ({ ...a, [`${v}-*`]: v }),
                             {}

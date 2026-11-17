@@ -49,6 +49,8 @@
             "Bash(rsync:*)",
             "Bash(pnpm vault:pull*)",
             "Bash(pnpm run vault:pull*)",
+            "Bash(pnpm vault:push*)",
+            "Bash(pnpm run vault:push*)",
             "Bash(sh ci/vault/*)",
             "Edit(~/.claude/**)",
             "Bash(git commit:*)",

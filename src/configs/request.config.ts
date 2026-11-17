@@ -36,16 +36,16 @@ export interface IConfigRequest {
     };
     timeoutInMs: number;
     cors: {
-        allowedMethod: string[];
-        allowedOrigin: string[];
-        allowedHeader: string[];
-        exposedHeader: string[];
+        allowedMethods: string[];
+        allowedOrigins: string[];
+        allowedHeaders: string[];
+        exposedHeaders: string[];
         maxAgeInSeconds: number;
     };
     helmet: {
         maxAgeInSeconds: number;
-        includeSubDomains: boolean;
-        preload: boolean;
+        includeSubDomainsEnabled: boolean;
+        preloadEnabled: boolean;
     };
     throttle: {
         default: IRequestThrottlePolicy;
@@ -81,7 +81,7 @@ export default registerAs('request', (): IConfigRequest => {
         },
         timeoutInMs: ms('30s'),
         cors: {
-            allowedMethod: [
+            allowedMethods: [
                 'GET',
                 'DELETE',
                 'PUT',
@@ -90,11 +90,11 @@ export default registerAs('request', (): IConfigRequest => {
                 'HEAD',
                 'OPTIONS',
             ],
-            allowedOrigin: process.env
-                .CORS_ALLOWED_ORIGIN!.split(',')
+            allowedOrigins: process.env
+                .REQUEST_CORS_ALLOWED_ORIGINS!.split(',')
                 .map(origin => origin.trim())
                 .filter(origin => origin !== ''),
-            allowedHeader: [
+            allowedHeaders: [
                 'Accept',
                 'Accept-Language',
                 'Content-Language',
@@ -119,7 +119,7 @@ export default registerAs('request', (): IConfigRequest => {
                 'X-Response-Time',
                 'user-agent',
             ],
-            exposedHeader: [
+            exposedHeaders: [
                 'Retry-After',
                 ...throttleHeaderSuffixes.flatMap(suffix =>
                     ['Limit', 'Remaining', 'Reset'].map(
@@ -138,8 +138,8 @@ export default registerAs('request', (): IConfigRequest => {
         },
         helmet: {
             maxAgeInSeconds: ms('365d') / 1000,
-            includeSubDomains: true,
-            preload: false,
+            includeSubDomainsEnabled: true,
+            preloadEnabled: false,
         },
         throttle: {
             default: {

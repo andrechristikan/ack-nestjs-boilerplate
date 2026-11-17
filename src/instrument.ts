@@ -4,6 +4,7 @@ import type { LogSeverityLevel } from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
+import sentryConfigFunction from '@configs/sentry.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { LoggerHttpMethodPrefixRegex } from '@common/logger/constants/logger.constant';
 import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
@@ -12,6 +13,7 @@ import { QueueException } from '@common/queue/exceptions/queue.exception';
 
 const appConfigs = appConfigFunction();
 const loggerConfigs = loggerConfigFunction();
+const sentryConfigs = sentryConfigFunction();
 const loggerUrlUtil = new LoggerUrlUtil();
 const sentryUtil = new SentryUtil(loggerUrlUtil);
 
@@ -20,17 +22,9 @@ const sentryLogLevels: LogSeverityLevel[] =
         ? ['warn', 'error', 'fatal']
         : ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
-const isProduction = appConfigs.env === EnumAppEnvironment.production;
-const tracesSampleRate = isProduction
-    ? loggerConfigs.sentry.tracesSampleRateProduction
-    : loggerConfigs.sentry.tracesSampleRate;
-const profilesSampleRate = isProduction
-    ? loggerConfigs.sentry.profilesSampleRateProduction
-    : loggerConfigs.sentry.profilesSampleRate;
-
-if (loggerConfigs.sentry.dsn) {
+if (sentryConfigs.dsn) {
     Sentry.init({
-        dsn: loggerConfigs.sentry.dsn,
+        dsn: sentryConfigs.dsn,
         debug: false,
         environment: appConfigs.env,
         release: appConfigs.version,
@@ -39,13 +33,13 @@ if (loggerConfigs.sentry.dsn) {
             nodeProfilingIntegration(),
             Sentry.pinoIntegration({ log: { levels: sentryLogLevels } }),
         ],
-        tracesSampleRate,
-        profilesSampleRate,
-        normalizeDepth: 3,
-        maxValueLength: 1000,
+        tracesSampleRate: sentryConfigs.tracesSampleRate,
+        profilesSampleRate: sentryConfigs.profilesSampleRate,
+        normalizeDepth: sentryConfigs.normalizeDepth,
+        maxValueLength: sentryConfigs.maxValueLength,
         attachStacktrace: true,
         sendDefaultPii: false,
-        maxBreadcrumbs: 30,
+        maxBreadcrumbs: sentryConfigs.maxBreadcrumbs,
         beforeSend(event, hint) {
             const originalException = hint?.originalException;
             if (
@@ -107,7 +101,7 @@ if (loggerConfigs.sentry.dsn) {
                 return 0;
             }
 
-            return tracesSampleRate;
+            return sentryConfigs.tracesSampleRate;
         },
     });
 }

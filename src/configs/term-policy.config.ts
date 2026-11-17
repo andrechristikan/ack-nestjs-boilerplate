@@ -2,8 +2,8 @@ import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 
 export interface IConfigTermPolicy {
-    uploadContentPath: string;
-    contentPublicPath: string;
+    uploadContentPathPattern: string;
+    contentPublicPathPattern: string;
     content: {
         maxSizeInBytes: number;
     };
@@ -15,8 +15,8 @@ export interface IConfigTermPolicy {
 }
 
 export default registerAs('termPolicy', (): IConfigTermPolicy => ({
-    uploadContentPath: 'term-policies/{type}/v{version}',
-    contentPublicPath: 'term-policies/{type}/v{version}',
+    uploadContentPathPattern: 'term-policies/{type}/v{version}',
+    contentPublicPathPattern: 'term-policies/{type}/v{version}',
     content: {
         maxSizeInBytes: bytes('10mb') ?? 0,
     },

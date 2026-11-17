@@ -17,6 +17,11 @@ import {
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
@@ -29,26 +34,19 @@ import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.i
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
 export class WorkspaceMemberService {
-    private readonly maxWorkspacesPerUser: number;
-
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly configService: ConfigService
-    ) {
-        this.maxWorkspacesPerUser = this.configService.get<number>(
-            'workspace.maxWorkspacesPerUser'
-        )!;
-    }
+        private readonly featureFlagService: FeatureFlagService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
     private isPeerActionAllowed(
         actorRole: EnumWorkspaceMemberRole,
@@ -95,6 +93,12 @@ export class WorkspaceMemberService {
         actorMember: WorkspaceMember,
         targetMember: WorkspaceMember
     ): Promise<void> {
+        const maxWorkspacesPerUser =
+            await this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+
         try {
             await this.outboxService.withTransaction(async tx => {
                 const ownedCount =
@@ -102,7 +106,7 @@ export class WorkspaceMemberService {
                         tx,
                         targetMember.userId
                     );
-                if (ownedCount >= this.maxWorkspacesPerUser) {
+                if (ownedCount >= maxWorkspacesPerUser) {
                     throw new WorkspaceCapReachedException();
                 }
 

@@ -82,12 +82,14 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                 otp: otp ?? null,
             }
         );
-        const webAuthnChallenge =
-            await this.mfaChallengeService.getWebAuthnChallengeForUser(
+        const [webAuthnChallenge, maxPerUser] = await Promise.all([
+            this.mfaChallengeService.getWebAuthnChallengeForUser(
                 challengeToken,
                 EnumMfaChallengePurpose.registration,
                 authContext.userId
-            );
+            ),
+            this.mfaPasskeyService.getMaxPerUser(),
+        ]);
 
         try {
             return await this.outboxService.withTransaction(async tx => {
@@ -109,7 +111,8 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                     authContext.userId,
                     name,
                     registrationResponse,
-                    webAuthnChallenge
+                    webAuthnChallenge,
+                    maxPerUser
                 );
                 const backupCodes = await this.mfaService.createBackupCodesInTx(
                     tx,

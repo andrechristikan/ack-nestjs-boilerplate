@@ -14,4 +14,5 @@ COPY . .
 
 EXPOSE 3000
 
-CMD [ "sh", "-c", "pnpm start:dev" ]
+# The container owns its src/generated (a tmpfs over the ./src bind) and fills it at every start.
+CMD [ "sh", "-c", "pnpm generate; pnpm start:dev" ]

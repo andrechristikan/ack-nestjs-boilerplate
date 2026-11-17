@@ -27,7 +27,7 @@ describe('UserUtil', () => {
     let util: UserUtil;
 
     const configValues: Record<string, string[]> = {
-        'message.availableLanguage': ['en'],
+        'message.availableLanguages': ['en'],
     };
 
     const user: User = {

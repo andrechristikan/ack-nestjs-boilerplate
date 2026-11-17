@@ -14,15 +14,15 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NotificationUtil {
-    private readonly encryptionSecretKey: string;
+    private readonly encryptionSecret: string;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
+        this.encryptionSecret = this.configService.get<string>(
+            'app.encryptionSecret'
         )!;
     }
 
@@ -148,7 +148,7 @@ export class NotificationUtil {
     decryptPayload(encrypted: string, context: string): string {
         return this.helperEncryptionService.aes256Decrypt(
             encrypted,
-            this.encryptionSecretKey,
+            this.encryptionSecret,
             NotificationPayloadEncryptionPurpose,
             context
         );

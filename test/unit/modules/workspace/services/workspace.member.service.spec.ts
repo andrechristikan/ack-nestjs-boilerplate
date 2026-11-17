@@ -1,5 +1,10 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
-import { ConfigService } from '@nestjs/config';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -37,7 +42,6 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     buildUser,
     buildRequestContext,
@@ -63,6 +67,8 @@ describe('WorkspaceMemberService', () => {
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {
@@ -92,6 +98,7 @@ describe('WorkspaceMemberService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        featureFlagService.getMetadataNumber.mockResolvedValue(5);
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -111,12 +118,7 @@ describe('WorkspaceMemberService', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                {
-                    provide: ConfigService,
-                    useValue: buildConfigService({
-                        'workspace.maxWorkspacesPerUser': 5,
-                    }),
-                },
+                { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
 
@@ -395,6 +397,78 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 'user-2'
             );
+            expect(
+                workspaceMemberRepository.promoteToOwnerInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('refuses a transfer to a user owning 2 workspaces when the flag caps at 2', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(2);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+
+            await expect(
+                service.transferOwnership(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'user-2'
+                )
+            ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+        });
+
+        it('allows a transfer to a user owning 2 workspaces when the flag caps at 3', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(3);
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+
+            await expect(
+                service.transferOwnership(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'user-2'
+                )
+            ).resolves.toBeUndefined();
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+                target
+            );
+
+            await expect(
+                service.transferOwnership(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'user-2'
+                )
+            ).rejects.toBe(notConfigured);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).not.toHaveBeenCalled();

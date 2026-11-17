@@ -20,11 +20,11 @@ export interface IConfigRedis {
 export default registerAs('redis', (): IConfigRedis => {
     return {
         cache: {
-            url: process.env.CACHE_REDIS_URL!,
+            url: process.env.REDIS_CACHE_URL!,
             namespace: 'Cache',
         },
         queue: {
-            url: process.env.QUEUE_REDIS_URL!,
+            url: process.env.REDIS_QUEUE_URL!,
             namespace: 'Queue',
             connectTimeoutInMs: ms('5s'),
             maxRetriesPerRequest: 1,

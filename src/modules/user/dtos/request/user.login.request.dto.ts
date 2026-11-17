@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { EnumUserLoginFrom } from '@generated/prisma-client/client';
 import { DeviceRequestSchema } from '@modules/device/dtos/request/device.request.dto';
+import { UserPasswordMaxLength } from '@modules/user/constants/user.constant';
 
 /** @public */
 export const UserLoginRequestSchema = z.strictObject({
@@ -20,7 +21,7 @@ export const UserLoginRequestSchema = z.strictObject({
     password: z
         .string()
         .min(1)
-        .max(64)
+        .max(UserPasswordMaxLength)
         .meta({
             description: 'string password, at most 64 characters',
             example: faker.string.alphanumeric(10),

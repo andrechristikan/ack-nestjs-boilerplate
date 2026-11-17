@@ -3,7 +3,7 @@ import bytes from 'bytes';
 import ms from 'ms';
 
 export interface IConfigUser {
-    uploadPhotoProfilePath: string;
+    uploadPhotoProfilePathPattern: string;
     photo: {
         maxSizeInBytes: number;
         filenameRandomLength: number;
@@ -26,7 +26,7 @@ export interface IConfigUser {
 }
 
 export default registerAs('user', (): IConfigUser => ({
-    uploadPhotoProfilePath: 'users/{userId}/profile',
+    uploadPhotoProfilePathPattern: 'users/{userId}/profile',
     photo: {
         maxSizeInBytes: bytes('2mb') ?? 0,
         filenameRandomLength: 20,

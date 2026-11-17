@@ -25,7 +25,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, IWorkspaceContext],
     IResponseReturn<void>
 > {
-    private readonly deleteTimeoutInMs: number;
+    private readonly timeoutInMs: number;
 
     constructor(
         private readonly workspaceService: WorkspaceService,
@@ -38,7 +38,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.deleteTimeoutInMs = this.configService.get<number>(
+        this.timeoutInMs = this.configService.get<number>(
             'workspace.delete.timeoutInMs'
         )!;
     }
@@ -89,7 +89,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
                     );
                     await this.outboxService.addInTx(tx, entry);
                 },
-                { timeout: this.deleteTimeoutInMs }
+                { timeout: this.timeoutInMs }
             );
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

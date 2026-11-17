@@ -38,10 +38,10 @@ describe('NotificationEmailDeliveryService', () => {
         vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values: Record<string, string> = {
-                'email.noreply': 'noreply@example.com',
-                'email.support': 'support@example.com',
-                'home.name': 'Home',
-                'home.url': 'https://home.example.com',
+                'email.noReplyAddress': 'noreply@example.com',
+                'email.supportAddress': 'support@example.com',
+                'frontend.name': 'Home',
+                'frontend.baseUrl': 'https://home.example.com',
             };
 
             return values[key];

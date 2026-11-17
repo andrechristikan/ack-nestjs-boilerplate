@@ -16,7 +16,7 @@ import { RequestUtil } from '@common/request/utils/request.util';
 @Injectable()
 export class RequestThrottleRouteGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.route;
-    private readonly policies: IRequestThrottleRoutePolicies;
+    private readonly throttleRoute: IRequestThrottleRoutePolicies;
 
     constructor(
         private readonly reflector: Reflector,
@@ -24,9 +24,10 @@ export class RequestThrottleRouteGuard implements CanActivate {
         private readonly requestUtil: RequestUtil,
         private readonly requestThrottleService: RequestThrottleService
     ) {
-        this.policies = this.configService.get<IRequestThrottleRoutePolicies>(
-            'request.throttle.route'
-        )!;
+        this.throttleRoute =
+            this.configService.get<IRequestThrottleRoutePolicies>(
+                'request.throttle.route'
+            )!;
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,7 +40,7 @@ export class RequestThrottleRouteGuard implements CanActivate {
             return true;
         }
 
-        const policy = this.policies[options.route];
+        const policy = this.throttleRoute[options.route];
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const response = context.switchToHttp().getResponse<Response>();
         const ip = this.requestUtil.getClientIp(request);

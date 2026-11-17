@@ -12,18 +12,18 @@ import {
 @Injectable()
 export class RequestHelmetMiddleware implements NestMiddleware {
     private readonly maxAgeInSeconds: number;
-    private readonly includeSubDomains: boolean;
-    private readonly preload: boolean;
+    private readonly includeSubDomainsEnabled: boolean;
+    private readonly preloadEnabled: boolean;
 
     constructor(private readonly configService: ConfigService) {
         this.maxAgeInSeconds = this.configService.get<number>(
             'request.helmet.maxAgeInSeconds'
         )!;
-        this.includeSubDomains = this.configService.get<boolean>(
-            'request.helmet.includeSubDomains'
+        this.includeSubDomainsEnabled = this.configService.get<boolean>(
+            'request.helmet.includeSubDomainsEnabled'
         )!;
-        this.preload = this.configService.get<boolean>(
-            'request.helmet.preload'
+        this.preloadEnabled = this.configService.get<boolean>(
+            'request.helmet.preloadEnabled'
         )!;
     }
 
@@ -45,8 +45,8 @@ export class RequestHelmetMiddleware implements NestMiddleware {
             crossOriginResourcePolicy: { policy: 'same-origin' },
             strictTransportSecurity: {
                 maxAge: this.maxAgeInSeconds,
-                includeSubDomains: this.includeSubDomains,
-                preload: this.preload,
+                includeSubDomains: this.includeSubDomainsEnabled,
+                preload: this.preloadEnabled,
             },
             xContentTypeOptions: true,
             xDownloadOptions: true,

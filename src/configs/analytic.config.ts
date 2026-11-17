@@ -7,14 +7,12 @@ export interface IConfigAnalytic {
         anomalySummaryTtlInMs: number;
         fraudSummaryTtlInMs: number;
         riskScoreTtlInMs: number;
-        keyPatterns: {
-            dashboard: string;
-            dashboardPage: string;
-            workspaceSummary: string;
-            anomalySummary: string;
-            fraudSummary: string;
-            riskScore: string;
-        };
+        dashboardKeyPattern: string;
+        dashboardPageKeyPattern: string;
+        workspaceSummaryKeyPattern: string;
+        anomalySummaryKeyPattern: string;
+        fraudSummaryKeyPattern: string;
+        riskScoreKeyPattern: string;
         windowTokenPattern: string;
     };
     maxWindowInMs: number;
@@ -112,16 +110,14 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         anomalySummaryTtlInMs: ms('15m'),
         fraudSummaryTtlInMs: ms('15m'),
         riskScoreTtlInMs: ms('15m'),
-        keyPatterns: {
-            dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
-            dashboardPage:
-                'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
-            workspaceSummary:
-                'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
-            anomalySummary: 'Analytic:Anomaly:{signal}:{window}',
-            fraudSummary: 'Analytic:Fraud:{signal}:{window}',
-            riskScore: 'Analytic:Fraud:Risk:{userId}',
-        },
+        dashboardKeyPattern: 'Analytic:Dashboard:{metric}:{start}:{end}',
+        dashboardPageKeyPattern:
+            'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
+        workspaceSummaryKeyPattern:
+            'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
+        anomalySummaryKeyPattern: 'Analytic:Anomaly:{signal}:{window}',
+        fraudSummaryKeyPattern: 'Analytic:Fraud:{signal}:{window}',
+        riskScoreKeyPattern: 'Analytic:Fraud:Risk:{userId}',
         windowTokenPattern: '{start}:{end}',
     },
     maxWindowInMs: ms('90d'),

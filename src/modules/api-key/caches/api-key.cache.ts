@@ -4,38 +4,38 @@ import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 
 @Injectable()
 export class ApiKeyCache {
-    private readonly apiKeyKeyPattern: string;
-    readonly apiKeyTtlInMs: number;
-    private readonly apiKeyLeaseKeyPattern: string;
-    private readonly apiKeyLeaseTtlInMs: number;
+    private readonly keyPattern: string;
+    readonly cacheTtlInMs: number;
+    private readonly leaseKeyPattern: string;
+    private readonly leaseTtlInMs: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.apiKeyKeyPattern = this.configService.get<string>(
+        this.keyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
         )!;
-        this.apiKeyTtlInMs = this.configService.get<number>(
+        this.cacheTtlInMs = this.configService.get<number>(
             'auth.xApiKey.cacheTtlInMs'
         )!;
-        this.apiKeyLeaseKeyPattern = this.configService.get<string>(
+        this.leaseKeyPattern = this.configService.get<string>(
             'auth.xApiKey.leaseKeyPattern'
         )!;
-        this.apiKeyLeaseTtlInMs = this.configService.get<number>(
+        this.leaseTtlInMs = this.configService.get<number>(
             'auth.xApiKey.leaseTtlInMs'
         )!;
     }
 
     private buildApiKeyLeaseKey(key: string): string {
-        return this.apiKeyLeaseKeyPattern.replace('{key}', () => key);
+        return this.leaseKeyPattern.replace('{key}', () => key);
     }
 
     buildApiKeyKey(key: string): string {
-        return this.apiKeyKeyPattern.replace('{key}', () => key);
+        return this.keyPattern.replace('{key}', () => key);
     }
 
     buildApiKeyLease(key: string): ICacheLease {
         const leaseKey = this.buildApiKeyLeaseKey(key);
 
-        return { key: leaseKey, ttlInMs: this.apiKeyLeaseTtlInMs };
+        return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
     /** The entry key and its lease key. */

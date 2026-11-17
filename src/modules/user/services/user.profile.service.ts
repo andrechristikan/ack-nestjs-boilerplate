@@ -48,7 +48,7 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 export class UserProfileService {
     private readonly logger = new Logger(UserProfileService.name);
     private readonly photoFilenameRandomLength: number;
-    private readonly uploadPhotoProfilePath: string;
+    private readonly uploadPhotoProfilePathPattern: string;
     private readonly photoMaxSizeInBytes: number;
 
     constructor(
@@ -64,8 +64,8 @@ export class UserProfileService {
         this.photoFilenameRandomLength = this.configService.get<number>(
             'user.photo.filenameRandomLength'
         )!;
-        this.uploadPhotoProfilePath = this.configService.get<string>(
-            'user.uploadPhotoProfilePath'
+        this.uploadPhotoProfilePathPattern = this.configService.get<string>(
+            'user.uploadPhotoProfilePathPattern'
         )!;
         this.photoMaxSizeInBytes = this.configService.get<number>(
             'user.photo.maxSizeInBytes'
@@ -73,7 +73,10 @@ export class UserProfileService {
     }
 
     private buildPhotoProfilePath(userId: string): string {
-        return this.uploadPhotoProfilePath.replace('{userId}', () => userId);
+        return this.uploadPhotoProfilePathPattern.replace(
+            '{userId}',
+            () => userId
+        );
     }
 
     private isPhotoProfileKeyOwned(userId: string, key: string): boolean {

@@ -17,7 +17,7 @@ export class UserUtil {
         private readonly helperDateService: HelperDateService
     ) {
         const availableLanguages = this.configService.get<string[]>(
-            'message.availableLanguage'
+            'message.availableLanguages'
         )!;
         this.profanity = new Profanity({
             languages: availableLanguages,

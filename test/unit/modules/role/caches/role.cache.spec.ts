@@ -35,9 +35,9 @@ describe('RoleCache', () => {
         cache = module.get(RoleCache);
     });
 
-    describe('roleTtlInMs', () => {
+    describe('cacheTtlInMs', () => {
         it('reads the TTL from role.cacheTtlInMs', () => {
-            expect(cache.roleTtlInMs).toBe(3600000);
+            expect(cache.cacheTtlInMs).toBe(3600000);
             expect(configGet).toHaveBeenCalledWith('role.cacheTtlInMs');
         });
     });

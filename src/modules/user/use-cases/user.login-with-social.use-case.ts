@@ -57,7 +57,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     ],
     IResponseReturn<IUserLoginOutcome>
 > {
-    private readonly userRoleName: string;
+    private readonly defaultRole: string;
     private readonly createTimeoutInMs: number;
 
     constructor(
@@ -84,8 +84,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
+        this.defaultRole = this.configService.get<string>('user.default.role')!;
         this.createTimeoutInMs = this.configService.get<number>(
             'user.create.timeoutInMs'
         )!;
@@ -110,7 +109,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 loginSocial.username
             );
         const [role, usernameCheck] = await Promise.all([
-            this.roleService.getByName(this.userRoleName),
+            this.roleService.getByName(this.defaultRole),
             this.userService.checkUsername(loginSocial.username),
             this.countryService.getOne(loginSocial.countryId),
         ]);

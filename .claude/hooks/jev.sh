@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Jev, TypeSafe's decision model, for the coder effort. Run by the session in two places, never as a hook: ack-plan's
-# level step (one ticket) and ack-review's fix list (one finding). TYPESAFE_API_KEY and JEV_ROUTER_DISABLED come from
+# level step (one ticket) and ack-review's fix list (one finding). TYPESAFE_API_KEY and JEV_ROUTER_ENABLED come from
 # the environment, else from the root .env.harness (NAME=value lines, the owner's, gitignored). Calls Jev only when the
-# key is set and JEV_ROUTER_DISABLED is not 1; otherwise it prints an off block and the caller uses the ack-plan table.
+# key is set and JEV_ROUTER_ENABLED is not false; otherwise it prints an off block and the caller uses the ack-plan table.
 #   level     one ticket or finding, JSON on stdin {"request","location"}: prints a <jev_level> block with the effort
 #             coder runs it at.
 # The question, its threshold, and the ceiling (max) live in jev.json; coder's floor is the model: and effort: of
@@ -19,12 +19,12 @@ from_harness() {
     sed -n "s/^$1=//p" "$harness_env" | tail -n 1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
 }
 : "${TYPESAFE_API_KEY:=$(from_harness TYPESAFE_API_KEY)}"
-: "${JEV_ROUTER_DISABLED:=$(from_harness JEV_ROUTER_DISABLED)}"
+: "${JEV_ROUTER_ENABLED:=$(from_harness JEV_ROUTER_ENABLED)}"
 export TYPESAFE_API_KEY
 
 state=on
 [ -n "${TYPESAFE_API_KEY:-}" ] || state=no-key
-[ "${JEV_ROUTER_DISABLED:-0}" = "1" ] && state=disabled
+[ "${JEV_ROUTER_ENABLED:-true}" = "false" ] && state=disabled
 
 config="$root/.claude/hooks/jev.json"
 [ -f "$config" ] || exit 0
@@ -109,7 +109,7 @@ def level():
     if state == "no-key":
         return block(f"off (TYPESAFE_API_KEY not set); {fallback}")
     if state == "disabled":
-        return block(f"off (JEV_ROUTER_DISABLED=1); {fallback}")
+        return block(f"off (JEV_ROUTER_ENABLED=false); {fallback}")
 
     a = ask({"repository": cfg["repository"], "request": request, "location": location}, cfg["level_questions"])
     if isinstance(a, str):

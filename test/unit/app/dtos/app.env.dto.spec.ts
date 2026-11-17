@@ -1,13 +1,12 @@
 import { AppEnvSchema } from '@app/dtos/app.env.dto';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import {
     buildBlankEnv,
-    isEveryEnvBlank,
+    isEveryEnvPlaceholder,
     omitKey,
     readEnvExample,
+    readEnvExampleLines,
 } from '@test/unit/helpers/test.unit.app-env.helper';
 
 describe('AppEnvSchema', () => {
@@ -19,29 +18,24 @@ describe('AppEnvSchema', () => {
         validEnv = {
             APP_NAME: 'ack',
             APP_ENV: EnumAppEnvironment.local,
-            APP_LANGUAGE: EnumMessageLanguage.en,
-            APP_ENCRYPTION_SECRET_KEY: encryptionSecret,
-            APP_TIMEZONE: EnumRequestTimezone.asiaJakarta,
+            APP_ENCRYPTION_SECRET: encryptionSecret,
 
-            HOME_NAME: 'ack',
-            HOME_URL: 'http://localhost:3000',
+            FRONTEND_NAME: 'ack',
+            FRONTEND_BASE_URL: 'http://localhost:3000',
 
-            HTTP_HOST: 'localhost',
-            HTTP_PORT: '3000',
+            APP_HTTP_HOST: 'localhost',
+            APP_HTTP_PORT: '3000',
 
-            LOGGER_ENABLE: 'true',
+            LOGGER_ENABLED: 'true',
             LOGGER_LEVEL: EnumLoggerLevel.info,
-            LOGGER_INTO_FILE: 'false',
-            LOGGER_PRETTIER: 'false',
-            LOGGER_AUTO: 'true',
+            LOGGER_FILE_ENABLED: 'false',
+            LOGGER_PRETTY_ENABLED: 'false',
+            LOGGER_ACCESS_LOG_ENABLED: 'true',
 
-            CORS_ALLOWED_ORIGIN: '*',
-
-            URL_VERSIONING_ENABLE: 'true',
-            URL_VERSION: '1',
+            REQUEST_CORS_ALLOWED_ORIGINS: '*',
 
             DATABASE_URL: 'mongodb://localhost:27017/ack',
-            DATABASE_DEBUG: 'false',
+            DATABASE_DEBUG_ENABLED: 'false',
 
             AUTH_JWT_AUDIENCE: 'https://example.com',
             AUTH_JWT_ISSUER: 'ack',
@@ -49,21 +43,22 @@ describe('AppEnvSchema', () => {
             AUTH_JWT_ACCESS_TOKEN_KID: 'access-kid',
             AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: 'access-private-key',
             AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: 'access-public-key',
-            AUTH_JWT_ACCESS_TOKEN_EXPIRED: '15m',
             AUTH_JWT_REFRESH_TOKEN_JWKS_URI:
                 'http://localhost:3011/.well-known',
             AUTH_JWT_REFRESH_TOKEN_KID: 'refresh-kid',
             AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: 'refresh-private-key',
             AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
-            AUTH_JWT_REFRESH_TOKEN_EXPIRED: '7d',
 
             MFA_TOTP_ISSUER: 'ack',
-            MFA_TOTP_ENCRYPTION_KEY: encryptionSecret,
+            MFA_TOTP_ENCRYPTION_SECRET: encryptionSecret,
             MFA_PASSKEY_RP_ID: 'localhost',
             MFA_PASSKEY_ORIGINS: 'http://localhost:3000',
 
-            CACHE_REDIS_URL: 'redis://localhost:6379/0',
-            QUEUE_REDIS_URL: 'redis://localhost:6379/1',
+            REDIS_CACHE_URL: 'redis://localhost:6379/0',
+            REDIS_QUEUE_URL: 'redis://localhost:6379/1',
+
+            SENTRY_TRACES_SAMPLE_RATE: '0.3',
+            SENTRY_PROFILES_SAMPLE_RATE: '0.3',
         };
     });
 
@@ -74,29 +69,24 @@ describe('AppEnvSchema', () => {
             expect(result).toEqual({
                 APP_NAME: 'ack',
                 APP_ENV: EnumAppEnvironment.local,
-                APP_LANGUAGE: EnumMessageLanguage.en,
-                APP_ENCRYPTION_SECRET_KEY: encryptionSecret,
-                APP_TIMEZONE: EnumRequestTimezone.asiaJakarta,
+                APP_ENCRYPTION_SECRET: encryptionSecret,
 
-                HOME_NAME: 'ack',
-                HOME_URL: 'http://localhost:3000',
+                FRONTEND_NAME: 'ack',
+                FRONTEND_BASE_URL: 'http://localhost:3000',
 
-                HTTP_HOST: 'localhost',
-                HTTP_PORT: 3000,
+                APP_HTTP_HOST: 'localhost',
+                APP_HTTP_PORT: 3000,
 
-                LOGGER_ENABLE: true,
+                LOGGER_ENABLED: true,
                 LOGGER_LEVEL: EnumLoggerLevel.info,
-                LOGGER_INTO_FILE: false,
-                LOGGER_PRETTIER: false,
-                LOGGER_AUTO: true,
+                LOGGER_FILE_ENABLED: false,
+                LOGGER_PRETTY_ENABLED: false,
+                LOGGER_ACCESS_LOG_ENABLED: true,
 
-                CORS_ALLOWED_ORIGIN: '*',
-
-                URL_VERSIONING_ENABLE: true,
-                URL_VERSION: 1,
+                REQUEST_CORS_ALLOWED_ORIGINS: '*',
 
                 DATABASE_URL: 'mongodb://localhost:27017/ack',
-                DATABASE_DEBUG: false,
+                DATABASE_DEBUG_ENABLED: false,
 
                 AUTH_JWT_AUDIENCE: 'https://example.com',
                 AUTH_JWT_ISSUER: 'ack',
@@ -105,39 +95,38 @@ describe('AppEnvSchema', () => {
                 AUTH_JWT_ACCESS_TOKEN_KID: 'access-kid',
                 AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: 'access-private-key',
                 AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: 'access-public-key',
-                AUTH_JWT_ACCESS_TOKEN_EXPIRED: '15m',
                 AUTH_JWT_REFRESH_TOKEN_JWKS_URI:
                     'http://localhost:3011/.well-known',
                 AUTH_JWT_REFRESH_TOKEN_KID: 'refresh-kid',
                 AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: 'refresh-private-key',
                 AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
-                AUTH_JWT_REFRESH_TOKEN_EXPIRED: '7d',
 
                 MFA_TOTP_ISSUER: 'ack',
-                MFA_TOTP_ENCRYPTION_KEY: encryptionSecret,
+                MFA_TOTP_ENCRYPTION_SECRET: encryptionSecret,
                 MFA_PASSKEY_RP_ID: 'localhost',
                 MFA_PASSKEY_ORIGINS: 'http://localhost:3000',
 
-                CACHE_REDIS_URL: 'redis://localhost:6379/0',
-                QUEUE_REDIS_URL: 'redis://localhost:6379/1',
+                REDIS_CACHE_URL: 'redis://localhost:6379/0',
+                REDIS_QUEUE_URL: 'redis://localhost:6379/1',
+                SENTRY_TRACES_SAMPLE_RATE: 0.3,
+                SENTRY_PROFILES_SAMPLE_RATE: 0.3,
 
-                EMAIL_NO_REPLY: null,
-                EMAIL_SUPPORT: null,
-                HTTP_TRUSTED_PROXY: null,
+                EMAIL_NO_REPLY_ADDRESS: null,
+                EMAIL_SUPPORT_ADDRESS: null,
+                APP_HTTP_TRUSTED_PROXIES: null,
                 AUTH_SOCIAL_GOOGLE_CLIENT_ID: null,
-                AUTH_SOCIAL_APPLE_CLIENT_ID: null,
-                AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: null,
-                AWS_S3_IAM_CREDENTIAL_KEY: null,
-                AWS_S3_IAM_CREDENTIAL_SECRET: null,
-                AWS_S3_IAM_ARN: null,
+                AUTH_SOCIAL_APPLE_CLIENT_IDS: null,
+                AWS_S3_ACCESS_KEY_ID: null,
+                AWS_S3_SECRET_ACCESS_KEY: null,
+                AWS_S3_IAM_PRINCIPAL_ARN: null,
                 AWS_S3_REGION: null,
                 AWS_S3_ENDPOINT: null,
                 AWS_S3_PUBLIC_BUCKET: null,
-                AWS_S3_PUBLIC_CDN: null,
+                AWS_S3_PUBLIC_CDN_URL: null,
                 AWS_S3_PRIVATE_BUCKET: null,
-                AWS_S3_PRIVATE_CDN: null,
-                AWS_SES_IAM_CREDENTIAL_KEY: null,
-                AWS_SES_IAM_CREDENTIAL_SECRET: null,
+                AWS_S3_PRIVATE_CDN_URL: null,
+                AWS_SES_ACCESS_KEY_ID: null,
+                AWS_SES_SECRET_ACCESS_KEY: null,
                 AWS_SES_IDENTITY_ARN: null,
                 AWS_SES_REGION: null,
                 AWS_SES_ENDPOINT: null,
@@ -151,23 +140,22 @@ describe('AppEnvSchema', () => {
         it('coerces the numeric variables to numbers', () => {
             const result = AppEnvSchema.parse(validEnv);
 
-            expect(result.HTTP_PORT).toBe(3000);
-            expect(result.URL_VERSION).toBe(1);
+            expect(result.APP_HTTP_PORT).toBe(3000);
         });
 
         it('coerces the boolean string variables to booleans', () => {
             const result = AppEnvSchema.parse(validEnv);
 
-            expect(result.LOGGER_ENABLE).toBe(true);
-            expect(result.LOGGER_INTO_FILE).toBe(false);
-            expect(result.DATABASE_DEBUG).toBe(false);
+            expect(result.LOGGER_ENABLED).toBe(true);
+            expect(result.LOGGER_FILE_ENABLED).toBe(false);
+            expect(result.DATABASE_DEBUG_ENABLED).toBe(false);
         });
 
         it('leaves the optional variables null when absent', () => {
             const result = AppEnvSchema.parse(validEnv);
 
-            expect(result.EMAIL_NO_REPLY).toBeNull();
-            expect(result.HTTP_TRUSTED_PROXY).toBeNull();
+            expect(result.EMAIL_NO_REPLY_ADDRESS).toBeNull();
+            expect(result.APP_HTTP_TRUSTED_PROXIES).toBeNull();
             expect(result.SENTRY_DSN).toBeNull();
             expect(result.FIREBASE_PROJECT_ID).toBeNull();
         });
@@ -184,40 +172,42 @@ describe('AppEnvSchema', () => {
 
     describe('invalid variables', () => {
         it.each([['true'], ['1'], ['loopbak'], ['10.0.0.0/33']])(
-            'rejects HTTP_TRUSTED_PROXY %s',
+            'rejects APP_HTTP_TRUSTED_PROXIES %s',
             value => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
-                    HTTP_TRUSTED_PROXY: value,
+                    APP_HTTP_TRUSTED_PROXIES: value,
                 });
 
                 expect(result.success).toBe(false);
                 expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: ['HTTP_TRUSTED_PROXY'] })
+                    expect.objectContaining({
+                        path: ['APP_HTTP_TRUSTED_PROXIES'],
+                    })
                 );
             }
         );
 
-        it('accepts a preset and CIDR list in HTTP_TRUSTED_PROXY', () => {
+        it('accepts a preset and CIDR list in APP_HTTP_TRUSTED_PROXIES', () => {
             const result = AppEnvSchema.parse({
                 ...validEnv,
-                HTTP_TRUSTED_PROXY: 'loopback,10.0.0.0/8',
+                APP_HTTP_TRUSTED_PROXIES: 'loopback,10.0.0.0/8',
             });
 
-            expect(result.HTTP_TRUSTED_PROXY).toBe('loopback,10.0.0.0/8');
+            expect(result.APP_HTTP_TRUSTED_PROXIES).toBe('loopback,10.0.0.0/8');
         });
 
         it.each([['not a url'], ['http://localhost:3000/']])(
-            'rejects HOME_URL %s',
+            'rejects FRONTEND_BASE_URL %s',
             value => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
-                    HOME_URL: value,
+                    FRONTEND_BASE_URL: value,
                 });
 
                 expect(result.success).toBe(false);
                 expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: ['HOME_URL'] })
+                    expect.objectContaining({ path: ['FRONTEND_BASE_URL'] })
                 );
             }
         );
@@ -250,7 +240,7 @@ describe('AppEnvSchema', () => {
 
         it.each([
             ['MFA_TOTP_ISSUER'],
-            ['MFA_TOTP_ENCRYPTION_KEY'],
+            ['MFA_TOTP_ENCRYPTION_SECRET'],
             ['MFA_PASSKEY_RP_ID'],
             ['MFA_PASSKEY_ORIGINS'],
         ])('rejects a missing %s', key => {
@@ -288,52 +278,28 @@ describe('AppEnvSchema', () => {
             );
         });
 
-        it('rejects an APP_LANGUAGE outside EnumMessageLanguage', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                APP_LANGUAGE: 'id',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_LANGUAGE'] })
-            );
-        });
-
-        it('rejects an APP_TIMEZONE outside EnumRequestTimezone', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                APP_TIMEZONE: 'Europe/Berlin',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_TIMEZONE'] })
-            );
-        });
-
         it('rejects an encryption secret that is not 64 base64url characters', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                APP_ENCRYPTION_SECRET_KEY: 'a'.repeat(63),
+                APP_ENCRYPTION_SECRET: 'a'.repeat(63),
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_ENCRYPTION_SECRET_KEY'] })
+                expect.objectContaining({ path: ['APP_ENCRYPTION_SECRET'] })
             );
         });
 
         it('rejects an MFA encryption key with a character outside base64url', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                MFA_TOTP_ENCRYPTION_KEY: `${'a'.repeat(63)}+`,
+                MFA_TOTP_ENCRYPTION_SECRET: `${'a'.repeat(63)}+`,
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
                 expect.objectContaining({
-                    path: ['MFA_TOTP_ENCRYPTION_KEY'],
+                    path: ['MFA_TOTP_ENCRYPTION_SECRET'],
                 })
             );
         });
@@ -341,12 +307,12 @@ describe('AppEnvSchema', () => {
         it('rejects a boolean string that is not exactly true or false', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                LOGGER_ENABLE: 'TRUE',
+                LOGGER_ENABLED: 'TRUE',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['LOGGER_ENABLE'] })
+                expect.objectContaining({ path: ['LOGGER_ENABLED'] })
             );
         });
 
@@ -362,79 +328,39 @@ describe('AppEnvSchema', () => {
             );
         });
 
-        it('rejects a URL_VERSION below one', () => {
+        it('rejects an APP_HTTP_PORT that is not an integer', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                URL_VERSION: '0',
+                APP_HTTP_PORT: '3000.5',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['URL_VERSION'] })
+                expect.objectContaining({ path: ['APP_HTTP_PORT'] })
             );
         });
 
-        it('rejects an HTTP_PORT that is not an integer', () => {
+        it('rejects EMAIL_NO_REPLY_ADDRESS that is not an email address', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                HTTP_PORT: '3000.5',
+                EMAIL_NO_REPLY_ADDRESS: 'not-an-email',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['HTTP_PORT'] })
+                expect.objectContaining({ path: ['EMAIL_NO_REPLY_ADDRESS'] })
             );
         });
 
-        it('rejects a token expiry that is not a duration', () => {
+        it('rejects EMAIL_SUPPORT_ADDRESS that is not an email address', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                AUTH_JWT_ACCESS_TOKEN_EXPIRED: '15 minutes',
+                EMAIL_SUPPORT_ADDRESS: 'not-an-email',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({
-                    path: ['AUTH_JWT_ACCESS_TOKEN_EXPIRED'],
-                })
-            );
-        });
-
-        it('rejects a refresh token expiry that is not a duration', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                AUTH_JWT_REFRESH_TOKEN_EXPIRED: 'forever',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({
-                    path: ['AUTH_JWT_REFRESH_TOKEN_EXPIRED'],
-                })
-            );
-        });
-
-        it('rejects EMAIL_NO_REPLY that is not an email address', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                EMAIL_NO_REPLY: 'not-an-email',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['EMAIL_NO_REPLY'] })
-            );
-        });
-
-        it('rejects EMAIL_SUPPORT that is not an email address', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                EMAIL_SUPPORT: 'not-an-email',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['EMAIL_SUPPORT'] })
+                expect.objectContaining({ path: ['EMAIL_SUPPORT_ADDRESS'] })
             );
         });
 
@@ -450,6 +376,56 @@ describe('AppEnvSchema', () => {
             );
         });
 
+        it.each([
+            ['SENTRY_TRACES_SAMPLE_RATE'],
+            ['SENTRY_PROFILES_SAMPLE_RATE'],
+        ])('rejects a %s above 1 or below 0', key => {
+            for (const value of ['1.5', '-0.1']) {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    [key]: value,
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toContainEqual(
+                    expect.objectContaining({ path: [key] })
+                );
+            }
+        });
+
+        it.each([
+            ['SENTRY_TRACES_SAMPLE_RATE'],
+            ['SENTRY_PROFILES_SAMPLE_RATE'],
+        ])('accepts a %s of 0, 0.3, and 1, and parses blank as 0', key => {
+            for (const [value, parsed] of [
+                ['0', 0],
+                ['0.3', 0.3],
+                ['1', 1],
+                ['', 0],
+            ] as const) {
+                const result = AppEnvSchema.parse({
+                    ...validEnv,
+                    [key]: value,
+                });
+
+                expect(result[key as keyof typeof result]).toBe(parsed);
+            }
+        });
+
+        it.each([
+            ['SENTRY_TRACES_SAMPLE_RATE'],
+            ['SENTRY_PROFILES_SAMPLE_RATE'],
+        ])('rejects a missing %s', key => {
+            const withoutKey = { ...validEnv };
+            delete withoutKey[key];
+            const result = AppEnvSchema.safeParse(withoutKey);
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: [key] })
+            );
+        });
+
         it('accepts a SENTRY_DSN that is a URL', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
@@ -462,22 +438,22 @@ describe('AppEnvSchema', () => {
 
     describe('optional third-party integrations', () => {
         const thirdPartyKeys = [
-            'EMAIL_NO_REPLY',
-            'EMAIL_SUPPORT',
+            'EMAIL_NO_REPLY_ADDRESS',
+            'EMAIL_SUPPORT_ADDRESS',
+            'APP_HTTP_TRUSTED_PROXIES',
             'AUTH_SOCIAL_GOOGLE_CLIENT_ID',
-            'AUTH_SOCIAL_APPLE_CLIENT_ID',
-            'AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID',
-            'AWS_S3_IAM_CREDENTIAL_KEY',
-            'AWS_S3_IAM_CREDENTIAL_SECRET',
-            'AWS_S3_IAM_ARN',
+            'AUTH_SOCIAL_APPLE_CLIENT_IDS',
+            'AWS_S3_ACCESS_KEY_ID',
+            'AWS_S3_SECRET_ACCESS_KEY',
+            'AWS_S3_IAM_PRINCIPAL_ARN',
             'AWS_S3_REGION',
             'AWS_S3_ENDPOINT',
             'AWS_S3_PUBLIC_BUCKET',
-            'AWS_S3_PUBLIC_CDN',
+            'AWS_S3_PUBLIC_CDN_URL',
             'AWS_S3_PRIVATE_BUCKET',
-            'AWS_S3_PRIVATE_CDN',
-            'AWS_SES_IAM_CREDENTIAL_KEY',
-            'AWS_SES_IAM_CREDENTIAL_SECRET',
+            'AWS_S3_PRIVATE_CDN_URL',
+            'AWS_SES_ACCESS_KEY_ID',
+            'AWS_SES_SECRET_ACCESS_KEY',
             'AWS_SES_IDENTITY_ARN',
             'AWS_SES_REGION',
             'AWS_SES_ENDPOINT',
@@ -498,15 +474,56 @@ describe('AppEnvSchema', () => {
             }
         });
 
-        it('parses the third-party lines of .env.example, all blank', () => {
+        it('writes every third-party line of .env.example as a placeholder that parses empty to null', () => {
             const exampleThirdParty = readEnvExample(thirdPartyKeys);
 
             expect(Object.keys(exampleThirdParty)).toEqual(thirdPartyKeys);
-            expect(isEveryEnvBlank(exampleThirdParty)).toBe(true);
+            expect(isEveryEnvPlaceholder(exampleThirdParty)).toBe(true);
+
+            const result = AppEnvSchema.parse({
+                ...validEnv,
+                ...buildBlankEnv(Object.keys(exampleThirdParty)),
+            });
+            for (const key of thirdPartyKeys) {
+                expect(result).toHaveProperty(key, null);
+            }
+        });
+
+        it('keeps .env.example on the same key set as the schema', () => {
+            const example = readEnvExampleLines();
+
+            expect(example.isKeyValueOnly).toBe(true);
+            expect(example.keys.sort()).toEqual(
+                Object.keys(AppEnvSchema.shape).sort()
+            );
+        });
+
+        it('refuses the APP_ENCRYPTION_SECRET placeholder of .env.example', () => {
+            const [example] = Object.values(
+                readEnvExample(['APP_ENCRYPTION_SECRET'])
+            );
+
+            expect(example).toBe('<base64url64Characters>');
             expect(
-                AppEnvSchema.safeParse({ ...validEnv, ...exampleThirdParty })
-                    .success
-            ).toBe(true);
+                AppEnvSchema.safeParse({
+                    ...validEnv,
+                    APP_ENCRYPTION_SECRET: example,
+                }).success
+            ).toBe(false);
+        });
+
+        it('refuses the MFA_TOTP_ENCRYPTION_SECRET placeholder of .env.example', () => {
+            const [example] = Object.values(
+                readEnvExample(['MFA_TOTP_ENCRYPTION_SECRET'])
+            );
+
+            expect(example).toBe('<base64url64Characters>');
+            expect(
+                AppEnvSchema.safeParse({
+                    ...validEnv,
+                    MFA_TOTP_ENCRYPTION_SECRET: example,
+                }).success
+            ).toBe(false);
         });
 
         it('strips the removed EMAIL_ADMIN and Google client secret', () => {
@@ -525,8 +542,8 @@ describe('AppEnvSchema', () => {
 
     describe('AWS S3 refinement', () => {
         const s3Complete = {
-            AWS_S3_IAM_CREDENTIAL_KEY: 's3-key',
-            AWS_S3_IAM_CREDENTIAL_SECRET: 's3-secret',
+            AWS_S3_ACCESS_KEY_ID: 's3-key',
+            AWS_S3_SECRET_ACCESS_KEY: 's3-secret',
             AWS_S3_REGION: 'ap-southeast-1',
             AWS_S3_PUBLIC_BUCKET: 'public',
             AWS_S3_PRIVATE_BUCKET: 'private',
@@ -546,18 +563,18 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 ...s3Complete,
-                AWS_S3_IAM_ARN: 'arn:aws:iam::1:user/s3',
+                AWS_S3_IAM_PRINCIPAL_ARN: 'arn:aws:iam::1:user/s3',
                 AWS_S3_ENDPOINT: 'http://localhost:4566',
-                AWS_S3_PUBLIC_CDN: 'cdn.example.com',
-                AWS_S3_PRIVATE_CDN: 'private-cdn.example.com',
+                AWS_S3_PUBLIC_CDN_URL: 'https://cdn.example.com',
+                AWS_S3_PRIVATE_CDN_URL: 'https://private-cdn.example.com',
             });
 
             expect(result.success).toBe(true);
         });
 
         for (const trigger of [
-            'AWS_S3_IAM_CREDENTIAL_KEY',
-            'AWS_S3_IAM_CREDENTIAL_SECRET',
+            'AWS_S3_ACCESS_KEY_ID',
+            'AWS_S3_SECRET_ACCESS_KEY',
         ]) {
             it(`requires every other S3 field when only ${trigger} is set`, () => {
                 const result = AppEnvSchema.safeParse({
@@ -595,8 +612,8 @@ describe('AppEnvSchema', () => {
         it('does not trigger on an empty key and secret', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                AWS_S3_IAM_CREDENTIAL_KEY: '',
-                AWS_S3_IAM_CREDENTIAL_SECRET: '',
+                AWS_S3_ACCESS_KEY_ID: '',
+                AWS_S3_SECRET_ACCESS_KEY: '',
             });
 
             expect(result.success).toBe(true);
@@ -615,11 +632,11 @@ describe('AppEnvSchema', () => {
 
     describe('AWS SES refinement', () => {
         const sesComplete = {
-            AWS_SES_IAM_CREDENTIAL_KEY: 'ses-key',
-            AWS_SES_IAM_CREDENTIAL_SECRET: 'ses-secret',
+            AWS_SES_ACCESS_KEY_ID: 'ses-key',
+            AWS_SES_SECRET_ACCESS_KEY: 'ses-secret',
             AWS_SES_REGION: 'ap-southeast-1',
-            EMAIL_NO_REPLY: 'noreply@mail.com',
-            EMAIL_SUPPORT: 'support@mail.com',
+            EMAIL_NO_REPLY_ADDRESS: 'noreply@mail.com',
+            EMAIL_SUPPORT_ADDRESS: 'support@mail.com',
         };
         const sesRequired = Object.keys(sesComplete);
 
@@ -645,8 +662,8 @@ describe('AppEnvSchema', () => {
         });
 
         for (const trigger of [
-            'AWS_SES_IAM_CREDENTIAL_KEY',
-            'AWS_SES_IAM_CREDENTIAL_SECRET',
+            'AWS_SES_ACCESS_KEY_ID',
+            'AWS_SES_SECRET_ACCESS_KEY',
         ]) {
             it(`requires every other SES field when only ${trigger} is set`, () => {
                 const result = AppEnvSchema.safeParse({
@@ -716,8 +733,8 @@ describe('AppEnvSchema', () => {
         it('does not trigger on an empty key and secret', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                AWS_SES_IAM_CREDENTIAL_KEY: '',
-                AWS_SES_IAM_CREDENTIAL_SECRET: '',
+                AWS_SES_ACCESS_KEY_ID: '',
+                AWS_SES_SECRET_ACCESS_KEY: '',
             });
 
             expect(result.success).toBe(true);
@@ -727,7 +744,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 AWS_SES_REGION: 'ap-southeast-1',
-                EMAIL_NO_REPLY: 'noreply@mail.com',
+                EMAIL_NO_REPLY_ADDRESS: 'noreply@mail.com',
             });
 
             expect(result.success).toBe(true);
@@ -808,35 +825,24 @@ describe('AppEnvSchema', () => {
             expect(result.success).toBe(true);
         });
 
-        it('accepts an Apple client id alone', () => {
+        it('accepts an Apple client id list', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                AUTH_SOCIAL_APPLE_CLIENT_ID: 'apple-client-id',
+                AUTH_SOCIAL_APPLE_CLIENT_IDS: 'apple-client-id, apple-sign-in',
             });
 
             expect(result.success).toBe(true);
         });
 
-        it('accepts an Apple sign-in client id alone', () => {
-            const result = AppEnvSchema.safeParse({
-                ...validEnv,
-                AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: 'apple-sign-in-client-id',
-            });
-
-            expect(result.success).toBe(true);
-        });
-
-        it('parses the Google and Apple ids to null when empty', () => {
+        it('parses the Google id and the Apple list to null when blank', () => {
             const result = AppEnvSchema.parse({
                 ...validEnv,
                 AUTH_SOCIAL_GOOGLE_CLIENT_ID: '',
-                AUTH_SOCIAL_APPLE_CLIENT_ID: '',
-                AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: '',
+                AUTH_SOCIAL_APPLE_CLIENT_IDS: '',
             });
 
             expect(result.AUTH_SOCIAL_GOOGLE_CLIENT_ID).toBeNull();
-            expect(result.AUTH_SOCIAL_APPLE_CLIENT_ID).toBeNull();
-            expect(result.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID).toBeNull();
+            expect(result.AUTH_SOCIAL_APPLE_CLIENT_IDS).toBeNull();
         });
     });
 
@@ -890,6 +896,44 @@ describe('AppEnvSchema', () => {
         });
     });
 
+    describe.each(['AWS_S3_PUBLIC_CDN_URL', 'AWS_S3_PRIVATE_CDN_URL'])(
+        '%s',
+        key => {
+            it('parses a full URL', () => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    [key]: 'https://cdn.example.com',
+                });
+
+                expect(result.success).toBe(true);
+            });
+
+            it('rejects a bare host', () => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    [key]: 'cdn.example.com',
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toContainEqual(
+                    expect.objectContaining({ path: [key] })
+                );
+            });
+
+            it('rejects a URL with a trailing slash', () => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    [key]: 'https://cdn.example.com/',
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toContainEqual(
+                    expect.objectContaining({ path: [key] })
+                );
+            });
+        }
+    );
+
     describe('AWS_SES_ENDPOINT', () => {
         it('parses a URL', () => {
             const result = AppEnvSchema.safeParse({
@@ -941,38 +985,38 @@ describe('AppEnvSchema', () => {
     });
 
     describe('database debug refinement', () => {
-        it('rejects DATABASE_DEBUG true in production', () => {
+        it('rejects DATABASE_DEBUG_ENABLED true in production', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
-                CORS_ALLOWED_ORIGIN: 'https://a.example.com',
-                DATABASE_DEBUG: 'true',
+                REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
+                DATABASE_DEBUG_ENABLED: 'true',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toHaveLength(1);
             expect(result.error?.issues[0]).toMatchObject({
-                path: ['DATABASE_DEBUG'],
+                path: ['DATABASE_DEBUG_ENABLED'],
                 message: 'Must be false in production',
             });
         });
 
-        it('parses DATABASE_DEBUG false in production', () => {
+        it('parses DATABASE_DEBUG_ENABLED false in production', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
-                CORS_ALLOWED_ORIGIN: 'https://a.example.com',
-                DATABASE_DEBUG: 'false',
+                REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
+                DATABASE_DEBUG_ENABLED: 'false',
             });
 
             expect(result.success).toBe(true);
         });
 
-        it('parses DATABASE_DEBUG true in local', () => {
+        it('parses DATABASE_DEBUG_ENABLED true in local', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.local,
-                DATABASE_DEBUG: 'true',
+                DATABASE_DEBUG_ENABLED: 'true',
             });
 
             expect(result.success).toBe(true);
@@ -984,13 +1028,13 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
-                CORS_ALLOWED_ORIGIN: '*',
+                REQUEST_CORS_ALLOWED_ORIGINS: '*',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toHaveLength(1);
             expect(result.error?.issues[0]).toMatchObject({
-                path: ['CORS_ALLOWED_ORIGIN'],
+                path: ['REQUEST_CORS_ALLOWED_ORIGINS'],
                 message: 'Must list origins in production',
             });
         });
@@ -999,12 +1043,14 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
-                CORS_ALLOWED_ORIGIN: 'https://a.example.com, *',
+                REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com, *',
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['CORS_ALLOWED_ORIGIN'] })
+                expect.objectContaining({
+                    path: ['REQUEST_CORS_ALLOWED_ORIGINS'],
+                })
             );
         });
 
@@ -1014,7 +1060,7 @@ describe('AppEnvSchema', () => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
                     APP_ENV: EnumAppEnvironment.production,
-                    CORS_ALLOWED_ORIGIN: origin,
+                    REQUEST_CORS_ALLOWED_ORIGINS: origin,
                 });
 
                 expect(result.success).toBe(true);
@@ -1025,7 +1071,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.local,
-                CORS_ALLOWED_ORIGIN: '*',
+                REQUEST_CORS_ALLOWED_ORIGINS: '*',
             });
 
             expect(result.success).toBe(true);
@@ -1033,9 +1079,9 @@ describe('AppEnvSchema', () => {
     });
 
     describe('MFA root secret', () => {
-        it('rejects a missing MFA_TOTP_ENCRYPTION_KEY when only the former MFA_ENCRYPTION_KEY is set', () => {
+        it('rejects a missing MFA_TOTP_ENCRYPTION_SECRET when only the former MFA_ENCRYPTION_KEY is set', () => {
             const withFormerKey = { ...validEnv };
-            delete withFormerKey.MFA_TOTP_ENCRYPTION_KEY;
+            delete withFormerKey.MFA_TOTP_ENCRYPTION_SECRET;
             const result = AppEnvSchema.safeParse({
                 ...withFormerKey,
                 MFA_ENCRYPTION_KEY: encryptionSecret,
@@ -1043,7 +1089,9 @@ describe('AppEnvSchema', () => {
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['MFA_TOTP_ENCRYPTION_KEY'] })
+                expect.objectContaining({
+                    path: ['MFA_TOTP_ENCRYPTION_SECRET'],
+                })
             );
         });
 
@@ -1140,7 +1188,7 @@ describe('AppEnvSchema', () => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
                     APP_ENV: EnumAppEnvironment.production,
-                    CORS_ALLOWED_ORIGIN: 'https://a.example.com',
+                    REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
                     MFA_PASSKEY_RP_ID: rpId,
                     MFA_PASSKEY_ORIGINS: origins,
                 });

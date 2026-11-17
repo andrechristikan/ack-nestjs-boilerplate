@@ -41,7 +41,7 @@ export class UserSignUpUseCase implements IAppUseCase<
     IResponseReturn<void>
 > {
     private readonly appName: string;
-    private readonly userRoleName: string;
+    private readonly defaultRole: string;
     private readonly createTimeoutInMs: number;
 
     constructor(
@@ -65,8 +65,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly configService: ConfigService
     ) {
         this.appName = this.configService.get<string>('app.name')!;
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
+        this.defaultRole = this.configService.get<string>('user.default.role')!;
         this.createTimeoutInMs = this.configService.get<number>(
             'user.create.timeoutInMs'
         )!;
@@ -237,7 +236,7 @@ export class UserSignUpUseCase implements IAppUseCase<
             signUp.name
         );
         const [role, emailExist, usernameCheck] = await Promise.all([
-            this.roleService.getByName(this.userRoleName),
+            this.roleService.getByName(this.defaultRole),
             this.userService.existsByEmail(signUp.email),
             this.userService.checkUsername(signUp.username),
             this.countryService.getOne(signUp.countryId),

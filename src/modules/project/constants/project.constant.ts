@@ -12,9 +12,6 @@ export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 export const ProjectContextStoreKey = 'ProjectContextStoreKey';
 
 /** @public */
-export const ProjectDeletedSlugPattern = 'deleted-{id}';
-
-/** @public */
 export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
     EnumWorkspaceMemberRole.owner,
     EnumWorkspaceMemberRole.admin,

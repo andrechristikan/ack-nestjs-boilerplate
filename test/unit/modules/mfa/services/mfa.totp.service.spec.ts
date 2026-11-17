@@ -81,7 +81,7 @@ describe('MfaTotpService', () => {
                 'mfa.totp.periodInSeconds': stepInSeconds,
                 'mfa.totp.window': 1,
                 'mfa.totp.secretLength': 20,
-                'mfa.totp.encryptionKey': 'encryption-key',
+                'mfa.totp.encryptionSecret': 'encryption-key',
             };
 
             return values[key];

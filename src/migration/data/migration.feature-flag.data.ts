@@ -29,6 +29,10 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         description: 'Enable login with Credential',
         rolloutPercent: 100,
         isEnable: true,
+        metadata: {
+            [EnumFeatureFlagMetadataKey.passwordMaxAttempts]: 5,
+            [EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes]: 15,
+        },
     },
     {
         key: EnumFeatureFlagKey.loginWithPasskey,
@@ -44,6 +48,9 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         metadata: {
             [EnumFeatureFlagMetadataKey.totpAllowed]: true,
             [EnumFeatureFlagMetadataKey.passkeyAllowed]: true,
+            [EnumFeatureFlagMetadataKey.passkeyMaxPerUser]: 10,
+            [EnumFeatureFlagMetadataKey.mfaMaxAttempts]: 5,
+            [EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes]: 15,
         },
     },
     {
@@ -70,6 +77,9 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         metadata: {
             [EnumFeatureFlagMetadataKey.invitationAllowed]: true,
             [EnumFeatureFlagMetadataKey.joinRequestAllowed]: true,
+            [EnumFeatureFlagMetadataKey.maxWorkspacesPerUser]: 10,
+            [EnumFeatureFlagMetadataKey.inviteExpiresInDays]: 7,
+            [EnumFeatureFlagMetadataKey.joinRequestExpiresInDays]: 7,
         },
     },
 ];

@@ -16,6 +16,8 @@ services:
               target: /app/src
               bind:
                   create_host_path: false
+            - type: tmpfs
+              target: /app/src/generated
             - type: bind
               source: ./prisma
               target: /app/prisma
@@ -104,88 +106,6 @@ services:
             retries: 3
             start_period: 10s
 
-    vault:
-        image: hashicorp/vault:latest
-        hostname: vault
-        profiles: ['vault']
-        cap_add:
-            - IPC_LOCK
-        ports:
-            - '8200:8200'
-        entrypoint: ['/bin/sh', '/vault/entrypoint.sh']
-        volumes:
-            - type: bind
-              source: ./ci/vault/entrypoint.sh
-              target: /vault/entrypoint.sh
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ./ci/vault/config.hcl
-              target: /vault/config.hcl
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: volume
-              source: vault_data
-              target: /vault/file
-            - type: bind
-              source: ./generated/vault
-              target: /vault/init
-              bind:
-                  create_host_path: true
-        networks:
-            vault-network:
-                aliases:
-                    - vault
-        healthcheck:
-            test:
-                [
-                    'CMD-SHELL',
-                    "wget -q -O- 'http://127.0.0.1:8200/v1/sys/health?standbycode=200' >/dev/null 2>&1 || exit 1",
-                ]
-            interval: 5s
-            timeout: 3s
-            retries: 15
-            start_period: 5s
-
-    vault-bootstrap:
-        image: hashicorp/vault:latest
-        profiles: ['vault']
-        entrypoint: ['/bin/sh', '/bootstrap.sh']
-        environment:
-            VAULT_ADDR: http://vault:8200
-            KV_MOUNT: ack-nestjs-boilerplate
-        volumes:
-            - type: bind
-              source: ./ci/vault/bootstrap.sh
-              target: /bootstrap.sh
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ./ci/vault/policies
-              target: /policies
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ./.env.example
-              target: /seed/.env.example
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ./generated/vault
-              target: /vault/init
-              bind:
-                  create_host_path: true
-        networks:
-            - vault-network
-        depends_on:
-            vault:
-                condition: service_healthy
-
     redis:
         image: redis:latest
         hostname: redis
@@ -233,7 +153,7 @@ services:
             - REDIS_PORT=6379
             - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD:-}
             - BULL_PREFIX=Queue
-            - USER_LOGIN=${DOCKER_BULLBOARD_USER:-admin}
+            - USER_LOGIN=${DOCKER_BULLBOARD_USERNAME:-admin}
             - USER_PASSWORD=${DOCKER_BULLBOARD_PASSWORD:-admin123}
             - REDIS_DB=1
         depends_on:
@@ -261,7 +181,7 @@ services:
             - '${DOCKER_MONGO_PORT:-27017}:27017'
         environment:
             HOME: /tmp
-            RS_HOST: host.docker.internal:${DOCKER_MONGO_PORT:-27017}
+            MONGO_REPLICA_SET_HOST: host.docker.internal:${DOCKER_MONGO_PORT:-27017}
             MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
             MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:-}
             MONGO_APP_USERNAME: ${DOCKER_MONGO_APP_USERNAME:-}
@@ -307,10 +227,7 @@ services:
 volumes:
     mongo_data:
     redis_data:
-    vault_data:
 
 networks:
     app-network:
-        driver: bridge
-    vault-network:
         driver: bridge

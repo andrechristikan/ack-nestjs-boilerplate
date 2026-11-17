@@ -30,7 +30,7 @@ describe('AuthPasswordUtil', () => {
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, boolean | number> = {
-                'auth.password.expiredTemporaryInMs': 3600000,
+                'auth.password.temporaryExpiresInMs': 3600000,
                 'auth.password.periodInDays': 90,
                 'auth.password.temporaryLength': 14,
             };

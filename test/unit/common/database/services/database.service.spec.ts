@@ -21,10 +21,9 @@ describe('DatabaseService', () => {
 
         service = await createDatabaseService(
             {
-                'database.debug': true,
+                'database.debugEnabled': true,
                 'database.slowQueryThresholdInMs': 500,
                 'database.warnWindowInMs': 60000,
-                'logger.prettier': true,
             },
             databaseClientFactory,
             client,
@@ -60,9 +59,8 @@ describe('DatabaseService', () => {
         it('subscribes to the query event only when debug mode is off', async () => {
             const offService = await createDatabaseService(
                 {
-                    'database.debug': false,
+                    'database.debugEnabled': false,
                     'database.slowQueryThresholdInMs': 500,
-                    'logger.prettier': true,
                 },
                 databaseClientFactory,
                 client,
@@ -287,9 +285,8 @@ describe('DatabaseService', () => {
         it('subscribes to the query event only when debug mode is off', async () => {
             const offService = await createDatabaseService(
                 {
-                    'database.debug': false,
+                    'database.debugEnabled': false,
                     'database.slowQueryThresholdInMs': 500,
-                    'logger.prettier': true,
                 },
                 databaseClientFactory,
                 client,
@@ -328,9 +325,8 @@ describe('DatabaseService', () => {
         it('does not throw for a fast event when debug mode is off', async () => {
             const offService = await createDatabaseService(
                 {
-                    'database.debug': false,
+                    'database.debugEnabled': false,
                     'database.slowQueryThresholdInMs': 500,
-                    'logger.prettier': true,
                 },
                 databaseClientFactory,
                 client,

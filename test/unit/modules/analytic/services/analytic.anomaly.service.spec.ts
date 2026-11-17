@@ -159,11 +159,11 @@ describe('AnalyticAnomalyService', () => {
                 'analytic.anomaly.minSample': 5,
                 'analytic.anomaly.lookbackInMs': 2592000000,
                 'analytic.anomaly.concurrency': 10,
-                'auth.password.maxAttempt': 5,
                 'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
             };
             return values[key];
         });
+        userAnalyticService.getPasswordMaxAttempts.mockResolvedValue(5);
         analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         analyticCache.buildAnomalySummaryKey.mockImplementation(
             (signal, window) => `${signal}:${window}`
@@ -473,6 +473,52 @@ describe('AnalyticAnomalyService', () => {
                 userAnalyticService.getGroupPasswordAttemptBuckets
             ).toHaveBeenCalledWith(5, now);
         });
+
+        it.each([
+            { maxAttempt: 5, minAttempt: 4 },
+            { maxAttempt: 8, minAttempt: 7 },
+        ])(
+            'follows the password max attempt $maxAttempt the user analytic service returns',
+            async ({ maxAttempt, minAttempt }) => {
+                userAnalyticService.getPasswordMaxAttempts.mockResolvedValue(
+                    maxAttempt
+                );
+                analyticFraudUtil.nearLockoutThreshold.mockReturnValue(
+                    minAttempt
+                );
+                userAnalyticService.getGroupPasswordAttemptBuckets.mockResolvedValue(
+                    []
+                );
+                userAnalyticService.getCountNearLockout.mockResolvedValue(0);
+
+                const result = await service.failedLoginSpikeSummary();
+
+                expect(
+                    analyticFraudUtil.nearLockoutThreshold
+                ).toHaveBeenCalledWith(maxAttempt);
+                expect(
+                    userAnalyticService.getGroupPasswordAttemptBuckets
+                ).toHaveBeenCalledWith(maxAttempt, now);
+                expect(
+                    userAnalyticService.getCountNearLockout
+                ).toHaveBeenCalledWith(minAttempt, now);
+                expect(result.meta.nearLockoutMinAttempt).toBe(minAttempt);
+            }
+        );
+
+        it('reads the password max attempt on a cache miss only', async () => {
+            cacheService.readThrough.mockResolvedValue({
+                count: 1,
+                window: null,
+                meta: { nearLockoutMinAttempt: 4, bucketCount: 1 },
+            });
+
+            await service.failedLoginSpikeSummary();
+
+            expect(
+                userAnalyticService.getPasswordMaxAttempts
+            ).not.toHaveBeenCalled();
+        });
     });
 
     describe('failedLoginSpikeList', () => {
@@ -489,22 +535,32 @@ describe('AnalyticAnomalyService', () => {
             ).toHaveBeenCalledWith(4, now, pagination);
         });
 
-        it('takes the near-lockout min attempt from the fraud util for the password max attempt', async () => {
-            analyticFraudUtil.nearLockoutThreshold.mockReturnValue(1);
-            service = await createAnalyticAnomalyService(doubles);
-            userAnalyticService.getListNearLockoutOffset.mockResolvedValue(
-                offsetPage
-            );
+        it.each([
+            { maxAttempt: 5, minAttempt: 4 },
+            { maxAttempt: 8, minAttempt: 7 },
+        ])(
+            'takes the near-lockout min attempt from the fraud util for the password max attempt $maxAttempt',
+            async ({ maxAttempt, minAttempt }) => {
+                userAnalyticService.getPasswordMaxAttempts.mockResolvedValue(
+                    maxAttempt
+                );
+                analyticFraudUtil.nearLockoutThreshold.mockReturnValue(
+                    minAttempt
+                );
+                userAnalyticService.getListNearLockoutOffset.mockResolvedValue(
+                    offsetPage
+                );
 
-            await service.failedLoginSpikeList(pagination);
+                await service.failedLoginSpikeList(pagination);
 
-            expect(analyticFraudUtil.nearLockoutThreshold).toHaveBeenCalledWith(
-                5
-            );
-            expect(
-                userAnalyticService.getListNearLockoutOffset
-            ).toHaveBeenCalledWith(1, now, pagination);
-        });
+                expect(
+                    analyticFraudUtil.nearLockoutThreshold
+                ).toHaveBeenCalledWith(maxAttempt);
+                expect(
+                    userAnalyticService.getListNearLockoutOffset
+                ).toHaveBeenCalledWith(minAttempt, now, pagination);
+            }
+        );
     });
 
     describe('deviceProliferationSummary', () => {

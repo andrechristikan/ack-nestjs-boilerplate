@@ -2,34 +2,34 @@
 set -eu
 # Single-node replica set for Prisma transactions. Starts mongod as the mongodb user, initiates rs0 once
 # on a fresh volume, then stays as PID 1.
-# Without access control (no keyfile mounted at KEYFILE, or MONGO_INITDB_ROOT_PASSWORD empty): mongod starts
+# Without access control (no keyfile mounted at MONGO_KEYFILE_PATH, or MONGO_INITDB_ROOT_PASSWORD empty): mongod starts
 # plain, with no --keyFile, no --auth, and no root user, even when the keyfile is mounted; the member host
 # defaults to host.docker.internal so the host machine and containers share the same RS URI.
-# With a keyfile mounted at KEYFILE and MONGO_INITDB_ROOT_PASSWORD set: mongod runs with --keyFile and --auth;
+# With a keyfile mounted at MONGO_KEYFILE_PATH and MONGO_INITDB_ROOT_PASSWORD set: mongod runs with --keyFile and --auth;
 # rs.initiate runs on a fresh volume; every start tries createUser for the root user in admin over the
-# localhost exception, and an Unauthorized reply means a user already exists. The member host is RS_HOST.
+# localhost exception, and an Unauthorized reply means a user already exists. The member host is MONGO_REPLICA_SET_HOST.
 # After the root user, when MONGO_APP_USERNAME, MONGO_APP_PASSWORD, and MONGO_APP_DATABASE are all set, the
 # application user is created with readWrite on that database, authenticated as root inside the script; an
 # existing user is left as it is. With any of the three unset, no application user is created.
-RS_ID="${RS_ID:-rs0}"
-RS_HOST="${RS_HOST:-host.docker.internal:27017}"
+MONGO_REPLICA_SET_NAME="${MONGO_REPLICA_SET_NAME:-rs0}"
+MONGO_REPLICA_SET_HOST="${MONGO_REPLICA_SET_HOST:-host.docker.internal:27017}"
 MONGO_PORT="${MONGO_PORT:-27017}"
-KEYFILE="${KEYFILE:-/etc/mongo/keyfile}"
+MONGO_KEYFILE_PATH="${MONGO_KEYFILE_PATH:-/etc/mongo/keyfile}"
 RUNTIME_KEYFILE=/tmp/mongo-keyfile
-export RS_ID RS_HOST
+export MONGO_REPLICA_SET_NAME MONGO_REPLICA_SET_HOST
 
-MONGOD_ARGS=(--bind_ip_all --replSet "$RS_ID" --port "$MONGO_PORT")
+MONGOD_ARGS=(--bind_ip_all --replSet "$MONGO_REPLICA_SET_NAME" --port "$MONGO_PORT")
 AUTH_ENABLED=false
 
-if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -d "$KEYFILE" ]; then
-  echo "entrypoint: $KEYFILE is a directory; create the keyfile on the host before the first start." >&2
+if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -d "$MONGO_KEYFILE_PATH" ]; then
+  echo "entrypoint: $MONGO_KEYFILE_PATH is a directory; create the keyfile on the host before the first start." >&2
   exit 1
 fi
 
-if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -f "$KEYFILE" ]; then
+if [ -n "${MONGO_INITDB_ROOT_PASSWORD:-}" ] && [ -f "$MONGO_KEYFILE_PATH" ]; then
   : "${MONGO_INITDB_ROOT_USERNAME:?entrypoint: MONGO_INITDB_ROOT_USERNAME is empty; set DOCKER_MONGO_ROOT_USERNAME in .env.docker}"
   # The mounted keyfile is read-only and owned by the host user; mongod needs its own copy, owned by mongodb, mode 400.
-  install -o mongodb -g mongodb -m 400 "$KEYFILE" "$RUNTIME_KEYFILE"
+  install -o mongodb -g mongodb -m 400 "$MONGO_KEYFILE_PATH" "$RUNTIME_KEYFILE"
   MONGOD_ARGS+=(--keyFile "$RUNTIME_KEYFILE" --auth)
   AUTH_ENABLED=true
 fi
@@ -51,15 +51,15 @@ until mongosh --port "$MONGO_PORT" --eval "db.adminCommand('ping')" --quiet >/de
   sleep 1
 done
 
-echo "entrypoint: ensuring replica set $RS_ID..."
+echo "entrypoint: ensuring replica set $MONGO_REPLICA_SET_NAME..."
 if [ "$AUTH_ENABLED" = true ]; then
   mongosh --port "$MONGO_PORT" --quiet --eval '
 if (db.hello().setName) {
   print("entrypoint: replica set already initialized");
 } else {
   rs.initiate({
-    _id: process.env.RS_ID,
-    members: [{ _id: 0, host: process.env.RS_HOST, priority: 1 }]
+    _id: process.env.MONGO_REPLICA_SET_NAME,
+    members: [{ _id: 0, host: process.env.MONGO_REPLICA_SET_HOST, priority: 1 }]
   });
   print("entrypoint: replica set initiated");
 }
@@ -71,8 +71,8 @@ try {
   print('entrypoint: replica set already initialized');
 } catch (e) {
   rs.initiate({
-    _id: '${RS_ID}',
-    members: [{ _id: 0, host: '${RS_HOST}', priority: 1 }]
+    _id: '${MONGO_REPLICA_SET_NAME}',
+    members: [{ _id: 0, host: '${MONGO_REPLICA_SET_HOST}', priority: 1 }]
   });
   print('entrypoint: replica set initiated');
 }

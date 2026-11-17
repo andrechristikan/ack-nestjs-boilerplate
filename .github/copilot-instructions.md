@@ -22,7 +22,7 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
 @AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
 @ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout('1m') // 16. Upload routes: multipart interceptor, then timeout
+@FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 16. Upload routes: multipart interceptor, then timeout
 @HttpCode(HttpStatus.OK)               // 17. @Post only
 @Get('/endpoint')                      // 18. HTTP method, always last
 ```

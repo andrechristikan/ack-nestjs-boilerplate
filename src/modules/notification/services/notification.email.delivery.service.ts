@@ -23,7 +23,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NotificationEmailDeliveryService {
-    private readonly noreplyEmail: string;
+    private readonly noReplyAddress: string;
     private readonly defaultTemplateData: Record<string, string>;
 
     constructor(
@@ -34,11 +34,19 @@ export class NotificationEmailDeliveryService {
         private readonly notificationUtil: NotificationUtil,
         private readonly messageService: MessageService
     ) {
-        this.noreplyEmail = this.configService.get<string>('email.noreply')!;
-        const homeName = this.configService.get<string>('home.name')!;
-        const supportEmail = this.configService.get<string>('email.support')!;
-        const homeUrl = this.configService.get<string>('home.url')!;
-        this.defaultTemplateData = { homeName, supportEmail, homeUrl };
+        this.noReplyAddress = this.configService.get<string>(
+            'email.noReplyAddress'
+        )!;
+        const name = this.configService.get<string>('frontend.name')!;
+        const supportAddress = this.configService.get<string>(
+            'email.supportAddress'
+        )!;
+        const baseUrl = this.configService.get<string>('frontend.baseUrl')!;
+        this.defaultTemplateData = {
+            homeName: name,
+            supportEmail: supportAddress,
+            homeUrl: baseUrl,
+        };
     }
 
     private toBulkDestination({
@@ -97,7 +105,7 @@ export class NotificationEmailDeliveryService {
         return this.awsSESService.send({
             templateName: kind,
             recipients: [email],
-            sender: this.noreplyEmail,
+            sender: this.noReplyAddress,
             templateData: { ...this.defaultTemplateData, ...templateData },
         });
     }
@@ -117,7 +125,7 @@ export class NotificationEmailDeliveryService {
             const result = await this.awsSESService.sendBulk({
                 templateName: EnumNotificationKind.publishTermPolicy,
                 recipients: destinations,
-                sender: this.noreplyEmail,
+                sender: this.noReplyAddress,
                 defaultTemplateData: {
                     ...this.defaultTemplateData,
                     type,

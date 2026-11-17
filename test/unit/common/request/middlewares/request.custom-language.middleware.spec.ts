@@ -32,8 +32,8 @@ describe('RequestCustomLanguageMiddleware', () => {
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | string[]> = {
-                'message.availableLanguage': ['en', 'id'],
-                'message.language': 'en',
+                'message.availableLanguages': ['en', 'id'],
+                'message.defaultLanguage': 'en',
             };
             return values[key];
         });

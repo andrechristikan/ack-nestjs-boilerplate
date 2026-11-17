@@ -25,7 +25,7 @@ import { Duration } from 'luxon';
 @Injectable()
 export class MfaChallengeService {
     private readonly challengeTtlInMs: number;
-    private readonly encryptionSecretKey: string;
+    private readonly encryptionSecret: string;
 
     constructor(
         private readonly mfaChallengeRepository: MfaChallengeRepository,
@@ -38,8 +38,8 @@ export class MfaChallengeService {
         this.challengeTtlInMs = this.configService.get<number>(
             'mfa.challengeTtlInMs'
         )!;
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
+        this.encryptionSecret = this.configService.get<string>(
+            'app.encryptionSecret'
         )!;
     }
 
@@ -64,7 +64,7 @@ export class MfaChallengeService {
         const encryptedNotificationToken =
             this.helperEncryptionService.aes256Encrypt(
                 notificationToken,
-                this.encryptionSecretKey,
+                this.encryptionSecret,
                 MfaChallengeEncryptionPurpose,
                 userId
             );
@@ -88,7 +88,7 @@ export class MfaChallengeService {
 
         const notificationToken = this.helperEncryptionService.aes256Decrypt(
             encryptedNotificationToken,
-            this.encryptionSecretKey,
+            this.encryptionSecret,
             MfaChallengeEncryptionPurpose,
             userId
         );

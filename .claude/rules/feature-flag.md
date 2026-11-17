@@ -2,6 +2,9 @@
 paths:
     - 'src/modules/feature-flag/**'
     - 'src/modules/mfa/**'
+    - 'src/modules/workspace/services/**'
+    - 'src/modules/user/services/**'
+    - 'src/modules/analytic/services/**'
     - 'src/migration/data/migration.feature-flag.data.ts'
 ---
 
@@ -18,6 +21,9 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 - Flat only. Values are `boolean | number | string` or a homogeneous `string[]` / `number[]`; a mixed or nested array, `boolean[]`, an empty array, and `''` fail. An array value cannot change element type on update.
 - A metadata sub-key used as a gate holds a boolean and is asserted in the calling service, never in the decorator (`service.md`, Shape). A sub-key that decides whether a module's own subject applies is read with `FeatureFlagService.isMetadataAllowed`: `true` only for an enabled flag whose sub-key is `true`, `false` otherwise, `FeatureFlagNotConfiguredException` for no row; it ignores rollout and targeting.
+- A numeric sub-key holds one feature's policy an operator tunes: `maxWorkspacesPerUser`, `inviteExpiresInDays`, and `joinRequestExpiresInDays` on `workspace`; `passkeyMaxPerUser`, `mfaMaxAttempts`, and `mfaLockDurationInMinutes` on `mfa`; `passwordMaxAttempts` and `passwordLockDurationInMinutes` on `loginWithCredential`. A duration is stored in the unit a person types (`InMinutes`, `InDays`), and its reader builds the duration in that unit.
+- Each numeric sub-key has one zod schema const, `FeatureFlagMetadata<Key>Schema`, an integer with its bounds, in the module's `validations/`; `FeatureFlagUpdateMetadataRequestSchema` checks it in its `superRefine`. The service checks no bound and a reader clamps nothing.
+- `FeatureFlagService.getMetadataNumber(key, metadataKey)` returns the stored number whatever `isEnable`, rollout, and targeting say, and throws `FeatureFlagNotConfiguredException` for no row, no sub-key, or a value that is not a number. The seed data is the one source: no config key holds the same value. A reader calls it before its transaction opens; `analytic` takes the password budget from `UserAnalyticService.getPasswordMaxAttempts`.
 - Keys are frozen; the admin API updates values and never adds or removes a key.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
@@ -25,7 +31,7 @@ Decorator position is `guards.md`. This file is key shape, metadata, gating, and
 
 `@FeatureFlagProtected(EnumFeatureFlagKey.<member>)` answers only "is this feature on". It is not authentication; the auth guards are separate. `isEnable: false` outranks targeting and rollout, which is what makes it a kill switch.
 
-The `mfa` flag is the one flag that switches a security control, and `MfaService` alone reads it: off, or with a method's sub-key off (`totpAllowed`, `passkeyAllowed`), a stored factor is neither offered nor accepted (`MfaMethodUnavailableException`, uncounted), and a user with no factor left that applies is an account with MFA off. Stored factors and backup codes stay. Off, every `/shared/mfa/*` route answers `disabled`, and its rollout and targeting gate those routes only: a share lowered after users enrolled leaves a user outside it asked for MFA and answered `disabled` there. A sub-key off closes that method's enrolment; a TOTP disable and a passkey delete still act on the stored factor. The admin reset acts on stored factors whatever the flag. A missing `mfa` row throws `FeatureFlagNotConfiguredException`, as for every flag.
+The `mfa` flag is the one flag that switches a security control, and `MfaService` alone reads it as a gate (`MfaPasskeyService.getMaxPerUser` reads its `passkeyMaxPerUser`): off, or with a method's sub-key off (`totpAllowed`, `passkeyAllowed`), a stored factor is neither offered nor accepted (`MfaMethodUnavailableException`, uncounted), and a user with no factor left that applies is an account with MFA off. Stored factors and backup codes stay. Off, every `/shared/mfa/*` route answers `disabled`, and its rollout and targeting gate those routes only: a share lowered after users enrolled leaves a user outside it asked for MFA and answered `disabled` there. A sub-key off closes that method's enrolment; a TOTP disable and a passkey delete still act on the stored factor. The admin reset acts on stored factors whatever the flag. A missing `mfa` row throws `FeatureFlagNotConfiguredException`, as for every flag.
 
 ## Rollout and targeting
 

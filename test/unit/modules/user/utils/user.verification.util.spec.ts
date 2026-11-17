@@ -29,14 +29,14 @@ describe('UserVerificationUtil', () => {
     const expiredAt = new Date(now.getTime() + 15 * 60 * 1000);
 
     const configValues: Record<string, string | number> = {
-        'home.url': 'https://example.com',
+        'frontend.baseUrl': 'https://example.com',
         'verification.reference.prefix': 'VRF',
         'verification.reference.length': 8,
-        'verification.expiredInMinutes': 15,
+        'verification.expiresInMinutes': 15,
         'verification.otpLength': 6,
         'verification.tokenLength': 32,
         'verification.resendInMinutes': 5,
-        'verification.linkPattern': '{homeUrl}/verify?token={token}',
+        'verification.linkPattern': '{frontendBaseUrl}/verify?token={token}',
     };
 
     beforeEach(async () => {
@@ -83,8 +83,11 @@ describe('UserVerificationUtil', () => {
                 resendInMinutes: 5,
             });
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{homeUrl}/verify?token={token}',
-                { homeUrl: 'https://example.com', token: 'random-token' }
+                '{frontendBaseUrl}/verify?token={token}',
+                {
+                    frontendBaseUrl: 'https://example.com',
+                    token: 'random-token',
+                }
             );
         });
     });

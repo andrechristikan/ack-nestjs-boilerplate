@@ -45,9 +45,9 @@ describe('SessionCache', () => {
         cache = module.get(SessionCache);
     });
 
-    describe('loginTtlInMs', () => {
+    describe('loginCacheTtlInMs', () => {
         it('reads the TTL from session.loginCacheTtlInMs', () => {
-            expect(cache.loginTtlInMs).toBe(900000);
+            expect(cache.loginCacheTtlInMs).toBe(900000);
             expect(configGet).toHaveBeenCalledWith('session.loginCacheTtlInMs');
         });
     });

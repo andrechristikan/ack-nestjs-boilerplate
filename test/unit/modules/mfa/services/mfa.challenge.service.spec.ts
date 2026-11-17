@@ -79,7 +79,7 @@ describe('MfaChallengeService', () => {
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
                 'mfa.challengeTtlInMs': 300000,
-                'app.encryptionSecretKey': 'app-root-secret',
+                'app.encryptionSecret': 'app-root-secret',
             };
 
             return values[key];

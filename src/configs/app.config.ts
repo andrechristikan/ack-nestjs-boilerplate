@@ -1,4 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import { registerAs } from '@nestjs/config';
 import { author, repository, version } from '@generated/package/package';
 
@@ -7,22 +8,22 @@ export interface IConfigApp {
     env: EnumAppEnvironment;
     timezone: string;
     version: string;
-    encryptionSecretKey: string;
+    encryptionSecret: string;
     author: {
         name: string;
-        email: string;
+        emailAddress: string;
     };
     url: string;
     globalPrefix: string;
     http: {
         host: string;
         port: number;
-        trustedProxy: string | null;
+        trustedProxies: string | null;
     };
-    urlVersion: {
-        enable: boolean;
+    urlVersioning: {
+        enabled: boolean;
         prefix: string;
-        version: string;
+        defaultVersion: string;
     };
 }
 
@@ -30,25 +31,25 @@ export default registerAs('app', (): IConfigApp => {
     return {
         name: process.env.APP_NAME!,
         env: process.env.APP_ENV as EnumAppEnvironment,
-        timezone: process.env.APP_TIMEZONE!,
+        timezone: EnumRequestTimezone.asiaJakarta,
         version,
-        encryptionSecretKey: process.env.APP_ENCRYPTION_SECRET_KEY!,
-        author,
+        encryptionSecret: process.env.APP_ENCRYPTION_SECRET!,
+        author: { name: author.name, emailAddress: author.email },
         url: repository.url,
         globalPrefix: '/api',
 
         http: {
-            host: process.env.HTTP_HOST!,
-            port: Number(process.env.HTTP_PORT!),
-            trustedProxy:
-                process.env.HTTP_TRUSTED_PROXY === ''
+            host: process.env.APP_HTTP_HOST!,
+            port: Number(process.env.APP_HTTP_PORT!),
+            trustedProxies:
+                process.env.APP_HTTP_TRUSTED_PROXIES === ''
                     ? null
-                    : (process.env.HTTP_TRUSTED_PROXY ?? null),
+                    : (process.env.APP_HTTP_TRUSTED_PROXIES ?? null),
         },
-        urlVersion: {
-            enable: process.env.URL_VERSIONING_ENABLE === 'true',
+        urlVersioning: {
+            enabled: true,
             prefix: 'v',
-            version: `${Number(process.env.URL_VERSION!)}`,
+            defaultVersion: '1',
         },
     };
 });

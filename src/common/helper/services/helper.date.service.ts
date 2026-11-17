@@ -7,15 +7,15 @@ import type { DateObjectUnits, DurationLikeObject } from 'luxon';
 
 @Injectable()
 export class HelperDateService {
-    private readonly defTz: string;
+    private readonly timezone: string;
 
     constructor(private readonly configService: ConfigService) {
-        this.defTz = this.configService.get<string>('app.timezone')!;
+        this.timezone = this.configService.get<string>('app.timezone')!;
     }
 
     calculateAge(dateOfBirth: Date, fromYear?: number): Duration {
         let dateTime = DateTime.now()
-            .setZone(this.defTz)
+            .setZone(this.timezone)
             .plus({
                 day: 1,
             })
@@ -26,7 +26,7 @@ export class HelperDateService {
                 millisecond: 0,
             });
         const dateTimeDob = DateTime.fromJSDate(dateOfBirth)
-            .setZone(this.defTz)
+            .setZone(this.timezone)
             .set({
                 hour: 0,
                 minute: 0,
@@ -42,51 +42,51 @@ export class HelperDateService {
     }
 
     checkIso(date: string): boolean {
-        return DateTime.fromISO(date).setZone(this.defTz).isValid;
+        return DateTime.fromISO(date).setZone(this.timezone).isValid;
     }
 
     checkTimestamp(timestamp: number): boolean {
-        return DateTime.fromMillis(timestamp).setZone(this.defTz).isValid;
+        return DateTime.fromMillis(timestamp).setZone(this.timezone).isValid;
     }
 
     getZone(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).zone.name;
+        return DateTime.fromJSDate(date).setZone(this.timezone).zone.name;
     }
 
     getHour(date: Date): number {
-        return DateTime.fromJSDate(date).setZone(this.defTz).hour;
+        return DateTime.fromJSDate(date).setZone(this.timezone).hour;
     }
 
     getZoneOffset(date: Date): string {
         return (
-            DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort ??
+            DateTime.fromJSDate(date).setZone(this.timezone).offsetNameShort ??
             'UTC'
         );
     }
 
     getTimestamp(date: Date): number {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toMillis();
+        return DateTime.fromJSDate(date).setZone(this.timezone).toMillis();
     }
 
     formatToRFC2822(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toRFC2822()!;
+        return DateTime.fromJSDate(date).setZone(this.timezone).toRFC2822()!;
     }
 
     formatToIso(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISO()!;
+        return DateTime.fromJSDate(date).setZone(this.timezone).toISO()!;
     }
 
     formatToIsoDate(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISODate()!;
+        return DateTime.fromJSDate(date).setZone(this.timezone).toISODate()!;
     }
 
     formatToIsoTime(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISOTime()!;
+        return DateTime.fromJSDate(date).setZone(this.timezone).toISOTime()!;
     }
 
     create(date?: Date, options?: IHelperDateCreateOptions): Date {
         let mDate = (date ? DateTime.fromJSDate(date) : DateTime.now()).setZone(
-            this.defTz
+            this.timezone
         );
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
@@ -106,7 +106,7 @@ export class HelperDateService {
     }
 
     createFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
-        let date = DateTime.fromISO(iso).setZone(this.defTz);
+        let date = DateTime.fromISO(iso).setZone(this.timezone);
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             date = date.startOf('day');
@@ -125,8 +125,8 @@ export class HelperDateService {
         options?: IHelperDateCreateOptions
     ): Date {
         let date = timestamp
-            ? DateTime.fromMillis(timestamp).setZone(this.defTz)
-            : DateTime.now().setZone(this.defTz);
+            ? DateTime.fromMillis(timestamp).setZone(this.timezone)
+            : DateTime.now().setZone(this.timezone);
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             date = date.startOf('day');
@@ -142,21 +142,21 @@ export class HelperDateService {
 
     set(date: Date, units: DateObjectUnits): Date {
         return DateTime.fromJSDate(date)
-            .setZone(this.defTz)
+            .setZone(this.timezone)
             .set(units)
             .toJSDate();
     }
 
     forward(date: Date, duration: Duration): Date {
         return DateTime.fromJSDate(date)
-            .setZone(this.defTz)
+            .setZone(this.timezone)
             .plus(duration)
             .toJSDate();
     }
 
     backward(date: Date, duration: Duration): Date {
         return DateTime.fromJSDate(date)
-            .setZone(this.defTz)
+            .setZone(this.timezone)
             .minus(duration)
             .toJSDate();
     }
@@ -166,8 +166,8 @@ export class HelperDateService {
     }
 
     diff(dateOne: Date, dateTwo: Date): Duration {
-        const dOne = DateTime.fromJSDate(dateOne).setZone(this.defTz);
-        const dTwo = DateTime.fromJSDate(dateTwo).setZone(this.defTz);
+        const dOne = DateTime.fromJSDate(dateOne).setZone(this.timezone);
+        const dTwo = DateTime.fromJSDate(dateTwo).setZone(this.timezone);
 
         return dOne.diff(dTwo);
     }

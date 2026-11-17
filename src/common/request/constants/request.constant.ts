@@ -77,3 +77,6 @@ export const RequestHelmetCspDocDirectives: Record<string, string[]> = {
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"],
 };
+
+/** @public */
+export const RequestUploadTimeout = '1m';

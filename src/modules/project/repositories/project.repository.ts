@@ -9,21 +9,28 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Project } from '@generated/prisma-client/client';
-import { ProjectDeletedSlugPattern } from '@modules/project/constants/project.constant';
 import type {
     IProjectCreate,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectRepository implements IProjectRepository {
+    private readonly deletedSlugPattern: string;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.deletedSlugPattern = this.configService.get<string>(
+            'project.deletedSlugPattern'
+        )!;
+    }
 
     async findActiveByIdAndWorkspace(
         projectId: string,
@@ -135,16 +142,14 @@ export class ProjectRepository implements IProjectRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<boolean> {
+        const deletedSlugPattern = this.deletedSlugPattern;
         const { count } = await tx.project.updateMany({
             where: {
                 id: projectId,
                 deletedAt: null,
             },
             data: {
-                slug: ProjectDeletedSlugPattern.replace(
-                    '{id}',
-                    () => projectId
-                ),
+                slug: deletedSlugPattern.replace('{id}', () => projectId),
                 deletedAt,
                 deletedBy,
             },
@@ -167,11 +172,12 @@ export class ProjectRepository implements IProjectRepository {
             select: { id: true },
         });
 
+        const deletedSlugPattern = this.deletedSlugPattern;
         for (const { id } of projects) {
             await tx.project.updateMany({
                 where: { id, deletedAt: null },
                 data: {
-                    slug: ProjectDeletedSlugPattern.replace('{id}', () => id),
+                    slug: deletedSlugPattern.replace('{id}', () => id),
                     deletedAt,
                     deletedBy,
                 },

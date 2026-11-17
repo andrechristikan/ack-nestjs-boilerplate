@@ -14,6 +14,11 @@ import type {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { MfaPasskey } from '@generated/prisma-client/client';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
 import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
@@ -33,19 +38,16 @@ export class MfaPasskeyService {
     private readonly rpId: string;
     private readonly rpName: string;
     private readonly origins: string[];
-    private readonly maxPerUser: number;
 
     constructor(
         private readonly mfaPasskeyRepository: MfaPasskeyRepository,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly featureFlagService: FeatureFlagService
     ) {
         this.rpId = this.configService.get<string>('mfa.passkey.rpId')!;
         this.rpName = this.configService.get<string>('mfa.passkey.rpName')!;
         this.origins = this.configService.get<string[]>('mfa.passkey.origins')!;
-        this.maxPerUser = this.configService.get<number>(
-            'mfa.passkey.maxPerUser'
-        )!;
     }
 
     private async createRegistrationOptions(
@@ -280,20 +282,28 @@ export class MfaPasskeyService {
         }
     }
 
-    /** Verifies the attestation against the stored challenge and stores the passkey on the given tx; a full list, a failed verification, and a known credential id throw. */
+    async getMaxPerUser(): Promise<number> {
+        return this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.mfa,
+            EnumFeatureFlagMetadataKey.passkeyMaxPerUser
+        );
+    }
+
+    /** Verifies the attestation against the stored challenge and stores the passkey on the given tx; a list holding maxPerUser passkeys, a failed verification, and a known credential id throw. */
     async registerInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         name: string,
         response: RegistrationResponseJSON,
-        webAuthnChallenge: string
+        webAuthnChallenge: string,
+        maxPerUser: number
     ): Promise<IMfaPasskey> {
         // Sequential by design: gates before the write they guard
         const count = await this.mfaPasskeyRepository.countByUserIdInTx(
             tx,
             userId
         );
-        if (count >= this.maxPerUser) {
+        if (count >= maxPerUser) {
             throw new MfaPasskeyLimitException();
         }
 

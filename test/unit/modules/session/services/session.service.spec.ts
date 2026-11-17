@@ -67,7 +67,7 @@ describe('SessionService', () => {
     const sessionRepository: MockProxy<SessionRepository> =
         mock<SessionRepository>();
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>({
-        loginTtlInMs: 900000,
+        loginCacheTtlInMs: 900000,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const helperHashService: MockProxy<HelperHashService> =

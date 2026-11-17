@@ -114,9 +114,9 @@ describe('AuthJwtService', () => {
 
     const configValues: Record<string, string | number> = {
         'auth.jwt.accessToken.kid': 'access-kid',
-        'auth.jwt.accessToken.expirationTimeInSeconds': 900,
+        'auth.jwt.accessToken.expiresInSeconds': 900,
         'auth.jwt.refreshToken.kid': 'refresh-kid',
-        'auth.jwt.refreshToken.expirationTimeInSeconds': 604800,
+        'auth.jwt.refreshToken.expiresInSeconds': 604800,
         'auth.jwt.accessToken.privateKey': accessPrivateKeyBase64,
         'auth.jwt.accessToken.publicKey': accessPublicKeyBase64,
         'auth.jwt.accessToken.algorithm': 'ES256',

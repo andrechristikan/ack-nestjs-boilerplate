@@ -56,9 +56,8 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class WorkspaceJoinRequestService {
-    private readonly expiresInMs: number;
-    private readonly homeUrl: string;
-    private readonly joinRequestReviewLinkPattern: string;
+    private readonly baseUrl: string;
+    private readonly reviewLinkPattern: string;
 
     constructor(
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
@@ -76,20 +75,17 @@ export class WorkspaceJoinRequestService {
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
-        this.expiresInMs = this.configService.get<number>(
-            'workspace.joinRequest.expiresInMs'
-        )!;
-        this.homeUrl = this.configService.get<string>('home.url')!;
-        this.joinRequestReviewLinkPattern = this.configService.get<string>(
+        this.baseUrl = this.configService.get<string>('frontend.baseUrl')!;
+        this.reviewLinkPattern = this.configService.get<string>(
             'workspace.joinRequest.reviewLinkPattern'
         )!;
     }
 
     private buildJoinRequestReviewLink(joinRequestId: string): string {
-        return this.helperStringService.fillPattern(
-            this.joinRequestReviewLinkPattern,
-            { homeUrl: this.homeUrl, joinRequestId }
-        );
+        return this.helperStringService.fillPattern(this.reviewLinkPattern, {
+            frontendBaseUrl: this.baseUrl,
+            joinRequestId,
+        });
     }
 
     private reviewActivityEffects(
@@ -184,9 +180,13 @@ export class WorkspaceJoinRequestService {
             { workspaceId: create.workspaceId, userId }
         );
         const nonce = this.helperHashService.sha256Hash(noncePattern);
+        const expiresInDays = await this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.joinRequestExpiresInDays
+        );
         const now = this.helperDateService.create();
         const duration = this.helperDateService.createDuration({
-            milliseconds: this.expiresInMs,
+            days: expiresInDays,
         });
         const expiredAt = this.helperDateService.forward(now, duration);
 

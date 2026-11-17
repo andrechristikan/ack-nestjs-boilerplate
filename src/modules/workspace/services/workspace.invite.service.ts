@@ -66,13 +66,12 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 @Injectable()
 export class WorkspaceInviteService {
     private readonly referenceMaxAttempts: number;
-    private readonly homeUrl: string;
-    private readonly inviteExpiredInDays: number;
-    private readonly inviteTokenLength: number;
-    private readonly inviteReferencePrefix: string;
-    private readonly inviteReferenceRandomLength: number;
-    private readonly inviteLinkPattern: string;
-    private readonly inviteSignUpLinkPattern: string;
+    private readonly baseUrl: string;
+    private readonly tokenLength: number;
+    private readonly referencePrefix: string;
+    private readonly referenceRandomLength: number;
+    private readonly linkPattern: string;
+    private readonly signUpLinkPattern: string;
 
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
@@ -92,23 +91,20 @@ export class WorkspaceInviteService {
         this.referenceMaxAttempts = this.configService.get<number>(
             'workspace.invite.referenceMaxAttempts'
         )!;
-        this.homeUrl = this.configService.get<string>('home.url')!;
-        this.inviteExpiredInDays = this.configService.get<number>(
-            'workspace.invite.expiredInDays'
-        )!;
-        this.inviteTokenLength = this.configService.get<number>(
+        this.baseUrl = this.configService.get<string>('frontend.baseUrl')!;
+        this.tokenLength = this.configService.get<number>(
             'workspace.invite.tokenLength'
         )!;
-        this.inviteReferencePrefix = this.configService.get<string>(
+        this.referencePrefix = this.configService.get<string>(
             'workspace.invite.referencePrefix'
         )!;
-        this.inviteReferenceRandomLength = this.configService.get<number>(
+        this.referenceRandomLength = this.configService.get<number>(
             'workspace.invite.referenceRandomLength'
         )!;
-        this.inviteLinkPattern = this.configService.get<string>(
+        this.linkPattern = this.configService.get<string>(
             'workspace.invite.linkPattern'
         )!;
-        this.inviteSignUpLinkPattern = this.configService.get<string>(
+        this.signUpLinkPattern = this.configService.get<string>(
             'workspace.invite.signUpLinkPattern'
         )!;
     }
@@ -120,29 +116,44 @@ export class WorkspaceInviteService {
         return inviter?.name ?? inviter?.username ?? workspace.name;
     }
 
+    private async resolveExpiresInDays(
+        expiryDuration: EnumWorkspaceInviteExpiry | null
+    ): Promise<number> {
+        if (expiryDuration !== null) {
+            return expiryDuration;
+        }
+
+        const expiresInDays = await this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.inviteExpiresInDays
+        );
+
+        return expiresInDays;
+    }
+
     private createInviteTokenData(
-        expiryDurationInDays: number | null
+        expiresInDays: number
     ): IWorkspaceInviteTokenData {
-        const token = this.helperStringService.random(this.inviteTokenLength);
+        const token = this.helperStringService.random(this.tokenLength);
         const hashedToken = this.helperHashService.sha256Hash(token);
         const referenceRandom = this.helperStringService.random(
-            this.inviteReferenceRandomLength
+            this.referenceRandomLength
         );
-        const reference = `${this.inviteReferencePrefix}-${referenceRandom}`;
+        const reference = `${this.referencePrefix}-${referenceRandom}`;
         const now = this.helperDateService.create();
         const expiredAt = this.helperDateService.forward(
             now,
             Duration.fromObject({
-                days: expiryDurationInDays ?? this.inviteExpiredInDays,
+                days: expiresInDays,
             })
         );
         const claimLink = this.helperStringService.fillPattern(
-            this.inviteLinkPattern,
-            { homeUrl: this.homeUrl, token }
+            this.linkPattern,
+            { frontendBaseUrl: this.baseUrl, token }
         );
         const signUpLink = this.helperStringService.fillPattern(
-            this.inviteSignUpLinkPattern,
-            { homeUrl: this.homeUrl, token }
+            this.signUpLinkPattern,
+            { frontendBaseUrl: this.baseUrl, token }
         );
 
         return {
@@ -426,8 +437,12 @@ export class WorkspaceInviteService {
         );
         const nonce = this.helperHashService.sha256Hash(noncePattern);
 
+        const expiresInDays = await this.resolveExpiresInDays(
+            create.expiryDuration
+        );
+
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData = this.createInviteTokenData(create.expiryDuration);
+            const tokenData = this.createInviteTokenData(expiresInDays);
 
             try {
                 const invite = await this.outboxService.withTransaction(
@@ -560,8 +575,10 @@ export class WorkspaceInviteService {
         const actorId = authContext.userId;
         const resentAt = this.helperDateService.create();
 
+        const expiresInDays = await this.resolveExpiresInDays(expiryDuration);
+
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData = this.createInviteTokenData(expiryDuration);
+            const tokenData = this.createInviteTokenData(expiresInDays);
 
             try {
                 const invite = await this.outboxService.withTransaction(

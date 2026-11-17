@@ -44,7 +44,8 @@
             "@swagger": ["./src/swagger.ts"],
             "@main": ["./src/main.ts"],
             "@configure": ["./src/configure.ts"],
-            "@migration": ["./src/migration.ts"]
+            "@migration": ["./src/migration.ts"],
+            "@bootstrap": ["./src/bootstrap.ts"]
         }
     },
     "include": ["src/**/*", "test/**/*", "scripts/**/*", "vitest.config.ts"],

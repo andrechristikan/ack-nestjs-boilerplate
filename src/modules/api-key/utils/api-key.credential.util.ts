@@ -7,6 +7,7 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 @Injectable()
 export class ApiKeyCredentialUtil {
     private readonly env: EnumAppEnvironment;
+    private readonly keyLength: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -14,6 +15,9 @@ export class ApiKeyCredentialUtil {
         private readonly helperHashService: HelperHashService
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
+        this.keyLength = this.configService.get<number>(
+            'auth.xApiKey.keyLength'
+        )!;
     }
 
     /** Prefixes the key with the environment; a null or empty key draws a random one. */
@@ -22,7 +26,7 @@ export class ApiKeyCredentialUtil {
             return `${this.env}_${key}`;
         }
 
-        const random: string = this.helperStringService.random(25);
+        const random: string = this.helperStringService.random(this.keyLength);
         return `${this.env}_${random}`;
     }
 

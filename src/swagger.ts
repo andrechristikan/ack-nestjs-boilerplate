@@ -30,8 +30,9 @@ export default async function (app: NestApplication): Promise<void> {
     const appUrl: string = configService.get<string>('app.url')!;
 
     const appAuthorName: string = configService.get<string>('app.author.name')!;
-    const appAuthorEmail: string =
-        configService.get<string>('app.author.email')!;
+    const appAuthorEmailAddress: string = configService.get<string>(
+        'app.author.emailAddress'
+    )!;
 
     const docName: string = configService.get<string>('doc.name')!;
     const docVersion: string = configService.get<string>('doc.version')!;
@@ -53,7 +54,7 @@ export default async function (app: NestApplication): Promise<void> {
                     },
                 })
             )
-            .setContact(appAuthorName, appUrl, appAuthorEmail)
+            .setContact(appAuthorName, appUrl, appAuthorEmailAddress)
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },

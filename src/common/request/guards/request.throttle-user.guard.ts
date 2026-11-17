@@ -19,7 +19,7 @@ import { RequestThrottleService } from '@common/request/services/request.throttl
 @Injectable()
 export class RequestThrottleUserGuard implements CanActivate {
     private readonly name = EnumRequestThrottleName.user;
-    private readonly policy: IRequestThrottlePolicy;
+    private readonly throttleUser: IRequestThrottlePolicy;
 
     constructor(
         private readonly reflector: Reflector,
@@ -27,7 +27,7 @@ export class RequestThrottleUserGuard implements CanActivate {
         private readonly requestThrottleService: RequestThrottleService,
         private readonly requestStoreService: RequestStoreService
     ) {
-        this.policy = this.configService.get<IRequestThrottlePolicy>(
+        this.throttleUser = this.configService.get<IRequestThrottlePolicy>(
             'request.throttle.user'
         )!;
     }
@@ -53,7 +53,7 @@ export class RequestThrottleUserGuard implements CanActivate {
             response,
             this.name,
             userId,
-            this.policy
+            this.throttleUser
         );
 
         return true;

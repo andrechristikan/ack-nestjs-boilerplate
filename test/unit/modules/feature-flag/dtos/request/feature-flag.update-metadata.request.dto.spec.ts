@@ -1,5 +1,8 @@
 import { ZodError } from 'zod';
-import { buildMetadataWithKeyCount } from '@test/unit/helpers/test.unit.feature-flag.helper';
+import {
+    buildMetadataWithKeyCount,
+    issueMessages,
+} from '@test/unit/helpers/test.unit.feature-flag.helper';
 import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 
 describe('FeatureFlagUpdateMetadataRequestSchema', () => {
@@ -104,5 +107,47 @@ describe('FeatureFlagUpdateMetadataRequestSchema', () => {
                 'featureFlag.error.invalidMetadata'
             );
         });
+    });
+
+    describe.each([
+        ['maxWorkspacesPerUser', 1, 100, 10],
+        ['passkeyMaxPerUser', 1, 20, 10],
+        ['inviteExpiresInDays', 1, 30, 7],
+        ['joinRequestExpiresInDays', 1, 30, 7],
+        ['passwordMaxAttempts', 3, 10, 5],
+        ['mfaMaxAttempts', 3, 10, 5],
+        ['passwordLockDurationInMinutes', 5, 1440, 15],
+        ['mfaLockDurationInMinutes', 5, 1440, 15],
+    ])('numeric key %s', (key, min, max, seed) => {
+        it('parses both bounds and the seed value', () => {
+            for (const value of [min, max, seed]) {
+                expect(
+                    FeatureFlagUpdateMetadataRequestSchema.parse({
+                        metadata: { [key]: value },
+                    })
+                ).toEqual({ metadata: { [key]: value } });
+            }
+        });
+
+        it('refuses a value below, a value above, and a fraction with featureFlag.error.invalidMetadata', () => {
+            for (const value of [min - 1, max + 1, min + 0.5]) {
+                const result = FeatureFlagUpdateMetadataRequestSchema.safeParse(
+                    { metadata: { [key]: value } }
+                );
+
+                expect(result.success).toBe(false);
+                expect(issueMessages(result.error?.issues)).toContain(
+                    'featureFlag.error.invalidMetadata'
+                );
+            }
+        });
+    });
+
+    it('leaves a boolean key and an unknown numeric key unbounded', () => {
+        const metadata = { totpAllowed: false, someOtherCount: 0 };
+
+        expect(
+            FeatureFlagUpdateMetadataRequestSchema.parse({ metadata })
+        ).toEqual({ metadata });
     });
 });

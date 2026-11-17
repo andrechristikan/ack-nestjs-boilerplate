@@ -44,15 +44,13 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 
 @Injectable()
 export class UserPasswordService {
-    private readonly passwordMaxAttempt: number;
-    private readonly passwordLockDurationInMs: number;
-    private readonly homeUrl: string;
+    private readonly baseUrl: string;
     private readonly forgotPasswordReferencePrefix: string;
     private readonly forgotPasswordReferenceLength: number;
-    private readonly forgotExpiredInMinutes: number;
-    private readonly forgotTokenLength: number;
-    private readonly forgotResendInMinutes: number;
-    private readonly forgotLinkPattern: string;
+    private readonly expiresInMinutes: number;
+    private readonly tokenLength: number;
+    private readonly resendInMinutes: number;
+    private readonly linkPattern: string;
 
     constructor(
         private readonly userForgotPasswordRepository: UserForgotPasswordRepository,
@@ -71,13 +69,7 @@ export class UserPasswordService {
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
-        this.passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        )!;
-        this.passwordLockDurationInMs = this.configService.get<number>(
-            'auth.password.lockDurationInMs'
-        )!;
-        this.homeUrl = this.configService.get<string>('home.url')!;
+        this.baseUrl = this.configService.get<string>('frontend.baseUrl')!;
 
         this.forgotPasswordReferencePrefix = this.configService.get<string>(
             'forgotPassword.reference.prefix'
@@ -85,16 +77,16 @@ export class UserPasswordService {
         this.forgotPasswordReferenceLength = this.configService.get<number>(
             'forgotPassword.reference.length'
         )!;
-        this.forgotExpiredInMinutes = this.configService.get<number>(
-            'forgotPassword.expiredInMinutes'
+        this.expiresInMinutes = this.configService.get<number>(
+            'forgotPassword.expiresInMinutes'
         )!;
-        this.forgotTokenLength = this.configService.get<number>(
+        this.tokenLength = this.configService.get<number>(
             'forgotPassword.tokenLength'
         )!;
-        this.forgotResendInMinutes = this.configService.get<number>(
+        this.resendInMinutes = this.configService.get<number>(
             'forgotPassword.resendInMinutes'
         )!;
-        this.forgotLinkPattern = this.configService.get<string>(
+        this.linkPattern = this.configService.get<string>(
             'forgotPassword.linkPattern'
         )!;
     }
@@ -112,7 +104,7 @@ export class UserPasswordService {
     }
 
     private createToken(): string {
-        return this.helperStringService.random(this.forgotTokenLength);
+        return this.helperStringService.random(this.tokenLength);
     }
 
     private createExpiredAt(): Date {
@@ -120,17 +112,17 @@ export class UserPasswordService {
 
         return this.helperDateService.forward(
             now,
-            Duration.fromObject({ minutes: this.forgotExpiredInMinutes })
+            Duration.fromObject({ minutes: this.expiresInMinutes })
         );
     }
 
     private createForgot(): IUserForgotPasswordCreate {
         const token = this.createToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = this.helperStringService.fillPattern(
-            this.forgotLinkPattern,
-            { homeUrl: this.homeUrl, token }
-        );
+        const link = this.helperStringService.fillPattern(this.linkPattern, {
+            frontendBaseUrl: this.baseUrl,
+            token,
+        });
         const reference = this.createReference();
         const expiredAt = this.createExpiredAt();
 
@@ -139,8 +131,8 @@ export class UserPasswordService {
             expiredAt,
             token,
             hashedToken,
-            expiredInMinutes: this.forgotExpiredInMinutes,
-            resendInMinutes: this.forgotResendInMinutes,
+            expiredInMinutes: this.expiresInMinutes,
+            resendInMinutes: this.resendInMinutes,
             link,
         };
     }
@@ -193,10 +185,20 @@ export class UserPasswordService {
         apiKeyContext: IApiKeyContext,
         { id: userId }: IUser
     ): Promise<boolean> {
+        const [maxAttempts, lockDurationInMinutes] = await Promise.all([
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.loginWithCredential,
+                EnumFeatureFlagMetadataKey.passwordMaxAttempts
+            ),
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.loginWithCredential,
+                EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes
+            ),
+        ]);
         const now = this.helperDateService.create();
         const lockedUntil = this.helperDateService.forward(
             now,
-            Duration.fromObject({ milliseconds: this.passwordLockDurationInMs })
+            Duration.fromObject({ minutes: lockDurationInMinutes })
         );
         const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
@@ -206,7 +208,7 @@ export class UserPasswordService {
                     await this.userRepository.incrementPasswordAttemptInTx(
                         tx,
                         userId,
-                        this.passwordMaxAttempt,
+                        maxAttempts,
                         lockedUntil
                     );
                 if (isLocked) {
@@ -275,7 +277,7 @@ export class UserPasswordService {
         if (lastForgotPassword) {
             const isInsideResendWindow = this.userUtil.isInsideResendWindow(
                 lastForgotPassword.createdAt,
-                this.forgotResendInMinutes
+                this.resendInMinutes
             );
             if (isInsideResendWindow) {
                 return null;

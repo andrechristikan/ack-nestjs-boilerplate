@@ -55,14 +55,16 @@ describe('AuthSocialService', () => {
         it('builds no Google client when no client id is configured', async () => {
             oauth2ClientMock.mockClear();
 
-            await createAuthSocialService({ 'auth.google.clientId': null });
+            await createAuthSocialService({
+                'auth.social.google.clientId': null,
+            });
 
             expect(oauth2ClientMock).not.toHaveBeenCalled();
         });
 
         it('throws AuthSocialGoogleNotConfiguredException before verifying when no client id is configured', async () => {
             const bare = await createAuthSocialService({
-                'auth.google.clientId': null,
+                'auth.social.google.clientId': null,
             });
 
             const rejection = bare.verifyGoogle('id-token');
@@ -169,38 +171,23 @@ describe('AuthSocialService', () => {
             email_verified: true,
         };
 
-        it('verifies with only the sign-in client id when the client id is unset', async () => {
-            const bare = await createAuthSocialService({
-                'auth.apple.clientId': null,
+        it('verifies with every id of the list as an accepted audience', async () => {
+            const listed = await createAuthSocialService({
+                'auth.social.apple.clientIds': ['first-id', 'second-id'],
             });
             verifyAppleMock.mockResolvedValue(appleResponse);
 
-            await bare.verifyApple('id-token');
+            await listed.verifyApple('id-token');
 
             expect(verifyAppleMock).toHaveBeenCalledWith({
                 idToken: 'id-token',
-                clientId: ['apple-sign-in-client-id'],
+                clientId: ['first-id', 'second-id'],
             });
         });
 
-        it('verifies with only the client id when the sign-in client id is unset', async () => {
+        it('throws AuthSocialAppleNotConfiguredException before verifying when the client id list is empty', async () => {
             const bare = await createAuthSocialService({
-                'auth.apple.signInClientId': null,
-            });
-            verifyAppleMock.mockResolvedValue(appleResponse);
-
-            await bare.verifyApple('id-token');
-
-            expect(verifyAppleMock).toHaveBeenCalledWith({
-                idToken: 'id-token',
-                clientId: ['apple-client-id'],
-            });
-        });
-
-        it('throws AuthSocialAppleNotConfiguredException before verifying when neither client id is configured', async () => {
-            const bare = await createAuthSocialService({
-                'auth.apple.clientId': null,
-                'auth.apple.signInClientId': null,
+                'auth.social.apple.clientIds': [],
             });
 
             const rejection = bare.verifyApple('id-token');

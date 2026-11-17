@@ -121,7 +121,7 @@ export class SessionService {
         return this.cacheService.readThrough(
             key,
             SessionLoginCacheSchema,
-            this.sessionCache.loginTtlInMs,
+            this.sessionCache.loginCacheTtlInMs,
             () =>
                 this.sessionRepository.findLoginById(
                     userId,

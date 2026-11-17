@@ -25,7 +25,7 @@ src/migration/
 - A seed writes its audit fields explicitly: no request actor exists in a command, so `createdBy` on every seeded row, and `updatedBy` on every row whose model carries it, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A seed's create writes `null` into each nullable column a read filters by `null` (`repository.md`).
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
-- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
+- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_PRINCIPAL_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
 - A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 
 ## Outside the layering
@@ -42,7 +42,7 @@ src/migration/
 
 ## Term policies
 
-The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPath`, `TermPolicyUtil.getContentKey`).
+The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPathPattern`, `TermPolicyUtil.getContentKey`).
 
 - When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
 - It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
@@ -58,4 +58,4 @@ The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publis
 
 ## Off-limits
 
-Every `migration*` command is the owner's to run (`AGENTS.md`); `migration:fresh` resets the database before it seeds. Write the seed; hand back the command.
+Every `migration*` command is the owner's to run (`AGENTS.md`); `migration:fresh` resets the database before it seeds. `migration:build` compiles `dist/migration.js` and the other scripts build nothing: a host run builds first, and the `apis` container runs them on the `dist/` its watcher compiled. Write the seed; hand back the command.

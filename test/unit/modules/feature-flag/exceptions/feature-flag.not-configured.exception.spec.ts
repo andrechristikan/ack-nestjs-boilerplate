@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 
 describe('FeatureFlagNotConfiguredException', () => {
@@ -32,6 +33,17 @@ describe('FeatureFlagNotConfiguredException', () => {
             expect(exception.rawError).toBeInstanceOf(AppUnknownException);
             expect((exception.rawError as AppUnknownException).message).toBe(
                 'FeatureFlagNotConfiguredException: no feature flag row for "loginWithGoogle"'
+            );
+        });
+
+        it('names the sub-key in the description when one is passed', () => {
+            const exception = new FeatureFlagNotConfiguredException(
+                'workspace',
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+
+            expect((exception.rawError as AppUnknownException).message).toBe(
+                'FeatureFlagNotConfiguredException: no numeric metadata "maxWorkspacesPerUser" on feature flag "workspace"'
             );
         });
     });

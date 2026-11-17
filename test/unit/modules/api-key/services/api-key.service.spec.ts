@@ -1,5 +1,6 @@
 import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
 import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -45,12 +46,16 @@ describe('ApiKeyService', () => {
     const apiKeyCredentialUtil: MockProxy<ApiKeyCredentialUtil> =
         mock<ApiKeyCredentialUtil>();
     const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>({
-        apiKeyTtlInMs: 4000,
+        cacheTtlInMs: 4000,
     });
     const apiKeyRepository: MockProxy<ApiKeyRepository> =
         mock<ApiKeyRepository>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const configGet = vi.fn<(key: string) => number>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
@@ -83,6 +88,7 @@ describe('ApiKeyService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue(40);
         helperDateService.create.mockReturnValue(now);
         apiKeyCache.buildApiKeyKeys.mockReturnValue(keys);
         cacheService.invalidateEffect.mockReturnValue(cacheEffect);
@@ -101,6 +107,7 @@ describe('ApiKeyService', () => {
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: CacheService, useValue: cacheService },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -1084,13 +1091,13 @@ describe('ApiKeyService', () => {
     });
 
     describe('createSecret', () => {
-        it('returns a random 50-character secret', () => {
+        it('returns a random secret of the configured secret length', () => {
             helperStringService.random.mockReturnValue('random-secret');
 
             const result = service['createSecret']();
 
             expect(result).toBe('random-secret');
-            expect(helperStringService.random).toHaveBeenCalledWith(50);
+            expect(helperStringService.random).toHaveBeenCalledWith(40);
         });
     });
 

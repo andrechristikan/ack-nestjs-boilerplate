@@ -70,6 +70,7 @@ import {
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
+import { RequestUploadTimeout } from '@common/request/constants/request.constant';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -248,7 +249,7 @@ export class UserAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @FileImportSingle()
-    @RequestTimeout('1m')
+    @RequestTimeout(RequestUploadTimeout)
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(

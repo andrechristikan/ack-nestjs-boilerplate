@@ -10,7 +10,7 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInSeconds: number;
+            expiresInSeconds: number;
         };
         refreshToken: {
             jwksUri: string;
@@ -18,34 +18,33 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInSeconds: number;
+            expiresInSeconds: number;
         };
         audience: string;
         issuer: string;
         jtiLength: number;
     };
     password: {
-        maxAttempt: number;
-        lockDurationInMs: number;
-        expiredTemporaryInMs: number;
+        temporaryExpiresInMs: number;
         periodInDays: number;
         temporaryLength: number;
         contextWordMinLength: number;
     };
-    apple: {
-        clientId: string | null;
-        signInClientId: string | null;
-    };
-    google: {
-        clientId: string | null;
-    };
     social: {
+        google: {
+            clientId: string | null;
+        };
+        apple: {
+            clientIds: string[];
+        };
         nonce: {
             length: number;
-            expiredInMs: number;
+            expiresInMs: number;
         };
     };
     xApiKey: {
+        keyLength: number;
+        secretLength: number;
         keyPattern: string;
         cacheTtlInMs: number;
         leaseKeyPattern: string;
@@ -66,11 +65,7 @@ export default registerAs('auth', (): IConfigAuth => {
                 algorithm: 'ES256',
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
-                expirationTimeInSeconds:
-                    ms(
-                        process.env
-                            .AUTH_JWT_ACCESS_TOKEN_EXPIRED as ms.StringValue
-                    ) / 1000,
+                expiresInSeconds: ms('1h') / 1000,
             },
 
             refreshToken: {
@@ -79,11 +74,7 @@ export default registerAs('auth', (): IConfigAuth => {
                 algorithm: 'ES512',
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
-                expirationTimeInSeconds:
-                    ms(
-                        process.env
-                            .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
-                    ) / 1000,
+                expiresInSeconds: ms('30d') / 1000,
             },
 
             audience: process.env.AUTH_JWT_AUDIENCE!,
@@ -92,37 +83,33 @@ export default registerAs('auth', (): IConfigAuth => {
         },
 
         password: {
-            maxAttempt: 5,
-            lockDurationInMs: ms('15m'),
-            expiredTemporaryInMs: ms('3d'),
+            temporaryExpiresInMs: ms('3d'),
             periodInDays: ms('90d') / ms('1d'),
             temporaryLength: 10,
             contextWordMinLength: 4,
         },
 
-        apple: {
-            clientId:
-                process.env.AUTH_SOCIAL_APPLE_CLIENT_ID === ''
-                    ? null
-                    : (process.env.AUTH_SOCIAL_APPLE_CLIENT_ID ?? null),
-            signInClientId:
-                process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID === ''
-                    ? null
-                    : (process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID ?? null),
-        },
-        google: {
-            clientId:
-                process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID === ''
-                    ? null
-                    : (process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null),
-        },
         social: {
+            google: {
+                clientId:
+                    process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID === ''
+                        ? null
+                        : (process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null),
+            },
+            apple: {
+                clientIds: (process.env.AUTH_SOCIAL_APPLE_CLIENT_IDS ?? '')
+                    .split(',')
+                    .map(clientId => clientId.trim())
+                    .filter(clientId => clientId !== ''),
+            },
             nonce: {
                 length: 32,
-                expiredInMs: ms('5m'),
+                expiresInMs: ms('5m'),
             },
         },
         xApiKey: {
+            keyLength: 25,
+            secretLength: 50,
             keyPattern: 'ApiKey:{key}',
             cacheTtlInMs: ms('5m'),
             leaseKeyPattern: 'ApiKey:Lease:{key}',

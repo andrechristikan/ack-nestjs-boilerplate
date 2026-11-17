@@ -9,7 +9,8 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 
 describe('ApiKeyCredentialUtil', () => {
-    const configGet = vi.fn<(key: string) => EnumAppEnvironment | undefined>();
+    const configGet =
+        vi.fn<(key: string) => EnumAppEnvironment | number | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
@@ -22,7 +23,9 @@ describe('ApiKeyCredentialUtil', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockReturnValue(EnumAppEnvironment.local);
+        configGet.mockImplementation(key =>
+            key === 'auth.xApiKey.keyLength' ? 30 : EnumAppEnvironment.local
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -44,13 +47,13 @@ describe('ApiKeyCredentialUtil', () => {
             expect(helperStringService.random).not.toHaveBeenCalled();
         });
 
-        it('prefixes a random value with the current environment when the key is null', () => {
+        it('prefixes a random value of the configured key length with the current environment when the key is null', () => {
             helperStringService.random.mockReturnValue('random-key');
 
             const result = util.createKey(null);
 
             expect(result).toBe('local_random-key');
-            expect(helperStringService.random).toHaveBeenCalledWith(25);
+            expect(helperStringService.random).toHaveBeenCalledWith(30);
         });
     });
 

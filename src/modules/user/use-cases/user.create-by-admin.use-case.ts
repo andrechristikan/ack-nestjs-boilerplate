@@ -42,7 +42,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     ],
     IResponseReturn<DatabaseIdResponseDto>
 > {
-    private readonly createTimeoutInMs: number;
+    private readonly timeoutInMs: number;
 
     constructor(
         private readonly userService: UserService,
@@ -60,7 +60,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.createTimeoutInMs = this.configService.get<number>(
+        this.timeoutInMs = this.configService.get<number>(
             'user.create.timeoutInMs'
         )!;
     }
@@ -196,7 +196,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
             apiKeyContext,
             [input],
             effects,
-            this.createTimeoutInMs
+            this.timeoutInMs
         );
         const created = users[0]!;
 

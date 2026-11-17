@@ -21,7 +21,7 @@ import type {
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger = new Logger(DatabaseService.name);
-    private readonly isDebugMode: boolean;
+    private readonly debugEnabled: boolean;
     private readonly slowQueryThresholdInMs: number;
     private readonly warnWindowInMs: number;
     private readonly warnedAtByKey: Map<string, number> = new Map();
@@ -34,7 +34,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         private readonly databaseClient: IDatabaseClient,
         private readonly helperDateService: HelperDateService
     ) {
-        this.isDebugMode = this.configService.get<boolean>('database.debug')!;
+        this.debugEnabled = this.configService.get<boolean>(
+            'database.debugEnabled'
+        )!;
         this.slowQueryThresholdInMs = this.configService.get<number>(
             'database.slowQueryThresholdInMs'
         )!;
@@ -69,7 +71,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private async setupLogging(): Promise<void> {
         this.databaseClientFactory.$on('query', this.logQuery.bind(this));
 
-        if (this.isDebugMode) {
+        if (this.debugEnabled) {
             this.databaseClientFactory.$on('error', this.logError.bind(this));
             this.databaseClientFactory.$on('warn', this.logWarn.bind(this));
             this.databaseClientFactory.$on('info', this.logInfo.bind(this));
@@ -92,7 +94,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
         if (queryLog.isSlow) {
             this.logger.warn(queryLog, 'A slow Prisma query was executed');
-        } else if (this.isDebugMode) {
+        } else if (this.debugEnabled) {
             this.logger.verbose(queryLog, 'A Prisma query was executed');
         }
     }

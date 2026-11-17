@@ -80,7 +80,7 @@ describe('UserVerificationService', () => {
     });
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>({ verificationResendInMinutes: 7 });
+        mock<UserVerificationUtil>({ resendInMinutes: 7 });
 
     let service: UserVerificationService;
 
@@ -185,7 +185,7 @@ describe('UserVerificationService', () => {
             key =>
                 ({
                     'verification.otpLength': 6,
-                    'verification.expiredInMinutes': 5,
+                    'verification.expiresInMinutes': 5,
                 })[key]
         );
 

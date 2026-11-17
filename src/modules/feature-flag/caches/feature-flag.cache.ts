@@ -4,38 +4,38 @@ import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 
 @Injectable()
 export class FeatureFlagCache {
-    private readonly featureFlagKeyPattern: string;
-    readonly featureFlagTtlInMs: number;
-    private readonly featureFlagLeaseKeyPattern: string;
-    private readonly featureFlagLeaseTtlInMs: number;
+    private readonly keyPattern: string;
+    readonly cacheTtlInMs: number;
+    private readonly leaseKeyPattern: string;
+    private readonly leaseTtlInMs: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.featureFlagKeyPattern = this.configService.get<string>(
+        this.keyPattern = this.configService.get<string>(
             'featureFlag.keyPattern'
         )!;
-        this.featureFlagTtlInMs = this.configService.get<number>(
+        this.cacheTtlInMs = this.configService.get<number>(
             'featureFlag.cacheTtlInMs'
         )!;
-        this.featureFlagLeaseKeyPattern = this.configService.get<string>(
+        this.leaseKeyPattern = this.configService.get<string>(
             'featureFlag.leaseKeyPattern'
         )!;
-        this.featureFlagLeaseTtlInMs = this.configService.get<number>(
+        this.leaseTtlInMs = this.configService.get<number>(
             'featureFlag.leaseTtlInMs'
         )!;
     }
 
     private buildFeatureFlagLeaseKey(key: string): string {
-        return this.featureFlagLeaseKeyPattern.replace('{key}', () => key);
+        return this.leaseKeyPattern.replace('{key}', () => key);
     }
 
     buildFeatureFlagKey(key: string): string {
-        return this.featureFlagKeyPattern.replace('{key}', () => key);
+        return this.keyPattern.replace('{key}', () => key);
     }
 
     buildFeatureFlagLease(key: string): ICacheLease {
         const leaseKey = this.buildFeatureFlagLeaseKey(key);
 
-        return { key: leaseKey, ttlInMs: this.featureFlagLeaseTtlInMs };
+        return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
     /** The entry key and its lease key. */

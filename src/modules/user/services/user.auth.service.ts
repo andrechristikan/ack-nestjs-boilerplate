@@ -463,8 +463,7 @@ export class UserAuthService {
         const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
-                seconds:
-                    this.authJwtService.jwtRefreshTokenExpirationTimeInSeconds,
+                seconds: this.authJwtService.refreshTokenExpiresInSeconds,
             })
         );
         const now = this.helperDateService.create();

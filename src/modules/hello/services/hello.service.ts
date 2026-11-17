@@ -11,35 +11,36 @@ import { ConfigService } from '@nestjs/config';
 export class HelloService {
     private readonly appName: string;
     private readonly appEnv: EnumAppEnvironment;
-    private readonly appTimezone: string;
+    private readonly timezone: string;
 
-    private readonly messageAvailableLanguage: EnumMessageLanguage[];
-    private readonly messageDefaultLanguage: EnumMessageLanguage;
+    private readonly availableLanguages: EnumMessageLanguage[];
+    private readonly defaultLanguage: EnumMessageLanguage;
 
     constructor(private readonly configService: ConfigService) {
         this.appName = this.configService.get<string>('app.name')!;
         this.appEnv = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.appTimezone = this.configService.get<string>('app.timezone')!;
+        this.timezone = this.configService.get<string>('app.timezone')!;
 
-        this.messageAvailableLanguage = this.configService.get<
-            EnumMessageLanguage[]
-        >('message.availableLanguage')!;
-        this.messageDefaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language')!;
+        this.availableLanguages = this.configService.get<EnumMessageLanguage[]>(
+            'message.availableLanguages'
+        )!;
+        this.defaultLanguage = this.configService.get<EnumMessageLanguage>(
+            'message.defaultLanguage'
+        )!;
     }
 
     getApp(): IHelloApp {
         return {
             name: this.appName,
             env: this.appEnv,
-            timezone: this.appTimezone,
+            timezone: this.timezone,
         };
     }
 
     getMessage(): IHelloMessage {
         return {
-            availableLanguage: this.messageAvailableLanguage,
-            defaultLanguage: this.messageDefaultLanguage,
+            availableLanguage: this.availableLanguages,
+            defaultLanguage: this.defaultLanguage,
         };
     }
 }

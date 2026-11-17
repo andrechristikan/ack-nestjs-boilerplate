@@ -666,7 +666,11 @@ export default [
     },
     {
         name: 'ts/env-boundary',
-        files: ['src/configs/**/*.ts', 'src/main.ts', 'src/instrument.ts'],
+        files: [
+            'src/configs/**/*.ts',
+            'src/bootstrap.ts',
+            'src/instrument.ts',
+        ],
         rules: {
             'no-restricted-properties': ['error', mathRandomRestriction],
         },

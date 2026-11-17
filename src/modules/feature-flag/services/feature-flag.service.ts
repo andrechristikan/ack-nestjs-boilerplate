@@ -122,7 +122,7 @@ export class FeatureFlagService {
         return this.cacheService.readThrough(
             cacheKey,
             FeatureFlagCacheSchema,
-            this.featureFlagCache.featureFlagTtlInMs,
+            this.featureFlagCache.cacheTtlInMs,
             () => this.featureFlagRepository.findOneByKey(key),
             { lease }
         );
@@ -188,6 +188,23 @@ export class FeatureFlagService {
             ] ?? null;
 
         return metadata === true;
+    }
+
+    /** Returns the stored number whatever isEnable, rollout, and targeting say; throws when no row or no numeric value exists. */
+    async getMetadataNumber(
+        key: EnumFeatureFlagKey,
+        metadataKey: EnumFeatureFlagMetadataKey
+    ): Promise<number> {
+        const featureFlag = await this.getByKey(key);
+        const value: unknown =
+            (featureFlag?.metadata as Record<string, unknown> | null)?.[
+                metadataKey
+            ] ?? null;
+        if (typeof value !== 'number') {
+            throw new FeatureFlagNotConfiguredException(key, metadataKey);
+        }
+
+        return value;
     }
 
     async validateFeatureFlagMetadata(

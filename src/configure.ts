@@ -19,30 +19,30 @@ export function configure(app: NestApplication): NestApplication {
 
     const configService = app.get(ConfigService);
     const globalPrefix: string = configService.get<string>('app.globalPrefix')!;
-    const trustedProxy: string | null = configService.get<string | null>(
-        'app.http.trustedProxy'
+    const trustedProxies: string | null = configService.get<string | null>(
+        'app.http.trustedProxies'
     )!;
-    const versionEnable: boolean = configService.get<boolean>(
-        'app.urlVersion.enable'
+    const enabled: boolean = configService.get<boolean>(
+        'app.urlVersioning.enabled'
     )!;
-    const versioningPrefix: string = configService.get<string>(
-        'app.urlVersion.prefix'
+    const prefix: string = configService.get<string>(
+        'app.urlVersioning.prefix'
     )!;
-    const version: string = configService.get<string>(
-        'app.urlVersion.version'
+    const defaultVersion: string = configService.get<string>(
+        'app.urlVersioning.defaultVersion'
     )!;
 
     app.setGlobalPrefix(globalPrefix);
     app.getHttpAdapter()
         .getInstance<Express>()
-        .set('trust proxy', trustedProxy);
+        .set('trust proxy', trustedProxies);
     app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
 
-    if (versionEnable) {
+    if (enabled) {
         app.enableVersioning({
             type: VersioningType.URI,
-            defaultVersion: version,
-            prefix: versioningPrefix,
+            defaultVersion,
+            prefix,
         });
     }
 

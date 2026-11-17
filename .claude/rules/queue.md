@@ -30,7 +30,7 @@ A side effect is an outbox effect (`effects.md`). A queue-class method serves a 
 
 Paths, the `[<channel>.]` segment, and language: `i18n.md`.
 
-- Text for an internal reader (a job return value, a job failure, a side-effect description) resolves in `message.language`: `setMessage(path, { properties })` with no `customLanguage`.
+- Text for an internal reader (a job return value, a job failure, a side-effect description) resolves in `message.defaultLanguage`: `setMessage(path, { properties })` with no `customLanguage`.
 - `IQueueResponse.message` is `setMessage('<module>.queue.[<channel>.]<process>', { properties })`, built by the use case the processor calls, or by a kit processor itself.
 - A `QueueException` message is built by its thrower: `exceptions.md`, Messages.
 

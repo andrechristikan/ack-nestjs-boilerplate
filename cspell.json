@@ -118,7 +118,6 @@
     ],
     "ignorePaths": [
         "node_modules/**",
-        "endpoints/**",
         "*coverage/**",
         ".vitest/**",
         ".husky/**",

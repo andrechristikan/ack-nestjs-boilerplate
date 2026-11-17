@@ -18,4 +18,12 @@ export enum EnumFeatureFlagMetadataKey {
     joinRequestAllowed = 'joinRequestAllowed',
     totpAllowed = 'totpAllowed',
     passkeyAllowed = 'passkeyAllowed',
+    maxWorkspacesPerUser = 'maxWorkspacesPerUser',
+    inviteExpiresInDays = 'inviteExpiresInDays',
+    joinRequestExpiresInDays = 'joinRequestExpiresInDays',
+    passkeyMaxPerUser = 'passkeyMaxPerUser',
+    mfaMaxAttempts = 'mfaMaxAttempts',
+    mfaLockDurationInMinutes = 'mfaLockDurationInMinutes',
+    passwordMaxAttempts = 'passwordMaxAttempts',
+    passwordLockDurationInMinutes = 'passwordLockDurationInMinutes',
 }

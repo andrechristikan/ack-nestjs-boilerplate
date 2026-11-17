@@ -3,41 +3,36 @@ import ms from 'ms';
 
 export interface IConfigAws {
     s3: {
-        multipartExpiredInDays: number;
-        presignExpiredInSeconds: number;
+        multipartExpiresInDays: number;
+        presignExpiresInSeconds: number;
         corsMaxAgeLongInSeconds: number;
         corsMaxAgeShortInSeconds: number;
         maxAttempts: number;
         timeoutInMs: number;
         deleteDirMaxIterations: number;
+        listMaxKeys: number;
         region: string | null;
         endpoint: string | null;
         baseUrlPattern: string;
         objectUrlPattern: string;
         cdnUrlPattern: string;
-        iam: {
-            key: string | null;
-            secret: string | null;
+        accessKeyId: string | null;
+        secretAccessKey: string | null;
+        iamPrincipalArn: string | null;
+        public: {
+            bucket: string | null;
             arn: string | null;
+            cdnUrl: string | null;
         };
-        config: {
-            public: {
-                bucket: string | null;
-                arn: string | null;
-                cdnUrl: string | null;
-            };
-            private: {
-                bucket: string | null;
-                arn: string | null;
-                cdnUrl: string | null;
-            };
+        private: {
+            bucket: string | null;
+            arn: string | null;
+            cdnUrl: string | null;
         };
     };
     ses: {
-        iam: {
-            key: string | null;
-            secret: string | null;
-        };
+        accessKeyId: string | null;
+        secretAccessKey: string | null;
         identityArn: string | null;
         region: string | null;
         endpoint: string | null;
@@ -53,28 +48,29 @@ export default registerAs('aws', (): IConfigAws => {
         process.env.AWS_S3_PUBLIC_BUCKET === ''
             ? null
             : (process.env.AWS_S3_PUBLIC_BUCKET ?? null);
-    const publicCdn =
-        process.env.AWS_S3_PUBLIC_CDN === ''
+    const publicCdnUrl =
+        process.env.AWS_S3_PUBLIC_CDN_URL === ''
             ? null
-            : (process.env.AWS_S3_PUBLIC_CDN ?? null);
+            : (process.env.AWS_S3_PUBLIC_CDN_URL ?? null);
     const privateBucket =
         process.env.AWS_S3_PRIVATE_BUCKET === ''
             ? null
             : (process.env.AWS_S3_PRIVATE_BUCKET ?? null);
-    const privateCdn =
-        process.env.AWS_S3_PRIVATE_CDN === ''
+    const privateCdnUrl =
+        process.env.AWS_S3_PRIVATE_CDN_URL === ''
             ? null
-            : (process.env.AWS_S3_PRIVATE_CDN ?? null);
+            : (process.env.AWS_S3_PRIVATE_CDN_URL ?? null);
 
     return {
         s3: {
-            multipartExpiredInDays: ms('3d') / ms('1d'),
-            presignExpiredInSeconds: ms('30m') / 1000,
+            multipartExpiresInDays: ms('3d') / ms('1d'),
+            presignExpiresInSeconds: ms('30m') / 1000,
             corsMaxAgeLongInSeconds: ms('1d') / 1000,
             corsMaxAgeShortInSeconds: ms('1h') / 1000,
             maxAttempts: 3,
             timeoutInMs: ms('30s'),
             deleteDirMaxIterations: 100,
+            listMaxKeys: 100,
             region:
                 process.env.AWS_S3_REGION === ''
                     ? null
@@ -85,51 +81,44 @@ export default registerAs('aws', (): IConfigAws => {
                 : 'https://{bucket}.s3.{region}.amazonaws.com',
             objectUrlPattern: '{baseUrl}/{key}',
             cdnUrlPattern: '{cdnUrl}/{key}',
-            iam: {
-                key:
-                    process.env.AWS_S3_IAM_CREDENTIAL_KEY === ''
-                        ? null
-                        : (process.env.AWS_S3_IAM_CREDENTIAL_KEY ?? null),
-                secret:
-                    process.env.AWS_S3_IAM_CREDENTIAL_SECRET === ''
-                        ? null
-                        : (process.env.AWS_S3_IAM_CREDENTIAL_SECRET ?? null),
+            accessKeyId:
+                process.env.AWS_S3_ACCESS_KEY_ID === ''
+                    ? null
+                    : (process.env.AWS_S3_ACCESS_KEY_ID ?? null),
+            secretAccessKey:
+                process.env.AWS_S3_SECRET_ACCESS_KEY === ''
+                    ? null
+                    : (process.env.AWS_S3_SECRET_ACCESS_KEY ?? null),
+            iamPrincipalArn:
+                process.env.AWS_S3_IAM_PRINCIPAL_ARN === ''
+                    ? null
+                    : (process.env.AWS_S3_IAM_PRINCIPAL_ARN ?? null),
+            public: {
+                bucket: publicBucket,
                 arn:
-                    process.env.AWS_S3_IAM_ARN === ''
-                        ? null
-                        : (process.env.AWS_S3_IAM_ARN ?? null),
+                    publicBucket !== null
+                        ? `arn:aws:s3:::${publicBucket}`
+                        : null,
+                cdnUrl: publicCdnUrl,
             },
-            config: {
-                public: {
-                    bucket: publicBucket,
-                    arn:
-                        publicBucket !== null
-                            ? `arn:aws:s3:::${publicBucket}`
-                            : null,
-                    cdnUrl: publicCdn !== null ? `https://${publicCdn}` : null,
-                },
-                private: {
-                    bucket: privateBucket,
-                    arn:
-                        privateBucket !== null
-                            ? `arn:aws:s3:::${privateBucket}`
-                            : null,
-                    cdnUrl:
-                        privateCdn !== null ? `https://${privateCdn}` : null,
-                },
+            private: {
+                bucket: privateBucket,
+                arn:
+                    privateBucket !== null
+                        ? `arn:aws:s3:::${privateBucket}`
+                        : null,
+                cdnUrl: privateCdnUrl,
             },
         },
         ses: {
-            iam: {
-                key:
-                    process.env.AWS_SES_IAM_CREDENTIAL_KEY === ''
-                        ? null
-                        : (process.env.AWS_SES_IAM_CREDENTIAL_KEY ?? null),
-                secret:
-                    process.env.AWS_SES_IAM_CREDENTIAL_SECRET === ''
-                        ? null
-                        : (process.env.AWS_SES_IAM_CREDENTIAL_SECRET ?? null),
-            },
+            accessKeyId:
+                process.env.AWS_SES_ACCESS_KEY_ID === ''
+                    ? null
+                    : (process.env.AWS_SES_ACCESS_KEY_ID ?? null),
+            secretAccessKey:
+                process.env.AWS_SES_SECRET_ACCESS_KEY === ''
+                    ? null
+                    : (process.env.AWS_SES_SECRET_ACCESS_KEY ?? null),
             identityArn:
                 process.env.AWS_SES_IDENTITY_ARN === ''
                     ? null

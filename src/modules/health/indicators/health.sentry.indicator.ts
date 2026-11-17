@@ -15,7 +15,7 @@ export class HealthSentryIndicator {
         private readonly configService: ConfigService,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {
-        const dsn = this.configService.get<string | null>('logger.sentry.dsn');
+        const dsn = this.configService.get<string | null>('sentry.dsn');
 
         this.dsn = dsn ?? null;
     }

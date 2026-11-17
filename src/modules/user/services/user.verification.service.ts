@@ -38,8 +38,8 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 
 @Injectable()
 export class UserVerificationService {
-    private readonly verificationOtpLength: number;
-    private readonly verificationExpiredInMinutes: number;
+    private readonly otpLength: number;
+    private readonly expiresInMinutes: number;
 
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
@@ -55,11 +55,11 @@ export class UserVerificationService {
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil
     ) {
-        this.verificationOtpLength = this.configService.get<number>(
+        this.otpLength = this.configService.get<number>(
             'verification.otpLength'
         )!;
-        this.verificationExpiredInMinutes = this.configService.get<number>(
-            'verification.expiredInMinutes'
+        this.expiresInMinutes = this.configService.get<number>(
+            'verification.expiresInMinutes'
         )!;
     }
 
@@ -67,9 +67,7 @@ export class UserVerificationService {
         email: string,
         action: EnumUserReauthenticationAction
     ): IUserVerificationReauthenticationCreate {
-        const otp = this.helperNumberService.randomDigits(
-            this.verificationOtpLength
-        );
+        const otp = this.helperNumberService.randomDigits(this.otpLength);
         const token = this.helperHashService.sha256Hash(otp);
         const reference = this.userVerificationUtil.createReference();
         const expiredAt = this.userVerificationUtil.createExpiredAt();
@@ -88,7 +86,7 @@ export class UserVerificationService {
             },
             otp,
             action,
-            expiredInMinutes: this.verificationExpiredInMinutes,
+            expiredInMinutes: this.expiresInMinutes,
         };
     }
 
@@ -96,9 +94,7 @@ export class UserVerificationService {
         to: string,
         mobileNumberId: string
     ): IUserVerificationMobileCreate {
-        const otp = this.helperNumberService.randomDigits(
-            this.verificationOtpLength
-        );
+        const otp = this.helperNumberService.randomDigits(this.otpLength);
         const token = this.helperHashService.sha256Hash(otp);
         const reference = this.userVerificationUtil.createReference();
         const expiredAt = this.userVerificationUtil.createExpiredAt();
@@ -116,7 +112,7 @@ export class UserVerificationService {
                 isUsed: false,
             },
             otp,
-            expiredInMinutes: this.verificationExpiredInMinutes,
+            expiredInMinutes: this.expiresInMinutes,
         };
     }
 
@@ -220,7 +216,7 @@ export class UserVerificationService {
 
         const isInsideResendWindow = this.userUtil.isInsideResendWindow(
             lastVerification.createdAt,
-            this.userVerificationUtil.verificationResendInMinutes
+            this.userVerificationUtil.resendInMinutes
         );
 
         return !isInsideResendWindow;
@@ -339,7 +335,7 @@ export class UserVerificationService {
 
         const isInsideResendWindow = this.userUtil.isInsideResendWindow(
             lastVerification.createdAt,
-            this.userVerificationUtil.verificationResendInMinutes
+            this.userVerificationUtil.resendInMinutes
         );
         if (isInsideResendWindow) {
             throw new UserReauthenticationOtpResendLimitException();
@@ -396,7 +392,7 @@ export class UserVerificationService {
 
         const isInsideResendWindow = this.userUtil.isInsideResendWindow(
             lastVerification.createdAt,
-            this.userVerificationUtil.verificationResendInMinutes
+            this.userVerificationUtil.resendInMinutes
         );
 
         return !isInsideResendWindow;

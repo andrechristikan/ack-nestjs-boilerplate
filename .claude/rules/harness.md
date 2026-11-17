@@ -22,4 +22,4 @@ Budgets are words, measured by `wc -w` on the whole file, frontmatter included: 
 ## Levels
 
 - `coder` runs on sonnet at an effort set per ticket by `/ack-plan` and per fix by `/ack-review`. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
-- Without `TYPESAFE_API_KEY` in `.env.harness`, or with `JEV_ROUTER_DISABLED=1`, it prints `off`; a failed call prints `unavailable`; the `/ack-plan` table then gives the effort.
+- Without `TYPESAFE_API_KEY` in `.env.harness`, or with `JEV_ROUTER_ENABLED=false`, it prints `off`; a failed call prints `unavailable`; the `/ack-plan` table then gives the effort.

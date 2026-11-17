@@ -49,9 +49,10 @@ export class MigrationCommonPasswordSeed
         this.logger.log(`Found ${values.length} Common Passwords to seed.`);
 
         try {
-            await this.databaseService.withTransaction(
-                async tx => {
-                    for (const batch of batches) {
+            // Sequential by design: fan-out over an unbounded collection
+            for (const batch of batches) {
+                await this.databaseService.withTransaction(
+                    async tx => {
                         const existing = await tx.commonPassword.findMany({
                             where: { value: { in: batch } },
                             select: { value: true },
@@ -63,7 +64,7 @@ export class MigrationCommonPasswordSeed
                             value => !present.has(value)
                         );
                         if (missing.length === 0) {
-                            continue;
+                            return;
                         }
 
                         await tx.commonPassword.createMany({
@@ -72,10 +73,10 @@ export class MigrationCommonPasswordSeed
                                 createdBy: MigrationUserSuperAdminId,
                             })),
                         });
-                    }
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
-            );
+                    },
+                    { timeout: this.seedTransactionTimeoutInMs }
+                );
+            }
         } catch (error: unknown) {
             throw new AppUnknownException(
                 error,

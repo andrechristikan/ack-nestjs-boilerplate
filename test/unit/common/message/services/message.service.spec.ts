@@ -33,10 +33,10 @@ describe('MessageService', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation((key: string) => {
-            if (key === 'message.language') {
+            if (key === 'message.defaultLanguage') {
                 return EnumMessageLanguage.en;
             }
-            if (key === 'message.availableLanguage') {
+            if (key === 'message.availableLanguages') {
                 return [EnumMessageLanguage.en];
             }
             return undefined;

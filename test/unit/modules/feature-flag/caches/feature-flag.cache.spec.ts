@@ -37,9 +37,9 @@ describe('FeatureFlagCache', () => {
         cache = module.get(FeatureFlagCache);
     });
 
-    describe('featureFlagTtlInMs', () => {
+    describe('cacheTtlInMs', () => {
         it('reads the TTL from featureFlag.cacheTtlInMs', () => {
-            expect(cache.featureFlagTtlInMs).toBe(3600000);
+            expect(cache.cacheTtlInMs).toBe(3600000);
             expect(configGet).toHaveBeenCalledWith('featureFlag.cacheTtlInMs');
         });
     });

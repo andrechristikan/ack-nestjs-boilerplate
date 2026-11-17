@@ -34,6 +34,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -111,14 +112,14 @@ describe('WorkspaceInviteService', () => {
 
     const configValues: Record<string, unknown> = {
         'workspace.invite.referenceMaxAttempts': 5,
-        'home.url': 'https://app.example.com',
-        'workspace.invite.expiredInDays': 7,
+        'frontend.baseUrl': 'https://app.example.com',
         'workspace.invite.tokenLength': 40,
         'workspace.invite.referencePrefix': 'WIN',
         'workspace.invite.referenceRandomLength': 6,
         'workspace.invite.linkPattern':
-            '{homeUrl}/workspace/invites?inviteToken={token}',
-        'workspace.invite.signUpLinkPattern': '{homeUrl}/sign-up/{token}',
+            '{frontendBaseUrl}/workspace/invites?inviteToken={token}',
+        'workspace.invite.signUpLinkPattern':
+            '{frontendBaseUrl}/sign-up/{token}',
     };
 
     const workspace: Workspace = {
@@ -184,8 +185,9 @@ describe('WorkspaceInviteService', () => {
 
     const filledPatterns: Record<string, string> = {
         [WorkspaceInviteNoncePattern]: 'workspace-1:invitee@example.com',
-        '{homeUrl}/workspace/invites?inviteToken={token}': tokenData.claimLink,
-        '{homeUrl}/sign-up/{token}': tokenData.signUpLink,
+        '{frontendBaseUrl}/workspace/invites?inviteToken={token}':
+            tokenData.claimLink,
+        '{frontendBaseUrl}/sign-up/{token}': tokenData.signUpLink,
     };
 
     const baseCreate: IWorkspaceInviteCreate = {
@@ -252,6 +254,7 @@ describe('WorkspaceInviteService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
+        featureFlagService.getMetadataNumber.mockResolvedValue(7);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogService.recordEffect
             .mockReturnValueOnce(actorEntry)
@@ -863,6 +866,73 @@ describe('WorkspaceInviteService', () => {
             });
         });
 
+        it('expires the invite after inviteExpiresInDays when the request sends no lifetime', async () => {
+            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
+                baseInvite
+            );
+            featureFlagService.getMetadataNumber.mockResolvedValue(9);
+
+            await service.createInvite(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'workspace-1',
+                baseCreate,
+                unregisteredNotice
+            );
+
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                createdAt,
+                Duration.fromObject({ days: 9 })
+            );
+        });
+
+        it('does not read the flag when the request sends a lifetime', async () => {
+            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
+                baseInvite
+            );
+
+            await service.createInvite(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'workspace-1',
+                { ...baseCreate, expiryDuration: 14 },
+                unregisteredNotice
+            );
+
+            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(
+                service.createInvite(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    baseCreate,
+                    unregisteredNotice
+                )
+            ).rejects.toBe(notConfigured);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteRepository.createPendingInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('adds the notify effect for an invitee with an account on the invite tx', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
@@ -1439,6 +1509,73 @@ describe('WorkspaceInviteService', () => {
                 tokenData.expiredAt,
                 resentAt
             );
+        });
+
+        it('expires the invite after inviteExpiresInDays when the request sends no lifetime', async () => {
+            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
+                baseInvite
+            );
+            featureFlagService.getMetadataNumber.mockResolvedValue(9);
+
+            await service.resendInvite(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'invite-1',
+                null,
+                unregisteredNotice
+            );
+
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                resentAt,
+                Duration.fromObject({ days: 9 })
+            );
+        });
+
+        it('does not read the flag when the request sends a lifetime', async () => {
+            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
+                baseInvite
+            );
+
+            await service.resendInvite(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'invite-1',
+                14,
+                unregisteredNotice
+            );
+
+            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(
+                service.resendInvite(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'invite-1',
+                    null,
+                    unregisteredNotice
+                )
+            ).rejects.toBe(notConfigured);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                workspaceInviteRepository.rotateForResendInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('adds the invite effect on the rotation tx', async () => {
@@ -2076,8 +2213,8 @@ describe('WorkspaceInviteService', () => {
                 );
         });
 
-        it('builds token data with the default expiry when none is given', () => {
-            const result = service['createInviteTokenData'](null);
+        it('builds token data expiring after the given days', () => {
+            const result = service['createInviteTokenData'](7);
 
             expect(result).toEqual({
                 token: 'token-value',
@@ -2099,22 +2236,19 @@ describe('WorkspaceInviteService', () => {
             );
             expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
                 1,
-                '{homeUrl}/workspace/invites?inviteToken={token}',
-                { homeUrl: 'https://app.example.com', token: 'token-value' }
+                '{frontendBaseUrl}/workspace/invites?inviteToken={token}',
+                {
+                    frontendBaseUrl: 'https://app.example.com',
+                    token: 'token-value',
+                }
             );
             expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
                 2,
-                '{homeUrl}/sign-up/{token}',
-                { homeUrl: 'https://app.example.com', token: 'token-value' }
-            );
-        });
-
-        it('builds token data with the given expiry duration', () => {
-            service['createInviteTokenData'](14);
-
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 14 })
+                '{frontendBaseUrl}/sign-up/{token}',
+                {
+                    frontendBaseUrl: 'https://app.example.com',
+                    token: 'token-value',
+                }
             );
         });
     });

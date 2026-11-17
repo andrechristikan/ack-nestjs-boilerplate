@@ -25,6 +25,7 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
@@ -76,7 +77,6 @@ describe('WorkspaceService', () => {
     });
 
     const configValues: Record<string, unknown> = {
-        'workspace.maxWorkspacesPerUser': 5,
         'workspace.slugRegex': /^[a-z0-9-]+$/,
         'workspace.slugPrefix': 'ws-',
         'workspace.slugMaxLength': 12,
@@ -318,6 +318,63 @@ describe('WorkspaceService', () => {
                 'ws-ccc',
             ]);
             databaseUtil.createId.mockReturnValue('workspace-1');
+            featureFlagService.getMetadataNumber.mockResolvedValue(5);
+        });
+
+        it('refuses a create for an owner of 2 workspaces when the flag caps at 2', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(2);
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+
+            await expect(
+                service.createWorkspace(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    create
+                )
+            ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+        });
+
+        it('allows a create for an owner of 2 workspaces when the flag caps at 3', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(3);
+            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+            workspaceRepository.createInTx.mockResolvedValue(workspace);
+
+            const result = await service.createWorkspace(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                create
+            );
+
+            expect(result).toBe(workspace);
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(
+                service.createWorkspace(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    create
+                )
+            ).rejects.toBe(notConfigured);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceCapReachedException from inside the transaction when the owner already meets the cap', async () => {

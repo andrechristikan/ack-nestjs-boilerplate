@@ -30,8 +30,8 @@ describe('RequestHelmetMiddleware', () => {
         configGet.mockImplementation((key: string) => {
             const values: Record<string, number | boolean> = {
                 'request.helmet.maxAgeInSeconds': 31536000,
-                'request.helmet.includeSubDomains': true,
-                'request.helmet.preload': true,
+                'request.helmet.includeSubDomainsEnabled': true,
+                'request.helmet.preloadEnabled': true,
             };
             return values[key];
         });

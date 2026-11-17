@@ -12,9 +12,9 @@ import type { PasswordHistory } from '@generated/prisma-client/client';
 
 @Injectable()
 export class AuthPasswordUtil {
-    private readonly passwordExpiredTemporaryInMs: number;
-    private readonly passwordPeriodInDays: number;
-    private readonly passwordTemporaryLength: number;
+    private readonly temporaryExpiresInMs: number;
+    private readonly periodInDays: number;
+    private readonly temporaryLength: number;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -22,13 +22,13 @@ export class AuthPasswordUtil {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.passwordExpiredTemporaryInMs = this.configService.get<number>(
-            'auth.password.expiredTemporaryInMs'
+        this.temporaryExpiresInMs = this.configService.get<number>(
+            'auth.password.temporaryExpiresInMs'
         )!;
-        this.passwordPeriodInDays = this.configService.get<number>(
+        this.periodInDays = this.configService.get<number>(
             'auth.password.periodInDays'
         )!;
-        this.passwordTemporaryLength = this.configService.get<number>(
+        this.temporaryLength = this.configService.get<number>(
             'auth.password.temporaryLength'
         )!;
     }
@@ -57,7 +57,7 @@ export class AuthPasswordUtil {
         if (options?.temporary) {
             const passwordExpiredDuration =
                 this.helperDateService.createDuration({
-                    milliseconds: this.passwordExpiredTemporaryInMs,
+                    milliseconds: this.temporaryExpiresInMs,
                 });
             passwordExpired = this.helperDateService.forward(
                 today,
@@ -66,7 +66,7 @@ export class AuthPasswordUtil {
         }
         const passwordHash = await this.helperHashService.argon2Hash(password);
         const passwordPeriodDuration = this.helperDateService.createDuration({
-            days: this.passwordPeriodInDays,
+            days: this.periodInDays,
         });
         const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
@@ -82,7 +82,7 @@ export class AuthPasswordUtil {
     }
 
     createPasswordRandom(): string {
-        return this.helperStringService.random(this.passwordTemporaryLength);
+        return this.helperStringService.random(this.temporaryLength);
     }
 
     /** True when the expiry date has passed; false when no expiry is set. */
@@ -133,6 +133,6 @@ export class AuthPasswordUtil {
     }
 
     getPasswordPeriodInDays(): number {
-        return this.passwordPeriodInDays;
+        return this.periodInDays;
     }
 }

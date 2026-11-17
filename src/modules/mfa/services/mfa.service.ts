@@ -47,8 +47,6 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class MfaService {
-    private readonly maxAttempt: number;
-    private readonly lockDurationInMs: number;
     private readonly backupCodesCount: number;
     private readonly backupCodesLength: number;
 
@@ -67,10 +65,6 @@ export class MfaService {
         private readonly configService: ConfigService,
         private readonly featureFlagService: FeatureFlagService
     ) {
-        this.maxAttempt = this.configService.get<number>('mfa.maxAttempt')!;
-        this.lockDurationInMs = this.configService.get<number>(
-            'mfa.lockDurationInMs'
-        )!;
         this.backupCodesCount = this.configService.get<number>(
             'mfa.backupCodes.count'
         )!;
@@ -379,10 +373,20 @@ export class MfaService {
         apiKeyContext: IApiKeyContext,
         userId: string
     ): Promise<boolean> {
+        const [maxAttempts, lockDurationInMinutes] = await Promise.all([
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaMaxAttempts
+            ),
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
+            ),
+        ]);
         const now = this.helperDateService.create();
         const lockedUntil = this.helperDateService.forward(
             now,
-            Duration.fromObject({ milliseconds: this.lockDurationInMs })
+            Duration.fromObject({ minutes: lockDurationInMinutes })
         );
         const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
@@ -391,7 +395,7 @@ export class MfaService {
                 const isLocked = await this.mfaRepository.incrementAttemptInTx(
                     tx,
                     userId,
-                    this.maxAttempt,
+                    maxAttempts,
                     lockedUntil,
                     userId
                 );

@@ -150,7 +150,7 @@ export class RoleService {
         const role = await this.cacheService.readThrough(
             cacheKey,
             RoleWithPoliciesCacheSchema,
-            this.roleCache.roleTtlInMs,
+            this.roleCache.cacheTtlInMs,
             () => this.roleRepository.findOneWithPoliciesById(id),
             { lease }
         );

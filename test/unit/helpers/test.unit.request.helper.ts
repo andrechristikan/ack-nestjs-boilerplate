@@ -49,10 +49,10 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 export interface ICorsConfig {
-    allowedOrigin: string | boolean | string[];
-    allowedMethod: string[];
-    allowedHeader: string[];
-    exposedHeader: string[];
+    allowedOrigins: string[];
+    allowedMethods: string[];
+    allowedHeaders: string[];
+    exposedHeaders: string[];
     maxAgeInSeconds: number;
 }
 
@@ -306,10 +306,10 @@ export async function createRequestCorsMiddleware(
     config: ICorsConfig
 ): Promise<RequestCorsMiddleware> {
     const configService = buildConfigService({
-        'request.cors.allowedOrigin': config.allowedOrigin,
-        'request.cors.allowedMethod': config.allowedMethod,
-        'request.cors.allowedHeader': config.allowedHeader,
-        'request.cors.exposedHeader': config.exposedHeader,
+        'request.cors.allowedOrigins': config.allowedOrigins,
+        'request.cors.allowedMethods': config.allowedMethods,
+        'request.cors.allowedHeaders': config.allowedHeaders,
+        'request.cors.exposedHeaders': config.exposedHeaders,
         'request.cors.maxAgeInSeconds': config.maxAgeInSeconds,
     });
 
@@ -340,10 +340,10 @@ export async function createFreshRequestCorsMiddleware(
         await import('@common/request/middlewares/request.cors.middleware');
     vi.doUnmock('cors');
     const configService = buildConfigService({
-        'request.cors.allowedOrigin': config.allowedOrigin,
-        'request.cors.allowedMethod': config.allowedMethod,
-        'request.cors.allowedHeader': config.allowedHeader,
-        'request.cors.exposedHeader': config.exposedHeader,
+        'request.cors.allowedOrigins': config.allowedOrigins,
+        'request.cors.allowedMethods': config.allowedMethods,
+        'request.cors.allowedHeaders': config.allowedHeaders,
+        'request.cors.exposedHeaders': config.exposedHeaders,
         'request.cors.maxAgeInSeconds': config.maxAgeInSeconds,
     });
     const module = await Test.createTestingModule({
@@ -362,9 +362,9 @@ export async function createRequestUrlVersionMiddleware(
 ): Promise<RequestUrlVersionMiddleware> {
     const configService = buildConfigService({
         'app.globalPrefix': '/api',
-        'app.urlVersion.enable': urlVersionEnable,
-        'app.urlVersion.prefix': 'v',
-        'app.urlVersion.version': '1',
+        'app.urlVersioning.enabled': urlVersionEnable,
+        'app.urlVersioning.prefix': 'v',
+        'app.urlVersioning.defaultVersion': '1',
     });
 
     const module = await Test.createTestingModule({

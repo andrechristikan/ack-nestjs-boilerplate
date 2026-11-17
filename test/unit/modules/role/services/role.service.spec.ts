@@ -343,7 +343,7 @@ describe('RoleService', () => {
 
     describe('getOne', () => {
         beforeEach(() => {
-            Object.assign(roleCache, { roleTtlInMs: 900000 });
+            Object.assign(roleCache, { cacheTtlInMs: 900000 });
         });
 
         it('reads through with the role key, RoleWithPoliciesCacheSchema, the TTL, a loader, and the lease', async () => {

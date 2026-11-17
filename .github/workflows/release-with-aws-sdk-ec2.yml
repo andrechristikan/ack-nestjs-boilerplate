@@ -8,7 +8,7 @@ on:
     #         - development
 
 env:
-    DOCKERFILE: ci/dockerfile.production
+    DOCKERFILE: ci/dockerfile
 
 jobs:
     build_image:
@@ -63,15 +63,15 @@ jobs:
             - name: Build & Push
               if: ${{ github.ref_name == matrix.branch }}
               run: |
-                  docker build -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
-                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
-                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
-                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
+                  docker build -t ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker tag ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPOSITORY_URI }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }}
 
                   # Push latest tag only for production
                   if [ "${{ matrix.env }}" = "production" ]; then
-                    docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:latest
-                    docker push ${{ vars.AWS_ECR_REPO_URL }}:latest
+                    docker tag ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPOSITORY_URI }}:latest
+                    docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:latest
                   fi
 
     deploy:
@@ -103,26 +103,26 @@ jobs:
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   if [ "${{ matrix.env }}" = "production" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.PROD_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.PROD_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   elif [ "${{ matrix.env }}" = "development" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.DEV_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.DEV_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   elif [ "${{ matrix.env }}" = "staging" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.STAGING_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.STAGING_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   fi
 
             - name: Update AWS EC2 Instance
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   aws ssm send-command \
-                      --instance-ids "${{ env.EC2_INSTANCE }}" \
+                      --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
                       --document-name "AWS-RunShellScript" \
                       --comment "Release new version" \
                       --parameters commands='[
-                          "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ECR_REPO_URL }}",
-                          "docker pull ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}",
+                          "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ vars.AWS_ECR_REPOSITORY_URI }}",
+                          "docker pull ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }}",
                           "docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }}",
                           "docker network create app-network --driver=bridge 2>/dev/null || true",
-                          "docker run -itd --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}"
+                          "docker run -itd --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_HOST_PORT }}:3000 --network app-network --volume /home/ec2-user/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }}"
                       ]'
 
     clean:
@@ -154,21 +154,21 @@ jobs:
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   if [ "${{ matrix.env }}" = "production" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.PROD_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.PROD_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   elif [ "${{ matrix.env }}" = "development" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.DEV_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.DEV_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   elif [ "${{ matrix.env }}" = "staging" ]; then
-                    echo "EC2_INSTANCE=${{ secrets.STAGING_AWS_INSTANCE_ID }}" >> $GITHUB_ENV
+                    echo "EC2_INSTANCE_ID=${{ secrets.STAGING_EC2_INSTANCE_ID }}" >> $GITHUB_ENV
                   fi
 
             - name: Clean AWS EC2 Instance
               if: ${{ github.ref_name == matrix.branch }}
               run: |
                   aws ssm send-command \
-                      --instance-ids "${{ env.EC2_INSTANCE }}" \
+                      --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
                       --document-name "AWS-RunShellScript" \
                       --comment "Clean up" \
                       --parameters commands='[
                           "docker image prune --force",
-                          "docker rmi $(docker images ${{ vars.AWS_ECR_REPO_URL }}/** -q) --force"
+                          "docker rmi $(docker images ${{ vars.AWS_ECR_REPOSITORY_URI }}/** -q) --force"
                       ]'

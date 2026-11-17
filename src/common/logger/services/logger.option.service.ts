@@ -34,14 +34,14 @@ export class LoggerOptionService {
     private readonly name: string;
     private readonly version: string;
 
-    private readonly autoLogger: boolean;
+    private readonly accessLogEnabled: boolean;
     private readonly excludedRoutes: string[];
 
-    private readonly enable: boolean;
+    private readonly enabled: boolean;
     private readonly level: EnumLoggerLevel;
-    private readonly intoFile: boolean;
+    private readonly fileEnabled: boolean;
     private readonly filePath: string;
-    private readonly prettier: boolean;
+    private readonly prettyEnabled: boolean;
 
     private readonly sensitivePaths: string[];
 
@@ -57,16 +57,21 @@ export class LoggerOptionService {
         this.name = this.configService.get<string>('app.name')!;
         this.version = this.configService.get<string>('app.version')!;
 
-        this.autoLogger = this.configService.get<boolean>('logger.auto')!;
+        this.accessLogEnabled = this.configService.get<boolean>(
+            'logger.accessLogEnabled'
+        )!;
         this.excludedRoutes = this.configService.get<string[]>(
             'logger.excludedRoutes'
         )!;
 
-        this.enable = this.configService.get<boolean>('logger.enable')!;
+        this.enabled = this.configService.get<boolean>('logger.enabled')!;
         this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
-        this.intoFile = this.configService.get<boolean>('logger.intoFile')!;
+        this.fileEnabled =
+            this.configService.get<boolean>('logger.fileEnabled')!;
         this.filePath = this.configService.get<string>('logger.filePath')!;
-        this.prettier = this.configService.get<boolean>('logger.prettier')!;
+        this.prettyEnabled = this.configService.get<boolean>(
+            'logger.prettyEnabled'
+        )!;
 
         this.sensitivePaths = LoggerSensitivePaths.map(path =>
             LoggerSensitiveFields.map(field =>
@@ -86,7 +91,7 @@ export class LoggerOptionService {
             targets: [],
         };
 
-        if (this.prettier) {
+        if (this.prettyEnabled) {
             transport.targets.push({
                 target: 'pino-pretty',
                 level: this.level,
@@ -101,7 +106,7 @@ export class LoggerOptionService {
             });
         }
 
-        if (this.intoFile) {
+        if (this.fileEnabled) {
             transport.targets.push({
                 target: 'pino-roll',
                 level: this.level,
@@ -240,7 +245,7 @@ export class LoggerOptionService {
 
     private createAutoLoggingConfig():
         { ignore: (req: IncomingMessage) => boolean } | boolean {
-        return this.autoLogger === true
+        return this.accessLogEnabled === true
             ? {
                   ignore: (req: IncomingMessage) =>
                       this.loggerUrlUtil.matchesPatterns(
@@ -291,7 +296,7 @@ export class LoggerOptionService {
                 wrapSerializers: false,
                 base: null,
                 ...(transports !== null && { transport: transports }),
-                level: this.enable ? this.level : 'silent',
+                level: this.enabled ? this.level : 'silent',
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,

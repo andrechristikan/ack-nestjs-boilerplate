@@ -10,7 +10,7 @@ paths:
 
 ## Upload validation is a pipe
 
-- An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below (`UserAdminController.import`, `src/modules/user/controllers/user.admin.controller.ts`). A controller does not read `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `guards.md`).
+- An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below (`UserAdminController.import`, `src/modules/user/controllers/user.admin.controller.ts`). A controller does not read `file.buffer`. An upload route carries `@RequestTimeout(RequestUploadTimeout)` (placement: `guards.md`).
 - The extension allow-list is `EnumFileExtension` (`src/common/file/enums/file.enum.ts`). `FileExtensionPipe` reads the extension from `originalname`, then checks the buffer through `FileService.isContentOfExtension`: a sniffed type passes only when it belongs to the declared extension's own signature list in `FileExtensionContract` (`src/common/file/contracts/file.extension.contract.ts`). `csv` and `hbs` are signature-less: an empty sniff passes for them only, and one with a sniffed binary signature is rejected. Adding an uploadable extension adds its row to that contract.
 - No scan job, quarantine state, or scanner service exists, an accepted difference from ASVS 5.4.3: the signature check vouches for an upload, and an upload type it cannot vouch for reopens the choice.
 - A multi-file upload is validated element by element; one rejected file rejects the request.

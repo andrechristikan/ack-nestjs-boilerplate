@@ -81,7 +81,7 @@ export class NotificationService {
     private readonly stepPattern: string;
     private readonly termPolicyBatchPattern: string;
     private readonly termPolicyBatchResendPattern: string;
-    private readonly encryptionSecretKey: string;
+    private readonly encryptionSecret: string;
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
@@ -95,8 +95,8 @@ export class NotificationService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService
     ) {
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
+        this.encryptionSecret = this.configService.get<string>(
+            'app.encryptionSecret'
         )!;
         this.stepPattern = this.configService.get<string>(
             'notification.idempotencyKey.stepPattern'
@@ -131,7 +131,7 @@ export class NotificationService {
     private encryptPayload(value: string, context: string): string {
         return this.helperEncryptionService.aes256Encrypt(
             value,
-            this.encryptionSecretKey,
+            this.encryptionSecret,
             NotificationPayloadEncryptionPurpose,
             context
         );

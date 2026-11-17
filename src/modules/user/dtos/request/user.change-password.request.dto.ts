@@ -1,14 +1,18 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { UserReauthenticationRequestSchema } from '@modules/user/dtos/request/user.reauthentication.request.dto';
+import {
+    UserPasswordMaxLength,
+    UserPasswordMinLength,
+} from '@modules/user/constants/user.constant';
 
 /** @public */
 export const UserChangePasswordRequestSchema =
     UserReauthenticationRequestSchema.extend({
         newPassword: z
             .string()
-            .min(8)
-            .max(64)
+            .min(UserPasswordMinLength)
+            .max(UserPasswordMaxLength)
             .meta({
                 description:
                     "new string password, newPassword can't same with the current password",

@@ -40,12 +40,12 @@ describe('LoggerOptionService', () => {
         'app.env': EnumAppEnvironment.development,
         'app.name': 'app-name',
         'app.version': '1.0.0',
-        'logger.auto': true,
-        'logger.enable': true,
+        'logger.accessLogEnabled': true,
+        'logger.enabled': true,
         'logger.level': EnumLoggerLevel.info,
-        'logger.intoFile': false,
+        'logger.fileEnabled': false,
         'logger.filePath': '/logs',
-        'logger.prettier': false,
+        'logger.prettyEnabled': false,
         'logger.excludedRoutes': ['/api/public/hello', '/metrics'],
     };
 
@@ -56,7 +56,7 @@ describe('LoggerOptionService', () => {
     describe('createOptions', () => {
         it('assembles the pino-http options from the config and the builders', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.enable': true },
+                { ...baseConfig, 'logger.enabled': true },
                 loggerDoubles
             );
 
@@ -94,7 +94,7 @@ describe('LoggerOptionService', () => {
 
         it('carries the transport key when a transport is enabled', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.prettier': true },
+                { ...baseConfig, 'logger.prettyEnabled': true },
                 loggerDoubles
             );
 
@@ -105,7 +105,7 @@ describe('LoggerOptionService', () => {
 
         it('sets the pino level to silent when logging is disabled', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.enable': false },
+                { ...baseConfig, 'logger.enabled': false },
                 loggerDoubles
             );
 
@@ -130,7 +130,7 @@ describe('LoggerOptionService', () => {
 
         it('adds a pino-pretty target when prettier is enabled', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.prettier': true },
+                { ...baseConfig, 'logger.prettyEnabled': true },
                 loggerDoubles
             );
 
@@ -149,7 +149,7 @@ describe('LoggerOptionService', () => {
             const service = await createLoggerOptionService(
                 {
                     ...baseConfig,
-                    'logger.intoFile': true,
+                    'logger.fileEnabled': true,
                     'logger.filePath': '/logs',
                 },
                 loggerDoubles
@@ -168,8 +168,8 @@ describe('LoggerOptionService', () => {
             const service = await createLoggerOptionService(
                 {
                     ...baseConfig,
-                    'logger.prettier': true,
-                    'logger.intoFile': true,
+                    'logger.prettyEnabled': true,
+                    'logger.fileEnabled': true,
                 },
                 loggerDoubles
             );
@@ -252,7 +252,7 @@ describe('LoggerOptionService', () => {
     describe('createAutoLoggingConfig', () => {
         it('returns false when auto logging is disabled', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.auto': false },
+                { ...baseConfig, 'logger.accessLogEnabled': false },
                 loggerDoubles
             );
 
@@ -261,7 +261,7 @@ describe('LoggerOptionService', () => {
 
         it('returns an ignore predicate matching the configured excluded routes when enabled', async () => {
             const service = await createLoggerOptionService(
-                { ...baseConfig, 'logger.auto': true },
+                { ...baseConfig, 'logger.accessLogEnabled': true },
                 loggerDoubles
             );
             loggerUrlUtil.matchesPatterns.mockReturnValue(true);

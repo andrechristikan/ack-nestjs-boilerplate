@@ -17,8 +17,10 @@ describe('HealthAppleIndicator', () => {
     });
 
     describe('isHealthy', () => {
-        it('reports down as not configured when neither Apple client id is set', async () => {
-            const configService = buildConfigService({});
+        it('reports down as not configured when the Apple client id list is empty', async () => {
+            const configService = buildConfigService({
+                'auth.social.apple.clientIds': [],
+            });
             const indicator = await createHealthAppleIndicator(
                 configService,
                 healthIndicatorService
@@ -36,27 +38,9 @@ describe('HealthAppleIndicator', () => {
             );
         });
 
-        it('reports up when only the Apple client id is configured', async () => {
+        it('reports up when the Apple client id list is not empty', async () => {
             const configService = buildConfigService({
-                'auth.apple.clientId': 'client',
-            });
-            const indicator = await createHealthAppleIndicator(
-                configService,
-                healthIndicatorService
-            );
-            session.up.mockReturnValue({ apple: { status: 'up' } });
-
-            const result = await indicator.isHealthy(
-                EnumHealthIndicatorKey.apple
-            );
-
-            expect(result).toEqual({ apple: { status: 'up' } });
-            expect(session.up).toHaveBeenCalledWith();
-        });
-
-        it('reports up when only the Apple sign-in client id is configured', async () => {
-            const configService = buildConfigService({
-                'auth.apple.signInClientId': 'sign-in-client',
+                'auth.social.apple.clientIds': ['client', 'sign-in-client'],
             });
             const indicator = await createHealthAppleIndicator(
                 configService,

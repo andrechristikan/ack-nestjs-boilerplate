@@ -20,7 +20,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserCreateUtil {
-    private readonly personalWorkspaceNamePattern: string;
+    private readonly personalNamePattern: string;
     private readonly workspaceSlugPrefix: string;
     private readonly workspaceSlugMaxLength: number;
     private readonly workspaceSlugMaxAttempts: number;
@@ -30,7 +30,7 @@ export class UserCreateUtil {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.personalWorkspaceNamePattern = this.configService.get<string>(
+        this.personalNamePattern = this.configService.get<string>(
             'workspace.personalNamePattern'
         )!;
         this.workspaceSlugPrefix = this.configService.get<string>(
@@ -122,7 +122,7 @@ export class UserCreateUtil {
                     this.workspaceSlugMaxLength,
                     this.workspaceSlugMaxAttempts
                 );
-            const name = this.personalWorkspaceNamePattern.replace(
+            const name = this.personalNamePattern.replace(
                 '{username}',
                 () => username
             );

@@ -38,9 +38,9 @@ describe('ApiKeyCache', () => {
         cache = module.get(ApiKeyCache);
     });
 
-    describe('apiKeyTtlInMs', () => {
+    describe('cacheTtlInMs', () => {
         it('reads the TTL from auth.xApiKey.cacheTtlInMs', () => {
-            expect(cache.apiKeyTtlInMs).toBe(4000);
+            expect(cache.cacheTtlInMs).toBe(4000);
             expect(configGet).toHaveBeenCalledWith('auth.xApiKey.cacheTtlInMs');
         });
     });

@@ -1026,7 +1026,7 @@ describe('UserAuthService', () => {
             authJwtService.createTokens.mockReturnValue(tokens);
             Object.defineProperty(
                 authJwtService,
-                'jwtRefreshTokenExpirationTimeInSeconds',
+                'refreshTokenExpiresInSeconds',
                 { value: 2592000, configurable: true }
             );
         });

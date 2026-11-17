@@ -76,7 +76,7 @@ describe('UserProfileService', () => {
     const photoMaxSizeInBytes = 2048;
     const configValues: Record<string, number | string> = {
         'user.photo.filenameRandomLength': 24,
-        'user.uploadPhotoProfilePath': 'photo-profile/{userId}',
+        'user.uploadPhotoProfilePathPattern': 'photo-profile/{userId}',
         'user.photo.maxSizeInBytes': photoMaxSizeInBytes,
     };
 

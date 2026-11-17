@@ -2,17 +2,16 @@ import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 
 export interface IConfigWorkspace {
-    maxWorkspacesPerUser: number;
     personalNamePattern: string;
     slugPrefix: string;
     slugRegex: RegExp;
     slugMaxLength: number;
     slugMaxAttempts: number;
+    deletedSlugPattern: string;
     delete: {
         timeoutInMs: number;
     };
     invite: {
-        expiredInDays: number;
         tokenLength: number;
         referencePrefix: string;
         referenceRandomLength: number;
@@ -24,35 +23,33 @@ export interface IConfigWorkspace {
     };
     joinRequest: {
         reviewLinkPattern: string;
-        expiresInMs: number;
         expireChunkSize: number;
     };
 }
 
 export default registerAs('workspace', (): IConfigWorkspace => ({
-    maxWorkspacesPerUser: 10,
     personalNamePattern: "{username}'s Workspace",
     slugPrefix: 'w-',
     slugRegex: /^[0-9a-zA-Z-]+$/,
     slugMaxLength: 30,
     slugMaxAttempts: 5,
+    deletedSlugPattern: 'deleted-{id}',
     delete: {
         timeoutInMs: ms('10s'),
     },
     invite: {
-        expiredInDays: 7,
         tokenLength: 100,
         referencePrefix: 'WIN',
         referenceRandomLength: 25,
         referenceMaxAttempts: 5,
         expireChunkSize: 100,
-        linkPattern: '{homeUrl}/workspace/invites?inviteToken={token}',
-        signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
+        linkPattern: '{frontendBaseUrl}/workspace/invites?inviteToken={token}',
+        signUpLinkPattern: '{frontendBaseUrl}/sign-up?inviteToken={token}',
         expirySweepCron: '0 * * * *',
     },
     joinRequest: {
-        reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}',
-        expiresInMs: ms('7d'),
+        reviewLinkPattern:
+            '{frontendBaseUrl}/workspace/join-requests/{joinRequestId}',
         expireChunkSize: 100,
     },
 }));

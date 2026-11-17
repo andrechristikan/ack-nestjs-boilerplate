@@ -151,11 +151,10 @@ describe('UserRefreshUseCase', () => {
         );
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         authJwtService.createTokens.mockReturnValue(tokens);
-        Object.defineProperty(
-            authJwtService,
-            'jwtRefreshTokenExpirationTimeInSeconds',
-            { value: 2592000, configurable: true }
-        );
+        Object.defineProperty(authJwtService, 'refreshTokenExpiresInSeconds', {
+            value: 2592000,
+            configurable: true,
+        });
         userService.createManyInTx.mockResolvedValue([committedUser]);
 
         const module: TestingModule = await Test.createTestingModule({

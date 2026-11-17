@@ -16,7 +16,7 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     @Injectable()
     class MixinFileCsvValidationPipe implements PipeTransform {
         private readonly maxDataImport: number;
-        private readonly validationConcurrency: number;
+        private readonly importValidationConcurrency: number;
 
         constructor(
             private readonly configService: ConfigService,
@@ -27,7 +27,7 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             this.maxDataImport = this.configService.get<number>(
                 options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;
-            this.validationConcurrency = this.configService.get<number>(
+            this.importValidationConcurrency = this.configService.get<number>(
                 'file.importValidationConcurrency'
             )!;
         }
@@ -40,7 +40,7 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
 
             const batches = this.helperArrayService.chunk(
                 data,
-                this.validationConcurrency
+                this.importValidationConcurrency
             );
 
             let offset = 0;

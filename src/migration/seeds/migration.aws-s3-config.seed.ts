@@ -18,7 +18,7 @@ export class MigrationAwsS3ConfigSeed
 {
     private readonly logger = new Logger(MigrationAwsS3ConfigSeed.name);
 
-    private readonly iamArn: string | null;
+    private readonly iamPrincipalArn: string | null;
 
     constructor(
         private readonly awsS3Service: AwsS3Service,
@@ -26,8 +26,10 @@ export class MigrationAwsS3ConfigSeed
     ) {
         super();
 
-        const iamArn = this.configService.get<string | null>('aws.s3.iam.arn');
-        this.iamArn = iamArn ?? null;
+        const iamPrincipalArn = this.configService.get<string | null>(
+            'aws.s3.iamPrincipalArn'
+        );
+        this.iamPrincipalArn = iamPrincipalArn ?? null;
     }
 
     private async setPrivateBucketPolicies(): Promise<void> {
@@ -95,9 +97,9 @@ export class MigrationAwsS3ConfigSeed
             return;
         }
 
-        if (!this.iamArn) {
+        if (!this.iamPrincipalArn) {
             this.logger.warn(
-                'AWS_S3_IAM_ARN is not set. Skipping AWS S3 policy seed.'
+                'AWS_S3_IAM_PRINCIPAL_ARN is not set. Skipping AWS S3 policy seed.'
             );
 
             return;

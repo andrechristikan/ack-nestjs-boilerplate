@@ -86,24 +86,23 @@ export class AnalyticFraudService {
     private readonly refreshSpikeWindowInMs: number;
     private readonly refreshSpikeMinCount: number;
     private readonly backupCodeNewDeviceWindowInMs: number;
-    private readonly backupCodeNewDeviceAfterInMs: number;
+    private readonly newDeviceAfterInMs: number;
     private readonly apiKeyBurstWindowInMs: number;
     private readonly apiKeyBurstMinCount: number;
-    private readonly nearLockoutAttempt: number;
     private readonly riskScoreCandidateLimit: number;
     private readonly riskScoreLookbackInMs: number;
     private readonly concurrency: number;
-    private readonly weightSessionAfterAdmin: number;
-    private readonly weightImpossibleTravel: number;
-    private readonly weightNewDeviceAfterPasswordChange: number;
-    private readonly weightCredentialStuffingIp: number;
-    private readonly weightSharedFingerprint: number;
-    private readonly weightNearLockout: number;
-    private readonly weightMassRegistrationIp: number;
-    private readonly weightForgotPasswordAbuse: number;
-    private readonly bandMonitorMax: number;
-    private readonly bandReviewMax: number;
-    private readonly bandElevateMax: number;
+    private readonly sessionAfterAdmin: number;
+    private readonly impossibleTravel: number;
+    private readonly newDeviceAfterPasswordChange: number;
+    private readonly credentialStuffingIp: number;
+    private readonly sharedFingerprint: number;
+    private readonly nearLockout: number;
+    private readonly massRegistrationIp: number;
+    private readonly forgotPasswordAbuse: number;
+    private readonly monitorMax: number;
+    private readonly reviewMax: number;
+    private readonly elevateMax: number;
 
     constructor(
         private readonly analyticCache: AnalyticCache,
@@ -174,7 +173,7 @@ export class AnalyticFraudService {
         this.backupCodeNewDeviceWindowInMs = this.configService.get<number>(
             'analytic.fraud.backupCodeNewDevice.windowInMs'
         )!;
-        this.backupCodeNewDeviceAfterInMs = this.configService.get<number>(
+        this.newDeviceAfterInMs = this.configService.get<number>(
             'analytic.fraud.backupCodeNewDevice.newDeviceAfterInMs'
         )!;
         this.apiKeyBurstWindowInMs = this.configService.get<number>(
@@ -183,11 +182,6 @@ export class AnalyticFraudService {
         this.apiKeyBurstMinCount = this.configService.get<number>(
             'analytic.fraud.apiKeyBurst.minCount'
         )!;
-        const passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        )!;
-        this.nearLockoutAttempt =
-            this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
         this.riskScoreCandidateLimit = this.configService.get<number>(
             'analytic.fraud.riskScore.candidateLimit'
         )!;
@@ -197,103 +191,110 @@ export class AnalyticFraudService {
         this.concurrency = this.configService.get<number>(
             'analytic.fraud.concurrency'
         )!;
-        this.weightSessionAfterAdmin = this.configService.get<number>(
+        this.sessionAfterAdmin = this.configService.get<number>(
             'analytic.fraud.weights.sessionAfterAdmin'
         )!;
-        this.weightImpossibleTravel = this.configService.get<number>(
+        this.impossibleTravel = this.configService.get<number>(
             'analytic.fraud.weights.impossibleTravel'
         )!;
-        this.weightNewDeviceAfterPasswordChange =
-            this.configService.get<number>(
-                'analytic.fraud.weights.newDeviceAfterPasswordChange'
-            )!;
-        this.weightCredentialStuffingIp = this.configService.get<number>(
+        this.newDeviceAfterPasswordChange = this.configService.get<number>(
+            'analytic.fraud.weights.newDeviceAfterPasswordChange'
+        )!;
+        this.credentialStuffingIp = this.configService.get<number>(
             'analytic.fraud.weights.credentialStuffingIp'
         )!;
-        this.weightSharedFingerprint = this.configService.get<number>(
+        this.sharedFingerprint = this.configService.get<number>(
             'analytic.fraud.weights.sharedFingerprint'
         )!;
-        this.weightNearLockout = this.configService.get<number>(
+        this.nearLockout = this.configService.get<number>(
             'analytic.fraud.weights.nearLockout'
         )!;
-        this.weightMassRegistrationIp = this.configService.get<number>(
+        this.massRegistrationIp = this.configService.get<number>(
             'analytic.fraud.weights.massRegistrationIp'
         )!;
-        this.weightForgotPasswordAbuse = this.configService.get<number>(
+        this.forgotPasswordAbuse = this.configService.get<number>(
             'analytic.fraud.weights.forgotPasswordAbuse'
         )!;
-        this.bandMonitorMax = this.configService.get<number>(
+        this.monitorMax = this.configService.get<number>(
             'analytic.fraud.bands.monitorMax'
         )!;
-        this.bandReviewMax = this.configService.get<number>(
+        this.reviewMax = this.configService.get<number>(
             'analytic.fraud.bands.reviewMax'
         )!;
-        this.bandElevateMax = this.configService.get<number>(
+        this.elevateMax = this.configService.get<number>(
             'analytic.fraud.bands.elevateMax'
         )!;
     }
 
     private resolveBand(score: number): EnumAnalyticFraudBand {
-        if (score <= this.bandMonitorMax) {
+        if (score <= this.monitorMax) {
             return EnumAnalyticFraudBand.monitor;
         }
-        if (score <= this.bandReviewMax) {
+        if (score <= this.reviewMax) {
             return EnumAnalyticFraudBand.review;
         }
-        if (score <= this.bandElevateMax) {
+        if (score <= this.elevateMax) {
             return EnumAnalyticFraudBand.elevate;
         }
 
         return EnumAnalyticFraudBand.critical;
     }
 
+    private async getNearLockoutAttempt(): Promise<number> {
+        const passwordMaxAttempt =
+            await this.userAnalyticService.getPasswordMaxAttempts();
+
+        return this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
+    }
+
     private score(
         user: IUserAnalyticRef,
-        signals: IAnalyticFraudSignalUsers
+        signals: IAnalyticFraudSignalUsers,
+        nearLockoutAttempt: number
     ): IAnalyticFraudRiskScore {
         const now = this.helperDateService.create();
         const checks = [
             {
                 signal: EnumAnalyticFraudContributingSignal.sessionAfterAdmin,
-                weight: this.weightSessionAfterAdmin,
+                weight: this.sessionAfterAdmin,
                 hit: signals.sessionAfterAdmin.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.impossibleTravel,
-                weight: this.weightImpossibleTravel,
+                weight: this.impossibleTravel,
                 hit: signals.impossibleTravel.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.newDeviceAfterPasswordChange,
-                weight: this.weightNewDeviceAfterPasswordChange,
+                weight: this.newDeviceAfterPasswordChange,
                 hit: signals.newDeviceAfterPasswordChange.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.credentialStuffingIp,
-                weight: this.weightCredentialStuffingIp,
+                weight: this.credentialStuffingIp,
                 hit: signals.credentialStuffingIp.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.sharedFingerprint,
-                weight: this.weightSharedFingerprint,
+                weight: this.sharedFingerprint,
                 hit: signals.sharedFingerprint.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.nearLockout,
-                weight: this.weightNearLockout,
+                weight: this.nearLockout,
                 hit:
                     (user.passwordLockedUntil !== null &&
                         user.passwordLockedUntil > now) ||
-                    user.passwordAttempt >= this.nearLockoutAttempt,
+                    user.passwordAttempt >= nearLockoutAttempt,
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.massRegistrationIp,
-                weight: this.weightMassRegistrationIp,
+                weight: this.massRegistrationIp,
                 hit: signals.massRegistrationIp.has(user.id),
             },
             {
                 signal: EnumAnalyticFraudContributingSignal.forgotPasswordAbuse,
-                weight: this.weightForgotPasswordAbuse,
+                weight: this.forgotPasswordAbuse,
                 hit: signals.forgotPasswordAbuse.has(user.id),
             },
         ];
@@ -599,7 +600,7 @@ export class AnalyticFraudService {
                 const devicePromises = batch.map(regeneration => {
                     const windowEnd = this.helperDateService.forward(
                         regeneration.createdAt,
-                        Duration.fromMillis(this.backupCodeNewDeviceAfterInMs)
+                        Duration.fromMillis(this.newDeviceAfterInMs)
                     );
                     return this.deviceAnalyticService.existsCreatedInRangeByUser(
                         regeneration.userId,
@@ -699,16 +700,20 @@ export class AnalyticFraudService {
                     throw new UserNotFoundException();
                 }
 
-                const signals = await this.collectSignalUsers();
+                const [signals, nearLockoutAttempt] = await Promise.all([
+                    this.collectSignalUsers(),
+                    this.getNearLockoutAttempt(),
+                ]);
 
-                return this.score(user, signals);
+                return this.score(user, signals, nearLockoutAttempt);
             }
         );
     }
 
     private async scoreListed(
         user: IUserAnalyticRef,
-        signals: IAnalyticFraudSignalUsers
+        signals: IAnalyticFraudSignalUsers,
+        nearLockoutAttempt: number
     ): Promise<IAnalyticFraudRiskScore> {
         const key = this.analyticCache.buildRiskScoreKey(user.id);
 
@@ -716,7 +721,7 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudRiskScoreCacheSchema,
             this.analyticCache.riskScoreTtlInMs,
-            async () => this.score(user, signals)
+            async () => this.score(user, signals, nearLockoutAttempt)
         );
     }
 
@@ -1212,14 +1217,15 @@ export class AnalyticFraudService {
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
         const now = this.helperDateService.create();
-        const [signals, nearLockout] = await Promise.all([
+        const [signals, nearLockoutAttempt] = await Promise.all([
             this.collectSignalUsers(),
-            this.userAnalyticService.getNearLockout(
-                this.nearLockoutAttempt,
-                now,
-                this.riskScoreCandidateLimit
-            ),
+            this.getNearLockoutAttempt(),
         ]);
+        const nearLockout = await this.userAnalyticService.getNearLockout(
+            nearLockoutAttempt,
+            now,
+            this.riskScoreCandidateLimit
+        );
 
         const candidateIds = this.collectCandidateIds(
             signals,
@@ -1237,7 +1243,7 @@ export class AnalyticFraudService {
         for (const batch of batches) {
             // Sequential by design: bounded chunks, concurrent within a chunk
             const batchScores = await Promise.all(
-                batch.map(u => this.scoreListed(u, signals))
+                batch.map(u => this.scoreListed(u, signals, nearLockoutAttempt))
             );
             all.push(...batchScores);
         }

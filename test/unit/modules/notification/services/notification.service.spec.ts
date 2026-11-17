@@ -115,7 +115,7 @@ describe('NotificationService', () => {
     };
 
     const configValues: Record<string, string> = {
-        'app.encryptionSecretKey': 'secret-key',
+        'app.encryptionSecret': 'secret-key',
         'notification.idempotencyKey.userPattern': '{process}-{userId}',
         'notification.idempotencyKey.referencePattern': '{process}-{reference}',
         'notification.idempotencyKey.joinRequestPattern':

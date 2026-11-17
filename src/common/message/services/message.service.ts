@@ -16,16 +16,17 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 @Injectable()
 export class MessageService {
     private readonly defaultLanguage: EnumMessageLanguage;
-    private readonly availableLanguage: EnumMessageLanguage[];
+    private readonly availableLanguages: EnumMessageLanguage[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
-        this.defaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        this.availableLanguage = this.configService.get<EnumMessageLanguage[]>(
-            'message.availableLanguage'
+        this.defaultLanguage = this.configService.get<EnumMessageLanguage>(
+            'message.defaultLanguage'
+        )!;
+        this.availableLanguages = this.configService.get<EnumMessageLanguage[]>(
+            'message.availableLanguages'
         )!;
     }
 
@@ -84,7 +85,9 @@ export class MessageService {
     }
 
     filterLanguage(customLanguage: string): string {
-        const language = this.availableLanguage.find(e => e === customLanguage);
+        const language = this.availableLanguages.find(
+            e => e === customLanguage
+        );
 
         return language ?? this.defaultLanguage;
     }

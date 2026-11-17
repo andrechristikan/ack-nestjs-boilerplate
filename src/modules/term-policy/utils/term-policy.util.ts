@@ -14,19 +14,19 @@ import type { TermPolicyContent } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
-    private readonly uploadContentPath: string;
-    private readonly contentPublicPath: string;
+    private readonly uploadContentPathPattern: string;
+    private readonly contentPublicPathPattern: string;
     private readonly contentMaxSizeInBytes: number;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
     ) {
-        this.uploadContentPath = this.configService.get<string>(
-            'termPolicy.uploadContentPath'
+        this.uploadContentPathPattern = this.configService.get<string>(
+            'termPolicy.uploadContentPathPattern'
         )!;
-        this.contentPublicPath = this.configService.get<string>(
-            'termPolicy.contentPublicPath'
+        this.contentPublicPathPattern = this.configService.get<string>(
+            'termPolicy.contentPublicPathPattern'
         )!;
         this.contentMaxSizeInBytes = this.configService.get<number>(
             'termPolicy.content.maxSizeInBytes'
@@ -38,10 +38,13 @@ export class TermPolicyUtil {
     }
 
     getPath(type: EnumTermPolicyType, version: number): string {
-        return this.helperStringService.fillPattern(this.uploadContentPath, {
-            type,
-            version: version.toString(),
-        });
+        return this.helperStringService.fillPattern(
+            this.uploadContentPathPattern,
+            {
+                type,
+                version: version.toString(),
+            }
+        );
     }
 
     isContentKeyInPath(
@@ -92,10 +95,13 @@ export class TermPolicyUtil {
     }
 
     getContentPublicPath(type: EnumTermPolicyType, version: number): string {
-        return this.helperStringService.fillPattern(this.contentPublicPath, {
-            type,
-            version: version.toString(),
-        });
+        return this.helperStringService.fillPattern(
+            this.contentPublicPathPattern,
+            {
+                type,
+                version: version.toString(),
+            }
+        );
     }
 
     mapActivityLogMetadata(

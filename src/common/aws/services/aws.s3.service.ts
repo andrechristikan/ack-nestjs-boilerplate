@@ -89,10 +89,7 @@ import type {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
 } from '@common/aws/interfaces/aws.interface';
-import {
-    AwsS3MaxFetchItems,
-    AwsS3MaxPartNumber,
-} from '@common/aws/constants/aws.constant';
+import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
@@ -117,9 +114,10 @@ export class AwsS3Service implements OnModuleInit {
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
     private readonly deleteDirMaxIterations: number;
+    private readonly listMaxKeys: number;
 
-    private readonly presignExpiredInSeconds: number;
-    private readonly multipartExpiredInDays: number;
+    private readonly presignExpiresInSeconds: number;
+    private readonly multipartExpiresInDays: number;
     private readonly corsMaxAgeLongInSeconds: number;
     private readonly corsMaxAgeShortInSeconds: number;
 
@@ -127,8 +125,8 @@ export class AwsS3Service implements OnModuleInit {
     private readonly objectUrlPattern: string;
     private readonly cdnUrlPattern: string;
 
-    private readonly iamArn: string | null;
-    private readonly corsAllowedOrigin: string[];
+    private readonly iamPrincipalArn: string | null;
+    private readonly allowedOrigins: string[];
 
     private readonly config: IAwsS3ConfigBuckets;
 
@@ -140,11 +138,11 @@ export class AwsS3Service implements OnModuleInit {
         private readonly helperStringService: HelperStringService
     ) {
         const accessKeyId = this.configService.get<string | null>(
-            'aws.s3.iam.key'
+            'aws.s3.accessKeyId'
         );
         this.accessKeyId = accessKeyId ?? null;
         const secretAccessKey = this.configService.get<string | null>(
-            'aws.s3.iam.secret'
+            'aws.s3.secretAccessKey'
         );
         this.secretAccessKey = secretAccessKey ?? null;
         const region = this.configService.get<string | null>('aws.s3.region');
@@ -161,37 +159,38 @@ export class AwsS3Service implements OnModuleInit {
             'aws.s3.deleteDirMaxIterations'
         )!;
 
+        this.listMaxKeys =
+            this.configService.get<number>('aws.s3.listMaxKeys')!;
+
         this.baseUrlPattern = this.configService.get<string>(
             'aws.s3.baseUrlPattern'
         )!;
 
-        const publicSource = this.configService.get<IAwsS3ConfigBucketSource>(
-            'aws.s3.config.public'
-        )!;
-        const privateSource = this.configService.get<IAwsS3ConfigBucketSource>(
-            'aws.s3.config.private'
-        )!;
-        const publicBaseUrl = this.buildBaseUrl(publicSource.bucket);
-        const privateBaseUrl = this.buildBaseUrl(privateSource.bucket);
+        const s3Public =
+            this.configService.get<IAwsS3ConfigBucketSource>('aws.s3.public')!;
+        const s3Private =
+            this.configService.get<IAwsS3ConfigBucketSource>('aws.s3.private')!;
+        const publicBaseUrl = this.buildBaseUrl(s3Public.bucket);
+        const privateBaseUrl = this.buildBaseUrl(s3Private.bucket);
 
         this.config = {
             [EnumAwsS3Accessibility.public]: {
-                ...publicSource,
+                ...s3Public,
                 baseUrl: publicBaseUrl,
                 access: EnumAwsS3Accessibility.public,
             },
             [EnumAwsS3Accessibility.private]: {
-                ...privateSource,
+                ...s3Private,
                 baseUrl: privateBaseUrl,
                 access: EnumAwsS3Accessibility.private,
             },
         };
 
-        this.presignExpiredInSeconds = this.configService.get<number>(
-            'aws.s3.presignExpiredInSeconds'
+        this.presignExpiresInSeconds = this.configService.get<number>(
+            'aws.s3.presignExpiresInSeconds'
         )!;
-        this.multipartExpiredInDays = this.configService.get<number>(
-            'aws.s3.multipartExpiredInDays'
+        this.multipartExpiresInDays = this.configService.get<number>(
+            'aws.s3.multipartExpiresInDays'
         )!;
         this.corsMaxAgeLongInSeconds = this.configService.get<number>(
             'aws.s3.corsMaxAgeLongInSeconds'
@@ -207,10 +206,12 @@ export class AwsS3Service implements OnModuleInit {
             'aws.s3.cdnUrlPattern'
         )!;
 
-        const iamArn = this.configService.get<string | null>('aws.s3.iam.arn');
-        this.iamArn = iamArn ?? null;
-        this.corsAllowedOrigin = this.configService.get<string[]>(
-            'request.cors.allowedOrigin'
+        const iamPrincipalArn = this.configService.get<string | null>(
+            'aws.s3.iamPrincipalArn'
+        );
+        this.iamPrincipalArn = iamPrincipalArn ?? null;
+        this.allowedOrigins = this.configService.get<string[]>(
+            'request.cors.allowedOrigins'
         )!;
     }
 
@@ -470,7 +471,7 @@ export class AwsS3Service implements OnModuleInit {
             const command: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
                 Prefix: path,
-                MaxKeys: AwsS3MaxFetchItems,
+                MaxKeys: this.listMaxKeys,
                 ...(continuationToken !== null && {
                     ContinuationToken: continuationToken,
                 }),
@@ -759,7 +760,7 @@ export class AwsS3Service implements OnModuleInit {
             const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
                 Prefix: prefix,
-                MaxKeys: AwsS3MaxFetchItems,
+                MaxKeys: this.listMaxKeys,
                 ...(continuationToken !== null && {
                     ContinuationToken: continuationToken,
                 }),
@@ -1013,7 +1014,7 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -1083,7 +1084,7 @@ export class AwsS3Service implements OnModuleInit {
             ContentDisposition: 'inline',
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -1126,7 +1127,7 @@ export class AwsS3Service implements OnModuleInit {
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -1253,7 +1254,7 @@ export class AwsS3Service implements OnModuleInit {
                             },
                             AbortIncompleteMultipartUpload: {
                                 DaysAfterInitiation:
-                                    this.multipartExpiredInDays,
+                                    this.multipartExpiresInDays,
                             },
                             Expiration: {
                                 ExpiredObjectDeleteMarker: true,
@@ -1300,7 +1301,7 @@ export class AwsS3Service implements OnModuleInit {
                         Sid: 'IAMUserFullAccess',
                         Effect: 'Allow',
                         Principal: {
-                            AWS: this.iamArn,
+                            AWS: this.iamPrincipalArn,
                         },
                         Action: 's3:*',
                         Resource: resources,
@@ -1362,7 +1363,7 @@ export class AwsS3Service implements OnModuleInit {
                             MaxAgeSeconds: this.corsMaxAgeLongInSeconds,
                         },
                         {
-                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedOrigins: this.allowedOrigins,
                             AllowedMethods: ['PUT', 'POST', 'DELETE'],
                             AllowedHeaders: ['*'],
                             ExposeHeaders: ['ETag', 'Content-Length'],
@@ -1377,7 +1378,7 @@ export class AwsS3Service implements OnModuleInit {
                 CORSConfiguration: {
                     CORSRules: [
                         {
-                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedOrigins: this.allowedOrigins,
                             AllowedMethods: [
                                 'GET',
                                 'HEAD',

@@ -11,6 +11,7 @@ import {
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
+import { RequestUploadTimeout } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -233,7 +234,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @FileUploadSingle()
-    @RequestTimeout('1m')
+    @RequestTimeout(RequestUploadTimeout)
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/upload')
     async uploadPhotoProfile(

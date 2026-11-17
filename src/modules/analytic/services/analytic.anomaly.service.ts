@@ -56,11 +56,9 @@ export class AnalyticAnomalyService {
     private readonly loginSpikeIpWindowInMs: number;
     private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
     private readonly loginTimeAnomalyHistoryLimit: number;
-    private readonly loginTimeAnomalyMinSample: number;
-    private readonly loginTimeAnomalyLookbackInMs: number;
+    private readonly minSample: number;
+    private readonly lookbackInMs: number;
     private readonly concurrency: number;
-    private readonly passwordMaxAttempt: number;
-    private readonly nearLockoutMinAttempt: number;
     private readonly deviceProliferationZScoreThreshold: number;
 
     constructor(
@@ -100,22 +98,15 @@ export class AnalyticAnomalyService {
         this.loginTimeAnomalyHistoryLimit = this.configService.get<number>(
             'analytic.anomaly.loginTimeAnomaly.historyLimit'
         )!;
-        this.loginTimeAnomalyMinSample = this.configService.get<number>(
+        this.minSample = this.configService.get<number>(
             'analytic.anomaly.minSample'
         )!;
-        this.loginTimeAnomalyLookbackInMs = this.configService.get<number>(
+        this.lookbackInMs = this.configService.get<number>(
             'analytic.anomaly.lookbackInMs'
         )!;
         this.concurrency = this.configService.get<number>(
             'analytic.anomaly.concurrency'
         )!;
-        this.passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        )!;
-        this.nearLockoutMinAttempt =
-            this.analyticFraudUtil.nearLockoutThreshold(
-                this.passwordMaxAttempt
-            );
         this.deviceProliferationZScoreThreshold =
             this.configService.get<number>(
                 'analytic.anomaly.deviceProliferation.zScoreThreshold'
@@ -262,7 +253,7 @@ export class AnalyticAnomalyService {
         const end = endDate ?? now;
         const defaultStart = this.helperDateService.backward(
             end,
-            Duration.fromMillis(this.loginTimeAnomalyLookbackInMs)
+            Duration.fromMillis(this.lookbackInMs)
         );
         const start = startDate ?? defaultStart;
         const users =
@@ -270,7 +261,7 @@ export class AnalyticAnomalyService {
                 UserLoginAnalyticActions,
                 start,
                 end,
-                this.loginTimeAnomalyMinSample
+                this.minSample
             );
         const anomalous: IAnalyticLoginTimeAnomaly[] = [];
         const batches = this.helperArrayService.chunk(users, this.concurrency);
@@ -422,13 +413,19 @@ export class AnalyticAnomalyService {
             this.analyticCache.anomalySummaryTtlInMs,
             async () => {
                 const now = this.helperDateService.create();
+                const passwordMaxAttempt =
+                    await this.userAnalyticService.getPasswordMaxAttempts();
+                const nearLockoutMinAttempt =
+                    this.analyticFraudUtil.nearLockoutThreshold(
+                        passwordMaxAttempt
+                    );
                 const [buckets, nearCount] = await Promise.all([
                     this.userAnalyticService.getGroupPasswordAttemptBuckets(
-                        this.passwordMaxAttempt,
+                        passwordMaxAttempt,
                         now
                     ),
                     this.userAnalyticService.getCountNearLockout(
-                        this.nearLockoutMinAttempt,
+                        nearLockoutMinAttempt,
                         now
                     ),
                 ]);
@@ -437,7 +434,7 @@ export class AnalyticAnomalyService {
                     count: nearCount,
                     window: null,
                     meta: {
-                        nearLockoutMinAttempt: this.nearLockoutMinAttempt,
+                        nearLockoutMinAttempt,
                         bucketCount: buckets.length,
                     },
                 };
@@ -449,9 +446,13 @@ export class AnalyticAnomalyService {
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const now = this.helperDateService.create();
+        const passwordMaxAttempt =
+            await this.userAnalyticService.getPasswordMaxAttempts();
+        const nearLockoutMinAttempt =
+            this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
 
         return this.userAnalyticService.getListNearLockoutOffset(
-            this.nearLockoutMinAttempt,
+            nearLockoutMinAttempt,
             now,
             params
         );

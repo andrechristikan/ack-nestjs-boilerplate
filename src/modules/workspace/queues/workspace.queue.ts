@@ -11,7 +11,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 @Injectable()
 export class WorkspaceQueue extends QueueBase implements OnModuleInit {
-    private readonly defTz: string;
+    private readonly timezone: string;
     private readonly expirySweepCron: string;
 
     constructor(
@@ -21,7 +21,7 @@ export class WorkspaceQueue extends QueueBase implements OnModuleInit {
         private readonly configService: ConfigService
     ) {
         super(queue, cacheService);
-        this.defTz = this.configService.get<string>('app.timezone')!;
+        this.timezone = this.configService.get<string>('app.timezone')!;
         this.expirySweepCron = this.configService.get<string>(
             'workspace.invite.expirySweepCron'
         )!;
@@ -40,7 +40,7 @@ export class WorkspaceQueue extends QueueBase implements OnModuleInit {
             EnumWorkspaceProcess.expireStaleInvites,
             {
                 pattern: this.expirySweepCron,
-                tz: this.defTz,
+                tz: this.timezone,
                 immediately: true,
             },
             {
@@ -59,7 +59,7 @@ export class WorkspaceQueue extends QueueBase implements OnModuleInit {
             EnumWorkspaceProcess.expireStaleJoinRequests,
             {
                 pattern: this.expirySweepCron,
-                tz: this.defTz,
+                tz: this.timezone,
                 immediately: true,
             },
             {

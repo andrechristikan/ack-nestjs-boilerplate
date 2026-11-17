@@ -38,7 +38,7 @@ describe('HealthGoogleIndicator', () => {
 
         it('reports up when the Google client id is configured', async () => {
             const configService = buildConfigService({
-                'auth.google.clientId': 'client-id',
+                'auth.social.google.clientId': 'client-id',
             });
             const indicator = await createHealthGoogleIndicator(
                 configService,

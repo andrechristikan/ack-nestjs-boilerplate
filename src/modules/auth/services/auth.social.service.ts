@@ -25,7 +25,7 @@ export class AuthSocialService {
     } | null;
 
     private readonly nonceLength: number;
-    private readonly nonceExpiredInMs: number;
+    private readonly expiresInMs: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -37,22 +37,16 @@ export class AuthSocialService {
         this.nonceLength = this.configService.get<number>(
             'auth.social.nonce.length'
         )!;
-        this.nonceExpiredInMs = this.configService.get<number>(
-            'auth.social.nonce.expiredInMs'
+        this.expiresInMs = this.configService.get<number>(
+            'auth.social.nonce.expiresInMs'
         )!;
-        const appleClientId = this.configService.get<string | null>(
-            'auth.apple.clientId'
-        );
-        const appleSignInClientId = this.configService.get<string | null>(
-            'auth.apple.signInClientId'
-        );
         const googleClientId = this.configService.get<string | null>(
-            'auth.google.clientId'
+            'auth.social.google.clientId'
         );
 
-        this.appleClientIds = [appleClientId, appleSignInClientId].filter(
-            (clientId): clientId is string => !!clientId
-        );
+        this.appleClientIds = this.configService.get<string[]>(
+            'auth.social.apple.clientIds'
+        )!;
         this.google = googleClientId
             ? {
                   client: new OAuth2Client(googleClientId),
@@ -67,7 +61,7 @@ export class AuthSocialService {
         const nonceHash = this.helperHashService.sha256Hash(nonce);
         const now = this.helperDateService.create();
         const duration = this.helperDateService.createDuration({
-            milliseconds: this.nonceExpiredInMs,
+            milliseconds: this.expiresInMs,
         });
         const expiredAt = this.helperDateService.forward(now, duration);
 

@@ -5,6 +5,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { HelperStringService } from '@common/helper/services/helper.string.service';
+import type { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import type { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
 import type { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 
@@ -12,6 +14,7 @@ export interface IMfaPasskeyServiceDoubles {
     mfaPasskeyRepository: MockProxy<MfaPasskeyRepository>;
     helperDateService: MockProxy<HelperDateService>;
     configService: MockProxy<ConfigService>;
+    featureFlagService: MockProxy<FeatureFlagService>;
 }
 
 export function createTotpCode(
@@ -60,10 +63,12 @@ export async function createMfaPasskeyService(
         { MfaPasskeyService: MfaPasskeyServiceClass },
         { MfaPasskeyRepository: MfaPasskeyRepositoryClass },
         { HelperDateService: HelperDateServiceClass },
+        { FeatureFlagService: FeatureFlagServiceClass },
     ] = await Promise.all([
         import('@modules/mfa/services/mfa.passkey.service'),
         import('@modules/mfa/repositories/mfa.passkey.repository'),
         import('@common/helper/services/helper.date.service'),
+        import('@modules/feature-flag/services/feature-flag.service'),
     ]);
 
     const module = await Test.createTestingModule({
@@ -78,8 +83,25 @@ export async function createMfaPasskeyService(
                 useValue: doubles.helperDateService,
             },
             { provide: ConfigService, useValue: doubles.configService },
+            {
+                provide: FeatureFlagServiceClass,
+                useValue: doubles.featureFlagService,
+            },
         ],
     }).compile();
 
     return module.get(MfaPasskeyServiceClass);
+}
+
+export function stubMfaMetadataNumbers(
+    featureFlagService: MockProxy<FeatureFlagService>,
+    maxAttempts: number,
+    lockDurationInMinutes: number
+): void {
+    featureFlagService.getMetadataNumber.mockImplementation(
+        async (_key, metadataKey) =>
+            metadataKey === EnumFeatureFlagMetadataKey.mfaMaxAttempts
+                ? maxAttempts
+                : lockDurationInMinutes
+    );
 }

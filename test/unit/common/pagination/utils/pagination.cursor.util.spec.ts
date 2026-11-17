@@ -50,7 +50,7 @@ describe('PaginationCursorUtil', () => {
         );
         helperHashService.sha256Hash.mockReturnValue(digest);
         configService = buildConfigService({
-            'app.encryptionSecretKey': secret,
+            'app.encryptionSecret': secret,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -83,7 +83,7 @@ describe('PaginationCursorUtil', () => {
         });
     });
 
-    describe('encryptionSecretKey', () => {
+    describe('encryptionSecret', () => {
         it('reads the app secret once at construction, not per seal or open', () => {
             helperEncryptionService.aes256Encrypt.mockReturnValue('sealed');
             helperEncryptionService.aes256Decrypt.mockReturnValue(
@@ -95,7 +95,7 @@ describe('PaginationCursorUtil', () => {
 
             expect(configService.get).toHaveBeenCalledTimes(1);
             expect(configService.get).toHaveBeenCalledWith(
-                'app.encryptionSecretKey'
+                'app.encryptionSecret'
             );
         });
     });

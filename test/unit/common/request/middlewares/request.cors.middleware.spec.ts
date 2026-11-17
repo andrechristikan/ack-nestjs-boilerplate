@@ -23,10 +23,10 @@ describe('RequestCorsMiddleware', () => {
         it('applies cors with the configured options and delegates to the handler', async () => {
             const { middleware, handler, captured } =
                 await createFreshRequestCorsMiddleware({
-                    allowedOrigin: ['https://example.com'],
-                    allowedMethod: ['GET', 'POST'],
-                    allowedHeader: ['content-type'],
-                    exposedHeader: ['x-request-id'],
+                    allowedOrigins: ['https://example.com'],
+                    allowedMethods: ['GET', 'POST'],
+                    allowedHeaders: ['content-type'],
+                    exposedHeaders: ['x-request-id'],
                     maxAgeInSeconds: 600,
                 });
 
@@ -45,13 +45,13 @@ describe('RequestCorsMiddleware', () => {
             expect(handler).toHaveBeenCalledWith(req, res, next);
         });
 
-        it('disables credentials for a wildcard string origin', async () => {
+        it('disables credentials for a wildcard origin', async () => {
             const { middleware, captured } =
                 await createFreshRequestCorsMiddleware({
-                    allowedOrigin: '*',
-                    allowedMethod: [],
-                    allowedHeader: [],
-                    exposedHeader: [],
+                    allowedOrigins: ['*'],
+                    allowedMethods: [],
+                    allowedHeaders: [],
+                    exposedHeaders: [],
                     maxAgeInSeconds: 86400,
                 });
 
@@ -63,10 +63,10 @@ describe('RequestCorsMiddleware', () => {
         it('allows any origin when the origin function is invoked with no origin header', async () => {
             const { middleware, captured } =
                 await createFreshRequestCorsMiddleware({
-                    allowedOrigin: '*',
-                    allowedMethod: [],
-                    allowedHeader: [],
-                    exposedHeader: [],
+                    allowedOrigins: ['*'],
+                    allowedMethods: [],
+                    allowedHeaders: [],
+                    exposedHeaders: [],
                     maxAgeInSeconds: 86400,
                 });
 
@@ -87,10 +87,10 @@ describe('RequestCorsMiddleware', () => {
     describe('originValidator', () => {
         it('allows a missing origin', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: false,
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
@@ -100,27 +100,12 @@ describe('RequestCorsMiddleware', () => {
             expect(callback).toHaveBeenCalledWith(null, true);
         });
 
-        it('answers a boolean allowedOrigin directly', async () => {
+        it('allows every origin when the array allowedOrigins has a wildcard entry', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: false,
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-            const callback = vi.fn();
-
-            middleware['originValidator']('https://example.com', callback);
-
-            expect(callback).toHaveBeenCalledWith(null, false);
-        });
-
-        it('allows every origin for a wildcard string', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: '*',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: ['*'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
@@ -130,113 +115,29 @@ describe('RequestCorsMiddleware', () => {
             expect(callback).toHaveBeenCalledWith(null, true);
         });
 
-        it('checks a non-wildcard string allowedOrigin against the origin', async () => {
+        it('checks a non-wildcard array allowedOrigins against the origin', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: 'example.com',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-            const callback = vi.fn();
-
-            middleware['originValidator']('https://example.com', callback);
-
-            expect(callback).toHaveBeenCalledWith(null, true);
-        });
-
-        it('rejects an origin not matching a non-wildcard string allowedOrigin', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: 'example.com',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: ['https://example.com'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
             const callback = vi.fn();
 
             middleware['originValidator']('https://other.com', callback);
-
-            expect(callback).toHaveBeenCalledWith(null, false);
-        });
-
-        it('allows every origin when the array allowedOrigin has a wildcard entry', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: ['*'],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-            const callback = vi.fn();
-
-            middleware['originValidator']('https://example.com', callback);
-
-            expect(callback).toHaveBeenCalledWith(null, true);
-        });
-
-        it('checks a non-wildcard array allowedOrigin against the origin', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: ['https://example.com'],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-            const callback = vi.fn();
-
-            middleware['originValidator']('https://other.com', callback);
-
-            expect(callback).toHaveBeenCalledWith(null, false);
-        });
-
-        it('rejects an allowedOrigin of no recognized shape', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: undefined as unknown as string,
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-            const callback = vi.fn();
-
-            middleware['originValidator']('https://example.com', callback);
 
             expect(callback).toHaveBeenCalledWith(null, false);
         });
     });
 
     describe('shouldAllowCredentials', () => {
-        it('disallows credentials for the wildcard string', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: '*',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-
-            expect(middleware['shouldAllowCredentials']()).toBe(false);
-        });
-
-        it('allows credentials for a specific string origin', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: 'https://example.com',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-
-            expect(middleware['shouldAllowCredentials']()).toBe(true);
-        });
-
         it('disallows credentials for an array containing a wildcard', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: ['*'],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: ['*'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -245,22 +146,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('allows credentials for an array with no wildcard', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: ['https://example.com'],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-                maxAgeInSeconds: 86400,
-            });
-
-            expect(middleware['shouldAllowCredentials']()).toBe(true);
-        });
-
-        it('allows credentials when allowedOrigin is a boolean', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: true,
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: ['https://example.com'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -271,10 +160,10 @@ describe('RequestCorsMiddleware', () => {
     describe('isOriginAllowed', () => {
         it('rejects an invalid origin', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -287,10 +176,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('matches an exact hostname and port', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -303,10 +192,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('falls through to a wildcard pattern match', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -319,10 +208,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('accepts a scheme-bearing pattern for the same scheme', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -335,10 +224,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('rejects a scheme-bearing pattern for the other scheme', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -351,10 +240,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('rejects a scheme-bearing wildcard pattern for the other scheme', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -372,10 +261,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('accepts a pattern with no scheme for either scheme', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -393,10 +282,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('matches the default https port written in the pattern', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -414,10 +303,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('matches the default http port written in the pattern', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -430,10 +319,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('rejects the default port of the other scheme', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -446,10 +335,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('matches a pattern hostname written in another case', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -462,10 +351,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('rejects an origin on another port than the pattern', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -478,10 +367,10 @@ describe('RequestCorsMiddleware', () => {
 
         it('rejects when no pattern matches, exact or wildcard', async () => {
             const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
 
@@ -498,10 +387,10 @@ describe('RequestCorsMiddleware', () => {
 
         beforeEach(async () => {
             middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
         });
@@ -546,10 +435,10 @@ describe('RequestCorsMiddleware', () => {
 
         beforeEach(async () => {
             middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
         });
@@ -586,10 +475,10 @@ describe('RequestCorsMiddleware', () => {
 
         beforeEach(async () => {
             middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
         });
@@ -626,10 +515,10 @@ describe('RequestCorsMiddleware', () => {
 
         beforeEach(async () => {
             middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
         });
@@ -652,10 +541,10 @@ describe('RequestCorsMiddleware', () => {
 
         beforeEach(async () => {
             middleware = await createRequestCorsMiddleware({
-                allowedOrigin: [],
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
                 maxAgeInSeconds: 86400,
             });
         });

@@ -1,19 +1,17 @@
 #!/bin/sh
 set -eu
-# Dev-only Vault provisioning, shaped like prod. Idempotent: seeds only on an
-# empty path. Prod parity: mount, paths, and policies are identical; only auth
-# differs (AppRole here, swap for `jwt` + OIDC claims in prod).
+# Vault provisioning for a deployed instance: the kv-v2 mount, one read-only
+# policy and one AppRole per environment. Idempotent. It writes no secret: the
+# owner fills each path with `pnpm vault:push <environment> <env-file>`.
 export VAULT_ADDR="${VAULT_ADDR:-http://vault:8200}"
 
 # Root token minted by the vault entrypoint's auto-init. Per-env AppRole creds
 # are persisted next to it so `vault:pull` never needs root.
-INIT_FILE="${INIT_FILE:-/vault/init/init.json}"
-INIT_DIR=$(dirname "$INIT_FILE")
+VAULT_INIT_FILE_PATH="${VAULT_INIT_FILE_PATH:-/vault/init/init.json}"
+INIT_DIR=$(dirname "$VAULT_INIT_FILE_PATH")
 
 KV_MOUNT="${KV_MOUNT:-ack-nestjs-boilerplate}"
 KV_ENVS="${KV_ENVS:-production staging development}"
-KV_SEED_ENV="${KV_SEED_ENV:-development}"
-SEED_FILE=/seed/.env.example
 
 echo "bootstrap: waiting for vault API..."
 until vault status >/dev/null 2>&1; do
@@ -21,7 +19,7 @@ until vault status >/dev/null 2>&1; do
 done
 
 # Auth as root. healthcheck guarantees the server is unsealed (init.json exists).
-export VAULT_TOKEN=$(sed -n 's/.*"root_token": *"\([^"]*\)".*/\1/p' "$INIT_FILE")
+export VAULT_TOKEN=$(sed -n 's/.*"root_token": *"\([^"]*\)".*/\1/p' "$VAULT_INIT_FILE_PATH")
 
 # kv-v2 mount (once).
 if ! vault secrets list 2>/dev/null | grep -q "^$KV_MOUNT/"; then
@@ -29,7 +27,7 @@ if ! vault secrets list 2>/dev/null | grep -q "^$KV_MOUNT/"; then
   vault secrets enable -path="$KV_MOUNT" kv-v2
 fi
 
-# AppRole auth (once) — dev stand-in for prod's OIDC/JWT.
+# AppRole auth (once). A deployment with an OIDC provider swaps it for `jwt`.
 if ! vault auth list 2>/dev/null | grep -q "^approle/"; then
   echo "bootstrap: enabling approle auth..."
   vault auth enable approle
@@ -42,8 +40,8 @@ for env in $KV_ENVS; do
   echo "bootstrap: writing policy $policy..."
   vault policy write "$policy" "/policies/$env-ro.hcl"
 
-  # One AppRole per env with only its RO policy. Short TTL mirrors CI's
-  # mint/use/discard. Prod: a `jwt` role bound to the GitHub env claim.
+  # One AppRole per env with only its RO policy. Short token TTL: a pull mints
+  # a token, reads once, and discards it.
   echo "bootstrap: writing approle $KV_MOUNT-$env..."
   vault write "auth/approle/role/$KV_MOUNT-$env" \
     token_policies="$policy" \
@@ -60,18 +58,5 @@ for env in $KV_ENVS; do
   SID=$(vault write -f -field=secret_id "auth/approle/role/$KV_MOUNT-$env/secret-id")
   printf '%s\n%s\n' "$RID" "$SID" > "$INIT_DIR/$env.approle"
 done
-
-# Seed ONLY dev, only on first run. Prod/staging stay empty: a dev box must
-# never hold real prod secrets.
-SEED_PATH="$KV_MOUNT/$KV_SEED_ENV"
-if ! vault kv get "$SEED_PATH" >/dev/null 2>&1; then
-  echo "bootstrap: seeding $SEED_PATH from .env.example..."
-  set --
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in ''|\#*) continue ;; esac
-    set -- "$@" "$line"
-  done < "$SEED_FILE"
-  vault kv put "$SEED_PATH" "$@" >/dev/null
-fi
 
 echo "bootstrap: done."

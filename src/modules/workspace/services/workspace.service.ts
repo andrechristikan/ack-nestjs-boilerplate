@@ -40,7 +40,6 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class WorkspaceService {
-    private readonly maxWorkspacesPerUser: number;
     private readonly slugRegex: RegExp;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
@@ -56,9 +55,6 @@ export class WorkspaceService {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.maxWorkspacesPerUser = this.configService.get<number>(
-            'workspace.maxWorkspacesPerUser'
-        )!;
         this.slugRegex = this.configService.get<RegExp>('workspace.slugRegex')!;
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
@@ -173,6 +169,11 @@ export class WorkspaceService {
         create: IWorkspaceCreate
     ): Promise<Workspace> {
         const userId = authContext.userId;
+        const maxWorkspacesPerUser =
+            await this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            );
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
@@ -185,7 +186,7 @@ export class WorkspaceService {
                             tx,
                             userId
                         );
-                    if (ownedCount >= this.maxWorkspacesPerUser) {
+                    if (ownedCount >= maxWorkspacesPerUser) {
                         throw new WorkspaceCapReachedException();
                     }
 

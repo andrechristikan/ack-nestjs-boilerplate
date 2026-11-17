@@ -156,3 +156,9 @@ export const UserProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'auth.error.jwtGuardMissing',
     },
 ];
+
+/** @public */
+export const UserPasswordMinLength = 8;
+
+/** @public */
+export const UserPasswordMaxLength = 64;

@@ -74,24 +74,25 @@ describe('AwsS3Service', () => {
     const endpointBaseUrlPattern = '{endpoint}/{bucket}';
 
     const configValues: Record<string, unknown> = {
-        'aws.s3.iam.key': 'access-key',
-        'aws.s3.iam.secret': 'secret-key',
-        'aws.s3.iam.arn': 'arn:aws:iam::123456789012:role/role',
+        'aws.s3.accessKeyId': 'access-key',
+        'aws.s3.secretAccessKey': 'secret-key',
+        'aws.s3.iamPrincipalArn': 'arn:aws:iam::123456789012:role/role',
         'aws.s3.region': 'us-east-1',
         'aws.s3.endpoint': null,
         'aws.s3.maxAttempts': 3,
         'aws.s3.timeoutInMs': 5000,
         'aws.s3.deleteDirMaxIterations': 3,
-        'aws.s3.config.public': publicSource,
-        'aws.s3.config.private': privateSource,
-        'aws.s3.presignExpiredInSeconds': 1800,
-        'aws.s3.multipartExpiredInDays': 3,
+        'aws.s3.listMaxKeys': 7,
+        'aws.s3.public': publicSource,
+        'aws.s3.private': privateSource,
+        'aws.s3.presignExpiresInSeconds': 1800,
+        'aws.s3.multipartExpiresInDays': 3,
         'aws.s3.corsMaxAgeLongInSeconds': 86400,
         'aws.s3.corsMaxAgeShortInSeconds': 3600,
         'aws.s3.baseUrlPattern': amazonawsBaseUrlPattern,
         'aws.s3.objectUrlPattern': '{baseUrl}/{key}',
         'aws.s3.cdnUrlPattern': '{cdnUrl}/{key}',
-        'request.cors.allowedOrigin': ['https://app.example.com'],
+        'request.cors.allowedOrigins': ['https://app.example.com'],
     };
 
     const s3Doubles: IAwsS3ServiceDoubles = {
@@ -126,7 +127,7 @@ describe('AwsS3Service', () => {
         it('does not create a client when the access key is missing', async () => {
             const service = await createAwsS3Service(
                 configValues,
-                { 'aws.s3.iam.key': null },
+                { 'aws.s3.accessKeyId': null },
                 s3Doubles
             );
 
@@ -139,7 +140,7 @@ describe('AwsS3Service', () => {
         it('does not create a client when the secret key is missing', async () => {
             const service = await createAwsS3Service(
                 configValues,
-                { 'aws.s3.iam.secret': null },
+                { 'aws.s3.secretAccessKey': null },
                 s3Doubles
             );
 
@@ -442,6 +443,25 @@ describe('AwsS3Service', () => {
             expect(result[0]).toMatchObject({ key: 'users/one.jpg', size: 10 });
             expect(result[1]).toMatchObject({ key: 'users/two.jpg', size: 20 });
             expect(send).toHaveBeenCalledTimes(2);
+        });
+
+        it('sends the configured page size as MaxKeys', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.getItems('users/', {
+                access: EnumAwsS3Accessibility.public,
+            });
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({ MaxKeys: 7 }),
+                })
+            );
         });
 
         it('defaults an item size to 0 when Size is absent', async () => {
@@ -1886,7 +1906,7 @@ describe('AwsS3Service', () => {
         it('writes a null IAM principal when no IAM ARN is configured', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
-                { 'aws.s3.iam.arn': null },
+                { 'aws.s3.iamPrincipalArn': null },
                 s3Doubles
             );
             send.mockResolvedValueOnce({});
@@ -2171,7 +2191,7 @@ describe('AwsS3Service', () => {
         it('keeps a null base url when the bucket is missing', async () => {
             const service = await createAwsS3Service(
                 configValues,
-                { 'aws.s3.config.public': { ...publicSource, bucket: null } },
+                { 'aws.s3.public': { ...publicSource, bucket: null } },
                 s3Doubles
             );
 

@@ -35,8 +35,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
     [string, IUserImportByAdminPayload],
     IUserImportByAdminQueueResponse
 > {
-    private readonly userRoleName: string;
-    private readonly userCountryName: string;
+    private readonly defaultRole: string;
+    private readonly defaultCountry: string;
     private readonly createBulkTimeoutInMs: number;
 
     constructor(
@@ -56,9 +56,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
-        this.userCountryName = this.configService.get<string>(
+        this.defaultRole = this.configService.get<string>('user.default.role')!;
+        this.defaultCountry = this.configService.get<string>(
             'user.default.country'
         )!;
         this.createBulkTimeoutInMs = this.configService.get<number>(
@@ -169,8 +168,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         const { actorUserId } = activityLog;
         // Sequential by design: gate before the work it guards; write after the preparation
         const [role, countryId] = await Promise.all([
-            this.roleService.getByName(this.userRoleName),
-            this.countryService.getIdByAlpha2Code(this.userCountryName),
+            this.roleService.getByName(this.defaultRole),
+            this.countryService.getIdByAlpha2Code(this.defaultCountry),
         ]);
         const { inputs, passwordHasheds, passwordStrings } =
             await this.userImportService.prepareImportByAdmin(

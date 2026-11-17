@@ -14,9 +14,6 @@ export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
 export const WorkspaceContextStoreKey = 'WorkspaceContextStoreKey';
 
 /** @public */
-export const WorkspaceDeletedSlugPattern = 'deleted-{id}';
-
-/** @public */
 export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
 /** @public */

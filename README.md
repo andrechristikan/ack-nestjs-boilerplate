@@ -228,7 +228,8 @@ docker-compose up -d
 # Push the schema (needs the MongoDB replica set above already running)
 pnpm db:migrate
 
-# Seed the initial data, including the API keys
+# Build the seeds, then seed the initial data, including the API keys
+pnpm migration:build
 pnpm migration:seed
 
 # Run the API on the host

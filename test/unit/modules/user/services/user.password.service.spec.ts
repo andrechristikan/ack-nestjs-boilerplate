@@ -34,7 +34,9 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { stubPasswordMetadataNumbers } from '@test/unit/helpers/test.unit.feature-flag.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
@@ -100,15 +102,13 @@ describe('UserPasswordService', () => {
     const now = new Date('2026-03-01T00:00:00.000Z');
 
     const configValues: Record<string, boolean | number | string> = {
-        'auth.password.maxAttempt': 5,
-        'auth.password.lockDurationInMs': 900000,
-        'home.url': 'https://example.com',
+        'frontend.baseUrl': 'https://example.com',
         'forgotPassword.reference.prefix': 'FGT',
         'forgotPassword.reference.length': 8,
-        'forgotPassword.expiredInMinutes': 15,
+        'forgotPassword.expiresInMinutes': 15,
         'forgotPassword.tokenLength': 32,
         'forgotPassword.resendInMinutes': 5,
-        'forgotPassword.linkPattern': '{homeUrl}/reset?token={token}',
+        'forgotPassword.linkPattern': '{frontendBaseUrl}/reset?token={token}',
     };
 
     const baseUser: IUser = {
@@ -347,10 +347,89 @@ describe('UserPasswordService', () => {
         };
 
         beforeEach(() => {
+            stubPasswordMetadataNumbers(featureFlagService, 5, 15);
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
+
+        it.each([
+            { maxAttempts: 3, minutes: 5, end: '2026-03-01T00:05:00.000Z' },
+            { maxAttempts: 8, minutes: 30, end: '2026-03-01T00:30:00.000Z' },
+        ])(
+            'passes $maxAttempts attempts and a $minutes minute lock from the loginWithCredential flag to the counter',
+            async ({ maxAttempts, minutes, end }) => {
+                stubPasswordMetadataNumbers(
+                    featureFlagService,
+                    maxAttempts,
+                    minutes
+                );
+                userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
+                    false
+                );
+
+                await service.countFailedPasswordAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    baseUser
+                );
+
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    EnumFeatureFlagMetadataKey.passwordMaxAttempts
+                );
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes
+                );
+                expect(
+                    userRepository.incrementPasswordAttemptInTx
+                ).toHaveBeenCalledWith(
+                    tx,
+                    'user-hollow',
+                    maxAttempts,
+                    new Date(end)
+                );
+            }
+        );
+
+        it.each([
+            EnumFeatureFlagMetadataKey.passwordMaxAttempts,
+            EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes,
+        ])(
+            'propagates FeatureFlagNotConfiguredException from the %s read and writes nothing',
+            async failing => {
+                const failure = new FeatureFlagNotConfiguredException(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    failing
+                );
+                featureFlagService.getMetadataNumber.mockImplementation(
+                    async (_key, metadataKey) => {
+                        if (metadataKey === failing) {
+                            throw failure;
+                        }
+
+                        return 5;
+                    }
+                );
+
+                await expect(
+                    service.countFailedPasswordAttempt(
+                        requestContext,
+                        apiKeyContext,
+                        baseUser
+                    )
+                ).rejects.toBe(failure);
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(
+                    userRepository.incrementPasswordAttemptInTx
+                ).not.toHaveBeenCalled();
+            }
+        );
 
         it('counts the failure on the outbox tx and adds no row below the budget', async () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
@@ -880,8 +959,11 @@ describe('UserPasswordService', () => {
                 'random-token'
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{homeUrl}/reset?token={token}',
-                { homeUrl: 'https://example.com', token: 'random-token' }
+                '{frontendBaseUrl}/reset?token={token}',
+                {
+                    frontendBaseUrl: 'https://example.com',
+                    token: 'random-token',
+                }
             );
         });
     });

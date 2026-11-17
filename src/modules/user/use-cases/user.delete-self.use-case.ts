@@ -45,7 +45,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     ],
     IResponseReturn<void>
 > {
-    private readonly deleteSelfTimeoutInMs: number;
+    private readonly timeoutInMs: number;
 
     constructor(
         private readonly userService: UserService,
@@ -67,7 +67,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.deleteSelfTimeoutInMs = this.configService.get<number>(
+        this.timeoutInMs = this.configService.get<number>(
             'user.deleteSelf.timeoutInMs'
         )!;
     }
@@ -240,7 +240,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         ...workspaceEntries,
                     ]);
                 },
-                { timeout: this.deleteSelfTimeoutInMs }
+                { timeout: this.timeoutInMs }
             );
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {

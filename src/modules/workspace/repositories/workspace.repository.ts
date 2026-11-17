@@ -14,21 +14,28 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceDeletedSlugPattern } from '@modules/workspace/constants/workspace.constant';
 import type {
     IWorkspaceCreate,
     IWorkspaceUpdate,
 } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceRepository implements IWorkspaceRepository {
+    private readonly deletedSlugPattern: string;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.deletedSlugPattern = this.configService.get<string>(
+            'workspace.deletedSlugPattern'
+        )!;
+    }
 
     async findActiveById(workspaceId: string): Promise<Workspace | null> {
         const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
@@ -172,16 +179,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<boolean> {
+        const deletedSlugPattern = this.deletedSlugPattern;
         const { count } = await tx.workspace.updateMany({
             where: {
                 id: workspaceId,
                 deletedAt: null,
             },
             data: {
-                slug: WorkspaceDeletedSlugPattern.replace(
-                    '{id}',
-                    () => workspaceId
-                ),
+                slug: deletedSlugPattern.replace('{id}', () => workspaceId),
                 deletedAt,
                 deletedBy,
             },
@@ -232,14 +237,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
         const workspaceIds = workspaces.map(({ id }) => id);
 
+        const deletedSlugPattern = this.deletedSlugPattern;
         for (const workspaceId of workspaceIds) {
             await tx.workspace.updateMany({
                 where: { id: workspaceId, deletedAt: null },
                 data: {
-                    slug: WorkspaceDeletedSlugPattern.replace(
-                        '{id}',
-                        () => workspaceId
-                    ),
+                    slug: deletedSlugPattern.replace('{id}', () => workspaceId),
                     deletedAt,
                     deletedBy: userId,
                 },

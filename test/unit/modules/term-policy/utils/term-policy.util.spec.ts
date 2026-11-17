@@ -25,10 +25,10 @@ describe('TermPolicyUtil', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation((key: string) => {
-            if (key === 'termPolicy.uploadContentPath') {
+            if (key === 'termPolicy.uploadContentPathPattern') {
                 return 'term-policies/{type}/{version}';
             }
-            if (key === 'termPolicy.contentPublicPath') {
+            if (key === 'termPolicy.contentPublicPathPattern') {
                 return 'public/term-policies/{type}/{version}';
             }
             if (key === 'termPolicy.content.maxSizeInBytes') {

@@ -12,7 +12,7 @@ import {
 
 @Injectable()
 export class RequestCustomLanguageMiddleware implements NestMiddleware {
-    private readonly availableLanguage: string[];
+    private readonly availableLanguages: string[];
     private readonly defaultLanguage: string;
 
     constructor(
@@ -20,11 +20,12 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
         private readonly helperArrayService: HelperArrayService,
         private readonly requestStoreService: RequestStoreService
     ) {
-        this.availableLanguage = this.configService.get<string[]>(
-            'message.availableLanguage'
+        this.availableLanguages = this.configService.get<string[]>(
+            'message.availableLanguages'
         )!;
-        this.defaultLanguage =
-            this.configService.get<string>('message.language')!;
+        this.defaultLanguage = this.configService.get<string>(
+            'message.defaultLanguage'
+        )!;
     }
 
     private normalizeLanguage(language: string): string {
@@ -38,7 +39,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
     private filterLanguage(customLanguage: string): string[] {
         return this.helperArrayService.intersection(
             [customLanguage],
-            this.availableLanguage
+            this.availableLanguages
         );
     }
 

@@ -171,7 +171,6 @@ describe('AnalyticFraudService', () => {
         'analytic.fraud.weights.nearLockout': 32,
         'analytic.fraud.weights.massRegistrationIp': 64,
         'analytic.fraud.weights.forgotPasswordAbuse': 128,
-        'auth.password.maxAttempt': 5,
         'analytic.fraud.riskScore.candidateLimit': 3,
         'analytic.fraud.riskScore.lookbackInMs': 3600000,
     };
@@ -218,6 +217,7 @@ describe('AnalyticFraudService', () => {
         });
         analyticAnomalyUtil.groupByIp.mockReturnValue(new Map());
         analyticBucketUtil.toBuckets.mockReturnValue([]);
+        userAnalyticService.getPasswordMaxAttempts.mockResolvedValue(5);
         analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         paginationOffsetUtil.page.mockReturnValue(offsetPage);
         activityLogAnalyticService.getPageByActionsInRange.mockResolvedValue(
@@ -1304,6 +1304,40 @@ describe('AnalyticFraudService', () => {
             ]);
         });
 
+        it('reads the password max attempt once for every candidate', async () => {
+            await service.riskScores(null, pagination);
+
+            expect(
+                userAnalyticService.getPasswordMaxAttempts
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([
+            { maxAttempt: 5, minAttempt: 4 },
+            { maxAttempt: 8, minAttempt: 7 },
+        ])(
+            'lists near-lockout candidates at the threshold of the password max attempt $maxAttempt',
+            async ({ maxAttempt, minAttempt }) => {
+                userAnalyticService.getPasswordMaxAttempts.mockResolvedValue(
+                    maxAttempt
+                );
+                analyticFraudUtil.nearLockoutThreshold.mockReturnValue(
+                    minAttempt
+                );
+
+                await service.riskScores(null, pagination);
+
+                expect(
+                    analyticFraudUtil.nearLockoutThreshold
+                ).toHaveBeenCalledWith(maxAttempt);
+                expect(userAnalyticService.getNearLockout).toHaveBeenCalledWith(
+                    minAttempt,
+                    now,
+                    3
+                );
+            }
+        );
+
         it('scores the candidates in chunks of analytic.fraud.concurrency', async () => {
             await service.riskScores(null, pagination);
 
@@ -1886,7 +1920,7 @@ describe('AnalyticFraudService', () => {
                 impossibleTravel: new Set(['user-1']),
             };
 
-            const result = await service['scoreListed'](user, signals);
+            const result = await service['scoreListed'](user, signals, 4);
 
             expect(result).toEqual({
                 userId: 'user-1',
@@ -1959,7 +1993,8 @@ describe('AnalyticFraudService', () => {
 
             const result = service['score'](
                 { ...user, passwordAttempt: 4 },
-                signals
+                signals,
+                4
             );
 
             expect(result).toEqual({
@@ -1985,7 +2020,7 @@ describe('AnalyticFraudService', () => {
                 sharedFingerprint: new Set(['user-2']),
             };
 
-            expect(service['score'](user, signals)).toEqual({
+            expect(service['score'](user, signals, 4)).toEqual({
                 userId: 'user-1',
                 score: 0,
                 band: EnumAnalyticFraudBand.monitor,
@@ -1993,19 +2028,29 @@ describe('AnalyticFraudService', () => {
             });
         });
 
-        it('flags near-lockout at the password max attempt minus the offset', () => {
-            expect(
-                service['score']({ ...user, passwordAttempt: 3 }, emptySignals)
-                    .contributingSignalCodes
-            ).toEqual([]);
-            expect(
-                service['score']({ ...user, passwordAttempt: 4 }, emptySignals)
-                    .contributingSignalCodes
-            ).toEqual([EnumAnalyticFraudContributingSignal.nearLockout]);
-            expect(
-                service['score'](user, emptySignals).contributingSignalCodes
-            ).toEqual([]);
-        });
+        it.each([
+            { maxAttempt: 5, minAttempt: 4 },
+            { maxAttempt: 8, minAttempt: 7 },
+        ])(
+            'flags near-lockout from the given threshold $minAttempt',
+            ({ minAttempt }) => {
+                const below = service['score'](
+                    { ...user, passwordAttempt: minAttempt - 1 },
+                    emptySignals,
+                    minAttempt
+                );
+                const at = service['score'](
+                    { ...user, passwordAttempt: minAttempt },
+                    emptySignals,
+                    minAttempt
+                );
+
+                expect(below.contributingSignalCodes).toEqual([]);
+                expect(at.contributingSignalCodes).toEqual([
+                    EnumAnalyticFraudContributingSignal.nearLockout,
+                ]);
+            }
+        );
 
         it('flags near-lockout for a zero-attempt user whose lock ends after now', () => {
             expect(
@@ -2017,7 +2062,8 @@ describe('AnalyticFraudService', () => {
                             '2026-03-01T00:10:00.000Z'
                         ),
                     },
-                    emptySignals
+                    emptySignals,
+                    4
                 ).contributingSignalCodes
             ).toEqual([EnumAnalyticFraudContributingSignal.nearLockout]);
         });
@@ -2032,7 +2078,8 @@ describe('AnalyticFraudService', () => {
                             '2026-02-28T23:50:00.000Z'
                         ),
                     },
-                    emptySignals
+                    emptySignals,
+                    4
                 ).contributingSignalCodes
             ).toEqual([]);
         });

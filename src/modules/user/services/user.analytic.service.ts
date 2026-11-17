@@ -10,6 +10,11 @@ import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
 } from '@modules/user/interfaces/user.interface';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import {
@@ -23,7 +28,8 @@ import {
 export class UserAnalyticService {
     constructor(
         private readonly userAnalyticRepository: UserAnalyticRepository,
-        private readonly helperNumberService: HelperNumberService
+        private readonly helperNumberService: HelperNumberService,
+        private readonly featureFlagService: FeatureFlagService
     ) {}
 
     async getCountRegistrations(
@@ -128,6 +134,13 @@ export class UserAnalyticService {
         return await this.userAnalyticRepository.countNearLockout(
             minAttempt,
             now
+        );
+    }
+
+    async getPasswordMaxAttempts(): Promise<number> {
+        return await this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.loginWithCredential,
+            EnumFeatureFlagMetadataKey.passwordMaxAttempts
         );
     }
 

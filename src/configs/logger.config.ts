@@ -1,25 +1,16 @@
 import { registerAs } from '@nestjs/config';
 import appConfigFunction from '@configs/app.config';
 import docConfigFunction from '@configs/doc.config';
-import ms from 'ms';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
 export interface IConfigLogger {
-    enable: boolean;
+    enabled: boolean;
     level: EnumLoggerLevel;
-    intoFile: boolean;
+    fileEnabled: boolean;
     filePath: string;
-    auto: boolean;
+    accessLogEnabled: boolean;
     excludedRoutes: string[];
-    prettier: boolean;
-    sentry: {
-        dsn: string | null;
-        timeoutInMs: number;
-        tracesSampleRate: number;
-        tracesSampleRateProduction: number;
-        profilesSampleRate: number;
-        profilesSampleRateProduction: number;
-    };
+    prettyEnabled: boolean;
 }
 
 export default registerAs('logger', (): IConfigLogger => {
@@ -27,11 +18,11 @@ export default registerAs('logger', (): IConfigLogger => {
     const { prefix: docPrefix } = docConfigFunction();
 
     return {
-        enable: process.env.LOGGER_ENABLE === 'true',
+        enabled: process.env.LOGGER_ENABLED === 'true',
         level: process.env.LOGGER_LEVEL as EnumLoggerLevel,
-        intoFile: process.env.LOGGER_INTO_FILE === 'true',
+        fileEnabled: process.env.LOGGER_FILE_ENABLED === 'true',
         filePath: '/logs',
-        auto: process.env.LOGGER_AUTO === 'true',
+        accessLogEnabled: process.env.LOGGER_ACCESS_LOG_ENABLED === 'true',
         excludedRoutes: [
             `${globalPrefix}/public/hello`,
             `${globalPrefix}/public/hello/*`,
@@ -44,17 +35,6 @@ export default registerAs('logger', (): IConfigLogger => {
             `${docPrefix}/*`,
             '/',
         ],
-        prettier: process.env.LOGGER_PRETTIER === 'true',
-        sentry: {
-            dsn:
-                process.env.SENTRY_DSN === ''
-                    ? null
-                    : (process.env.SENTRY_DSN ?? null),
-            timeoutInMs: ms('10s'),
-            tracesSampleRate: 1,
-            tracesSampleRateProduction: 0.3,
-            profilesSampleRate: 0.5,
-            profilesSampleRateProduction: 0.1,
-        },
+        prettyEnabled: process.env.LOGGER_PRETTY_ENABLED === 'true',
     };
 });

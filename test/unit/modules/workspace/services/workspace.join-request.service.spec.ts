@@ -30,6 +30,7 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -97,10 +98,9 @@ describe('WorkspaceJoinRequestService', () => {
         get: configGet as ConfigService['get'],
     });
     const configValues: Record<string, unknown> = {
-        'workspace.joinRequest.expiresInMs': 604800000,
-        'home.url': 'https://app.example.com',
+        'frontend.baseUrl': 'https://app.example.com',
         'workspace.joinRequest.reviewLinkPattern':
-            '{homeUrl}/workspace/join-requests/{joinRequestId}',
+            '{frontendBaseUrl}/workspace/join-requests/{joinRequestId}',
     };
     const pendingNonce = 'a'.repeat(64);
     const expiredAt = new Date('2026-01-09T00:00:00.000Z');
@@ -183,6 +183,7 @@ describe('WorkspaceJoinRequestService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        featureFlagService.getMetadataNumber.mockResolvedValue(7);
         helperDateService.create.mockReturnValue(reviewedAt);
         helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
         helperHashService.sha256Hash.mockReturnValue(pendingNonce);
@@ -191,7 +192,7 @@ describe('WorkspaceJoinRequestService', () => {
         );
         helperDateService.forward.mockReturnValue(expiredAt);
         helperDateService.createDuration.mockReturnValue(
-            Duration.fromMillis(604800000)
+            Duration.fromObject({ days: 7 })
         );
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogService.recordEffect
@@ -347,7 +348,7 @@ describe('WorkspaceJoinRequestService', () => {
             reviewerIds: ['reviewer-1', 'reviewer-2'],
         };
 
-        it('creates the pending join request with the hashed nonce and the configured expiry', async () => {
+        it('creates the pending join request with the hashed nonce and an expiry of joinRequestExpiresInDays', async () => {
             workspaceJoinRequestRepository.createPendingInTx.mockResolvedValue(
                 baseJoinRequest
             );
@@ -377,13 +378,41 @@ describe('WorkspaceJoinRequestService', () => {
             expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
                 'workspace-1:user-2'
             );
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestExpiresInDays
+            );
             expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 604800000,
+                days: 7,
             });
             expect(helperDateService.forward).toHaveBeenCalledWith(
                 reviewedAt,
-                Duration.fromMillis(604800000)
+                Duration.fromObject({ days: 7 })
             );
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestExpiresInDays
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(
+                service.createJoinRequest(
+                    requestContext,
+                    apiKeyContext,
+                    authContextOfUser2,
+                    create,
+                    notice
+                )
+            ).rejects.toBe(notConfigured);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestRepository.createPendingInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('adds one notify effect per reviewer on the tx of the write and reads no recipient', async () => {
@@ -1188,8 +1217,11 @@ describe('WorkspaceJoinRequestService', () => {
                 'https://app.example.com/workspace/join-requests/join-1'
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{homeUrl}/workspace/join-requests/{joinRequestId}',
-                { homeUrl: 'https://app.example.com', joinRequestId: 'join-1' }
+                '{frontendBaseUrl}/workspace/join-requests/{joinRequestId}',
+                {
+                    frontendBaseUrl: 'https://app.example.com',
+                    joinRequestId: 'join-1',
+                }
             );
         });
     });

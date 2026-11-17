@@ -42,7 +42,7 @@ describe('FeatureFlagService', () => {
         mock<FeatureFlagRepository>();
     const featureFlagCache: MockProxy<FeatureFlagCache> =
         mock<FeatureFlagCache>({
-            featureFlagTtlInMs: 3600000,
+            cacheTtlInMs: 3600000,
         });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const helperHashService: MockProxy<HelperHashService> =
@@ -400,6 +400,63 @@ describe('FeatureFlagService', () => {
                     ],
                 messagePath: 'featureFlag.error.disabled',
             });
+        });
+    });
+
+    describe('getMetadataNumber', () => {
+        const key = EnumFeatureFlagKey.workspace;
+        const metadataKey = EnumFeatureFlagMetadataKey.maxWorkspacesPerUser;
+
+        it('returns the stored number for an enabled flag and for a disabled one', async () => {
+            cacheService.readThrough.mockResolvedValueOnce({
+                ...baseFlag,
+                metadata: { [metadataKey]: 10 },
+            });
+            cacheService.readThrough.mockResolvedValueOnce({
+                ...baseFlag,
+                isEnable: false,
+                rolloutPercent: 0,
+                metadata: { [metadataKey]: 25 },
+            });
+
+            await expect(
+                service.getMetadataNumber(key, metadataKey)
+            ).resolves.toBe(10);
+            await expect(
+                service.getMetadataNumber(key, metadataKey)
+            ).resolves.toBe(25);
+        });
+
+        it('throws FeatureFlagNotConfiguredException naming the sub-key for no row', async () => {
+            cacheService.readThrough.mockResolvedValue(null);
+
+            await expect(
+                service.getMetadataNumber(key, metadataKey)
+            ).rejects.toMatchObject({
+                statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+                rawError: {
+                    message: `FeatureFlagNotConfiguredException: no numeric metadata "${metadataKey}" on feature flag "${key}"`,
+                },
+            });
+        });
+
+        it('throws FeatureFlagNotConfiguredException for a missing sub-key, a boolean, a string, and null metadata', async () => {
+            const metadatas = [
+                {},
+                { [metadataKey]: true },
+                { [metadataKey]: '10' },
+                null,
+            ];
+            for (const metadata of metadatas) {
+                cacheService.readThrough.mockResolvedValueOnce({
+                    ...baseFlag,
+                    metadata,
+                });
+
+                await expect(
+                    service.getMetadataNumber(key, metadataKey)
+                ).rejects.toBeInstanceOf(FeatureFlagNotConfiguredException);
+            }
         });
     });
 

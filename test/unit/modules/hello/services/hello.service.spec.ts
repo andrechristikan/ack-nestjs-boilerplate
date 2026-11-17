@@ -23,8 +23,9 @@ describe('HelloService', () => {
                 'app.name': 'Ack NestJS Boilerplate',
                 'app.env': EnumAppEnvironment.development,
                 'app.timezone': 'UTC',
-                'message.availableLanguage': Object.values(EnumMessageLanguage),
-                'message.language': EnumMessageLanguage.en,
+                'message.availableLanguages':
+                    Object.values(EnumMessageLanguage),
+                'message.defaultLanguage': EnumMessageLanguage.en,
             };
 
             return values[key];

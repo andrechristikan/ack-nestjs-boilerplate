@@ -15,7 +15,7 @@ Commands:
                 2. Create separate access/refresh JWKS files in ./keys (always)
                 3. Update .env with the keys and KIDs (only with --direct-insert)
                 Never touches ./keys/encryption-secret.env or the encryption variables.
-  encryption    Generate APP_ENCRYPTION_SECRET_KEY and MFA_TOTP_ENCRYPTION_KEY
+  encryption    Generate APP_ENCRYPTION_SECRET and MFA_TOTP_ENCRYPTION_SECRET
                 (48 random bytes each, base64url):
                 1. Write both to ./keys/encryption-secret.env (always)
                 2. Update .env with both secrets (only with --direct-insert)
@@ -23,7 +23,7 @@ Commands:
   mongo         Generate the MongoDB replica-set keyfile (756 random bytes, base64):
                 1. Write it to ./keys/mongo-keyfile, mode 0400 (always); an existing file is replaced
                 2. --direct-insert does nothing: the keyfile never goes into .env
-                Mounted by docker-compose.yml and ci/docker-compose.production.yml at /etc/mongo/keyfile.
+                Mounted by docker-compose.yml and ci/docker-compose.yml at /etc/mongo/keyfile.
 
   Key material and secret values are never printed; only file paths and KIDs are shown.
 
@@ -266,14 +266,14 @@ class SecretGenerator {
      * never printed.
      */
     writeEncryptionSecrets(secrets: {
-        appEncryptionSecretKey: string;
-        mfaTotpEncryptionKey: string;
+        appEncryptionSecret: string;
+        mfaTotpEncryptionSecret: string;
     }): void {
         fs.writeFileSync(
             this.encryptionSecretPath,
             [
-                `APP_ENCRYPTION_SECRET_KEY=${secrets.appEncryptionSecretKey}`,
-                `MFA_TOTP_ENCRYPTION_KEY=${secrets.mfaTotpEncryptionKey}`,
+                `APP_ENCRYPTION_SECRET=${secrets.appEncryptionSecret}`,
+                `MFA_TOTP_ENCRYPTION_SECRET=${secrets.mfaTotpEncryptionSecret}`,
                 '',
             ].join('\n'),
             { mode: 0o600 }
@@ -399,20 +399,20 @@ class SecretGenerator {
 
             console.log('Generating encryption secrets...');
             const secrets = {
-                appEncryptionSecretKey: this.generateEncryptionSecret(),
-                mfaTotpEncryptionKey: this.generateEncryptionSecret(),
+                appEncryptionSecret: this.generateEncryptionSecret(),
+                mfaTotpEncryptionSecret: this.generateEncryptionSecret(),
             };
             this.writeEncryptionSecrets(secrets);
 
             if (updateEnv) {
                 this.upsertEnv([
                     {
-                        key: 'APP_ENCRYPTION_SECRET_KEY',
-                        value: secrets.appEncryptionSecretKey,
+                        key: 'APP_ENCRYPTION_SECRET',
+                        value: secrets.appEncryptionSecret,
                     },
                     {
-                        key: 'MFA_TOTP_ENCRYPTION_KEY',
-                        value: secrets.mfaTotpEncryptionKey,
+                        key: 'MFA_TOTP_ENCRYPTION_SECRET',
+                        value: secrets.mfaTotpEncryptionSecret,
                     },
                 ]);
             }
@@ -423,7 +423,7 @@ class SecretGenerator {
                 '📁 File written (open it — secret values are NOT printed, for security):'
             );
             console.log(
-                `   • Encryption secrets: ${this.encryptionSecretPath} (APP_ENCRYPTION_SECRET_KEY, MFA_TOTP_ENCRYPTION_KEY)`
+                `   • Encryption secrets: ${this.encryptionSecretPath} (APP_ENCRYPTION_SECRET, MFA_TOTP_ENCRYPTION_SECRET)`
             );
             console.log('');
             if (updateEnv) {
@@ -494,7 +494,7 @@ class SecretGenerator {
 
     /**
      * Upserts the given variables into `.env`, creating it from `.env.example`
-     * when absent, and sets it to mode 0644 so a non-root container user can
+     * when absent with every `<placeholder>` value written empty, and sets it to mode 0644 so a non-root container user can
      * read it. Variables not named are left as they are.
      */
     upsertEnv(updates: { key: string; value: string }[]): void {
@@ -503,7 +503,12 @@ class SecretGenerator {
 
         if (!fs.existsSync(envPath)) {
             if (fs.existsSync(envExamplePath)) {
-                fs.copyFileSync(envExamplePath, envPath);
+                fs.writeFileSync(
+                    envPath,
+                    fs
+                        .readFileSync(envExamplePath, 'utf8')
+                        .replace(/^([A-Z0-9_]+)=<[^>\n]*>$/gm, '$1=')
+                );
                 console.log('📄 .env file created from .env.example');
             } else {
                 console.error('.env.example not found. Cannot create .env');

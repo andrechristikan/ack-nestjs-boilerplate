@@ -5,6 +5,7 @@ export interface IConfigProject {
     slugRegex: RegExp;
     slugMaxLength: number;
     slugMaxAttempts: number;
+    deletedSlugPattern: string;
 }
 
 export default registerAs('project', (): IConfigProject => ({
@@ -12,4 +13,5 @@ export default registerAs('project', (): IConfigProject => ({
     slugRegex: /^[0-9a-zA-Z-]+$/,
     slugMaxLength: 30,
     slugMaxAttempts: 5,
+    deletedSlugPattern: 'deleted-{id}',
 }));

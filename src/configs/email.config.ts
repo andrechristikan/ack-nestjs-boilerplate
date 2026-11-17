@@ -1,21 +1,21 @@
 import { registerAs } from '@nestjs/config';
 
 export interface IConfigEmail {
-    noreply: string | null;
-    support: string | null;
+    noReplyAddress: string | null;
+    supportAddress: string | null;
     batchSize: number;
 }
 
 export default registerAs('email', (): IConfigEmail => {
     return {
-        noreply:
-            process.env.EMAIL_NO_REPLY === ''
+        noReplyAddress:
+            process.env.EMAIL_NO_REPLY_ADDRESS === ''
                 ? null
-                : (process.env.EMAIL_NO_REPLY ?? null),
-        support:
-            process.env.EMAIL_SUPPORT === ''
+                : (process.env.EMAIL_NO_REPLY_ADDRESS ?? null),
+        supportAddress:
+            process.env.EMAIL_SUPPORT_ADDRESS === ''
                 ? null
-                : (process.env.EMAIL_SUPPORT ?? null),
+                : (process.env.EMAIL_SUPPORT_ADDRESS ?? null),
         batchSize: 50,
     };
 });

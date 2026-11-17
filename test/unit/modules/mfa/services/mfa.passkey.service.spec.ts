@@ -13,6 +13,11 @@ import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
 import type { MfaPasskey } from '@generated/prisma-client/client';
 import type { IMfaPasskey } from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import type { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import type { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
 import type { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import {
@@ -32,6 +37,8 @@ describe('MfaPasskeyService', () => {
         mock<MfaPasskeyRepository>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
     const configGet = vi.fn<(key: string) => unknown>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
@@ -86,7 +93,6 @@ describe('MfaPasskeyService', () => {
                     'https://app.other.test',
                     'android:apk-key-hash:x',
                 ],
-                'mfa.passkey.maxPerUser': 10,
             };
 
             return values[key];
@@ -96,6 +102,7 @@ describe('MfaPasskeyService', () => {
             mfaPasskeyRepository,
             helperDateService,
             configService,
+            featureFlagService,
         });
         ({
             generateAuthenticationOptions,
@@ -365,6 +372,7 @@ describe('MfaPasskeyService', () => {
                     mfaPasskeyRepository,
                     helperDateService,
                     configService,
+                    featureFlagService,
                 });
                 ({ verifyAuthenticationResponse } =
                     await import('@simplewebauthn/server'));
@@ -575,6 +583,25 @@ describe('MfaPasskeyService', () => {
         });
     });
 
+    describe('getMaxPerUser', () => {
+        it.each([3, 25])(
+            'returns %i from the passkeyMaxPerUser metadata of the mfa flag',
+            async maxPerUser => {
+                featureFlagService.getMetadataNumber.mockResolvedValue(
+                    maxPerUser
+                );
+
+                await expect(service.getMaxPerUser()).resolves.toBe(maxPerUser);
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.mfa,
+                    EnumFeatureFlagMetadataKey.passkeyMaxPerUser
+                );
+            }
+        );
+    });
+
     describe('registerInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const response = {
@@ -624,7 +651,8 @@ describe('MfaPasskeyService', () => {
                 'user-quartz',
                 'iPhone',
                 response,
-                'challenge-stored'
+                'challenge-stored',
+                10
             );
 
             expect(verifyRegistrationResponse).toHaveBeenCalledWith({
@@ -653,7 +681,8 @@ describe('MfaPasskeyService', () => {
                             clientDataJSON: buildClientDataJson(origin),
                         },
                     },
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 );
 
                 expect(verifyRegistrationResponse).toHaveBeenCalledWith(
@@ -688,7 +717,8 @@ describe('MfaPasskeyService', () => {
                             ...response,
                             response: { ...response.response, clientDataJSON },
                         },
-                        'challenge-stored'
+                        'challenge-stored',
+                        10
                     )
                 ).rejects.toMatchObject({
                     module: 'mfa',
@@ -713,6 +743,7 @@ describe('MfaPasskeyService', () => {
                     mfaPasskeyRepository,
                     helperDateService,
                     configService,
+                    featureFlagService,
                 });
                 ({ verifyRegistrationResponse } =
                     await import('@simplewebauthn/server'));
@@ -749,7 +780,8 @@ describe('MfaPasskeyService', () => {
                                 clientDataJSON: buildClientDataJson(origin),
                             },
                         },
-                        'challenge-stored'
+                        'challenge-stored',
+                        10
                     );
 
                     expect(verifyRegistrationResponse).toHaveBeenCalledWith(
@@ -779,7 +811,8 @@ describe('MfaPasskeyService', () => {
                                     clientDataJSON,
                                 },
                             },
-                            'challenge-stored'
+                            'challenge-stored',
+                            10
                         )
                     ).rejects.toMatchObject({
                         module: 'mfa',
@@ -798,7 +831,8 @@ describe('MfaPasskeyService', () => {
                     'user-quartz',
                     'iPhone',
                     response,
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 )
             ).resolves.toBe(created);
 
@@ -840,7 +874,8 @@ describe('MfaPasskeyService', () => {
                 'user-quartz',
                 'Key',
                 response,
-                'challenge-stored'
+                'challenge-stored',
+                10
             );
 
             expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(
@@ -854,7 +889,23 @@ describe('MfaPasskeyService', () => {
             );
         });
 
-        it('throws MfaPasskeyLimitException for the passkey after the last one allowed, verifying nothing', async () => {
+        it('allows the passkey one below the maxPerUser argument and calls no feature flag read', async () => {
+            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(9);
+
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored',
+                    10
+                )
+            ).resolves.toBe(created);
+            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaPasskeyLimitException when the count equals the maxPerUser argument, verifying nothing', async () => {
             mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(10);
 
             await expect(
@@ -863,7 +914,8 @@ describe('MfaPasskeyService', () => {
                     'user-quartz',
                     'iPhone',
                     response,
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
@@ -887,7 +939,8 @@ describe('MfaPasskeyService', () => {
                     'user-quartz',
                     'iPhone',
                     response,
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
@@ -909,7 +962,8 @@ describe('MfaPasskeyService', () => {
                     'user-quartz',
                     'iPhone',
                     response,
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
@@ -931,7 +985,8 @@ describe('MfaPasskeyService', () => {
                     'user-quartz',
                     'iPhone',
                     response,
-                    'challenge-stored'
+                    'challenge-stored',
+                    10
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',

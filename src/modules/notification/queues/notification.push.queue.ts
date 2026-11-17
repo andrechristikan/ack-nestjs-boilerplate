@@ -11,7 +11,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 @Injectable()
 export class NotificationPushQueue extends QueueBase implements OnModuleInit {
-    private readonly defTz: string;
+    private readonly timezone: string;
     private readonly cleanupStaleTokensCron: string;
 
     constructor(
@@ -21,7 +21,7 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
         private readonly configService: ConfigService
     ) {
         super(queue, cacheService);
-        this.defTz = this.configService.get<string>('app.timezone')!;
+        this.timezone = this.configService.get<string>('app.timezone')!;
         this.cleanupStaleTokensCron = this.configService.get<string>(
             'notification.push.cleanupStaleTokensCron'
         )!;
@@ -36,7 +36,7 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
             EnumNotificationPushProcess.cleanupStaleTokens,
             {
                 pattern: this.cleanupStaleTokensCron,
-                tz: this.defTz,
+                tz: this.timezone,
             },
             {
                 name: EnumNotificationPushProcess.cleanupStaleTokens,

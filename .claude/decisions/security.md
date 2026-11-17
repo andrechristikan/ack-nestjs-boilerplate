@@ -140,7 +140,7 @@ Rule: `login.md`.
 Rule: `session.md`, MFA.
 
 - An optional integration: a passkey has no third party whose credentials may be unset; the values are the deployment's own domain.
-- Deriving it from `HOME_URL` and `CORS_ALLOWED_ORIGIN`: the relying-party id is a bare domain, and a mobile app's origin is in neither key.
+- Deriving it from `FRONTEND_BASE_URL` and `REQUEST_CORS_ALLOWED_ORIGINS`: the relying-party id is a bare domain, and a mobile app's origin is in neither key.
 
 ### A password reset proves any enrolled MFA method
 
@@ -266,20 +266,26 @@ Rule: `login.md`, and `cache.md` for the two stores.
 - Spending it inside the login transaction: a login refused before the transaction leaves the token usable again.
 - No nonce: a stolen ID token signs in again until it expires.
 
+### Apple sign-in takes one client id list
+
+Rule: `config.md`, Names.
+
+- Two keys named for the Services ID and the Bundle ID: the code merges both into one audience list and treats them alike.
+
 ## Logging and debug
 
 ### A refused request is logged by status in the filters
 
 Rule: `filter.md`.
 
-- Requiring `LOGGER_AUTO` in production: the access log records every request, the refused ones lost among them.
+- Requiring `LOGGER_ACCESS_LOG_ENABLED` in production: the access log records every request, the refused ones lost among them.
 - Logging every 4xx: a mistyped route and every business error drown the refusals.
 
-### `DATABASE_DEBUG` is refused in production
+### `DATABASE_DEBUG_ENABLED` is refused in production
 
 Rule: `config.md`.
 
-- Refusing `LOGGER_LEVEL=debug` and `LOGGER_PRETTIER` as well: the level and the format are operating choices, and neither writes query content.
+- Refusing `LOGGER_LEVEL=debug` and `LOGGER_PRETTY_ENABLED` as well: the level and the format are operating choices, and neither writes query content.
 
 ## Deployment
 

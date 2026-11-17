@@ -26,5 +26,9 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 ## Config
 
-- Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field; a module `useFactory`, a queue options factory, `main.ts`, `configure.ts`, and `swagger.ts` read where they build.
-- A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, max-attempts budget, or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes is a constant in its kit (`config.md`).
+- Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field. A module `useFactory`, a queue options factory, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
+- A field or a local holding a config value takes its name from the path, and no other word:
+    - the last segment, whole (`cacheTtlInMs` for `auth.xApiKey.cacheTtlInMs`);
+    - an earlier segment only where two fields of the class would share a name, or the bare name is a reserved word or reads as another thing (`s3Public` for `aws.s3.public`, `throttleUser` for `request.throttle.user`);
+    - a leading word of the last segment drops only when it repeats the class name (`backoffDelayInMs` for `queue.job.emailBackoffDelayInMs` in `NotificationEmailQueueFactory`).
+- A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, unique-value retry budget (`*MaxAttempts`), or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes, or one read at decoration time, at schema-definition time, or before Nest exists, is a constant (`config.md`, Layers). A password or MFA attempt budget and its lock duration are flag metadata (`feature-flag.md`, Metadata).

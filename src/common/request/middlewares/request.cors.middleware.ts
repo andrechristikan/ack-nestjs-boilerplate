@@ -7,24 +7,24 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
-    private readonly allowedOrigin: string | boolean | string[];
-    private readonly allowedMethod: string[];
-    private readonly allowedHeader: string[];
-    private readonly exposedHeader: string[];
+    private readonly allowedOrigins: string[];
+    private readonly allowedMethods: string[];
+    private readonly allowedHeaders: string[];
+    private readonly exposedHeaders: string[];
     private readonly maxAgeInSeconds: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.allowedOrigin = this.configService.get<
-            string | boolean | string[]
-        >('request.cors.allowedOrigin')!;
-        this.allowedMethod = this.configService.get<string[]>(
-            'request.cors.allowedMethod'
+        this.allowedOrigins = this.configService.get<string[]>(
+            'request.cors.allowedOrigins'
         )!;
-        this.allowedHeader = this.configService.get<string[]>(
-            'request.cors.allowedHeader'
+        this.allowedMethods = this.configService.get<string[]>(
+            'request.cors.allowedMethods'
         )!;
-        this.exposedHeader = this.configService.get<string[]>(
-            'request.cors.exposedHeader'
+        this.allowedHeaders = this.configService.get<string[]>(
+            'request.cors.allowedHeaders'
+        )!;
+        this.exposedHeaders = this.configService.get<string[]>(
+            'request.cors.exposedHeaders'
         )!;
         this.maxAgeInSeconds = this.configService.get<number>(
             'request.cors.maxAgeInSeconds'
@@ -39,42 +39,19 @@ export class RequestCorsMiddleware implements NestMiddleware {
             return callback(null, true);
         }
 
-        if (typeof this.allowedOrigin === 'boolean') {
-            return callback(null, this.allowedOrigin);
+        const hasWildcardOrigin = this.allowedOrigins.includes('*');
+        if (hasWildcardOrigin) {
+            return callback(null, true);
         }
 
-        if (typeof this.allowedOrigin === 'string') {
-            if (this.allowedOrigin === '*') {
-                return callback(null, true);
-            }
-
-            const allowed = this.isOriginAllowed(origin, [this.allowedOrigin]);
-            return callback(null, allowed);
-        }
-
-        if (Array.isArray(this.allowedOrigin)) {
-            const hasWildcardOrigin = this.allowedOrigin.includes('*');
-            if (hasWildcardOrigin) {
-                return callback(null, true);
-            }
-
-            const allowed = this.isOriginAllowed(origin, this.allowedOrigin);
-            return callback(null, allowed);
-        }
-
-        callback(null, false);
+        const allowed = this.isOriginAllowed(origin, this.allowedOrigins);
+        callback(null, allowed);
     }
 
     private shouldAllowCredentials(): boolean {
-        if (typeof this.allowedOrigin === 'string') {
-            return this.allowedOrigin !== '*';
-        }
-        if (Array.isArray(this.allowedOrigin)) {
-            const hasWildcardOrigin = this.allowedOrigin.includes('*');
+        const hasWildcardOrigin = this.allowedOrigins.includes('*');
 
-            return !hasWildcardOrigin;
-        }
-        return true;
+        return !hasWildcardOrigin;
     }
 
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
@@ -194,9 +171,9 @@ export class RequestCorsMiddleware implements NestMiddleware {
         const corsOptions: CorsOptions = {
             origin: (origin, callback) =>
                 this.originValidator(origin, callback),
-            methods: this.allowedMethod,
-            allowedHeaders: this.allowedHeader,
-            exposedHeaders: this.exposedHeader,
+            methods: this.allowedMethods,
+            allowedHeaders: this.allowedHeaders,
+            exposedHeaders: this.exposedHeaders,
             preflightContinue: false,
             credentials: isCredentialsAllowed,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,

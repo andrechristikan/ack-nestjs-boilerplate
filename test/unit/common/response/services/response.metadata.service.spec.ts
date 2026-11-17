@@ -39,8 +39,8 @@ describe('ResponseMetadataService', () => {
     let service: ResponseMetadataService;
 
     const configValues: Record<string, unknown> = {
-        'message.language': 'id',
-        'app.urlVersion.version': '1',
+        'message.defaultLanguage': 'id',
+        'app.urlVersioning.defaultVersion': '1',
         'app.version': '1.0.0',
     };
 

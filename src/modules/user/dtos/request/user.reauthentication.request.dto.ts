@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UserLoginVerifyMfaRequestSchema } from '@modules/user/dtos/request/user.login-verify-mfa.request.dto';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaPasskeyAuthenticationResponseSchema } from '@modules/mfa/validations/mfa.passkey-authentication-response.validation';
+import { UserPasswordMaxLength } from '@modules/user/constants/user.constant';
 
 /** @public */
 export const UserReauthenticationRequestSchema =
@@ -22,7 +23,7 @@ export const UserReauthenticationRequestSchema =
             password: z
                 .string()
                 .min(1)
-                .max(64)
+                .max(UserPasswordMaxLength)
                 .meta({
                     description:
                         'current string password, required when the account has one, at most 64 characters',

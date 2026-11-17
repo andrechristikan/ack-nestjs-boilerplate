@@ -91,28 +91,28 @@
         {
             "label": "Seed Database",
             "type": "shell",
-            "command": "pnpm migration:seed",
+            "command": "pnpm migration:build && pnpm migration:seed",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Remove Database",
             "type": "shell",
-            "command": "pnpm migration:remove",
+            "command": "pnpm migration:build && pnpm migration:remove",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Seed Template",
             "type": "shell",
-            "command": "pnpm migration templateEmailNotification --type seed",
+            "command": "pnpm migration:build && pnpm migration templateEmailNotification --type seed",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Remove Template",
             "type": "shell",
-            "command": "pnpm migration templateEmailNotification --type remove",
+            "command": "pnpm migration:build && pnpm migration templateEmailNotification --type remove",
             "group": "none",
             "problemMatcher": []
         },
@@ -133,14 +133,14 @@
         {
             "label": "Docker Compose Up",
             "type": "shell",
-            "command": "pnpm compose:dev",
+            "command": "docker compose --env-file .env.docker up -d",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Docker Compose Down",
             "type": "shell",
-            "command": "pnpm compose:dev:down",
+            "command": "docker compose --env-file .env.docker down",
             "group": "none",
             "problemMatcher": []
         },

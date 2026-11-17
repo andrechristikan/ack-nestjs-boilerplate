@@ -32,9 +32,12 @@ import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ApiKeyService {
+    private readonly secretLength: number;
+
     constructor(
         private readonly helperDateService: HelperDateService,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
@@ -43,8 +46,13 @@ export class ApiKeyService {
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
         private readonly cacheService: CacheService,
-        private readonly outboxService: OutboxService
-    ) {}
+        private readonly outboxService: OutboxService,
+        private readonly configService: ConfigService
+    ) {
+        this.secretLength = this.configService.get<number>(
+            'auth.xApiKey.secretLength'
+        )!;
+    }
 
     private isActive(apiKey: IApiKey): boolean {
         return apiKey.isActive;
@@ -66,7 +74,7 @@ export class ApiKeyService {
     }
 
     private createSecret(): string {
-        return this.helperStringService.random(50);
+        return this.helperStringService.random(this.secretLength);
     }
 
     private generateCredential(): IApiKeyGenerateCredential {
@@ -334,7 +342,7 @@ export class ApiKeyService {
         const apiKey = await this.cacheService.readThrough(
             cacheKey,
             ApiKeyCacheSchema,
-            this.apiKeyCache.apiKeyTtlInMs,
+            this.apiKeyCache.cacheTtlInMs,
             () => this.apiKeyRepository.findOneByKey(key),
             { lease }
         );

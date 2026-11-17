@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumUserSignUpFrom } from '@generated/prisma-client/client';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
+import {
+    UserPasswordMaxLength,
+    UserPasswordMinLength,
+} from '@modules/user/constants/user.constant';
 
 /** @public */
 export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
@@ -9,8 +13,8 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
 }).extend({
     password: z
         .string()
-        .min(8)
-        .max(64)
+        .min(UserPasswordMinLength)
+        .max(UserPasswordMaxLength)
         .meta({
             description: 'string password',
             example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string

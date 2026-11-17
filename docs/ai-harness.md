@@ -160,7 +160,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 ## Model and Effort
 
 - `coder` builds every ticket and every review fix on sonnet. `/ack-plan` picks its effort per ticket and `/ack-review` per fix: high for work that touches the schema, a transaction, concurrency, or security, medium for any other.
-- TypeSafe's Jev can pick that effort instead. It is optional: set `TYPESAFE_API_KEY` in `.env.harness` at the repository root, and remove it or add `JEV_ROUTER_DISABLED=1` there to turn it off. The file is gitignored and no agent reads it.
+- TypeSafe's Jev can pick that effort instead. It is optional: set `TYPESAFE_API_KEY` in `.env.harness` at the repository root, and remove it or add `JEV_ROUTER_ENABLED=false` there to turn it off. The file is gitignored and no agent reads it.
 - `/ack-review` runs `reviewer` on opus at high effort for every feature.
 - No agent runs below the `model` and `effort` in its own file.
 
@@ -199,7 +199,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | `redis-queue` | Redis `db:1`, the BullMQ queues | `MCP_REDIS_QUEUE_URL` |
 
 - No URL is written in a tracked file, and none reaches the session.
-- Each value is the URL the host reaches the container at: the same as `DATABASE_URL`, `CACHE_REDIS_URL`, and `QUEUE_REDIS_URL` for a local setup.
+- Each value is the URL the host reaches the container at: the same as `DATABASE_URL`, `REDIS_CACHE_URL`, and `REDIS_QUEUE_URL` for a local setup.
 - The MongoDB server runs through `npx`, the Redis servers through `uvx`, which needs [uv][ref-uv].
 - The session, `debugger`, and `reviewer` have the tools. The other agents do not.
 - The Redis server has no read-only mode, so `.claude/settings.json` denies each of its writing tools by name.

@@ -13,6 +13,11 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 
@@ -21,6 +26,9 @@ describe('UserAnalyticService', () => {
         mock<UserAnalyticRepository>();
     const helperNumberService: MockProxy<HelperNumberService> =
         mock<HelperNumberService>();
+
+    const featureFlagService: MockProxy<FeatureFlagService> =
+        mock<FeatureFlagService>();
 
     let service: UserAnalyticService;
 
@@ -39,6 +47,7 @@ describe('UserAnalyticService', () => {
                     useValue: userAnalyticRepository,
                 },
                 { provide: HelperNumberService, useValue: helperNumberService },
+                { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
         service = module.get(UserAnalyticService);
@@ -228,6 +237,27 @@ describe('UserAnalyticService', () => {
                 userAnalyticRepository.countNearLockout
             ).toHaveBeenCalledWith(4, now);
         });
+    });
+
+    describe('getPasswordMaxAttempts', () => {
+        it.each([3, 8])(
+            'returns %i from the loginWithCredential flag passwordMaxAttempts metadata',
+            async maxAttempts => {
+                featureFlagService.getMetadataNumber.mockResolvedValue(
+                    maxAttempts
+                );
+
+                await expect(service.getPasswordMaxAttempts()).resolves.toBe(
+                    maxAttempts
+                );
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    EnumFeatureFlagMetadataKey.passwordMaxAttempts
+                );
+            }
+        );
     });
 
     describe('getGroupPasswordAttemptBuckets', () => {

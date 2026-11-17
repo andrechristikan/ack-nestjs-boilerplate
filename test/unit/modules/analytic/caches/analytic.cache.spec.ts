@@ -25,17 +25,17 @@ describe('AnalyticCache', () => {
 
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
-                'analytic.cache.keyPatterns.dashboard':
+                'analytic.cache.dashboardKeyPattern':
                     'Dashboard:{metric}:{start}:{end}',
-                'analytic.cache.keyPatterns.dashboardPage':
+                'analytic.cache.dashboardPageKeyPattern':
                     'Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
-                'analytic.cache.keyPatterns.workspaceSummary':
+                'analytic.cache.workspaceSummaryKeyPattern':
                     'Workspace:{workspaceId}:Summary:{start}:{end}',
-                'analytic.cache.keyPatterns.anomalySummary':
+                'analytic.cache.anomalySummaryKeyPattern':
                     'Anomaly:{signal}:{window}',
-                'analytic.cache.keyPatterns.fraudSummary':
+                'analytic.cache.fraudSummaryKeyPattern':
                     'Fraud:{signal}:{window}',
-                'analytic.cache.keyPatterns.riskScore': 'RiskScore:{userId}',
+                'analytic.cache.riskScoreKeyPattern': 'RiskScore:{userId}',
                 'analytic.cache.dashboardTtlInMs': 1000,
                 'analytic.cache.anomalySummaryTtlInMs': 2000,
                 'analytic.cache.fraudSummaryTtlInMs': 3000,

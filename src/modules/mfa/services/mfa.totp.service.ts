@@ -30,7 +30,7 @@ export class MfaTotpService {
     private readonly periodInSeconds: number;
     private readonly window: number;
     private readonly secretLength: number;
-    private readonly encryptionKey: string;
+    private readonly encryptionSecret: string;
 
     constructor(
         private readonly mfaTotpRepository: MfaTotpRepository,
@@ -52,8 +52,8 @@ export class MfaTotpService {
         this.secretLength = this.configService.get<number>(
             'mfa.totp.secretLength'
         )!;
-        this.encryptionKey = this.configService.get<string>(
-            'mfa.totp.encryptionKey'
+        this.encryptionSecret = this.configService.get<string>(
+            'mfa.totp.encryptionSecret'
         )!;
     }
 
@@ -90,7 +90,7 @@ export class MfaTotpService {
     private encryptSecret(secret: string, userId: string): string {
         return this.helperEncryptionService.aes256Encrypt(
             secret,
-            this.encryptionKey,
+            this.encryptionSecret,
             MfaTotpSecretEncryptionPurpose,
             userId
         );
@@ -108,7 +108,7 @@ export class MfaTotpService {
         try {
             return this.helperEncryptionService.aes256Decrypt(
                 encryptedSecret,
-                this.encryptionKey,
+                this.encryptionSecret,
                 MfaTotpSecretEncryptionPurpose,
                 userId
             );

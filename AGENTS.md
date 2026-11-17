@@ -9,14 +9,15 @@ An opinionated, production-shaped NestJS starter. It is a boilerplate: no extern
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration and e2e on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis `db:0` for cache (`CACHE_REDIS_URL`) and `db:1` for BullMQ (`QUEUE_REDIS_URL`). Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration and e2e on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis `db:0` for cache (`REDIS_CACHE_URL`) and `db:1` for BullMQ (`REDIS_QUEUE_URL`). Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
 ```
-src/main.ts             HTTP bootstrap: Sentry, NestFactory with ConfigureOptions, NODE_ENV and TZ from config, shutdown hooks, configure(app), Swagger, listen
+src/main.ts             HTTP entry: instrument, then bootstrapApplication
+src/bootstrap.ts        bootstrapApplication (NestFactory, NODE_ENV, TZ, configure(app), Swagger, listen), bootstrapMigration, bootstrapFailed
 src/configure.ts        ConfigureOptions (NestFactory options); configure(app): logger, prefix, trusted proxy, x-powered-by off, versioning
-src/migration.ts        nest-commander entrypoint, runs seeders
+src/migration.ts        seed entry: instrument, then bootstrapMigration
 src/instrument.ts       Sentry init and event scrubbing
 src/swagger.ts          OpenAPI document builder
 src/app/                app.module and the APP_FILTER chain
@@ -33,8 +34,8 @@ test/integration/ e2e/  held, not created (.claude/rules/testing.md)
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts
-ci/                     dockerfile.production, docker-compose.production.yml (production); mongo/, vault/, jwks-server/ (both compose files)
-dockerfile              development image, the compose apis service
+ci/                     production-ready: dockerfile, docker-compose.yml, vault/; mongo/, jwks-server/ (both compose files)
+dockerfile              local image, the compose apis service
 keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
 generated/              swagger, vault init, sweep log, gitignored
 ```
@@ -55,7 +56,7 @@ Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.cl
 - `pnpm generate`: `db:generate` (`prisma generate`) then `generate:package`. Run after a fresh checkout and after a `package.json` version bump. `db:generate`, `db:format` and `prisma validate` touch files only.
 - `pnpm typecheck` · `pnpm test` (unit) · `pnpm test <path-filter>` · `pnpm test:cov` (unit coverage)
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell`
-- `pnpm compose:dev` (`compose:dev:down`): MongoDB, Redis, BullBoard, JWKS server; `COMPOSE_PROFILES=vault` adds Vault, `apis` the app container. `pnpm compose:prod` for production. Ports are in `docker-compose.yml`.
+- `docker compose --env-file .env.docker up -d`: the local stack; `--profile apis` adds the app. `-f ci/docker-compose.yml`: a deployed environment; `--profile vault` adds Vault. `package.json` holds no Docker script.
 
 ## Prisma schema
 

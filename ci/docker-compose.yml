@@ -1,13 +1,12 @@
-# Run from the repository root: pnpm compose:prod
-# (docker compose --env-file .env.docker -f ci/docker-compose.production.yml up -d)
+# Run from the repository root: docker compose --env-file .env.docker -f ci/docker-compose.yml up -d
 # The DOCKER_* variables are read from .env.docker. The eight credentials are required: with one empty, every command stops and names it.
-name: ack-nestjs-boilerplate-production
+name: ack-nestjs-boilerplate
 
 services:
     apis:
         build:
             context: ..
-            dockerfile: ci/dockerfile.production
+            dockerfile: ci/dockerfile
         volumes:
             - type: bind
               source: ../.env
@@ -94,7 +93,7 @@ services:
             MONGO_APP_USERNAME: ${DOCKER_MONGO_APP_USERNAME:?set DOCKER_MONGO_APP_USERNAME in .env.docker}
             MONGO_APP_PASSWORD: ${DOCKER_MONGO_APP_PASSWORD:?set DOCKER_MONGO_APP_PASSWORD in .env.docker}
             MONGO_APP_DATABASE: ${DOCKER_MONGO_APP_DATABASE:?set DOCKER_MONGO_APP_DATABASE in .env.docker}
-            RS_HOST: mongo:27017
+            MONGO_REPLICA_SET_HOST: mongo:27017
         volumes:
             - type: volume
               source: mongo_data
@@ -162,7 +161,7 @@ services:
             REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
             BULL_PREFIX: Queue
             REDIS_DB: '1'
-            USER_LOGIN: ${DOCKER_BULLBOARD_USER:?set DOCKER_BULLBOARD_USER in .env.docker}
+            USER_LOGIN: ${DOCKER_BULLBOARD_USERNAME:?set DOCKER_BULLBOARD_USERNAME in .env.docker}
             USER_PASSWORD: ${DOCKER_BULLBOARD_PASSWORD:?set DOCKER_BULLBOARD_PASSWORD in .env.docker}
         ports:
             - '127.0.0.1:3010:3000'
@@ -247,12 +246,6 @@ services:
             - type: bind
               source: ./vault/policies
               target: /policies
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ../.env.example
-              target: /seed/.env.example
               read_only: true
               bind:
                   create_host_path: false

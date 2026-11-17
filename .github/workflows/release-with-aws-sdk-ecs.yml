@@ -8,7 +8,7 @@ on:
     #         - development
 
 env:
-    DOCKERFILE: ci/dockerfile.production
+    DOCKERFILE: ci/dockerfile
 
 jobs:
     build_image:
@@ -63,15 +63,15 @@ jobs:
             - name: Build & Push
               if: ${{ github.ref_name == matrix.branch }}
               run: |
-                  docker build -t ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
-                  docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
-                  docker push ${{ vars.AWS_ECR_REPO_URL }}:sha-${{ steps.git.outputs.short_sha }}
-                  docker push ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }}
+                  docker build -t ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} -f ${{ env.DOCKERFILE }} .
+                  docker tag ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPOSITORY_URI }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:sha-${{ steps.git.outputs.short_sha }}
+                  docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }}
 
                   # Push latest tag only for production
                   if [ "${{ matrix.env }}" = "production" ]; then
-                    docker tag ${{ vars.AWS_ECR_REPO_URL }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPO_URL }}:latest
-                    docker push ${{ vars.AWS_ECR_REPO_URL }}:latest
+                    docker tag ${{ vars.AWS_ECR_REPOSITORY_URI }}:${{ matrix.env }} ${{ vars.AWS_ECR_REPOSITORY_URI }}:latest
+                    docker push ${{ vars.AWS_ECR_REPOSITORY_URI }}:latest
                   fi
 
     deploy:

@@ -26,10 +26,14 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { stubBackupCodes } from '@test/unit/helpers/test.unit.mfa.helper';
+import {
+    stubBackupCodes,
+    stubMfaMetadataNumbers,
+} from '@test/unit/helpers/test.unit.mfa.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -162,14 +166,13 @@ describe('MfaService', () => {
         );
         configGet.mockImplementation((key: string) => {
             const values: Record<string, number> = {
-                'mfa.maxAttempt': 5,
-                'mfa.lockDurationInMs': 900000,
                 'mfa.backupCodes.count': 3,
                 'mfa.backupCodes.length': 10,
             };
 
             return values[key];
         });
+        stubMfaMetadataNumbers(featureFlagService, 5, 15);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -934,6 +937,82 @@ describe('MfaService', () => {
     });
 
     describe('countFailedAttempt', () => {
+        it.each([
+            { maxAttempts: 3, minutes: 5, end: '2026-03-01T00:05:00.000Z' },
+            { maxAttempts: 8, minutes: 30, end: '2026-03-01T00:30:00.000Z' },
+        ])(
+            'passes $maxAttempts attempts and a $minutes minute lock from the mfa flag to the counter',
+            async ({ maxAttempts, minutes, end }) => {
+                stubMfaMetadataNumbers(
+                    featureFlagService,
+                    maxAttempts,
+                    minutes
+                );
+                mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
+                activityLogService.recordEffect.mockReturnValue(entryEffect);
+
+                await service.countFailedAttempt(
+                    requestContext,
+                    apiKeyContext,
+                    'user-quartz'
+                );
+
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.mfa,
+                    EnumFeatureFlagMetadataKey.mfaMaxAttempts
+                );
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.mfa,
+                    EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
+                );
+                expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
+                    tx,
+                    'user-quartz',
+                    maxAttempts,
+                    new Date(end),
+                    'user-quartz'
+                );
+            }
+        );
+
+        it.each([
+            EnumFeatureFlagMetadataKey.mfaMaxAttempts,
+            EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes,
+        ])(
+            'propagates FeatureFlagNotConfiguredException from the %s read and writes nothing',
+            async failing => {
+                const failure = new FeatureFlagNotConfiguredException(
+                    EnumFeatureFlagKey.mfa,
+                    failing
+                );
+                featureFlagService.getMetadataNumber.mockImplementation(
+                    async (_key, metadataKey) => {
+                        if (metadataKey === failing) {
+                            throw failure;
+                        }
+
+                        return 5;
+                    }
+                );
+
+                await expect(
+                    service.countFailedAttempt(
+                        requestContext,
+                        apiKeyContext,
+                        'user-quartz'
+                    )
+                ).rejects.toBe(failure);
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(
+                    mfaRepository.incrementAttemptInTx
+                ).not.toHaveBeenCalled();
+            }
+        );
+
         it('adds the userVerifyMfaFailed entry on its transaction below the budget', async () => {
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
             activityLogService.recordEffect.mockReturnValue(entryEffect);

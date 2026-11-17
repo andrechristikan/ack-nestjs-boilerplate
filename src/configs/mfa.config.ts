@@ -11,11 +11,9 @@ export interface IConfigMfa {
         periodInSeconds: number;
         window: number;
         secretLength: number;
-        encryptionKey: string;
+        encryptionSecret: string;
     };
     challengeTtlInMs: number;
-    maxAttempt: number;
-    lockDurationInMs: number;
     backupCodes: {
         count: number;
         length: number;
@@ -24,7 +22,6 @@ export interface IConfigMfa {
         rpId: string;
         rpName: string;
         origins: string[];
-        maxPerUser: number;
     };
 }
 
@@ -38,11 +35,9 @@ export default registerAs('mfa', (): IConfigMfa => {
             periodInSeconds: ms('30s') / 1000,
             window: 1,
             secretLength: 32,
-            encryptionKey: process.env.MFA_TOTP_ENCRYPTION_KEY!,
+            encryptionSecret: process.env.MFA_TOTP_ENCRYPTION_SECRET!,
         },
         challengeTtlInMs: ms('5m'),
-        maxAttempt: 5,
-        lockDurationInMs: ms('15m'),
         backupCodes: {
             count: 8,
             length: 10,
@@ -54,7 +49,6 @@ export default registerAs('mfa', (): IConfigMfa => {
                 .MFA_PASSKEY_ORIGINS!.split(',')
                 .map(origin => origin.trim())
                 .filter(origin => origin !== ''),
-            maxPerUser: 10,
         },
     };
 });

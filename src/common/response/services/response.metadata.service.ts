@@ -24,20 +24,21 @@ import type { ResponseMetadataDto } from '@common/response/dtos/response.metadat
 @Injectable()
 export class ResponseMetadataService {
     private readonly defaultLanguage: EnumMessageLanguage;
-    private readonly urlVersion: string;
-    private readonly repoVersion: string;
+    private readonly defaultVersion: string;
+    private readonly version: string;
 
     constructor(
         private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.defaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        this.urlVersion = this.configService.get<string>(
-            'app.urlVersion.version'
+        this.defaultLanguage = this.configService.get<EnumMessageLanguage>(
+            'message.defaultLanguage'
         )!;
-        this.repoVersion = this.configService.get<string>('app.version')!;
+        this.defaultVersion = this.configService.get<string>(
+            'app.urlVersioning.defaultVersion'
+        )!;
+        this.version = this.configService.get<string>('app.version')!;
     }
 
     create(): ResponseMetadataDto {
@@ -65,8 +66,8 @@ export class ResponseMetadataService {
             language,
             timestamp,
             timezone,
-            version: storedVersion ?? this.urlVersion,
-            repoVersion: this.repoVersion,
+            version: storedVersion ?? this.defaultVersion,
+            repoVersion: this.version,
             requestId,
             correlationId,
         };

@@ -9,14 +9,18 @@ import type { AuthSocialNonceRepository } from '@modules/auth/repositories/auth.
 import type { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
-export const AuthSocialConfigDefaults: Record<string, string | number | null> =
-    {
-        'auth.apple.clientId': 'apple-client-id',
-        'auth.apple.signInClientId': 'apple-sign-in-client-id',
-        'auth.google.clientId': 'google-client-id',
-        'auth.social.nonce.length': 32,
-        'auth.social.nonce.expiredInMs': 300000,
-    };
+export const AuthSocialConfigDefaults: Record<
+    string,
+    string | number | string[] | null
+> = {
+    'auth.social.google.clientId': 'google-client-id',
+    'auth.social.apple.clientIds': [
+        'apple-client-id',
+        'apple-sign-in-client-id',
+    ],
+    'auth.social.nonce.length': 32,
+    'auth.social.nonce.expiresInMs': 300000,
+};
 
 export interface IAuthSocialServiceDoubles {
     authSocialNonceRepository: MockProxy<AuthSocialNonceRepository>;
@@ -35,7 +39,7 @@ export function buildAuthSocialServiceDoubles(): IAuthSocialServiceDoubles {
 }
 
 export async function createAuthSocialService(
-    overrides: Record<string, string | number | null>,
+    overrides: Record<string, string | number | string[] | null>,
     doubles: IAuthSocialServiceDoubles = buildAuthSocialServiceDoubles()
 ): Promise<AuthSocialService> {
     const { AuthSocialService: AuthSocialServiceClass } =

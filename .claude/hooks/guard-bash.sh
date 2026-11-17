@@ -38,7 +38,7 @@ fi
 
 # The root `.env` holds live credentials, `.env.harness` the harness keys (TYPESAFE_API_KEY, the MCP URLs), and
 # `.env.docker` the Compose credentials: a command naming one as a path token (`.env`, `./.env`, `<dir>/.env`, `.env*`,
-# `.env.harness`, `.env.docker`) or running the dotenv CLI reads it. A `pnpm compose:*` script names its file itself.
+# `.env.harness`, `.env.docker`) or running the dotenv CLI reads it.
 # `--env-file .env` (node, docker compose) hands it to a process unprinted and is stripped first; `.env.example`, any
 # other `.env.<name>`, `dotenv/config`, and a quoted `\.env` pattern do not match.
 env_cmd=$(printf '%s' "$cmd" | sed -E 's/--env-file(-if-exists)?(=|[[:space:]]+)[^[:space:];&|)]+//g')
@@ -75,9 +75,9 @@ if printf '%s' "$cmd" | grep -qE "$git_discard"; then
     decide ask "Staging and discarding work are the owner's call"
 fi
 
-compose_down_volumes="${at_command_start}((docker[[:space:]]+compose|docker-compose)([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+|pnpm[[:space:]]+compose:(dev|prod):)down([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+(-[A-Za-z]*v[A-Za-z]*|--volumes(=[^[:space:];&|)]*)?)${word_end}"
+compose_down_volumes="${at_command_start}((docker[[:space:]]+compose|docker-compose)([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+)down([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+(-[A-Za-z]*v[A-Za-z]*|--volumes(=[^[:space:];&|)]*)?)${word_end}"
 if printf '%s' "$cmd" | grep -qE "$compose_down_volumes"; then
-    decide ask "docker compose down with -v or --volumes deletes the named volumes mongo_data, redis_data, and vault_data (the MongoDB data, the Redis cache and queue data, Vault's storage); plain down keeps them."
+    decide ask "docker compose down with -v or --volumes deletes the named volumes mongo_data and redis_data (the MongoDB data, the Redis cache and queue data), and vault_data (Vault's storage) in ci/docker-compose.yml; plain down keeps them."
 fi
 
 exit 0

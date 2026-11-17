@@ -23,6 +23,11 @@ import {
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-register.request.dto';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import {
+    EnumFeatureFlagKey,
+    EnumFeatureFlagMetadataKey,
+} from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
@@ -118,6 +123,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
         mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
             'challenge-stored'
         );
+        mfaPasskeyService.getMaxPerUser.mockResolvedValue(10);
         mfaPasskeyService.registerInTx.mockResolvedValue(passkey);
         mfaService.createBackupCodesInTx.mockResolvedValue(['CODE000001']);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
@@ -301,7 +307,8 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 'user-quartz',
                 'iPhone',
                 dto.registrationResponse,
-                'challenge-stored'
+                'challenge-stored',
+                10
             );
             expect(mfaService.createBackupCodesInTx).toHaveBeenCalledWith(
                 tx,
@@ -329,6 +336,48 @@ describe('MfaRegisterPasskeyUseCase', () => {
                     dto
                 )
             ).resolves.toEqual({ data: { passkey, backupCodes: null } });
+        });
+
+        it('passes the number getMaxPerUser returns to registerInTx as its last argument', async () => {
+            mfaPasskeyService.getMaxPerUser.mockResolvedValue(4);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+
+            expect(mfaPasskeyService.registerInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                'iPhone',
+                dto.registrationResponse,
+                'challenge-stored',
+                4
+            );
+        });
+
+        it('passes on the FeatureFlagNotConfiguredException of getMaxPerUser, opening no transaction', async () => {
+            const failure = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.passkeyMaxPerUser
+            );
+            mfaPasskeyService.getMaxPerUser.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(failure);
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.registerInTx).not.toHaveBeenCalled();
         });
 
         it('passes on the challenge exception of the service, writing nothing', async () => {

@@ -27,20 +27,20 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class AuthJwtService {
-    private readonly jwtAccessTokenKid: string;
-    private readonly jwtAccessTokenPrivateKey: string;
-    private readonly jwtAccessTokenPublicKey: string;
-    private readonly jwtAccessTokenExpirationTimeInSeconds: number;
-    private readonly jwtAccessTokenAlgorithm: Algorithm;
+    private readonly accessTokenKid: string;
+    private readonly accessTokenPrivateKey: string;
+    private readonly accessTokenPublicKey: string;
+    private readonly accessTokenExpiresInSeconds: number;
+    private readonly accessTokenAlgorithm: Algorithm;
 
-    private readonly jwtRefreshTokenKid: string;
-    private readonly jwtRefreshTokenPrivateKey: string;
-    private readonly jwtRefreshTokenPublicKey: string;
-    readonly jwtRefreshTokenExpirationTimeInSeconds: number;
-    private readonly jwtRefreshTokenAlgorithm: Algorithm;
+    private readonly refreshTokenKid: string;
+    private readonly refreshTokenPrivateKey: string;
+    private readonly refreshTokenPublicKey: string;
+    readonly refreshTokenExpiresInSeconds: number;
+    private readonly refreshTokenAlgorithm: Algorithm;
 
-    private readonly jwtAudience: string;
-    private readonly jwtIssuer: string;
+    private readonly audience: string;
+    private readonly issuer: string;
 
     constructor(
         private readonly helperEncryptionService: HelperEncryptionService,
@@ -49,51 +49,49 @@ export class AuthJwtService {
         private readonly authUtil: AuthUtil,
         private readonly helperDateService: HelperDateService
     ) {
-        this.jwtAccessTokenKid = this.configService.get<string>(
+        this.accessTokenKid = this.configService.get<string>(
             'auth.jwt.accessToken.kid'
         )!;
-        this.jwtAccessTokenExpirationTimeInSeconds =
-            this.configService.get<number>(
-                'auth.jwt.accessToken.expirationTimeInSeconds'
-            )!;
-        this.jwtRefreshTokenKid = this.configService.get<string>(
+        this.accessTokenExpiresInSeconds = this.configService.get<number>(
+            'auth.jwt.accessToken.expiresInSeconds'
+        )!;
+        this.refreshTokenKid = this.configService.get<string>(
             'auth.jwt.refreshToken.kid'
         )!;
-        this.jwtRefreshTokenExpirationTimeInSeconds =
-            this.configService.get<number>(
-                'auth.jwt.refreshToken.expirationTimeInSeconds'
-            )!;
+        this.refreshTokenExpiresInSeconds = this.configService.get<number>(
+            'auth.jwt.refreshToken.expiresInSeconds'
+        )!;
 
-        this.jwtAccessTokenPrivateKey = this.parseRequiredBase64Der(
+        this.accessTokenPrivateKey = this.parseRequiredBase64Der(
             'auth.jwt.accessToken.privateKey',
             EnumHelperPemLabel.privateKey,
             'PKCS#8 DER private key'
         );
-        this.jwtAccessTokenPublicKey = this.parseRequiredBase64Der(
+        this.accessTokenPublicKey = this.parseRequiredBase64Der(
             'auth.jwt.accessToken.publicKey',
             EnumHelperPemLabel.publicKey,
             'SPKI DER public key'
         );
-        this.jwtAccessTokenAlgorithm = this.configService.get<Algorithm>(
+        this.accessTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.accessToken.algorithm'
         )!;
 
-        this.jwtRefreshTokenPrivateKey = this.parseRequiredBase64Der(
+        this.refreshTokenPrivateKey = this.parseRequiredBase64Der(
             'auth.jwt.refreshToken.privateKey',
             EnumHelperPemLabel.privateKey,
             'PKCS#8 DER private key'
         );
-        this.jwtRefreshTokenPublicKey = this.parseRequiredBase64Der(
+        this.refreshTokenPublicKey = this.parseRequiredBase64Der(
             'auth.jwt.refreshToken.publicKey',
             EnumHelperPemLabel.publicKey,
             'SPKI DER public key'
         );
-        this.jwtRefreshTokenAlgorithm = this.configService.get<Algorithm>(
+        this.refreshTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.refreshToken.algorithm'
         )!;
 
-        this.jwtAudience = this.configService.get<string>('auth.jwt.audience')!;
-        this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
+        this.audience = this.configService.get<string>('auth.jwt.audience')!;
+        this.issuer = this.configService.get<string>('auth.jwt.issuer')!;
     }
 
     private parseRequiredBase64Der(
@@ -187,13 +185,13 @@ export class AuthJwtService {
         payload: IAuthJwtAccessTokenPayload
     ): string {
         return this.jwtService.sign(payload, {
-            privateKey: this.jwtAccessTokenPrivateKey,
-            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
-            audience: this.jwtAudience,
-            issuer: this.jwtIssuer,
+            privateKey: this.accessTokenPrivateKey,
+            expiresIn: this.accessTokenExpiresInSeconds,
+            audience: this.audience,
+            issuer: this.issuer,
             subject,
-            algorithm: this.jwtAccessTokenAlgorithm,
-            keyid: this.jwtAccessTokenKid,
+            algorithm: this.accessTokenAlgorithm,
+            keyid: this.accessTokenKid,
             jwtid: jti,
         } as JwtSignOptions);
     }
@@ -206,13 +204,13 @@ export class AuthJwtService {
         expiresIn?: number
     ): string {
         return this.jwtService.sign(payload, {
-            privateKey: this.jwtRefreshTokenPrivateKey,
-            expiresIn: expiresIn ?? this.jwtRefreshTokenExpirationTimeInSeconds,
-            audience: this.jwtAudience,
-            issuer: this.jwtIssuer,
+            privateKey: this.refreshTokenPrivateKey,
+            expiresIn: expiresIn ?? this.refreshTokenExpiresInSeconds,
+            audience: this.audience,
+            issuer: this.issuer,
             subject,
-            algorithm: this.jwtRefreshTokenAlgorithm,
-            keyid: this.jwtRefreshTokenKid,
+            algorithm: this.refreshTokenAlgorithm,
+            keyid: this.refreshTokenKid,
             jwtid: jti,
         } as JwtSignOptions);
     }
@@ -220,10 +218,10 @@ export class AuthJwtService {
     validateAccessToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
-                publicKey: this.jwtAccessTokenPublicKey,
-                algorithms: [this.jwtAccessTokenAlgorithm],
-                audience: this.jwtAudience,
-                issuer: this.jwtIssuer,
+                publicKey: this.accessTokenPublicKey,
+                algorithms: [this.accessTokenAlgorithm],
+                audience: this.audience,
+                issuer: this.issuer,
                 subject,
                 jwtid: jti,
             });
@@ -237,10 +235,10 @@ export class AuthJwtService {
     validateRefreshToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
-                publicKey: this.jwtRefreshTokenPublicKey,
-                algorithms: [this.jwtRefreshTokenAlgorithm],
-                audience: this.jwtAudience,
-                issuer: this.jwtIssuer,
+                publicKey: this.refreshTokenPublicKey,
+                algorithms: [this.refreshTokenAlgorithm],
+                audience: this.audience,
+                issuer: this.issuer,
                 subject,
                 jwtid: jti,
             });
@@ -297,7 +295,7 @@ export class AuthJwtService {
             user,
             accessToken,
             refreshToken,
-            this.jwtAccessTokenExpirationTimeInSeconds
+            this.accessTokenExpiresInSeconds
         );
     }
 
@@ -351,7 +349,7 @@ export class AuthJwtService {
             user,
             accessToken,
             newRefreshToken,
-            this.jwtAccessTokenExpirationTimeInSeconds
+            this.accessTokenExpiresInSeconds
         );
 
         return {
