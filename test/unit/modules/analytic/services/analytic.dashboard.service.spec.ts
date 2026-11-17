@@ -36,8 +36,8 @@ import {
     AnalyticStatusCountsCacheSchema,
     AnalyticTermPolicyAcceptanceRateCacheSchema,
     AnalyticTermPolicyTimeToAcceptCacheSchema,
-    AnalyticTwoFactorAdoptionCacheSchema,
-    AnalyticTwoFactorAttemptSnapshotCacheSchema,
+    AnalyticMfaAdoptionCacheSchema,
+    AnalyticMfaAttemptSnapshotCacheSchema,
     AnalyticVerificationFunnelsCacheSchema,
     AnalyticWorkspaceCountPageCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
@@ -56,7 +56,7 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
-import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
+import { MfaAnalyticService } from '@modules/mfa/services/mfa.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
 import { WorkspaceInviteAnalyticService } from '@modules/workspace/services/workspace.invite.analytic.service';
@@ -86,8 +86,8 @@ describe('AnalyticDashboardService', () => {
         mock<UserAnalyticService>();
     const userForgotPasswordAnalyticService: MockProxy<UserForgotPasswordAnalyticService> =
         mock<UserForgotPasswordAnalyticService>();
-    const userTwoFactorAnalyticService: MockProxy<UserTwoFactorAnalyticService> =
-        mock<UserTwoFactorAnalyticService>();
+    const mfaAnalyticService: MockProxy<MfaAnalyticService> =
+        mock<MfaAnalyticService>();
     const userVerificationAnalyticService: MockProxy<UserVerificationAnalyticService> =
         mock<UserVerificationAnalyticService>();
     const userMobileNumberAnalyticService: MockProxy<UserMobileNumberAnalyticService> =
@@ -182,8 +182,8 @@ describe('AnalyticDashboardService', () => {
                     useValue: userForgotPasswordAnalyticService,
                 },
                 {
-                    provide: UserTwoFactorAnalyticService,
-                    useValue: userTwoFactorAnalyticService,
+                    provide: MfaAnalyticService,
+                    useValue: mfaAnalyticService,
                 },
                 {
                     provide: UserVerificationAnalyticService,
@@ -804,7 +804,7 @@ describe('AnalyticDashboardService', () => {
     });
 
     describe('authLockout', () => {
-        it('counts failed logins and password and two-factor max-attempt lockouts in the range', async () => {
+        it('counts failed logins and password and mfa max-attempt lockouts in the range', async () => {
             activityLogAnalyticService.getCountByActionsInRange
                 .mockResolvedValueOnce(6)
                 .mockResolvedValueOnce(3);
@@ -826,7 +826,7 @@ describe('AnalyticDashboardService', () => {
                 2,
                 [
                     EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    EnumActivityLogAction.userReachMaxMfaAttempt,
                 ],
                 startDate,
                 endDate
@@ -1237,61 +1237,54 @@ describe('AnalyticDashboardService', () => {
         });
     });
 
-    describe('authTwoFactorAdoption', () => {
+    describe('authMfaAdoption', () => {
         it('reads the active and enabled counts together, then maps the adoption', async () => {
             const adoption = { enabled: 3, total: 9, rate: 0.33 };
             const deferredActive = buildDeferred<number>();
             userAnalyticService.getCountActive.mockReturnValue(
                 deferredActive.promise
             );
-            userTwoFactorAnalyticService.getEnabledCount.mockImplementation(
-                async () => {
-                    deferredActive.resolve(9);
+            mfaAnalyticService.getEnabledCount.mockImplementation(async () => {
+                deferredActive.resolve(9);
 
-                    return 3;
-                }
-            );
-            userTwoFactorAnalyticService.mapAdoption.mockReturnValue(adoption);
+                return 3;
+            });
+            mfaAnalyticService.mapAdoption.mockReturnValue(adoption);
 
-            const result = await service.authTwoFactorAdoption();
+            const result = await service.authMfaAdoption();
 
             expect(result).toEqual(adoption);
-            expect(
-                userTwoFactorAnalyticService.mapAdoption
-            ).toHaveBeenCalledWith(3, 9);
+            expect(mfaAnalyticService.mapAdoption).toHaveBeenCalledWith(3, 9);
         });
 
-        it('reads through with the dashboard key, AnalyticTwoFactorAdoptionCacheSchema, and the dashboard TTL', async () => {
+        it('reads through with the dashboard key, AnalyticMfaAdoptionCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            const result = await service.authTwoFactorAdoption();
+            const result = await service.authMfaAdoption();
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authTwoFactorAdoption}:_:_`,
-                AnalyticTwoFactorAdoptionCacheSchema,
+                `${EnumAnalyticDashboardMetric.authMfaAdoption}:_:_`,
+                AnalyticMfaAdoptionCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );
         });
     });
 
-    describe('authTwoFactorAdminReset', () => {
-        it('counts admin two-factor resets in the range', async () => {
+    describe('authMfaAdminReset', () => {
+        it('counts admin mfa resets in the range', async () => {
             activityLogAnalyticService.getCountByActionsInRange.mockResolvedValue(
                 2
             );
 
-            const result = await service.authTwoFactorAdminReset(
-                startDate,
-                endDate
-            );
+            const result = await service.authMfaAdminReset(startDate, endDate);
 
             expect(result).toEqual({ count: 2 });
             expect(
                 activityLogAnalyticService.getCountByActionsInRange
             ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userResetTwoFactorByAdmin],
+                [EnumActivityLogAction.userResetMfaByAdmin],
                 startDate,
                 endDate
             );
@@ -1300,14 +1293,11 @@ describe('AnalyticDashboardService', () => {
         it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            const result = await service.authTwoFactorAdminReset(
-                startDate,
-                endDate
-            );
+            const result = await service.authMfaAdminReset(startDate, endDate);
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authTwoFactorAdminReset}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.authMfaAdminReset}:${startToken}:${endToken}`,
                 AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -1315,13 +1305,13 @@ describe('AnalyticDashboardService', () => {
         });
     });
 
-    describe('authTwoFactorVerifySuccess', () => {
-        it('counts successful two-factor verifications in the range', async () => {
+    describe('authMfaVerifySuccess', () => {
+        it('counts successful mfa verifications in the range', async () => {
             activityLogAnalyticService.getCountByActionsInRange.mockResolvedValue(
                 8
             );
 
-            const result = await service.authTwoFactorVerifySuccess(
+            const result = await service.authMfaVerifySuccess(
                 startDate,
                 endDate
             );
@@ -1330,7 +1320,7 @@ describe('AnalyticDashboardService', () => {
             expect(
                 activityLogAnalyticService.getCountByActionsInRange
             ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userVerifyTwoFactor],
+                [EnumActivityLogAction.userVerifyMfa],
                 startDate,
                 endDate
             );
@@ -1339,14 +1329,14 @@ describe('AnalyticDashboardService', () => {
         it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            const result = await service.authTwoFactorVerifySuccess(
+            const result = await service.authMfaVerifySuccess(
                 startDate,
                 endDate
             );
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authTwoFactorVerify}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.authMfaVerify}:${startToken}:${endToken}`,
                 AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -1369,7 +1359,7 @@ describe('AnalyticDashboardService', () => {
             expect(
                 activityLogAnalyticService.getCountByActionsInRange
             ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
+                [EnumActivityLogAction.userRegenerateMfaBackupCodes],
                 startDate,
                 endDate
             );
@@ -1393,27 +1383,25 @@ describe('AnalyticDashboardService', () => {
         });
     });
 
-    describe('authTwoFactorAttempt', () => {
-        it('returns the two-factor attempt snapshot', async () => {
+    describe('authMfaAttempt', () => {
+        it('returns the mfa attempt snapshot', async () => {
             const snapshot = { usersWithAttempts: 2, totalAttempts: 5 };
-            userTwoFactorAnalyticService.getAttemptSnapshot.mockResolvedValue(
-                snapshot
-            );
+            mfaAnalyticService.getAttemptSnapshot.mockResolvedValue(snapshot);
 
-            const result = await service.authTwoFactorAttempt();
+            const result = await service.authMfaAttempt();
 
             expect(result).toEqual(snapshot);
         });
 
-        it('reads through with the dashboard key, AnalyticTwoFactorAttemptSnapshotCacheSchema, and the dashboard TTL', async () => {
+        it('reads through with the dashboard key, AnalyticMfaAttemptSnapshotCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            const result = await service.authTwoFactorAttempt();
+            const result = await service.authMfaAttempt();
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authTwoFactorAttempt}:_:_`,
-                AnalyticTwoFactorAttemptSnapshotCacheSchema,
+                `${EnumAnalyticDashboardMetric.authMfaAttempt}:_:_`,
+                AnalyticMfaAttemptSnapshotCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );

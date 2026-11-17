@@ -1,4 +1,5 @@
 import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
 
 describe('UserLoginResponseSchema', () => {
@@ -12,19 +13,19 @@ describe('UserLoginResponseSchema', () => {
         refreshToken: 'refresh-token-value',
     };
 
-    const twoFactor = {
-        isRequiredSetup: false,
+    const mfa = {
         challengeToken: '2b5b8933f0a44a94b3e1a96f8d2e2f21',
-        challengeExpiresInMs: 300000,
-        backupCodesRemaining: 8,
+        expiresInMs: 300000,
+        methods: [EnumMfaMethod.totp],
+        passkeyOptions: null,
     };
 
     const row = {
-        isTwoFactorEnable: false,
+        isMfaRequired: false,
         lastWorkspaceId: 'workspace-1',
         lastWorkspaceChangedAt,
         tokens,
-        twoFactor,
+        mfa,
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -33,8 +34,8 @@ describe('UserLoginResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('parses a row with no tokens and no twoFactor', () => {
-        const { tokens: _tokens, twoFactor: _twoFactor, ...rest } = row;
+    it('parses a row with no tokens and no mfa', () => {
+        const { tokens: _tokens, mfa: _mfa, ...rest } = row;
 
         const result = UserLoginResponseSchema.parse(rest);
 

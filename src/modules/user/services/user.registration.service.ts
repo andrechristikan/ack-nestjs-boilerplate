@@ -175,6 +175,7 @@ export class UserRegistrationService {
                     token: emailVerification.hashedToken,
                     type: EnumVerificationType.email,
                     action: null,
+                    mobileNumberId: null,
                     to: email,
                     expiredAt: emailVerification.expiredAt,
                     verifiedAt: null,

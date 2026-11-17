@@ -18,6 +18,7 @@ export interface IUserCreateVerification {
     token: string;
     type: EnumVerificationType;
     action: EnumUserReauthenticationAction | null;
+    mobileNumberId: string | null;
     to: string;
     expiredAt: Date;
     verifiedAt: Date | null;

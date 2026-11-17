@@ -7,18 +7,22 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { Injectable } from '@nestjs/common';
@@ -36,7 +40,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
-        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly mfaService: MfaService,
+        private readonly mfaChallengeService: MfaChallengeService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
@@ -59,23 +64,44 @@ export class UserResetPasswordUseCase implements IAppUseCase<
             backupCode,
             code,
             method,
+            passkeyChallengeToken,
+            passkeyResponse,
         }: UserForgotPasswordResetRequestDto
     ): Promise<IResponseReturn<void>> {
         const reset = await this.userPasswordService.getOneActiveReset(token);
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.passwordHistoryService.assertNew(reset.userId, newPassword);
 
-        const twoFactorChecked =
-            await this.userTwoFactorService.checkIfRequired(
+        const isMfaEnabled = await this.mfaService.isEnabled(reset.userId);
+        let mfaCheck: IMfaCheck | null = null;
+        let claimedChallengeToken: string | null = null;
+        if (isMfaEnabled) {
+            claimedChallengeToken =
+                method === EnumMfaMethod.passkey
+                    ? (passkeyChallengeToken ?? null)
+                    : null;
+            let webAuthnChallenge: string | null = null;
+            if (claimedChallengeToken !== null) {
+                webAuthnChallenge =
+                    await this.mfaChallengeService.getWebAuthnChallengeForUser(
+                        claimedChallengeToken,
+                        EnumMfaChallengePurpose.resetPassword,
+                        reset.userId
+                    );
+            }
+            mfaCheck = await this.mfaService.check(
                 requestContext,
                 apiKeyContext,
-                reset.user,
+                reset.userId,
                 {
                     code: code ?? null,
                     backupCode: backupCode ?? null,
                     method: method ?? null,
-                }
+                    passkeyResponse: passkeyResponse ?? null,
+                },
+                webAuthnChallenge
             );
+        }
         const contextWords = this.authPasswordUtil.createContextWords(
             this.appName,
             reset.user.email,
@@ -88,11 +114,19 @@ export class UserResetPasswordUseCase implements IAppUseCase<
 
         try {
             await this.outboxService.withTransaction(async tx => {
-                if (twoFactorChecked) {
-                    await this.userTwoFactorService.verifyInTx(
+                if (claimedChallengeToken !== null) {
+                    await this.mfaChallengeService.consumeInTx(
+                        tx,
+                        claimedChallengeToken,
+                        EnumMfaChallengePurpose.resetPassword,
+                        reset.userId
+                    );
+                }
+                if (mfaCheck !== null) {
+                    await this.mfaService.completeInTx(
                         tx,
                         reset.userId,
-                        twoFactorChecked
+                        mfaCheck
                     );
                 }
                 const [snapshot] = await Promise.all([
@@ -143,19 +177,14 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         }
                     ),
                 ];
-                if (twoFactorChecked) {
-                    await this.userTwoFactorService.recordVerificationInTx(
-                        tx,
-                        reset.user,
-                        twoFactorChecked.verified
-                    );
+                if (mfaCheck !== null) {
                     const verifyEntry = this.activityLogService.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,
                         null,
                         {
-                            action: EnumActivityLogAction.userVerifyTwoFactor,
+                            action: EnumActivityLogAction.userVerifyMfa,
                             userId: reset.userId,
                             createdBy: reset.userId,
                         }

@@ -10,6 +10,7 @@ export interface IConfigQueue {
         defaultBackoffDelayInMs: number;
         emailBackoffDelayInMs: number;
         pushBackoffDelayInMs: number;
+        smsBackoffDelayInMs: number;
         notificationBackoffDelayInMs: number;
         workspaceBackoffDelayInMs: number;
         sessionBackoffDelayInMs: number;
@@ -30,6 +31,7 @@ export default registerAs('queue', (): IConfigQueue => ({
         defaultBackoffDelayInMs: ms('3s'),
         emailBackoffDelayInMs: ms('10s'),
         pushBackoffDelayInMs: ms('5s'),
+        smsBackoffDelayInMs: ms('5s'),
         notificationBackoffDelayInMs: ms('3s'),
         workspaceBackoffDelayInMs: ms('10s'),
         sessionBackoffDelayInMs: ms('3s'),

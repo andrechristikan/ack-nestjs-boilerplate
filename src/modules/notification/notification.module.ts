@@ -6,12 +6,14 @@ import { EnumNotificationQueue } from '@modules/notification/enums/notification.
 import { NotificationEmailQueueFactory } from '@modules/notification/factories/notification.email.queue.factory';
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
 import { NotificationQueueFactory } from '@modules/notification/factories/notification.queue.factory';
+import { NotificationSmsQueueFactory } from '@modules/notification/factories/notification.sms.queue.factory';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationSmsDeliveryService } from '@modules/notification/services/notification.sms.delivery.service';
 import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { BullModule } from '@nestjs/bullmq';
@@ -26,6 +28,7 @@ import { Module } from '@nestjs/common';
         NotificationTemplateService,
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
+        NotificationSmsDeliveryService,
         NotificationPushQueue,
         NotificationUtil,
     ],
@@ -34,6 +37,7 @@ import { Module } from '@nestjs/common';
         NotificationTemplateService,
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
+        NotificationSmsDeliveryService,
         NotificationUtil,
     ],
     imports: [
@@ -53,6 +57,10 @@ import { Module } from '@nestjs/common';
             {
                 name: EnumNotificationQueue.notificationPush,
                 useClass: NotificationPushQueueFactory,
+            },
+            {
+                name: EnumNotificationQueue.notificationSms,
+                useClass: NotificationSmsQueueFactory,
             }
         ),
     ],

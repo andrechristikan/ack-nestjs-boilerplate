@@ -23,7 +23,7 @@ export class ActivityLogUtil {
     ) {}
 
     getDescription(
-        action: string,
+        action: EnumActivityLogAction,
         metadata: IActivityLogMetadata | null
     ): string {
         return this.messageService.setMessage(`activityLog.${action}`, {

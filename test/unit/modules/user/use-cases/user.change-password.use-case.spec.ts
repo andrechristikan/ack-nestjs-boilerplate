@@ -22,9 +22,9 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
@@ -54,6 +54,18 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
 
 describe('UserChangePasswordUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -115,19 +127,20 @@ describe('UserChangePasswordUseCase', () => {
     } as User;
     const passwordOnly: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: null,
+        mfa: null,
         verificationId: null,
+        passkeyChallengeToken: null,
     };
-    const withTwoFactor: IUserReauthenticationCheck = {
+    const withMfa: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: {
-            verified: {
-                method: EnumAuthTwoFactorMethod.code,
-                newBackupCodes: null,
-            },
+        mfa: {
+            method: EnumMfaMethod.totp,
             totpStep: 58123456,
+            backupCodeIndex: null,
+            passkey: null,
         },
         verificationId: null,
+        passkeyChallengeToken: null,
     };
 
     beforeEach(async () => {
@@ -201,8 +214,10 @@ describe('UserChangePasswordUseCase', () => {
                 userContext,
                 {
                     ...dto,
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -214,9 +229,11 @@ describe('UserChangePasswordUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.changePassword,
                     password: 'old-password',
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: null,
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -310,7 +327,6 @@ describe('UserChangePasswordUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user,
                 passwordOnly
             );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
@@ -393,6 +409,8 @@ describe('UserChangePasswordUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -419,8 +437,8 @@ describe('UserChangePasswordUseCase', () => {
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('writes nothing when the two-factor budget is spent', async () => {
-            const limit = new AuthTwoFactorAttemptMaxException();
+        it('writes nothing when the MFA budget is spent', async () => {
+            const limit = new MfaAttemptMaxException();
             userAuthService.assertReauthentication.mockRejectedValue(limit);
 
             await expect(
@@ -472,7 +490,7 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('adds no effect and no write when the completion refuses the proof', async () => {
-            const failure = new AuthTwoFactorInvalidException();
+            const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
                 failure
             );
@@ -492,11 +510,9 @@ describe('UserChangePasswordUseCase', () => {
             expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
-        it('answers AuthTwoFactorInvalidException when a verified two-factor loses a write conflict', async () => {
+        it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
             const conflict = new Error('write conflict');
-            userAuthService.assertReauthentication.mockResolvedValue(
-                withTwoFactor
-            );
+            userAuthService.assertReauthentication.mockResolvedValue(withMfa);
             outboxService.withTransaction.mockRejectedValue(conflict);
             databaseUtil.toException.mockReturnValue(
                 new DatabaseWriteConflictException()
@@ -511,13 +527,13 @@ describe('UserChangePasswordUseCase', () => {
                     dto
                 )
             ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorInvalid',
+                module: 'mfa',
+                messagePath: 'mfa.error.invalid',
             });
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
-        it('wraps a write conflict in AppUnknownException when no two-factor proof was checked', async () => {
+        it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
             outboxService.withTransaction.mockRejectedValue(
                 new Error('write conflict')
             );

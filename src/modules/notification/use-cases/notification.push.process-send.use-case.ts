@@ -98,9 +98,10 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                     encryptedPendingTokens: pendingTokens,
                     encryptedFailureTokens: failureTokens,
                 });
-                const summary = this.notificationUtil.toStepSummary([
-                    sent.failure,
-                ]);
+                const summary =
+                    this.notificationPushDeliveryService.toStepSummary([
+                        sent.failure,
+                    ]);
 
                 throw new QueueException(summary, true, sent.failure.rawError);
             }

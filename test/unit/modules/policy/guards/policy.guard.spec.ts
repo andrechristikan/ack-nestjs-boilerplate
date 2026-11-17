@@ -76,7 +76,6 @@ describe('PolicyGuard', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     const reflector: MockProxy<Reflector> = mock<Reflector>();

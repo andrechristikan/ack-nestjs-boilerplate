@@ -56,7 +56,7 @@ describe('UserListResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('strips password, sign-up, last-login, gender, and twoFactor detail', () => {
+    it('strips password, sign-up, last-login, and gender detail', () => {
         const result = UserListResponseSchema.parse({
             ...row,
             password: 'hashed-password',
@@ -70,10 +70,11 @@ describe('UserListResponseSchema', () => {
             lastIPAddress: null,
             lastLoginFrom: null,
             lastLoginWith: null,
-            twoFactor: null,
+            mfa: null,
         });
 
         expect(result).toEqual(row);
         expect(result).not.toHaveProperty('password');
+        expect(result).not.toHaveProperty('mfa');
     });
 });

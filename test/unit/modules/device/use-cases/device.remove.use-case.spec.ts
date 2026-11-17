@@ -20,8 +20,8 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -37,6 +37,18 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
 
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -57,8 +69,9 @@ describe('DeviceRemoveUseCase', () => {
     const now = new Date('2026-01-05T00:00:00.000Z');
     const check: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: null,
+        mfa: null,
         verificationId: null,
+        passkeyChallengeToken: null,
     };
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -81,10 +94,6 @@ describe('DeviceRemoveUseCase', () => {
         lastActiveAt: now,
         notificationToken: null,
         notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
         device: {
             id: 'device-1',
             createdAt: now,
@@ -113,6 +122,7 @@ describe('DeviceRemoveUseCase', () => {
     };
     const metadata = { deviceOwnershipId: 'device-ownership-1' };
     const dto = { password: 'Current-pass1' };
+
     let useCase: DeviceRemoveUseCase;
 
     beforeEach(async () => {
@@ -203,6 +213,8 @@ describe('DeviceRemoveUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -213,7 +225,6 @@ describe('DeviceRemoveUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user,
                 check
             );
             expect(
@@ -252,7 +263,7 @@ describe('DeviceRemoveUseCase', () => {
             ]);
         });
 
-        it('passes the two-factor and email-code fields of the request on', async () => {
+        it('passes the MFA and email-code fields of the request on', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -260,9 +271,11 @@ describe('DeviceRemoveUseCase', () => {
                 userContext,
                 'device-ownership-1',
                 {
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -274,9 +287,11 @@ describe('DeviceRemoveUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.deviceRemove,
                     password: null,
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -323,7 +338,7 @@ describe('DeviceRemoveUseCase', () => {
         });
 
         it('rethrows a completion refusal as it is', async () => {
-            const failure = new AuthTwoFactorInvalidException();
+            const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
                 failure
             );

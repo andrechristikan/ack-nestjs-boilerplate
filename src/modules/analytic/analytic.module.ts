@@ -11,6 +11,7 @@ import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceModule } from '@modules/device/device.module';
+import { MfaModule } from '@modules/mfa/mfa.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { UserModule } from '@modules/user/user.module';
@@ -44,6 +45,7 @@ import { Module } from '@nestjs/common';
         ActivityLogModule,
         UserModule,
         DeviceModule,
+        MfaModule,
         PasswordHistoryModule,
         WorkspaceModule,
         ProjectModule,

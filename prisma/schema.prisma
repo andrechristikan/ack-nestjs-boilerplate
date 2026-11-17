@@ -177,8 +177,10 @@ model User {
   sessions                Session[]                  @relation("UserSessions")
   acceptances             TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
   forgotPasswords         ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor               TwoFactor?                 @relation("UserTwoFactor")
-  twoFactorChallenges     TwoFactorChallenge[]       @relation("UserTwoFactorChallenges")
+  mfa                     Mfa?                       @relation("UserMfa")
+  mfaTotp                 MfaTotp?                   @relation("UserMfaTotp")
+  mfaPasskeys             MfaPasskey[]               @relation("UserMfaPasskeys")
+  mfaChallenges           MfaChallenge[]             @relation("UserMfaChallenges")
   notifications           Notification[]             @relation("UserNotifications")
   notificationSettings    NotificationUserSetting[]  @relation("UserNotificationSettings")
   deviceOwnerships        DeviceOwnership[]          @relation("DeviceOwnershipUser")
@@ -362,11 +364,6 @@ model DeviceOwnership {
   notificationToken    String?
   notificationProvider EnumDeviceNotificationProvider?
 
-  biometricEnabled   Boolean            @default(false)
-  biometricToken     String?
-  biometricType      EnumBiometricType?
-  biometricEnabledAt DateTime?
-
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
@@ -388,42 +385,81 @@ model DeviceOwnership {
   @@map("DeviceOwnerships")
 }
 
-model TwoFactor {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String    @db.ObjectId
-  secret        String?
-  pendingSecret String?
-  backupCodes   String[]  @default([])
-  enabled       Boolean   @default(false)
-  requiredSetup Boolean   @default(false)
-  confirmedAt   DateTime?
-  lastUsedAt    DateTime?
-  lastUsedStep  Int?
-  attempt       Int       @default(0)
-  lockedUntil   DateTime?
+model Mfa {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  backupCodes String[]  @default([])
+  attempt     Int       @default(0)
+  lockedUntil DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  user User @relation("UserTwoFactor", fields: [userId], references: [id])
+  user User @relation("UserMfa", fields: [userId], references: [id])
 
   @@unique(fields: [userId])
-  @@map("TwoFactors")
+  @@map("Mfas")
 }
 
-model TwoFactorChallenge {
-  id         String                   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String                   @db.ObjectId
-  tokenHash  String
-  device     TwoFactorChallengeDevice
-  loginFrom  EnumUserLoginFrom
-  loginWith  EnumUserLoginWith
-  expiredAt  DateTime
-  consumedAt DateTime?
+model MfaTotp {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  secret        String?
+  pendingSecret String?
+  confirmedAt   DateTime?
+  lastUsedAt    DateTime?
+  lastUsedStep  Int?
 
-  user User @relation("UserTwoFactorChallenges", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  user User @relation("UserMfaTotp", fields: [userId], references: [id])
+
+  @@unique(fields: [userId])
+  @@map("MfaTotps")
+}
+
+model MfaPasskey {
+  id           String                   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                   @db.ObjectId
+  credentialId String
+  publicKey    String
+  counter      Int
+  transports   String[]                 @default([])
+  deviceType   EnumMfaPasskeyDeviceType
+  backedUp     Boolean
+  name         String
+  lastUsedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  user User @relation("UserMfaPasskeys", fields: [userId], references: [id])
+
+  @@unique(fields: [credentialId])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("MfaPasskeys")
+}
+
+model MfaChallenge {
+  id                String                  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?                 @db.ObjectId
+  purpose           EnumMfaChallengePurpose
+  tokenHash         String
+  webAuthnChallenge String?
+  device            MfaChallengeDevice?
+  loginFrom         EnumUserLoginFrom?
+  loginWith         EnumUserLoginWith?
+  expiredAt         DateTime
+  consumedAt        DateTime?
+
+  user User? @relation("UserMfaChallenges", fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -431,7 +467,7 @@ model TwoFactorChallenge {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [tokenHash])
-  @@map("TwoFactorChallenges")
+  @@map("MfaChallenges")
 }
 
 model TermPolicy {
@@ -785,7 +821,7 @@ model Outbox {
   @@map("Outboxes")
 }
 
-type TwoFactorChallengeDevice {
+type MfaChallengeDevice {
   fingerprint                String
   name                       String?
   platform                   EnumDevicePlatform
@@ -891,6 +927,7 @@ enum EnumUserLoginWith {
   credential
   socialGoogle
   socialApple
+  passkey
 }
 
 enum EnumRoleType {
@@ -950,10 +987,12 @@ enum EnumVerificationType {
 enum EnumUserReauthenticationAction {
   deleteSelf
   changePassword
-  twoFactorSetup
-  twoFactorEnable
-  twoFactorDisable
-  backupCodeRegenerate
+  mfaTotpSetup
+  mfaTotpEnable
+  mfaTotpDisable
+  mfaBackupCodeRegenerate
+  mfaPasskeyRegister
+  mfaPasskeyDelete
   mobileNumberAdd
   mobileNumberUpdate
   mobileNumberDelete
@@ -986,9 +1025,12 @@ enum EnumActivityLogAction {
   userLoginFailed
   userLoginGoogle
   userLoginApple
+  userLoginPasskey
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userVerifiedMobileNumber
+  userSendVerificationMobileNumber
   userSendReauthenticationOtp
   userSignedUp
   userResetPassword
@@ -1001,13 +1043,17 @@ enum EnumActivityLogAction {
   userAcceptTermPolicy
   userForgotPassword
   userReachMaxPasswordAttempt
-  userReachMaxTwoFactorAttempt
-  userSetupTwoFactor
-  userEnableTwoFactor
-  userDisableTwoFactor
-  userResetTwoFactorByAdmin
-  userVerifyTwoFactor
-  userRegenerateTwoFactorBackupCodes
+  userReachMaxMfaAttempt
+  userSetupMfaTotp
+  userEnableMfaTotp
+  userDisableMfaTotp
+  userResetMfaByAdmin
+  userVerifyMfa
+  userVerifyMfaFailed
+  userRegenerateMfaBackupCodes
+  userRegisterMfaPasskey
+  userUpdateMfaPasskey
+  userDeleteMfaPasskey
   userDeviceRefresh
   userLogout
   userCreatedByAdmin
@@ -1036,7 +1082,7 @@ enum EnumActivityLogAction {
   adminUserCreate
   adminUserUpdateStatus
   adminUserUpdatePassword
-  adminUserResetTwoFactor
+  adminUserResetMfa
   adminUserImport
   adminDeviceRemove
   adminSessionRevokeAll
@@ -1101,6 +1147,7 @@ enum EnumNotificationType {
 enum EnumNotificationChannel {
   push
   email
+  sms
   inApp
   silent
 }
@@ -1112,9 +1159,17 @@ enum EnumNotificationPriority {
   critical
 }
 
-enum EnumBiometricType {
-  fingerprint
-  faceId
+enum EnumMfaPasskeyDeviceType {
+  singleDevice
+  multiDevice
+}
+
+enum EnumMfaChallengePurpose {
+  login
+  passwordless
+  registration
+  reauthentication
+  resetPassword
 }
 
 enum EnumWorkspaceMemberRole {

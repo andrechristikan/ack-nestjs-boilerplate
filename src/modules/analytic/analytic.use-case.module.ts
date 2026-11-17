@@ -36,11 +36,11 @@ import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cas
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthAdminForcePasswordUseCase } from '@modules/analytic/use-cases/analytic.auth-admin-force-password.use-case';
-import { AnalyticAuthTwoFactorAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-adoption.use-case';
-import { AnalyticAuthTwoFactorAdminResetUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-admin-reset.use-case';
-import { AnalyticAuthTwoFactorVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-verify-success.use-case';
+import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
+import { AnalyticAuthMfaAdminResetUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-admin-reset.use-case';
+import { AnalyticAuthMfaVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-verify-success.use-case';
 import { AnalyticAuthBackupCodeRegenerationUseCase } from '@modules/analytic/use-cases/analytic.auth-backup-code-regeneration.use-case';
-import { AnalyticAuthTwoFactorAttemptUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-attempt.use-case';
+import { AnalyticAuthMfaAttemptUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-attempt.use-case';
 import { AnalyticDevicesRegistrationUseCase } from '@modules/analytic/use-cases/analytic.devices-registration.use-case';
 import { AnalyticDevicesPlatformUseCase } from '@modules/analytic/use-cases/analytic.devices-platform.use-case';
 import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
@@ -130,11 +130,11 @@ import { Module } from '@nestjs/common';
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthAdminForcePasswordUseCase,
-        AnalyticAuthTwoFactorAdoptionUseCase,
-        AnalyticAuthTwoFactorAdminResetUseCase,
-        AnalyticAuthTwoFactorVerifySuccessUseCase,
+        AnalyticAuthMfaAdoptionUseCase,
+        AnalyticAuthMfaAdminResetUseCase,
+        AnalyticAuthMfaVerifySuccessUseCase,
         AnalyticAuthBackupCodeRegenerationUseCase,
-        AnalyticAuthTwoFactorAttemptUseCase,
+        AnalyticAuthMfaAttemptUseCase,
         AnalyticDevicesRegistrationUseCase,
         AnalyticDevicesPlatformUseCase,
         AnalyticDevicesPushTokenUseCase,
@@ -221,11 +221,11 @@ import { Module } from '@nestjs/common';
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthAdminForcePasswordUseCase,
-        AnalyticAuthTwoFactorAdoptionUseCase,
-        AnalyticAuthTwoFactorAdminResetUseCase,
-        AnalyticAuthTwoFactorVerifySuccessUseCase,
+        AnalyticAuthMfaAdoptionUseCase,
+        AnalyticAuthMfaAdminResetUseCase,
+        AnalyticAuthMfaVerifySuccessUseCase,
         AnalyticAuthBackupCodeRegenerationUseCase,
-        AnalyticAuthTwoFactorAttemptUseCase,
+        AnalyticAuthMfaAttemptUseCase,
         AnalyticDevicesRegistrationUseCase,
         AnalyticDevicesPlatformUseCase,
         AnalyticDevicesPushTokenUseCase,

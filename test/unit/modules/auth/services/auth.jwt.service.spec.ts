@@ -102,7 +102,6 @@ describe('AuthJwtService', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     const tokens: IAuthToken = {

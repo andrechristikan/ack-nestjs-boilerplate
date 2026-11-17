@@ -14,7 +14,6 @@ export const UserListResponseSchema = UserSchema.omit({
     lastIPAddress: true,
     lastLoginFrom: true,
     lastLoginWith: true,
-    twoFactor: true,
 });
 
 /** @public */

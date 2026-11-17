@@ -109,7 +109,6 @@ describe('PolicyCreateByAdminUseCase', () => {
             updatedBy: null,
             policies: [policy],
         },
-        twoFactor: null,
     };
 
     const policyMetadata: IActivityLogMetadata = {

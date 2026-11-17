@@ -65,9 +65,7 @@ export class UserImportService {
     ): Promise<IUserImportUsernameChecks> {
         const [existingUsers, badWords] = await Promise.all([
             this.userRepository.findByUsernames(usernames),
-            Promise.all(
-                usernames.map(username => this.userUtil.checkBadWord(username))
-            ),
+            usernames.map(username => this.userUtil.hasBadWord(username)),
         ]);
 
         return {

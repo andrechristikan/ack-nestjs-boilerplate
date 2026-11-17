@@ -19,8 +19,8 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
@@ -34,6 +34,18 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
 
 describe('SessionRevokeUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -53,8 +65,9 @@ describe('SessionRevokeUseCase', () => {
     const revokedAt = new Date('2026-03-05T00:00:00.000Z');
     const check: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: null,
+        mfa: null,
         verificationId: null,
+        passkeyChallengeToken: null,
     };
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -64,6 +77,7 @@ describe('SessionRevokeUseCase', () => {
         idempotencyKey: null,
     };
     const dto = { password: 'Current-pass1' };
+
     let useCase: SessionRevokeUseCase;
 
     beforeEach(async () => {
@@ -141,6 +155,8 @@ describe('SessionRevokeUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -151,7 +167,6 @@ describe('SessionRevokeUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user,
                 check
             );
             expect(sessionService.revokeInTx).toHaveBeenCalledWith(
@@ -179,7 +194,7 @@ describe('SessionRevokeUseCase', () => {
             ]);
         });
 
-        it('passes the two-factor and email-code fields of the request on', async () => {
+        it('passes the MFA and email-code fields of the request on', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -187,9 +202,11 @@ describe('SessionRevokeUseCase', () => {
                 userContext,
                 'session-1',
                 {
-                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    method: EnumMfaMethod.backupCode,
                     backupCode: 'BACKUP1',
                     code: '654321',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -201,9 +218,11 @@ describe('SessionRevokeUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.sessionRevoke,
                     password: null,
-                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    method: EnumMfaMethod.backupCode,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -248,7 +267,7 @@ describe('SessionRevokeUseCase', () => {
         });
 
         it('rethrows a completion refusal as it is', async () => {
-            const failure = new AuthTwoFactorInvalidException();
+            const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
                 failure
             );

@@ -10,8 +10,6 @@ import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobi
 import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserSocialRepository } from '@modules/user/repositories/user.social.repository';
-import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
-import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
@@ -25,13 +23,12 @@ import { UserRegistrationService } from '@modules/user/services/user.registratio
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
-import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { MfaModule } from '@modules/mfa/mfa.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { BullModule } from '@nestjs/bullmq';
@@ -43,12 +40,10 @@ import { Module } from '@nestjs/common';
         UserRepository,
         UserForgotPasswordRepository,
         UserVerificationRepository,
-        UserTwoFactorRepository,
         UserMobileNumberRepository,
         UserSocialRepository,
         UserAnalyticRepository,
         UserForgotPasswordAnalyticRepository,
-        UserTwoFactorAnalyticRepository,
         UserVerificationAnalyticRepository,
         UserMobileNumberAnalyticRepository,
         UserService,
@@ -56,7 +51,6 @@ import { Module } from '@nestjs/common';
         UserImportService,
         UserPasswordService,
         UserVerificationService,
-        UserTwoFactorService,
         UserProfileService,
         UserRegistrationService,
         UserMobileNumberService,
@@ -66,7 +60,6 @@ import { Module } from '@nestjs/common';
         UserVerificationUtil,
         UserAnalyticService,
         UserForgotPasswordAnalyticService,
-        UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,
         UserMobileNumberAnalyticService,
     ],
@@ -76,7 +69,6 @@ import { Module } from '@nestjs/common';
         UserImportService,
         UserPasswordService,
         UserVerificationService,
-        UserTwoFactorService,
         UserProfileService,
         UserRegistrationService,
         UserMobileNumberService,
@@ -86,7 +78,6 @@ import { Module } from '@nestjs/common';
         UserVerificationUtil,
         UserAnalyticService,
         UserForgotPasswordAnalyticService,
-        UserTwoFactorAnalyticService,
         UserVerificationAnalyticService,
         UserMobileNumberAnalyticService,
     ],
@@ -94,6 +85,7 @@ import { Module } from '@nestjs/common';
         ActivityLogModule,
         AwsModule,
         DeviceModule,
+        MfaModule,
         NotificationModule,
         PasswordHistoryModule,
         BullModule.registerQueueAsync({

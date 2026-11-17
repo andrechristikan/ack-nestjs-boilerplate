@@ -6,6 +6,8 @@ import { DeviceAdminController } from '@modules/device/controllers/device.admin.
 import { DeviceUseCaseModule } from '@modules/device/device.use-case.module';
 import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
 import { FeatureFlagUseCaseModule } from '@modules/feature-flag/feature-flag.use-case.module';
+import { MfaAdminController } from '@modules/mfa/controllers/mfa.admin.controller';
+import { MfaUseCaseModule } from '@modules/mfa/mfa.use-case.module';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryUseCaseModule } from '@modules/password-history/password-history.use-case.module';
 import { PolicyAdminController } from '@modules/policy/controllers/policy.admin.controller';
@@ -42,6 +44,7 @@ import { Module } from '@nestjs/common';
         ProjectAdminController,
         PolicyAdminController,
         AnalyticAdminController,
+        MfaAdminController,
     ],
     providers: [],
     exports: [],
@@ -59,6 +62,7 @@ import { Module } from '@nestjs/common';
         ProjectUseCaseModule,
         PolicyUseCaseModule,
         AnalyticUseCaseModule,
+        MfaUseCaseModule,
 
         UserModule,
     ],

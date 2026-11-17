@@ -11,7 +11,6 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
-import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
 /** @public */
 export const UserSchema = DatabaseResponseSchema.extend({
@@ -96,9 +95,6 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
     photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',
-    }),
-    twoFactor: UserTwoFactorSchema.nullable().meta({
-        description: 'Two-factor authentication state of the user',
     }),
 });
 

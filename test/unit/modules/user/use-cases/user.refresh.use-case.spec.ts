@@ -17,7 +17,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -84,24 +83,6 @@ describe('UserRefreshUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-bramble',
-        userId: 'user-bramble',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
     const baseUser: IUser = {
         id: 'user-bramble',
         name: 'Bramble Fox',
@@ -146,7 +127,6 @@ describe('UserRefreshUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -157,7 +137,7 @@ describe('UserRefreshUseCase', () => {
         deviceOwnershipId: 'device-ownership-bramble',
     };
     const { requestLog } = requestContext;
-    const committedUser: IUser = { ...baseUser, twoFactor };
+    const committedUser: IUser = baseUser;
     beforeEach(async () => {
         vi.resetAllMocks();
 

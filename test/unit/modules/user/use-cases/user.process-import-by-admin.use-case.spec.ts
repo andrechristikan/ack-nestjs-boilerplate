@@ -174,6 +174,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             token: 'hashed-token',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -226,7 +227,6 @@ describe('UserProcessImportByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const stageInput = {
         action: EnumActivityLogAction.userSignedUp,

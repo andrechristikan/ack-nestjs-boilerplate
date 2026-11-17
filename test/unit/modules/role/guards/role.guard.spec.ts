@@ -78,7 +78,6 @@ describe('RoleGuard', () => {
         deletedAt: null,
         deletedBy: null,
         role,
-        twoFactor: null,
     };
     const policies: Policy[] = [];
 

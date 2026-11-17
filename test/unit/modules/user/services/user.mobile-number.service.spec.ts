@@ -16,6 +16,8 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -26,6 +28,10 @@ describe('UserMobileNumberService', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
         mock<UserMobileNumberRepository>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const userVerificationService: MockProxy<UserVerificationService> =
+        mock<UserVerificationService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -84,6 +90,11 @@ describe('UserMobileNumberService', () => {
                     useValue: userMobileNumberRepository,
                 },
                 { provide: UserService, useValue: userService },
+                {
+                    provide: UserVerificationService,
+                    useValue: userVerificationService,
+                },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
@@ -276,9 +287,12 @@ describe('UserMobileNumberService', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).not.toHaveBeenCalled();
         });
 
-        it('resets verification when the number changes', async () => {
+        it('resets verification and expires the number active codes on the same tx when the digits change', async () => {
             userMobileNumberRepository.updateInTx.mockResolvedValue(
                 mobileNumber
             );
@@ -300,6 +314,30 @@ describe('UserMobileNumberService', () => {
                 { ...input, number: '5559999' },
                 false
             );
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
+        });
+
+        it('expires the number active codes on the same tx when the phone code changes', async () => {
+            userMobileNumberRepository.updateInTx.mockResolvedValue(
+                mobileNumber
+            );
+
+            await service.updateMobileNumberInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumber,
+                { ...input, phoneCode: '+99' },
+                ['+99'],
+                false
+            );
+
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
         });
 
         it('throws UserMobileNumberExistException when another row already has the number', async () => {
@@ -374,6 +412,9 @@ describe('UserMobileNumberService', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
         });
 
         it('throws UserMobileNumberNotFoundException when the guarded delete misses', async () => {
@@ -393,6 +434,105 @@ describe('UserMobileNumberService', () => {
             });
             expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getOneUnverifiedMobileNumber', () => {
+        it('returns the unverified mobile number of the user', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+
+            await expect(
+                service.getOneUnverifiedMobileNumber(
+                    'user-marlin',
+                    mobileNumber.id
+                )
+            ).resolves.toBe(mobileNumber);
+        });
+
+        it('throws UserMobileNumberNotFoundException before any verified check', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getOneUnverifiedMobileNumber('user-marlin', 'missing')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+            });
+        });
+
+        it('throws UserMobileNumberAlreadyVerifiedException for a verified number', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue({
+                ...mobileNumber,
+                isVerified: true,
+            });
+
+            await expect(
+                service.getOneUnverifiedMobileNumber(
+                    'user-marlin',
+                    mobileNumber.id
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberAlreadyVerified,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.mobileNumberAlreadyVerified
+                    ],
+                messagePath: 'user.error.mobileNumberAlreadyVerified',
+            });
+        });
+    });
+
+    describe('markVerifiedInTx', () => {
+        const verifiedAt = new Date('2026-03-01T00:00:00.000Z');
+
+        it('marks the number verified at now on the given tx', async () => {
+            helperDateService.create.mockReturnValue(verifiedAt);
+            userMobileNumberRepository.markVerifiedInTx.mockResolvedValue(true);
+
+            await service.markVerifiedInTx(tx, 'user-marlin', mobileNumber.id);
+
+            expect(
+                userMobileNumberRepository.markVerifiedInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-marlin',
+                mobileNumber.id,
+                verifiedAt
+            );
+        });
+
+        it('throws UserTokenInvalidException when the guard is lost', async () => {
+            helperDateService.create.mockReturnValue(verifiedAt);
+            userMobileNumberRepository.markVerifiedInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.markVerifiedInTx(tx, 'user-marlin', mobileNumber.id)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
+        });
+    });
+
+    describe('toDialableNumber', () => {
+        it('joins the plus sign, the phone code, and the number', () => {
+            expect(
+                service.toDialableNumber({
+                    ...mobileNumber,
+                    phoneCode: '62',
+                    number: '81234',
+                })
+            ).toBe('+6281234');
         });
     });
 

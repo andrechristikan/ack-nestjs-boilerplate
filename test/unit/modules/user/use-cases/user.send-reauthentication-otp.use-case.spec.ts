@@ -66,10 +66,8 @@ describe('UserSendReauthenticationOtpUseCase', () => {
 
     describe('execute', () => {
         it('throws not allowed for an account with a stronger proof and writes nothing', async () => {
-            userAuthService.assertReauthenticationOtpAllowed.mockImplementation(
-                () => {
-                    throw new UserReauthenticationOtpNotAllowedException();
-                }
+            userAuthService.assertReauthenticationOtpAllowed.mockRejectedValue(
+                new UserReauthenticationOtpNotAllowedException()
             );
 
             await expect(

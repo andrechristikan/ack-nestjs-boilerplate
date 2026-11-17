@@ -38,7 +38,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
         { action }: UserReauthenticationSendRequestDto
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gates before the write they guard
-        this.userAuthService.assertReauthenticationOtpAllowed(user);
+        await this.userAuthService.assertReauthenticationOtpAllowed(user);
         await this.userVerificationService.assertReauthenticationResendable(
             user.id,
             action

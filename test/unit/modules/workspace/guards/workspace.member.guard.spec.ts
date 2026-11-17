@@ -107,7 +107,6 @@ describe('WorkspaceMemberGuard', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     let guard: WorkspaceMemberGuard;

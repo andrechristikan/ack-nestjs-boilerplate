@@ -15,7 +15,7 @@ Commands:
                 2. Create separate access/refresh JWKS files in ./keys (always)
                 3. Update .env with the keys and KIDs (only with --direct-insert)
                 Never touches ./keys/encryption-secret.env or the encryption variables.
-  encryption    Generate APP_ENCRYPTION_SECRET_KEY and AUTH_TWO_FACTOR_ENCRYPTION_KEY
+  encryption    Generate APP_ENCRYPTION_SECRET_KEY and MFA_TOTP_ENCRYPTION_KEY
                 (48 random bytes each, base64url):
                 1. Write both to ./keys/encryption-secret.env (always)
                 2. Update .env with both secrets (only with --direct-insert)
@@ -267,13 +267,13 @@ class SecretGenerator {
      */
     writeEncryptionSecrets(secrets: {
         appEncryptionSecretKey: string;
-        twoFactorEncryptionKey: string;
+        mfaTotpEncryptionKey: string;
     }): void {
         fs.writeFileSync(
             this.encryptionSecretPath,
             [
                 `APP_ENCRYPTION_SECRET_KEY=${secrets.appEncryptionSecretKey}`,
-                `AUTH_TWO_FACTOR_ENCRYPTION_KEY=${secrets.twoFactorEncryptionKey}`,
+                `MFA_TOTP_ENCRYPTION_KEY=${secrets.mfaTotpEncryptionKey}`,
                 '',
             ].join('\n'),
             { mode: 0o600 }
@@ -400,7 +400,7 @@ class SecretGenerator {
             console.log('Generating encryption secrets...');
             const secrets = {
                 appEncryptionSecretKey: this.generateEncryptionSecret(),
-                twoFactorEncryptionKey: this.generateEncryptionSecret(),
+                mfaTotpEncryptionKey: this.generateEncryptionSecret(),
             };
             this.writeEncryptionSecrets(secrets);
 
@@ -411,8 +411,8 @@ class SecretGenerator {
                         value: secrets.appEncryptionSecretKey,
                     },
                     {
-                        key: 'AUTH_TWO_FACTOR_ENCRYPTION_KEY',
-                        value: secrets.twoFactorEncryptionKey,
+                        key: 'MFA_TOTP_ENCRYPTION_KEY',
+                        value: secrets.mfaTotpEncryptionKey,
                     },
                 ]);
             }
@@ -423,7 +423,7 @@ class SecretGenerator {
                 '📁 File written (open it — secret values are NOT printed, for security):'
             );
             console.log(
-                `   • Encryption secrets: ${this.encryptionSecretPath} (APP_ENCRYPTION_SECRET_KEY, AUTH_TWO_FACTOR_ENCRYPTION_KEY)`
+                `   • Encryption secrets: ${this.encryptionSecretPath} (APP_ENCRYPTION_SECRET_KEY, MFA_TOTP_ENCRYPTION_KEY)`
             );
             console.log('');
             if (updateEnv) {

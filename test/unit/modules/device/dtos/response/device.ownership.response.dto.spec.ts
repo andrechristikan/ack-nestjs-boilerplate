@@ -81,17 +81,4 @@ describe('DeviceOwnershipResponseSchema', () => {
             revokedBy,
         });
     });
-
-    it('strips the stored biometric token even when present on the input', () => {
-        const result = DeviceOwnershipResponseSchema.parse({
-            ...row,
-            biometricEnabled: true,
-            biometricToken: 'top-secret-biometric-token',
-            biometricType: 'faceId',
-            biometricEnabledAt: createdAt,
-        });
-
-        expect(result).toEqual(row);
-        expect(result).not.toHaveProperty('biometricToken');
-    });
 });

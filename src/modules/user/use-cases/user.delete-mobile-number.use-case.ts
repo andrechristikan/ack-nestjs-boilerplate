@@ -49,6 +49,8 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
             method,
             code,
             backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
             otp,
         }: UserDeleteMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
@@ -64,6 +66,8 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -80,7 +84,6 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        user,
                         check
                     );
 

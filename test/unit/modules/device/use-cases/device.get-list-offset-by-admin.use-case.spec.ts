@@ -44,10 +44,6 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
         lastActiveAt: updatedAt,
         notificationToken: null,
         notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
         device: {
             id: 'device-1',
             createdAt: updatedAt,

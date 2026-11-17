@@ -68,7 +68,6 @@ describe('UserGetProfileUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
         mobileNumbers: [],
         country: {
             id: 'country-sable',

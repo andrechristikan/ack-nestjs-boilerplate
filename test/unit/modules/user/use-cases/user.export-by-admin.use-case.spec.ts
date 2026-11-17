@@ -74,7 +74,6 @@ describe('UserExportByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {

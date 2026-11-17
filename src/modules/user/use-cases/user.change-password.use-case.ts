@@ -11,7 +11,7 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -70,6 +70,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             backupCode,
             code,
             method,
+            passkeyChallengeToken,
+            passkeyResponse,
             otp,
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
@@ -85,6 +87,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -112,7 +116,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    user,
                     check
                 );
                 await this.userService.updatePasswordInTx(
@@ -167,10 +170,10 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                check.twoFactor !== null &&
+                check.mfa !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
-                throw new AuthTwoFactorInvalidException();
+                throw new MfaInvalidException();
             }
 
             throw new AppUnknownException(err);

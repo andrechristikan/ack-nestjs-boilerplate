@@ -17,7 +17,6 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
-    IUserWithTwoFactor,
 } from '@modules/user/interfaces/user.interface';
 import {
     EnumUserLoginFrom,
@@ -60,7 +59,6 @@ export interface IUserRepository {
     findOneProfileById(id: string): Promise<IUserProfile | null>;
     findOneActiveProfileById(id: string): Promise<IUserProfile | null>;
     findOneWithRoleById(id: string): Promise<IUser | null>;
-    findOneWithTwoFactorById(id: string): Promise<IUserWithTwoFactor | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
     findExport(

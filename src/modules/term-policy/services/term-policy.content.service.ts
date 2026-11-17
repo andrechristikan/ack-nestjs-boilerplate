@@ -134,15 +134,14 @@ export class TermPolicyContentService {
             throw new TermPolicyStatusInvalidException();
         }
 
-        const key: string =
-            this.termPolicyUtil.createRandomFilenameContentWithPath(
-                type,
-                version,
-                language,
-                {
-                    extension: EnumFileExtensionTemplate.hbs,
-                }
-            );
+        const key: string = this.termPolicyUtil.getContentKey(
+            type,
+            version,
+            language,
+            {
+                extension: EnumFileExtensionTemplate.hbs,
+            }
+        );
 
         const aws: IAwsS3Presign | null =
             await this.awsS3Service.presignPutItem(

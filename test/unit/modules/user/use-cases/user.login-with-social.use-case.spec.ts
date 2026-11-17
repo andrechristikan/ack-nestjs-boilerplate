@@ -28,11 +28,7 @@ import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type {
-    Country,
-    TwoFactor,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { Country, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -76,14 +72,15 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserLoginOutcome,
     IUserLoginSocial,
-    IUserLoginTwoFactorChallenge,
+    IUserLoginMfaChallenge,
     IUserSignUpWorkspaceInvite,
     IUserSignUpWorkspacePersonal,
-    IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -106,6 +103,7 @@ describe('UserLoginWithSocialUseCase', () => {
         mock<UserSocialService>();
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
     const notificationService: MockProxy<NotificationService> =
@@ -146,7 +144,7 @@ describe('UserLoginWithSocialUseCase', () => {
         refreshToken: 'refresh-token',
     };
     const tokenOutcome: IUserLoginOutcome = {
-        isTwoFactorEnable: false,
+        isMfaRequired: false,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
         tokens,
@@ -185,24 +183,6 @@ describe('UserLoginWithSocialUseCase', () => {
         },
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'welcomeSocial-user-bramble',
-    };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-bramble',
-        userId: 'user-bramble',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
     };
     const baseUser: IUser = {
         id: 'user-bramble',
@@ -248,14 +228,13 @@ describe('UserLoginWithSocialUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
-    const committedUser: IUser = { ...baseUser, twoFactor };
-    const verifyChallenge: IUserLoginTwoFactorChallenge = {
-        isRequiredSetup: false,
+    const committedUser: IUser = baseUser;
+    const mfaChallenge: IUserLoginMfaChallenge = {
         challengeToken: 'challenge-token',
-        challengeExpiresInMs: 60000,
-        backupCodesRemaining: 1,
+        expiresInMs: 60000,
+        methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
+        passkeyOptions: { challenge: 'challenge-webauthn' },
     };
     const session: IUserLoginSession = {
         tokens,
@@ -314,6 +293,7 @@ describe('UserLoginWithSocialUseCase', () => {
             token: 'hashed-token',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: null,
@@ -377,11 +357,8 @@ describe('UserLoginWithSocialUseCase', () => {
         helperDateService.create.mockReturnValue(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         notificationService.notify.mockReturnValue(welcomeSocialEffect);
-        userUtil.resolveLoginActivityLogAction.mockReturnValue(
-            EnumActivityLogAction.userLoginCredential
-        );
         userUtil.isUnverified.mockReturnValue(false);
-        userUtil.isTwoFactorEnabled.mockReturnValue(false);
+        mfaService.isEnabled.mockResolvedValue(false);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
@@ -427,6 +404,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: UserCreateUtil, useValue: userCreateUtil },
                 { provide: UserUtil, useValue: userUtil },
+                { provide: MfaService, useValue: mfaService },
                 { provide: WorkspaceUtil, useValue: workspaceUtil },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: OutboxService, useValue: outboxService },
@@ -474,9 +452,6 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
-            userUtil.resolveLoginActivityLogAction.mockReturnValue(
-                EnumActivityLogAction.userLoginGoogle
-            );
             userCreateUtil.buildStages.mockReturnValue([stageInput]);
         });
 
@@ -756,20 +731,14 @@ describe('UserLoginWithSocialUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('creates a challenge and issues nothing for an already set-up two-factor user', async () => {
-            const twoFactorUser: IUser & IUserTwoFactorEnabled = {
-                ...baseUser,
-                twoFactor: { ...twoFactor, enabled: true },
-            };
+        it('creates a challenge and issues nothing for an MFA user', async () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(
-                twoFactorUser
-            );
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
-            userAuthService.createTwoFactorChallengeInTx.mockResolvedValue(
-                verifyChallenge
+            userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
+            mfaService.isEnabled.mockResolvedValue(true);
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                mfaChallenge
             );
 
             await expect(
@@ -782,30 +751,25 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).resolves.toEqual({
                 data: {
-                    isTwoFactorEnable: true,
+                    isMfaRequired: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: verifyChallenge,
+                    mfa: mfaChallenge,
                 },
             });
 
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
-            ).toHaveBeenCalledBefore(
-                userAuthService.createTwoFactorChallengeInTx
-            );
+            ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(
-                userAuthService.createTwoFactorChallengeInTx
-            ).toHaveBeenCalledWith(
+            expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
                 tx,
-                requestContext,
-                apiKeyContext,
-                twoFactorUser,
+                baseUser.id,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle
             );
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-bramble');
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -1145,26 +1109,20 @@ describe('UserLoginWithSocialUseCase', () => {
             ).toHaveBeenCalledBefore(userAuthService.createTokenAndSessionInTx);
         });
 
-        it('verifies an unverified two-factor user and creates the challenge on one tx', async () => {
+        it('verifies an unverified MFA user and creates the challenge on one tx', async () => {
             userUtil.isUnverified.mockReturnValueOnce(true);
-            const twoFactorUser: IUser & IUserTwoFactorEnabled = {
-                ...baseUser,
-                isVerified: false,
-                twoFactor: { ...twoFactor, enabled: true },
-            };
+            const mfaUser: IUser = { ...baseUser, isVerified: false };
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(
-                twoFactorUser
-            );
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            userAuthService.getOneForSocialLogin.mockResolvedValue(mfaUser);
+            mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.verifyEmailBySocialInTx.mockResolvedValue({
-                ...twoFactorUser,
+                ...mfaUser,
                 isVerified: true,
             });
-            userAuthService.createTwoFactorChallengeInTx.mockResolvedValue(
-                verifyChallenge
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                mfaChallenge
             );
 
             await useCase.execute(
@@ -1178,28 +1136,17 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.verifyEmailBySocialInTx
-            ).toHaveBeenCalledWith(
+            ).toHaveBeenCalledWith(tx, requestContext, apiKeyContext, mfaUser);
+            expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
                 tx,
-                requestContext,
-                apiKeyContext,
-                twoFactorUser
-            );
-            expect(
-                userAuthService.createTwoFactorChallengeInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                requestContext,
-                apiKeyContext,
-                twoFactorUser,
+                mfaUser.id,
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle
             );
             expect(
                 userAuthService.verifyEmailBySocialInTx
-            ).toHaveBeenCalledBefore(
-                userAuthService.createTwoFactorChallengeInTx
-            );
+            ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
         });
 
         it('answers the lookup error of an existing-user path whose email holds no user', async () => {

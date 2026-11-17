@@ -129,6 +129,7 @@ describe('UserVerificationUtil', () => {
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
                 action: null,
+                mobileNumberId: null,
                 to: 'cobalt@example.com',
                 expiredAt,
                 verifiedAt: now,

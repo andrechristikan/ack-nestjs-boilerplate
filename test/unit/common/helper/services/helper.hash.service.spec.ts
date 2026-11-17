@@ -3,8 +3,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { argon2 } from 'node:crypto';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import type { argon2 as Argon2 } from 'node:crypto';
+import type { HelperHashService } from '@common/helper/services/helper.hash.service';
 
 vi.mock('node:crypto', async importOriginal => {
     const actual = await importOriginal<typeof import('node:crypto')>();
@@ -19,9 +19,14 @@ describe('HelperHashService', () => {
     });
 
     let service: HelperHashService;
+    let argon2: typeof Argon2;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        vi.resetModules();
+        ({ argon2 } = await import('node:crypto'));
+        const { HelperHashService: HelperHashServiceClass } =
+            await import('@common/helper/services/helper.hash.service');
 
         configGet.mockImplementation((key: string) =>
             key === 'helper.argon2'
@@ -37,12 +42,12 @@ describe('HelperHashService', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                HelperHashService,
+                HelperHashServiceClass,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
-        service = module.get(HelperHashService);
+        service = module.get(HelperHashServiceClass);
     });
 
     describe('argon2Hash', () => {

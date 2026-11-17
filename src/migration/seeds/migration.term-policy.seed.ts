@@ -89,7 +89,7 @@ export class MigrationTermPolicySeed
         version,
     }: IMigrationTermPolicyData): Promise<ITermPolicyContent> {
         const file = this.readTemplate(type);
-        const key = this.termPolicyUtil.createRandomFilenameContentWithPath(
+        const key = this.termPolicyUtil.getContentKey(
             type,
             version,
             EnumMessageLanguage.en,

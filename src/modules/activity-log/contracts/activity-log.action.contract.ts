@@ -47,7 +47,7 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,
     },
-    [EnumActivityLogAction.userResetTwoFactorByAdmin]: {
+    [EnumActivityLogAction.userResetMfaByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,
@@ -68,6 +68,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userLoginApple]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userLoginPasskey]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -97,6 +102,16 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userVerifiedMobileNumber]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userSendVerificationMobileNumber]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userSendReauthenticationOtp]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -107,7 +122,7 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userReachMaxTwoFactorAttempt]: {
+    [EnumActivityLogAction.userReachMaxMfaAttempt]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -209,27 +224,47 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userSetupTwoFactor]: {
+    [EnumActivityLogAction.userSetupMfaTotp]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userEnableTwoFactor]: {
+    [EnumActivityLogAction.userEnableMfaTotp]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userDisableTwoFactor]: {
+    [EnumActivityLogAction.userDisableMfaTotp]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userVerifyTwoFactor]: {
+    [EnumActivityLogAction.userVerifyMfa]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes]: {
+    [EnumActivityLogAction.userVerifyMfaFailed]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userRegenerateMfaBackupCodes]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userRegisterMfaPasskey]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userUpdateMfaPasskey]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userDeleteMfaPasskey]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -361,7 +396,7 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserActorMetadataSchema,
     },
-    [EnumActivityLogAction.adminUserResetTwoFactor]: {
+    [EnumActivityLogAction.adminUserResetMfa]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserActorMetadataSchema,

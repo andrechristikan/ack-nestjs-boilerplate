@@ -1,0 +1,36 @@
+{
+    "status": "Multi-factor authentication status retrieved successfully.",
+    "totp": {
+        "setup": "Authenticator app setup initialized. Use the provided secret to configure your authenticator.",
+        "enable": "Authenticator app has been enabled.",
+        "disable": "Authenticator app has been disabled."
+    },
+    "backupCode": {
+        "regenerate": "New backup codes generated successfully."
+    },
+    "passkey": {
+        "registrationGenerate": "Passkey registration options generated.",
+        "reauthenticationGenerate": "Passkey re-authentication options generated.",
+        "register": "Passkey has been registered.",
+        "update": "Passkey has been renamed.",
+        "delete": "Passkey has been deleted."
+    },
+    "resetByAdmin": "Multi-factor authentication has been reset.",
+    "error": {
+        "invalid": "The provided multi-factor authentication code is invalid.",
+        "challengeInvalid": "The multi-factor authentication challenge is invalid or has expired.",
+        "notEnabled": "Multi-factor authentication is not enabled for this account.",
+        "attemptMax": "Maximum multi-factor authentication attempts exceeded.",
+        "methodRequired": "A multi-factor authentication method is required.",
+        "methodUnavailable": "The selected multi-factor authentication method is not available for this account.",
+        "totpAlreadyEnabled": "An authenticator app is already enabled.",
+        "totpNotEnabled": "No authenticator app is enabled for this account.",
+        "totpSetupRequired": "Start authenticator app setup before confirming the code.",
+        "totpSecretUnavailable": "Authenticator codes can't be checked for this account. Sign in with a backup code, then set up an authenticator app again using another backup code.",
+        "passkeyInvalid": "The passkey could not be verified.",
+        "passkeyLimit": "The maximum number of passkeys has been reached. Delete a passkey before registering another.",
+        "passkeyAlreadyRegistered": "This passkey is already registered.",
+        "passkeyNotFound": "The passkey was not found.",
+        "codeRequired": "A multi-factor authentication code is required."
+    }
+}

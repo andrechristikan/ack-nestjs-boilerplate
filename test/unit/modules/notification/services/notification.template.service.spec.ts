@@ -10,12 +10,9 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationTemplateName } from '@modules/notification/interfaces/notification.interface';
 import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 
 describe('NotificationTemplateService', () => {
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const templateDir = join(
         import.meta.dirname,
         '../../../../../src/modules/notification/templates'
@@ -76,8 +73,8 @@ describe('NotificationTemplateService', () => {
             subject: 'Forgot Password',
         },
         {
-            name: EnumNotificationKind.resetTwoFactorByAdmin,
-            file: 'notification.reset-two-factor-by-admin.template.hbs',
+            name: EnumNotificationKind.resetMfaByAdmin,
+            file: 'notification.reset-mfa-by-admin.template.hbs',
             subject: 'Reset Two Factor By Admin',
         },
         {
@@ -126,7 +123,28 @@ describe('NotificationTemplateService', () => {
             subject: 'Workspace Join Request Rejected',
         },
     ];
-    const label = 'some label';
+    const labels: [INotificationTemplateName, string][] = [
+        [EnumNotificationKind.welcome, 'welcome'],
+        [EnumNotificationKind.welcomeSocial, 'welcome social'],
+        [EnumNotificationKind.welcomeByAdmin, 'welcome by admin'],
+        [EnumNotificationKind.verificationEmail, 'verification email'],
+        [EnumNotificationKind.verifiedEmail, 'verified email'],
+        [EnumNotificationKind.verifiedMobileNumber, 'verified mobile number'],
+        [EnumNotificationKind.changePassword, 'change password'],
+        [
+            EnumNotificationKind.temporaryPasswordByAdmin,
+            'temporary password by admin',
+        ],
+        [EnumNotificationKind.resetPassword, 'reset password'],
+        [EnumNotificationKind.forgotPassword, 'forgot password'],
+        [EnumNotificationKind.resetMfaByAdmin, 'reset mfa by admin'],
+        [EnumNotificationKind.newDeviceLogin, 'new device login'],
+        [EnumNotificationKind.publishTermPolicy, 'publish term policy'],
+        [EnumNotificationKind.workspaceInvite, 'workspace invite'],
+        [EnumNotificationKind.workspaceJoinRequest, 'workspace join request'],
+        [EnumNotificationKind.workspaceJoinAccepted, 'workspace join accepted'],
+        [EnumNotificationKind.workspaceJoinRejected, 'workspace join rejected'],
+    ];
     let service: NotificationTemplateService;
 
     beforeEach(async () => {
@@ -135,7 +153,6 @@ describe('NotificationTemplateService', () => {
             providers: [
                 NotificationTemplateService,
                 { provide: AwsSESService, useValue: awsSESService },
-                { provide: NotificationUtil, useValue: notificationUtil },
             ],
         }).compile();
         service = module.get(NotificationTemplateService);
@@ -163,18 +180,14 @@ describe('NotificationTemplateService', () => {
         it('throws an AppUnknownException naming the import when the create call rejects', async () => {
             const error = new Error('ses down');
             awsSESService.createTemplate.mockRejectedValue(error);
-            notificationUtil.toTemplateLabel.mockReturnValue(label);
 
             await expect(
                 service.emailImport(EnumNotificationKind.workspaceInvite)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
-                description: `Failed to import ${label} template`,
+                description: 'Failed to import workspace invite template',
             });
-            expect(notificationUtil.toTemplateLabel).toHaveBeenCalledWith(
-                EnumNotificationKind.workspaceInvite
-            );
         });
     });
 
@@ -210,14 +223,13 @@ describe('NotificationTemplateService', () => {
         it('throws an AppUnknownException naming the get for any other error', async () => {
             const error = new Error('ses down');
             awsSESService.getTemplate.mockRejectedValue(error);
-            notificationUtil.toTemplateLabel.mockReturnValue(label);
 
             await expect(
                 service.emailGet(EnumNotificationKind.welcome)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
-                description: `Failed to get ${label} template`,
+                description: 'Failed to get welcome template',
             });
         });
     });
@@ -237,15 +249,27 @@ describe('NotificationTemplateService', () => {
         it('throws an AppUnknownException naming the delete when the delete call rejects', async () => {
             const error = new Error('ses down');
             awsSESService.deleteTemplate.mockRejectedValue(error);
-            notificationUtil.toTemplateLabel.mockReturnValue(label);
 
             await expect(
                 service.emailDelete(EnumNotificationKind.welcome)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
-                description: `Failed to delete ${label} template`,
+                description: 'Failed to delete welcome template',
             });
         });
+
+        it.each(labels)(
+            'names the lowercase words of %s in the failure',
+            async (name, label) => {
+                awsSESService.deleteTemplate.mockRejectedValue(
+                    new Error('ses down')
+                );
+
+                await expect(service.emailDelete(name)).rejects.toMatchObject({
+                    description: `Failed to delete ${label} template`,
+                });
+            }
+        );
     });
 });

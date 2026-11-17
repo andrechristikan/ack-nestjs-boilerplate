@@ -4,14 +4,12 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
-    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { TwoFactor, User } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -66,25 +64,6 @@ describe('UserUtil', () => {
         deletedBy: null,
     };
 
-    const twoFactorRow: TwoFactor = {
-        id: 'two-factor-marigold',
-        userId: user.id,
-        secret: 'secret',
-        pendingSecret: null,
-        backupCodes: ['code-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-
     const iUser: IUser = {
         ...user,
         role: {
@@ -99,7 +78,6 @@ describe('UserUtil', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {
@@ -149,55 +127,23 @@ describe('UserUtil', () => {
         });
     });
 
-    describe('checkUsernamePattern', () => {
+    describe('isUsernamePatternInvalid', () => {
         it('returns false when the username matches the allowed pattern', () => {
-            expect(util.checkUsernamePattern('marigoldFinch')).toBe(false);
+            expect(util.isUsernamePatternInvalid('marigoldFinch')).toBe(false);
         });
 
         it('returns true when the username does not match the allowed pattern', () => {
-            expect(util.checkUsernamePattern('marigold finch')).toBe(true);
+            expect(util.isUsernamePatternInvalid('marigold finch')).toBe(true);
         });
     });
 
-    describe('checkBadWord', () => {
-        it('returns true when the text contains a bad word', async () => {
-            await expect(util.checkBadWord('damn')).resolves.toBe(true);
+    describe('hasBadWord', () => {
+        it('returns true when the text contains a bad word', () => {
+            expect(util.hasBadWord('damn')).toBe(true);
         });
 
-        it('returns false when the text contains no bad word', async () => {
-            await expect(util.checkBadWord('innocent')).resolves.toBe(false);
-        });
-    });
-
-    describe('resolveLoginActivityLogAction', () => {
-        it('resolves userLoginApple for socialApple', () => {
-            expect(
-                util.resolveLoginActivityLogAction(
-                    EnumUserLoginWith.socialApple
-                )
-            ).toBe(EnumActivityLogAction.userLoginApple);
-        });
-
-        it('resolves userLoginGoogle for socialGoogle', () => {
-            expect(
-                util.resolveLoginActivityLogAction(
-                    EnumUserLoginWith.socialGoogle
-                )
-            ).toBe(EnumActivityLogAction.userLoginGoogle);
-        });
-
-        it('resolves userLoginCredential for credential', () => {
-            expect(
-                util.resolveLoginActivityLogAction(EnumUserLoginWith.credential)
-            ).toBe(EnumActivityLogAction.userLoginCredential);
-        });
-
-        it('resolves userLoginCredential for any other value', () => {
-            expect(
-                util.resolveLoginActivityLogAction(
-                    'unknown' as EnumUserLoginWith
-                )
-            ).toBe(EnumActivityLogAction.userLoginCredential);
+        it('returns false when the text contains no bad word', () => {
+            expect(util.hasBadWord('innocent')).toBe(false);
         });
     });
 
@@ -210,70 +156,6 @@ describe('UserUtil', () => {
             expect(util.isUnverified({ ...iUser, isVerified: false })).toBe(
                 true
             );
-        });
-    });
-
-    describe('isTwoFactorEnabled', () => {
-        it('returns false when the user has no two-factor row', () => {
-            expect(util.isTwoFactorEnabled(iUser)).toBe(false);
-        });
-
-        it('returns false when the two-factor row is disabled', () => {
-            expect(
-                util.isTwoFactorEnabled({
-                    ...iUser,
-                    twoFactor: { ...twoFactorRow, enabled: false },
-                })
-            ).toBe(false);
-        });
-
-        it('returns true when the two-factor row is enabled', () => {
-            expect(
-                util.isTwoFactorEnabled({
-                    ...iUser,
-                    twoFactor: { ...twoFactorRow, enabled: true },
-                })
-            ).toBe(true);
-        });
-    });
-
-    describe('requiresTwoFactorVerification', () => {
-        const enabled = { ...twoFactorRow, enabled: true };
-
-        it('returns true when the enabled row requires no setup', () => {
-            expect(
-                util.requiresTwoFactorVerification({
-                    ...iUser,
-                    twoFactor: { ...enabled, requiredSetup: false },
-                })
-            ).toBe(true);
-        });
-
-        it('returns false when the enabled row still requires setup', () => {
-            expect(
-                util.requiresTwoFactorVerification({
-                    ...iUser,
-                    twoFactor: { ...enabled, requiredSetup: true },
-                })
-            ).toBe(false);
-        });
-
-        it('returns false when the two-factor row is disabled', () => {
-            expect(
-                util.requiresTwoFactorVerification({
-                    ...iUser,
-                    twoFactor: { ...twoFactorRow, enabled: false },
-                })
-            ).toBe(false);
-        });
-
-        it('returns false when the user has no two-factor row', () => {
-            expect(
-                util.requiresTwoFactorVerification({
-                    ...iUser,
-                    twoFactor: null,
-                })
-            ).toBe(false);
         });
     });
 

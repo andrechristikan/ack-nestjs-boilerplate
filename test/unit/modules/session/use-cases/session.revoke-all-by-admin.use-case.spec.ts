@@ -87,7 +87,6 @@ describe('SessionRevokeAllByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();

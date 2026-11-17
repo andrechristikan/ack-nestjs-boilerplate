@@ -6,7 +6,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { CountryService } from '@modules/country/services/country.service';
 import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -55,6 +55,8 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
             method,
             code,
             backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
             otp,
         }: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
@@ -70,6 +72,8 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -94,7 +98,6 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        user,
                         check
                     );
 
@@ -127,10 +130,10 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                check.twoFactor !== null &&
+                check.mfa !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
-                throw new AuthTwoFactorInvalidException();
+                throw new MfaInvalidException();
             }
 
             throw new AppUnknownException(err);

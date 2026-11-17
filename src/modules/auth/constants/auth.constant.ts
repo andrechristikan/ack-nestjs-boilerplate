@@ -31,9 +31,6 @@ export const AuthJwtRefreshContextStoreKey = 'AuthJwtRefreshContextStoreKey';
 export const AuthSocialContextStoreKey = 'AuthSocialContextStoreKey';
 
 /** @public */
-export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
-
-/** @public */
 export const AuthProviderNetworkErrorCodes: readonly string[] = [
     'ECONNREFUSED',
     'ECONNRESET',

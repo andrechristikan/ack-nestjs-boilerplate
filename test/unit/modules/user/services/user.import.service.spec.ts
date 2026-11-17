@@ -107,7 +107,6 @@ describe('UserImportService', () => {
         deletedAt: null,
         deletedBy: null,
         role: roleWithPolicies,
-        twoFactor: null,
     };
 
     const password: IAuthPassword = {
@@ -159,6 +158,7 @@ describe('UserImportService', () => {
             token: 'hashed-token-one',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: 'thistle@example.com',
             expiredAt: new Date('2026-02-01T00:00:00.000Z'),
             verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -471,9 +471,9 @@ describe('UserImportService', () => {
             userRepository.findByUsernames.mockResolvedValue([
                 { ...baseUser, username: 'thistleRowe' },
             ]);
-            userUtil.checkBadWord
-                .mockResolvedValueOnce(false)
-                .mockResolvedValueOnce(true);
+            userUtil.hasBadWord
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
 
             await expect(
                 service.getUsernameChecks(['thistleRowe', 'marigoldFinch'])

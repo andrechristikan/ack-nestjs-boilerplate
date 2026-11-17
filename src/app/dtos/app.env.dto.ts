@@ -61,8 +61,10 @@ export const AppEnvSchema = z
         AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_EXPIRED: z.string().regex(/^\d+[smhd]$/),
 
-        AUTH_TWO_FACTOR_ISSUER: z.string().min(1),
-        AUTH_TWO_FACTOR_ENCRYPTION_KEY: RequestEncryptionSecretSchema,
+        MFA_TOTP_ISSUER: z.string().min(1),
+        MFA_TOTP_ENCRYPTION_KEY: RequestEncryptionSecretSchema,
+        MFA_PASSKEY_RP_ID: z.string().min(1),
+        MFA_PASSKEY_ORIGINS: z.string().min(1),
 
         AUTH_SOCIAL_GOOGLE_CLIENT_ID: RequestOptionalEnvStringSchema,
         AUTH_SOCIAL_APPLE_CLIENT_ID: RequestOptionalEnvStringSchema,
@@ -163,6 +165,45 @@ export const AppEnvSchema = z
                 path: ['CORS_ALLOWED_ORIGIN'],
                 message: 'Must list origins in production',
             });
+        }
+
+        const passkeyOrigins = env.MFA_PASSKEY_ORIGINS.split(',')
+            .map(origin => origin.trim())
+            .filter(origin => origin !== '');
+        if (passkeyOrigins.length === 0) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['MFA_PASSKEY_ORIGINS'],
+                message: 'Must list at least one origin',
+            });
+        }
+        for (const origin of passkeyOrigins) {
+            const wildcardPrefix = 'https://*.';
+            const androidPrefix = 'android:apk-key-hash:';
+            let isAllowed = false;
+            if (origin === '*') {
+                isAllowed = env.APP_ENV !== EnumAppEnvironment.production;
+            } else if (origin.startsWith(androidPrefix)) {
+                isAllowed = origin.length > androidPrefix.length;
+            } else if (origin.startsWith(wildcardPrefix)) {
+                const domain = origin.slice(wildcardPrefix.length);
+                isAllowed =
+                    domain === env.MFA_PASSKEY_RP_ID ||
+                    domain.endsWith(`.${env.MFA_PASSKEY_RP_ID}`);
+            } else if (!origin.includes('*') && URL.canParse(origin)) {
+                const url = new URL(origin);
+                isAllowed =
+                    (url.protocol === 'https:' || url.protocol === 'http:') &&
+                    url.origin === origin;
+            }
+
+            if (!isAllowed) {
+                ctx.addIssue({
+                    code: 'custom',
+                    path: ['MFA_PASSKEY_ORIGINS'],
+                    message: `${origin} must be an exact origin, https://*.<domain> under MFA_PASSKEY_RP_ID, or android:apk-key-hash:<hash>`,
+                });
+            }
         }
 
         if (

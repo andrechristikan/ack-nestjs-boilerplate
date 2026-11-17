@@ -268,7 +268,7 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findStatusByVersionAndType.mockResolvedValue(
                 null
             );
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+            termPolicyUtil.getContentKey.mockReturnValue(
                 'term-policies/privacy/1/en.hbs'
             );
             const presign: IAwsS3Presign = {
@@ -318,7 +318,7 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findStatusByVersionAndType.mockResolvedValue(
                 EnumTermPolicyStatus.draft
             );
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+            termPolicyUtil.getContentKey.mockReturnValue(
                 'term-policies/privacy/1/en.hbs'
             );
             awsS3Service.presignPutItem.mockResolvedValue(null);
@@ -346,7 +346,7 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findStatusByVersionAndType.mockResolvedValue(
                 null
             );
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+            termPolicyUtil.getContentKey.mockReturnValue(
                 'term-policies/privacy/1/en.hbs'
             );
             const presign: IAwsS3Presign = {

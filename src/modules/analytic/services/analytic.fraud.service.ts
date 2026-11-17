@@ -365,7 +365,7 @@ export class AnalyticFraudService {
                 [
                     EnumActivityLogAction.userLoginFailed,
                     EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    EnumActivityLogAction.userReachMaxMfaAttempt,
                 ],
                 startDate,
                 endDate
@@ -584,7 +584,7 @@ export class AnalyticFraudService {
         while (hasNext) {
             const page =
                 await this.activityLogAnalyticService.getPageByActionsInRange(
-                    [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
+                    [EnumActivityLogAction.userRegenerateMfaBackupCodes],
                     startDate,
                     endDate,
                     cursor

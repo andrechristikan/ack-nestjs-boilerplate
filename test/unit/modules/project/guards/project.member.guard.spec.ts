@@ -70,7 +70,6 @@ describe('ProjectMemberGuard', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     const projectMemberService: MockProxy<ProjectMemberService> =

@@ -1,16 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserUsernameRegex } from '@modules/user/constants/user.constant';
-import type {
-    IUser,
-    IUserTwoFactorEnabled,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    EnumActivityLogAction,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
 import { Duration } from 'luxon';
@@ -35,27 +28,16 @@ export class UserUtil {
     }
 
     /** True when the username does not match the allowed pattern, so true rejects it. */
-    checkUsernamePattern(username: string): boolean {
+    isUsernamePatternInvalid(username: string): boolean {
         return !!username.search(UserUsernameRegex);
     }
 
-    async checkBadWord(str: string): Promise<boolean> {
+    hasBadWord(str: string): boolean {
         return this.profanity.exists(str);
     }
 
     isUnverified(user: IUser): boolean {
         return !user.isVerified;
-    }
-
-    isTwoFactorEnabled(user: IUser): user is IUserTwoFactorEnabled {
-        return !!user.twoFactor?.enabled;
-    }
-
-    requiresTwoFactorVerification(user: IUser): boolean {
-        return (
-            user.twoFactor?.enabled === true &&
-            user.twoFactor.requiredSetup === false
-        );
     }
 
     isInsideResendWindow(
@@ -69,20 +51,6 @@ export class UserUtil {
         );
 
         return now < canResendAt;
-    }
-
-    resolveLoginActivityLogAction(
-        loginWith: EnumUserLoginWith
-    ): EnumActivityLogAction {
-        switch (loginWith) {
-            case EnumUserLoginWith.socialApple:
-                return EnumActivityLogAction.userLoginApple;
-            case EnumUserLoginWith.socialGoogle:
-                return EnumActivityLogAction.userLoginGoogle;
-            case EnumUserLoginWith.credential:
-            default:
-                return EnumActivityLogAction.userLoginCredential;
-        }
     }
 
     mapActivityLogActorMetadata(user: User): IActivityLogMetadata {

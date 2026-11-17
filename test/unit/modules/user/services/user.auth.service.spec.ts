@@ -1,12 +1,17 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
+import type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/server';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
+    EnumMfaChallengePurpose,
     EnumRoleType,
     EnumUserReauthenticationAction,
     EnumUserLoginFrom,
@@ -18,7 +23,6 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     DeviceOwnership,
-    TwoFactor,
     User,
     Verification,
 } from '@generated/prisma-client/client';
@@ -33,10 +37,16 @@ import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
-import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
+import { MfaMethodRequiredException } from '@modules/mfa/exceptions/mfa.method-required.exception';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -49,7 +59,6 @@ import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/ses
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -71,13 +80,10 @@ import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
-import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
 import type {
     IUser,
     IUserReauthenticationCheck,
     IUserReauthenticationInput,
-    IUserTwoFactorCheck,
-    IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -92,8 +98,11 @@ describe('UserAuthService', () => {
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const mfaChallengeService: MockProxy<MfaChallengeService> =
+        mock<MfaChallengeService>();
+    const mfaPasskeyService: MockProxy<MfaPasskeyService> =
+        mock<MfaPasskeyService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
@@ -108,7 +117,6 @@ describe('UserAuthService', () => {
         mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userRequestContext = buildRequestContext();
@@ -167,7 +175,6 @@ describe('UserAuthService', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {
@@ -187,10 +194,12 @@ describe('UserAuthService', () => {
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: UserService, useValue: userService },
+                { provide: MfaService, useValue: mfaService },
                 {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
+                    provide: MfaChallengeService,
+                    useValue: mfaChallengeService,
                 },
+                { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
@@ -210,7 +219,6 @@ describe('UserAuthService', () => {
                     provide: ActivityLogService,
                     useValue: activityLogService,
                 },
-                { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
         service = module.get(UserAuthService);
@@ -298,12 +306,12 @@ describe('UserAuthService', () => {
         };
 
         it('returns true for the right password and writes nothing', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
 
             await expect(
                 service.isCredentialMatch(credential, 'plain-password')
             ).resolves.toBe(true);
-            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
@@ -312,7 +320,7 @@ describe('UserAuthService', () => {
         });
 
         it('returns false on a wrong password', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
 
             await expect(
                 service.isCredentialMatch(credential, 'wrong-password')
@@ -323,7 +331,7 @@ describe('UserAuthService', () => {
             await expect(
                 service.isCredentialMatch(credential, null)
             ).resolves.toBe(false);
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
         });
     });
 
@@ -334,8 +342,8 @@ describe('UserAuthService', () => {
         };
 
         it('resolves and writes nothing when the password matches', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             await expect(
                 service.assertPasswordAttempt(
@@ -348,11 +356,11 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).toHaveBeenCalledWith(baseUser);
-            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
-            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
                 baseUser.passwordExpired
             );
             expect(
@@ -383,14 +391,14 @@ describe('UserAuthService', () => {
                     ],
                 messagePath: 'user.error.passwordAttemptMax',
             });
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).not.toHaveBeenCalled();
         });
 
         it('counts the failure then throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 false
             );
@@ -414,13 +422,11 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
-            expect(
-                authPasswordUtil.checkPasswordExpired
-            ).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordExpired).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordAttemptMaxException when the counted failure locked the account', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 true
             );
@@ -456,15 +462,15 @@ describe('UserAuthService', () => {
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 messagePath: 'user.error.passwordNotMatch',
             });
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
         });
 
         it('throws UserPasswordExpiredException when the matched password has expired', async () => {
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             await expect(
                 service.assertPasswordAttempt(
@@ -496,8 +502,8 @@ describe('UserAuthService', () => {
 
         it('writes nothing and returns when the correct password is given', async () => {
             userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             await expect(
                 service.assertCurrentPassword(
@@ -513,7 +519,7 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).toHaveBeenCalledWith(baseUser);
-            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
@@ -535,7 +541,7 @@ describe('UserAuthService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).not.toHaveBeenCalled();
@@ -543,7 +549,7 @@ describe('UserAuthService', () => {
 
         it('counts the failure and throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
             userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 false
             );
@@ -588,24 +594,24 @@ describe('UserAuthService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
             });
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
         });
     });
 
     describe('assertPasswordNotExpired', () => {
         it('returns when the password has not expired', () => {
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             expect(() =>
                 service.assertPasswordNotExpired(baseUser)
             ).not.toThrow();
-            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
                 baseUser.passwordExpired
             );
         });
 
         it('throws UserPasswordExpiredException when the password has expired', () => {
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             expect(() => service.assertPasswordNotExpired(baseUser)).toThrow(
                 expect.objectContaining({
@@ -618,7 +624,7 @@ describe('UserAuthService', () => {
                     messagePath: 'user.error.passwordExpired',
                 })
             );
-            expect(authPasswordUtil.checkPasswordExpired).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
                 baseUser.passwordExpired
             );
         });
@@ -836,7 +842,6 @@ describe('UserAuthService', () => {
             ).resolves.toEqual({
                 ...writtenRow,
                 role: user.role,
-                twoFactor: user.twoFactor,
             });
             expect(
                 userVerificationService.markVerifiedBySocialInTx
@@ -923,10 +928,6 @@ describe('UserAuthService', () => {
             lastActiveAt: now,
             notificationToken: 'token-halcyon',
             notificationProvider: null,
-            biometricEnabled: false,
-            biometricToken: null,
-            biometricType: null,
-            biometricEnabledAt: null,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
@@ -1000,9 +1001,6 @@ describe('UserAuthService', () => {
             );
             helperDateService.create.mockReturnValue(now);
             helperDateService.forward.mockImplementation(date => date);
-            userUtil.resolveLoginActivityLogAction.mockReturnValue(
-                EnumActivityLogAction.userLoginCredential
-            );
             activityLogService.recordEffect.mockImplementation(
                 (
                     _requestContext,
@@ -1430,37 +1428,51 @@ describe('UserAuthService', () => {
             ]);
         });
 
-        it('adds the login entry for the login method built from the passed context', async () => {
-            userUtil.resolveLoginActivityLogAction.mockReturnValue(
-                EnumActivityLogAction.userLoginGoogle
-            );
-
-            await service.createTokenAndSessionInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
+        it.each([
+            [
+                EnumUserLoginWith.socialApple,
+                EnumActivityLogAction.userLoginApple,
+            ],
+            [
                 EnumUserLoginWith.socialGoogle,
-                loginAt
-            );
+                EnumActivityLogAction.userLoginGoogle,
+            ],
+            [EnumUserLoginWith.passkey, EnumActivityLogAction.userLoginPasskey],
+            [
+                EnumUserLoginWith.credential,
+                EnumActivityLogAction.userLoginCredential,
+            ],
+            [
+                'unknown' as EnumUserLoginWith,
+                EnumActivityLogAction.userLoginCredential,
+            ],
+        ])(
+            'adds the login entry for the %s login method',
+            async (loginWith, action) => {
+                await service.createTokenAndSessionInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    baseUser,
+                    deviceIdentity,
+                    EnumUserLoginFrom.website,
+                    loginWith,
+                    loginAt
+                );
 
-            expect(userUtil.resolveLoginActivityLogAction).toHaveBeenCalledWith(
-                EnumUserLoginWith.socialGoogle
-            );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userLoginGoogle,
-                    userId: 'user-halcyon',
-                    createdBy: 'user-halcyon',
-                }
-            );
-        });
+                expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                    requestContext,
+                    apiKeyContext,
+                    null,
+                    null,
+                    {
+                        action,
+                        userId: 'user-halcyon',
+                        createdBy: 'user-halcyon',
+                    }
+                );
+            }
+        );
 
         it('signs the tokens after the writes and opens no transaction', async () => {
             await service.createTokenAndSessionInTx(
@@ -1500,134 +1512,218 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('createTwoFactorChallengeInTx', () => {
-        const deviceIdentity: IDeviceIdentity = {
-            fingerprint: 'device-halcyon',
+    describe('getOneForMfaLogin', () => {
+        it('answers the active verified user with MFA on', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            mfaService.isEnabled.mockResolvedValue(true);
+
+            await expect(
+                service.getOneForMfaLogin('user-halcyon')
+            ).resolves.toBe(baseUser);
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
+                'user-halcyon'
+            );
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-halcyon');
+        });
+
+        it('throws UserNotFoundException when the user is gone', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
+            mfaService.isEnabled.mockResolvedValue(true);
+
+            await expect(
+                service.getOneForMfaLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+        });
+
+        it('throws UserInactiveForbiddenException when the user is not active', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                status: EnumUserStatus.inactive,
+            });
+            mfaService.isEnabled.mockResolvedValue(true);
+
+            await expect(
+                service.getOneForMfaLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
+            });
+        });
+
+        it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                isVerified: false,
+            });
+            mfaService.isEnabled.mockResolvedValue(true);
+
+            await expect(
+                service.getOneForMfaLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
+            });
+        });
+
+        it('throws MfaNotEnabledException when MFA is off', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            mfaService.isEnabled.mockResolvedValue(false);
+
+            await expect(
+                service.getOneForMfaLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.notEnabled,
+            });
+        });
+    });
+
+    describe('getOneForPasskeyLogin', () => {
+        it('answers the active verified user without reading the MFA state', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+
+            await expect(
+                service.getOneForPasskeyLogin('user-halcyon')
+            ).resolves.toBe(baseUser);
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
+                'user-halcyon'
+            );
+            expect(mfaService.isEnabled).not.toHaveBeenCalled();
+        });
+
+        it('throws UserCredentialInvalidException when the user is gone', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
+
+            await expect(
+                service.getOneForPasskeyLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.credentialInvalid,
+            });
+        });
+
+        it('throws UserCredentialInvalidException when the user is not active', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                status: EnumUserStatus.inactive,
+            });
+
+            await expect(
+                service.getOneForPasskeyLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.credentialInvalid,
+            });
+        });
+
+        it('throws UserEmailNotVerifiedException when the user is not verified', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
+                isVerified: false,
+            });
+
+            await expect(
+                service.getOneForPasskeyLogin('user-halcyon')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
+            });
+        });
+    });
+
+    describe('createMfaChallengeInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const device: IDeviceIdentity = {
+            fingerprint: 'fingerprint-halcyon',
             name: null,
             platform: EnumDevicePlatform.web,
             notificationToken: null,
         };
-        const twoFactor: TwoFactor = {
-            id: 'two-factor-halcyon',
-            userId: 'user-halcyon',
-            secret: 'encrypted-secret',
-            pendingSecret: null,
-            backupCodes: ['hash-one'],
-            enabled: true,
-            requiredSetup: false,
-            confirmedAt: null,
-            lastUsedAt: null,
-            lastUsedStep: null,
-            attempt: 0,
-            lockedUntil: null,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        };
-        const twoFactorUser: IUserTwoFactorEnabled = { ...baseUser, twoFactor };
-        const setupUser: IUserTwoFactorEnabled = {
-            ...baseUser,
-            twoFactor: { ...twoFactor, requiredSetup: true },
-        };
 
-        const tx = {} as IDatabaseTransactionClient;
-
-        beforeEach(() => {
-            userTwoFactorService.createChallengeInTx.mockResolvedValue({
+        it('creates a login challenge with no WebAuthn challenge and null options for a user without a passkey', async () => {
+            mfaService.getLoginMethods.mockResolvedValue([
+                EnumMfaMethod.totp,
+                EnumMfaMethod.backupCode,
+            ]);
+            mfaChallengeService.createInTx.mockResolvedValue({
                 challengeToken: 'challenge-token',
-                expiresInMs: 60000,
-            });
-        });
-
-        it('returns the setup challenge after saving the pending secret on the given tx when setup is required', async () => {
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
+                expiresInMs: 300000,
             });
 
             await expect(
-                service.createTwoFactorChallengeInTx(
+                service.createMfaChallengeInTx(
                     tx,
-                    requestContext,
-                    apiKeyContext,
-                    setupUser,
-                    deviceIdentity,
+                    'user-halcyon',
+                    device,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential
                 )
             ).resolves.toEqual({
-                isRequiredSetup: true,
                 challengeToken: 'challenge-token',
-                challengeExpiresInMs: 60000,
-                backupCodesRemaining: 1,
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
+                expiresInMs: 300000,
+                methods: [EnumMfaMethod.totp, EnumMfaMethod.backupCode],
+                passkeyOptions: null,
             });
-
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-halcyon'
+            );
             expect(
-                userTwoFactorService.createChallengeInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-halcyon',
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential
-            );
-            expect(userTwoFactorService.setup).toHaveBeenCalledWith(setupUser);
-            expect(userTwoFactorService.saveSetupInTx).toHaveBeenCalledWith(
-                tx,
-                requestContext,
-                apiKeyContext,
-                'user-halcyon',
-                'encrypted-secret'
-            );
+                mfaPasskeyService.getAssertionOptions
+            ).not.toHaveBeenCalled();
+            expect(mfaChallengeService.createInTx).toHaveBeenCalledWith(tx, {
+                purpose: EnumMfaChallengePurpose.login,
+                userId: 'user-halcyon',
+                device,
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+                webAuthnChallenge: null,
+            });
         });
 
-        it('writes no secret when the challenge fails during setup', async () => {
-            const failure = new Error('challenge failed');
-            userTwoFactorService.createChallengeInTx.mockRejectedValue(failure);
-            userTwoFactorService.setup.mockResolvedValue({
-                encryptedSecret: 'encrypted-secret',
-                otpauthUrl: 'otpauth://totp/secret',
-                secret: 'secret',
+        it('creates the login challenge with the challenge of the assertion options and answers the options for a user with a passkey', async () => {
+            const passkeyOptions = {
+                challenge: 'challenge-webauthn',
+            } as PublicKeyCredentialRequestOptionsJSON;
+            mfaService.getLoginMethods.mockResolvedValue([
+                EnumMfaMethod.passkey,
+                EnumMfaMethod.backupCode,
+            ]);
+            mfaPasskeyService.getAssertionOptions.mockResolvedValue(
+                passkeyOptions
+            );
+            mfaChallengeService.createInTx.mockResolvedValue({
+                challengeToken: 'challenge-token',
+                expiresInMs: 300000,
             });
 
             await expect(
-                service.createTwoFactorChallengeInTx(
+                service.createMfaChallengeInTx(
                     tx,
-                    requestContext,
-                    apiKeyContext,
-                    setupUser,
-                    deviceIdentity,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential
-                )
-            ).rejects.toBe(failure);
-            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
-        });
-
-        it('returns the verify challenge without a setup when setup is not required', async () => {
-            await expect(
-                service.createTwoFactorChallengeInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    twoFactorUser,
-                    deviceIdentity,
+                    'user-halcyon',
+                    device,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential
                 )
             ).resolves.toEqual({
-                isRequiredSetup: false,
                 challengeToken: 'challenge-token',
-                challengeExpiresInMs: 60000,
-                backupCodesRemaining: 1,
+                expiresInMs: 300000,
+                methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
+                passkeyOptions,
             });
-
-            expect(userTwoFactorService.setup).not.toHaveBeenCalled();
-            expect(userTwoFactorService.saveSetupInTx).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
+                'user-halcyon'
+            );
+            expect(mfaChallengeService.createInTx).toHaveBeenCalledWith(tx, {
+                purpose: EnumMfaChallengePurpose.login,
+                userId: 'user-halcyon',
+                device,
+                loginFrom: EnumUserLoginFrom.website,
+                loginWith: EnumUserLoginWith.credential,
+                webAuthnChallenge: 'challenge-webauthn',
+            });
         });
     });
 
@@ -1636,41 +1732,30 @@ describe('UserAuthService', () => {
             user: baseUser,
             hashedPassword: 'hashed-password',
         };
-        const twoFactorUser: IUser = {
-            ...baseUser,
-            twoFactor: {
-                id: 'two-factor-halcyon',
-                userId: 'user-halcyon',
-                secret: 'encrypted-secret',
-                pendingSecret: null,
-                backupCodes: [],
-                enabled: true,
-                requiredSetup: false,
-                confirmedAt: null,
-                lastUsedAt: null,
-                lastUsedStep: null,
-                attempt: 0,
-                lockedUntil: null,
-                createdAt: new Date('2026-01-01T00:00:00.000Z'),
-                createdBy: null,
-                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-                updatedBy: null,
-            },
-        };
         const input: IUserReauthenticationInput = {
             action: EnumUserReauthenticationAction.deleteSelf,
             password: 'plain-password',
-            method: EnumAuthTwoFactorMethod.code,
+            method: EnumMfaMethod.totp,
             code: '123456',
             backupCode: null,
+            passkeyChallengeToken: null,
+            passkeyResponse: null,
             otp: null,
         };
-        const twoFactorCheck: IUserTwoFactorCheck = {
-            verified: {
-                method: EnumAuthTwoFactorMethod.code,
-                newBackupCodes: null,
-            },
+        const passkeyResponse = {
+            id: 'credential-halcyon',
+        } as AuthenticationResponseJSON;
+        const passkeyCheck: IMfaCheck = {
+            method: EnumMfaMethod.passkey,
+            totpStep: null,
+            backupCodeIndex: null,
+            passkey: { id: 'passkey-halcyon', counter: 5 },
+        };
+        const mfaCheck: IMfaCheck = {
+            method: EnumMfaMethod.totp,
             totpStep: 7,
+            backupCodeIndex: null,
+            passkey: null,
         };
         const reauthenticationVerification: Verification = {
             id: 'verification-halcyon',
@@ -1690,46 +1775,16 @@ describe('UserAuthService', () => {
             updatedBy: null,
         };
 
-        it('throws AuthTwoFactorInvalidException counted by the two-factor check when the method is code and the code is missing', async () => {
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: twoFactorUser,
-            });
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.check.mockRejectedValue(
-                new AuthTwoFactorInvalidException()
-            );
-
-            await expect(
-                service.assertReauthentication(
-                    userRequestContext,
-                    userApiKeyContext,
-                    twoFactorUser,
-                    { ...input, code: null }
-                )
-            ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorInvalid',
-            });
-            expect(userTwoFactorService.check).toHaveBeenCalledWith(
-                userRequestContext,
-                userApiKeyContext,
-                twoFactorUser,
-                {
-                    method: EnumAuthTwoFactorMethod.code,
-                    code: null,
-                    backupCode: null,
-                }
-            );
+        beforeEach(() => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
+            mfaService.isEnabled.mockResolvedValue(false);
         });
 
-        it('checks the password and writes nothing for an account with a password and no two-factor', async () => {
-            userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+        it('checks the password, then the MFA code through MfaService.check, when MFA is on', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue(mfaCheck);
 
             await expect(
                 service.assertReauthentication(
@@ -1740,97 +1795,185 @@ describe('UserAuthService', () => {
                 )
             ).resolves.toEqual({
                 isPasswordChecked: true,
-                twoFactor: null,
+                mfa: mfaCheck,
                 verificationId: null,
+                passkeyChallengeToken: null,
             });
-            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledBefore(
+                mfaService.check
+            );
+            expect(mfaService.check).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                'user-halcyon',
+                {
+                    method: EnumMfaMethod.totp,
+                    code: '123456',
+                    backupCode: null,
+                    passkeyResponse: null,
+                },
+                null
+            );
         });
 
-        it('checks the password then the two-factor proof for an account with both', async () => {
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: twoFactorUser,
+        it('passes a backup code on', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue({
+                method: EnumMfaMethod.backupCode,
+                totpStep: null,
+                backupCodeIndex: 0,
+                passkey: null,
             });
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.check.mockResolvedValue(twoFactorCheck);
+
+            await service.assertReauthentication(
+                userRequestContext,
+                userApiKeyContext,
+                baseUser,
+                {
+                    ...input,
+                    method: EnumMfaMethod.backupCode,
+                    code: null,
+                    backupCode: 'BACKUP1',
+                }
+            );
+
+            expect(mfaService.check).toHaveBeenCalledWith(
+                userRequestContext,
+                userApiKeyContext,
+                'user-halcyon',
+                {
+                    method: EnumMfaMethod.backupCode,
+                    code: null,
+                    backupCode: 'BACKUP1',
+                    passkeyResponse: null,
+                },
+                null
+            );
+        });
+
+        it('answers the MFA exception of the check and counts nothing on the password budget', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockRejectedValue(new MfaInvalidException());
 
             await expect(
                 service.assertReauthentication(
                     userRequestContext,
                     userApiKeyContext,
-                    twoFactorUser,
+                    baseUser,
+                    { ...input, code: null }
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.invalid,
+                messagePath: 'mfa.error.invalid',
+            });
+        });
+
+        it('throws MfaMethodRequiredException uncounted when the method is missing', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockRejectedValue(
+                new MfaMethodRequiredException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    { ...input, method: null }
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                messagePath: 'mfa.error.methodRequired',
+            });
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('asks no MFA code for the mfaTotpEnable action', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        method: null,
+                        code: null,
+                    }
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                mfa: null,
+                verificationId: null,
+                passkeyChallengeToken: null,
+            });
+            expect(mfaService.check).not.toHaveBeenCalled();
+        });
+
+        it('asks no MFA code and returns no check with MFA off', async () => {
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
                     input
                 )
             ).resolves.toEqual({
                 isPasswordChecked: true,
-                twoFactor: twoFactorCheck,
+                mfa: null,
                 verificationId: null,
+                passkeyChallengeToken: null,
             });
-            expect(userTwoFactorService.check).toHaveBeenCalledWith(
-                userRequestContext,
-                userApiKeyContext,
-                twoFactorUser,
-                {
-                    method: EnumAuthTwoFactorMethod.code,
-                    code: '123456',
-                    backupCode: null,
-                }
-            );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(mfaService.check).not.toHaveBeenCalled();
         });
 
-        it('checks only the two-factor proof for an account with no password', async () => {
+        it('asks no email code for an account with a password', async () => {
+            await service.assertReauthentication(
+                userRequestContext,
+                userApiKeyContext,
+                baseUser,
+                { ...input, otp: '123456' }
+            );
+
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).not.toHaveBeenCalled();
+        });
+
+        it('asks no email code for an account with no password and MFA on', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.check.mockResolvedValue(twoFactorCheck);
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue(mfaCheck);
 
             await expect(
                 service.assertReauthentication(
                     userRequestContext,
                     userApiKeyContext,
-                    { ...twoFactorUser, password: null },
+                    { ...baseUser, password: null },
                     { ...input, password: null }
                 )
             ).resolves.toEqual({
                 isPasswordChecked: false,
-                twoFactor: twoFactorCheck,
+                mfa: mfaCheck,
                 verificationId: null,
+                passkeyChallengeToken: null,
             });
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.getOneActiveReauthentication
+            ).not.toHaveBeenCalled();
         });
 
-        it('checks only the password when an admin reset leaves the two-factor unverified', async () => {
-            userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
-
-            await expect(
-                service.assertReauthentication(
-                    userRequestContext,
-                    userApiKeyContext,
-                    twoFactorUser,
-                    input
-                )
-            ).resolves.toEqual({
-                isPasswordChecked: true,
-                twoFactor: null,
-                verificationId: null,
-            });
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
-        });
-
-        it('throws UserReauthenticationOtpRequiredException for an account with neither proof and no code', async () => {
+        it('throws UserReauthenticationOtpRequiredException for an account with neither proof and no email code', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
 
             await expect(
                 service.assertReauthentication(
@@ -1847,12 +1990,11 @@ describe('UserAuthService', () => {
             expect(
                 userVerificationService.getOneActiveReauthentication
             ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+            expect(mfaService.check).not.toHaveBeenCalled();
         });
 
-        it('throws UserReauthenticationOtpInvalidException and writes nothing for a wrong, expired, or other-action code', async () => {
+        it('throws UserReauthenticationOtpInvalidException for a wrong, expired, or other-action email code', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
             userVerificationService.getOneActiveReauthentication.mockRejectedValue(
                 new UserReauthenticationOtpInvalidException()
             );
@@ -1867,7 +2009,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
-                messagePath: 'user.error.reauthenticationOtpInvalid',
             });
             expect(
                 userVerificationService.getOneActiveReauthentication
@@ -1876,15 +2017,12 @@ describe('UserAuthService', () => {
                 EnumUserReauthenticationAction.deleteSelf,
                 '000000'
             );
-            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('checks the code of the action and returns its verification id for an account with neither proof', async () => {
+        it('checks the email code of the action and answers its verification id for an account with neither proof', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
             userVerificationService.getOneActiveReauthentication.mockResolvedValue(
-                { ...reauthenticationVerification, id: 'verification-halcyon' }
+                reauthenticationVerification
             );
 
             await expect(
@@ -1901,8 +2039,9 @@ describe('UserAuthService', () => {
                 )
             ).resolves.toEqual({
                 isPasswordChecked: false,
-                twoFactor: null,
+                mfa: null,
                 verificationId: 'verification-halcyon',
+                passkeyChallengeToken: null,
             });
             expect(
                 userVerificationService.getOneActiveReauthentication
@@ -1911,177 +2050,218 @@ describe('UserAuthService', () => {
                 EnumUserReauthenticationAction.mobileNumberAdd,
                 '123456'
             );
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
-            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(mfaService.check).not.toHaveBeenCalled();
         });
 
-        it('checks no code for an account with a password', async () => {
-            userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+        it('checks the passkey only and never calls the password or TOTP check for a valid passkey proof on an account with a password and TOTP', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                'webauthn-halcyon'
+            );
+            mfaService.check.mockResolvedValue(passkeyCheck);
 
-            await service.assertReauthentication(
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        passkeyChallengeToken: 'challenge-halcyon',
+                        passkeyResponse,
+                    }
+                )
+            ).resolves.toEqual({
+                isPasswordChecked: false,
+                mfa: passkeyCheck,
+                verificationId: null,
+                passkeyChallengeToken: 'challenge-halcyon',
+            });
+            expect(
+                mfaChallengeService.getWebAuthnChallengeForUser
+            ).toHaveBeenCalledWith(
+                'challenge-halcyon',
+                EnumMfaChallengePurpose.reauthentication,
+                'user-halcyon'
+            );
+            expect(mfaService.check).toHaveBeenCalledTimes(1);
+            expect(mfaService.check).toHaveBeenCalledWith(
                 userRequestContext,
                 userApiKeyContext,
-                baseUser,
-                { ...input, otp: '123456' }
+                'user-halcyon',
+                {
+                    method: EnumMfaMethod.passkey,
+                    code: null,
+                    backupCode: null,
+                    passkeyResponse,
+                },
+                'webauthn-halcyon'
             );
-
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.countFailedPasswordAttempt
+            ).not.toHaveBeenCalled();
             expect(
                 userVerificationService.getOneActiveReauthentication
             ).not.toHaveBeenCalled();
         });
 
-        it('checks no two-factor proof for the twoFactorEnable action', async () => {
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: twoFactorUser,
-            });
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+        it('takes a passkey proof for the mfaTotpEnable action too', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                'webauthn-halcyon'
+            );
+            mfaService.check.mockResolvedValue(passkeyCheck);
 
             await expect(
                 service.assertReauthentication(
                     userRequestContext,
                     userApiKeyContext,
-                    twoFactorUser,
+                    baseUser,
                     {
                         ...input,
-                        action: EnumUserReauthenticationAction.twoFactorEnable,
-                        method: null,
-                        code: null,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        passkeyChallengeToken: 'challenge-halcyon',
+                        passkeyResponse,
                     }
                 )
-            ).resolves.toEqual({
-                isPasswordChecked: true,
-                twoFactor: null,
-                verificationId: null,
-            });
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
+            ).resolves.toMatchObject({ mfa: passkeyCheck });
+            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
         });
 
-        it('throws UserPasswordNotMatchException on a wrong password and checks no two-factor proof', async () => {
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: twoFactorUser,
-            });
-            authPasswordUtil.validatePassword.mockResolvedValue(false);
-            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
-                false
+        it('passes on the MfaChallengeInvalidException of the challenge service and checks nothing', async () => {
+            mfaChallengeService.getWebAuthnChallengeForUser.mockRejectedValue(
+                new MfaChallengeInvalidException()
             );
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
 
             await expect(
                 service.assertReauthentication(
                     userRequestContext,
                     userApiKeyContext,
-                    twoFactorUser,
-                    { ...input, password: 'wrong' }
+                    baseUser,
+                    {
+                        ...input,
+                        passkeyChallengeToken: 'challenge-halcyon',
+                        passkeyResponse,
+                    }
                 )
             ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                messagePath: 'user.error.passwordNotMatch',
+                module: 'mfa',
+                messagePath: 'mfa.error.challengeInvalid',
             });
-            expect(
-                userPasswordService.countFailedPasswordAttempt
-            ).toHaveBeenCalledWith(
+            expect(mfaService.check).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaMethodUnavailableException for a passkey proof on an account without a passkey', async () => {
+            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                'webauthn-halcyon'
+            );
+            mfaService.check.mockRejectedValue(
+                new MfaMethodUnavailableException()
+            );
+
+            await expect(
+                service.assertReauthentication(
+                    userRequestContext,
+                    userApiKeyContext,
+                    baseUser,
+                    {
+                        ...input,
+                        passkeyChallengeToken: 'challenge-halcyon',
+                        passkeyResponse,
+                    }
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                messagePath: 'mfa.error.methodUnavailable',
+            });
+        });
+
+        it('keeps the password and code order when only one passkey field is present', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue(mfaCheck);
+
+            await service.assertReauthentication(
                 userRequestContext,
                 userApiKeyContext,
-                twoFactorUser
-            );
-            expect(userTwoFactorService.check).not.toHaveBeenCalled();
-        });
-
-        it('throws AuthTwoFactorMethodRequiredException uncounted when the method is missing', async () => {
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: twoFactorUser,
-            });
-            authPasswordUtil.validatePassword.mockResolvedValue(true);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
-            userTwoFactorService.check.mockRejectedValue(
-                new AuthTwoFactorMethodRequiredException()
+                baseUser,
+                { ...input, passkeyChallengeToken: 'challenge-halcyon' }
             );
 
-            await expect(
-                service.assertReauthentication(
-                    userRequestContext,
-                    userApiKeyContext,
-                    twoFactorUser,
-                    { ...input, method: null }
-                )
-            ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorMethodRequired',
-            });
             expect(
-                userTwoFactorService.countFailedAttempt
+                mfaChallengeService.getWebAuthnChallengeForUser
             ).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledTimes(1);
         });
     });
 
     describe('assertReauthenticationOtpAllowed', () => {
-        it('passes an account with no password and no two-factor requiring verification', () => {
+        it('answers nothing for an account with no password and MFA off', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+            mfaService.isEnabled.mockResolvedValue(false);
 
-            expect(() =>
-                service.assertReauthenticationOtpAllowed({
-                    ...baseUser,
-                    password: null,
-                })
-            ).not.toThrow();
+            await expect(
+                service.assertReauthenticationOtpAllowed(baseUser)
+            ).resolves.toBeUndefined();
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-halcyon');
         });
 
-        it('throws UserReauthenticationOtpNotAllowedException for an account with a password', () => {
+        it('throws UserReauthenticationOtpNotAllowedException for an account with a password', async () => {
             userPasswordService.getCredential.mockReturnValue({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
             });
-            userUtil.requiresTwoFactorVerification.mockReturnValue(false);
+            mfaService.isEnabled.mockResolvedValue(false);
 
-            expect(() =>
+            await expect(
                 service.assertReauthenticationOtpAllowed(baseUser)
-            ).toThrow(UserReauthenticationOtpNotAllowedException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
+            });
         });
 
-        it('throws UserReauthenticationOtpNotAllowedException for an account with two-factor requiring verification', () => {
+        it('throws UserReauthenticationOtpNotAllowedException for an account with MFA on', async () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            userUtil.requiresTwoFactorVerification.mockReturnValue(true);
+            mfaService.isEnabled.mockResolvedValue(true);
 
-            expect(() =>
-                service.assertReauthenticationOtpAllowed({
-                    ...baseUser,
-                    password: null,
-                })
-            ).toThrow(UserReauthenticationOtpNotAllowedException);
+            await expect(
+                service.assertReauthenticationOtpAllowed(baseUser)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
+            });
         });
     });
 
     describe('completeReauthenticationInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const authContext = buildAuthJwtAccessContext('user-halcyon');
-        const twoFactorCheck: IUserTwoFactorCheck = {
-            verified: {
-                method: EnumAuthTwoFactorMethod.backupCodes,
-                newBackupCodes: ['kept-hash'],
-            },
+        const mfaCheck: IMfaCheck = {
+            method: EnumMfaMethod.backupCode,
             totpStep: null,
+            backupCodeIndex: 0,
+            passkey: null,
         };
         const passwordOnly: IUserReauthenticationCheck = {
             isPasswordChecked: true,
-            twoFactor: null,
+            mfa: null,
             verificationId: null,
+            passkeyChallengeToken: null,
         };
         const both: IUserReauthenticationCheck = {
             isPasswordChecked: true,
-            twoFactor: twoFactorCheck,
+            mfa: mfaCheck,
             verificationId: null,
+            passkeyChallengeToken: null,
         };
+
+        beforeEach(() => {
+            activityLogService.recordEffect.mockReturnValue(entryEffect);
+        });
 
         it('resets only the password counter for a password proof', async () => {
             await expect(
@@ -2090,51 +2270,41 @@ describe('UserAuthService', () => {
                     userRequestContext,
                     userApiKeyContext,
                     authContext,
-                    baseUser,
                     passwordOnly
                 )
             ).resolves.toBeUndefined();
+
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-halcyon');
-            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('completes only the two-factor proof for an account with no password', async () => {
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-
+        it('completes the MFA proof on the tx and adds the verify entry', async () => {
             await service.completeReauthenticationInTx(
                 tx,
                 userRequestContext,
                 userApiKeyContext,
                 authContext,
-                baseUser,
-                { ...both, isPasswordChecked: false }
+                both
             );
 
             expect(
                 userPasswordService.resetPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+            ).toHaveBeenCalledWith(tx, 'user-halcyon');
+            expect(mfaService.completeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
-                twoFactorCheck
+                mfaCheck
             );
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).toHaveBeenCalledWith(tx, baseUser, twoFactorCheck.verified);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 userRequestContext,
                 userApiKeyContext,
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    action: EnumActivityLogAction.userVerifyMfa,
                     userId: 'user-halcyon',
                     createdBy: 'user-halcyon',
                 }
@@ -2142,53 +2312,50 @@ describe('UserAuthService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
 
-        it('runs the password reset, the step accept, the verification record, then the entry in order', async () => {
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+        it('claims the reauthentication challenge first, then completes the passkey proof and adds the verify entry on the given tx', async () => {
+            const passkeyMfa: IMfaCheck = {
+                method: EnumMfaMethod.passkey,
+                totpStep: null,
+                backupCodeIndex: null,
+                passkey: { id: 'passkey-halcyon', counter: 5 },
+            };
 
             await service.completeReauthenticationInTx(
                 tx,
                 userRequestContext,
                 userApiKeyContext,
                 authContext,
-                baseUser,
-                both
-            );
-
-            expect(
-                userPasswordService.resetPasswordAttemptInTx
-            ).toHaveBeenCalledBefore(userTwoFactorService.verifyInTx);
-            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledBefore(
-                userTwoFactorService.recordVerificationInTx
-            );
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).toHaveBeenCalledBefore(outboxService.addInTx);
-        });
-
-        it('writes nothing for an account with neither proof', async () => {
-            await service.completeReauthenticationInTx(
-                tx,
-                userRequestContext,
-                userApiKeyContext,
-                authContext,
-                baseUser,
                 {
                     isPasswordChecked: false,
-                    twoFactor: null,
+                    mfa: passkeyMfa,
                     verificationId: null,
+                    passkeyChallengeToken: 'challenge-halcyon',
                 }
             );
 
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
+                tx,
+                'challenge-halcyon',
+                EnumMfaChallengePurpose.reauthentication,
+                'user-halcyon'
+            );
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
+                mfaService.completeInTx
+            );
+            expect(mfaService.completeInTx).toHaveBeenCalledWith(
+                tx,
+                'user-halcyon',
+                passkeyMfa
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('throws AuthTwoFactorInvalidException for a replayed TOTP step and records nothing after it', async () => {
-            userTwoFactorService.verifyInTx.mockRejectedValue(
-                new AuthTwoFactorInvalidException()
+        it('completes nothing when the challenge claim is lost', async () => {
+            mfaChallengeService.consumeInTx.mockRejectedValue(
+                new MfaChallengeInvalidException()
             );
 
             await expect(
@@ -2197,20 +2364,54 @@ describe('UserAuthService', () => {
                     userRequestContext,
                     userApiKeyContext,
                     authContext,
-                    baseUser,
-                    both
+                    {
+                        isPasswordChecked: false,
+                        mfa: mfaCheck,
+                        verificationId: null,
+                        passkeyChallengeToken: 'challenge-halcyon',
+                    }
                 )
             ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorInvalid',
+                module: 'mfa',
+                messagePath: 'mfa.error.challengeInvalid',
             });
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('marks the code verification used after the other proofs for an account with neither proof', async () => {
+        it('claims no challenge for a proof without a passkey token', async () => {
+            await service.completeReauthenticationInTx(
+                tx,
+                userRequestContext,
+                userApiKeyContext,
+                authContext,
+                both
+            );
+
+            expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+        });
+
+        it('adds no entry when the MFA completion throws', async () => {
+            mfaService.completeInTx.mockRejectedValue(
+                new MfaInvalidException()
+            );
+
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    userRequestContext,
+                    userApiKeyContext,
+                    authContext,
+                    both
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                messagePath: 'mfa.error.invalid',
+            });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('marks the email code used for an account with neither proof', async () => {
             userVerificationService.markUsedInTx.mockResolvedValue(true);
 
             await expect(
@@ -2219,11 +2420,11 @@ describe('UserAuthService', () => {
                     userRequestContext,
                     userApiKeyContext,
                     authContext,
-                    baseUser,
                     {
                         isPasswordChecked: false,
-                        twoFactor: null,
+                        mfa: null,
                         verificationId: 'verification-halcyon',
+                        passkeyChallengeToken: null,
                     }
                 )
             ).resolves.toBeUndefined();
@@ -2236,10 +2437,10 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
-            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
+            expect(mfaService.completeInTx).not.toHaveBeenCalled();
         });
 
-        it('throws UserReauthenticationOtpInvalidException when the code was used first', async () => {
+        it('throws UserReauthenticationOtpInvalidException when the email code was used first', async () => {
             userVerificationService.markUsedInTx.mockResolvedValue(false);
 
             await expect(
@@ -2248,91 +2449,29 @@ describe('UserAuthService', () => {
                     userRequestContext,
                     userApiKeyContext,
                     authContext,
-                    baseUser,
                     {
                         isPasswordChecked: false,
-                        twoFactor: null,
+                        mfa: null,
                         verificationId: 'verification-halcyon',
+                        passkeyChallengeToken: null,
                     }
                 )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
-                messagePath: 'user.error.reauthenticationOtpInvalid',
             });
         });
 
-        it('marks no code used for a password or two-factor proof', async () => {
+        it('marks no email code used for a password or MFA proof', async () => {
             await service.completeReauthenticationInTx(
                 tx,
                 userRequestContext,
                 userApiKeyContext,
                 authContext,
-                baseUser,
                 passwordOnly
             );
 
             expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws AuthTwoFactorInvalidException for a backup code used twice and adds no entry', async () => {
-            userTwoFactorService.recordVerificationInTx.mockRejectedValue(
-                new AuthTwoFactorInvalidException()
-            );
-
-            await expect(
-                service.completeReauthenticationInTx(
-                    tx,
-                    userRequestContext,
-                    userApiKeyContext,
-                    authContext,
-                    baseUser,
-                    both
-                )
-            ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorInvalid',
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('requiresTwoFactorSetup', () => {
-        const enabled: TwoFactor = {
-            id: 'two-factor-halcyon',
-            userId: 'user-halcyon',
-            secret: 'encrypted-secret',
-            pendingSecret: null,
-            backupCodes: [],
-            enabled: true,
-            requiredSetup: false,
-            confirmedAt: null,
-            lastUsedAt: null,
-            lastUsedStep: null,
-            attempt: 0,
-            lockedUntil: null,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        };
-
-        it('returns true when the enabled row still requires setup', () => {
-            expect(
-                service['requiresTwoFactorSetup']({
-                    ...baseUser,
-                    twoFactor: { ...enabled, requiredSetup: true },
-                })
-            ).toBe(true);
-        });
-
-        it('returns false when the enabled row requires no setup', () => {
-            expect(
-                service['requiresTwoFactorSetup']({
-                    ...baseUser,
-                    twoFactor: { ...enabled, requiredSetup: false },
-                })
-            ).toBe(false);
         });
     });
 });

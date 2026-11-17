@@ -85,7 +85,6 @@ describe('UserGuard', () => {
         deletedAt: null,
         deletedBy: null,
         role,
-        twoFactor: null,
     };
     const accessContext = buildAuthJwtAccessContext(user.id);
     const refreshContext = buildAuthJwtRefreshContext(user.id, 'refresh-token');

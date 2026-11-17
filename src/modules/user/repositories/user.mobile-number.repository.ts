@@ -82,6 +82,20 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         });
     }
 
+    async markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string,
+        verifiedAt: Date
+    ): Promise<boolean> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: { id: mobileNumberId, userId, isVerified: false },
+            data: { isVerified: true, verifiedAt },
+        });
+
+        return count > 0;
+    }
+
     async deleteInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string

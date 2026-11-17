@@ -1,10 +1,10 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { SessionRevokeRequestSchema } from '@modules/session/dtos/request/session.revoke.request.dto';
 
 describe('SessionRevokeRequestSchema', () => {
     const payload = {
         password: 'Current-pass1',
-        method: EnumAuthTwoFactorMethod.code,
+        method: EnumMfaMethod.totp,
         code: '654321',
         backupCode: 'ABCD1234EF',
         otp: '123456',

@@ -33,4 +33,5 @@ export enum EnumUserStatusCodeError {
     reauthenticationOtpRequired = 51030,
     reauthenticationOtpInvalid = 51031,
     photoContentInvalid = 51032,
+    mobileNumberAlreadyVerified = 51033,
 }

@@ -39,7 +39,6 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
                 user: {
                     include: {
                         role: { include: { policies: true } },
-                        twoFactor: true,
                     },
                 },
             },

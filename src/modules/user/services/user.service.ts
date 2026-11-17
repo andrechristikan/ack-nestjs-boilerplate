@@ -21,7 +21,7 @@ import {
     EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TwoFactor, User } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import type {
     IAuthJwtAccessContext,
     IAuthPassword,
@@ -59,10 +59,9 @@ import type {
     IUserList,
     IUserProfile,
     IUserRecipient,
-    IUserTwoFactorStatus,
 } from '@modules/user/interfaces/user.interface';
 import { RoleService } from '@modules/role/services/role.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
@@ -81,7 +80,7 @@ export class UserService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userVerificationService: UserVerificationService,
-        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly mfaService: MfaService,
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
@@ -132,9 +131,7 @@ export class UserService {
         authContext: IAuthJwtAccessContext,
         requiredVerified: boolean
     ): Promise<IUser> {
-        const user = await this.userRepository.findOneWithTwoFactorById(
-            authContext.userId
-        );
+        const user = await this.userRepository.findOneById(authContext.userId);
         if (!user) {
             throw new UserAccountNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
@@ -147,11 +144,9 @@ export class UserService {
             authContext.loginWith
         );
         if (gatesPasswordExpiry) {
-            const checkPasswordExpired: boolean =
-                this.authPasswordUtil.checkPasswordExpired(
-                    user.passwordExpired
-                );
-            if (checkPasswordExpired) {
+            const isPasswordExpired: boolean =
+                this.authPasswordUtil.isPasswordExpired(user.passwordExpired);
+            if (isPasswordExpired) {
                 throw new UserPasswordExpiredException();
             }
         }
@@ -208,13 +203,8 @@ export class UserService {
                 );
             }
 
-            const twoFactor =
-                await this.userTwoFactorService.createDisabledInTx(
-                    tx,
-                    input.userId,
-                    input.createdBy
-                );
-            rows.push({ ...users[index]!, twoFactor });
+            await this.mfaService.createInTx(tx, input.userId, input.createdBy);
+            rows.push(users[index]!);
         }
 
         return rows;
@@ -419,7 +409,7 @@ export class UserService {
         }
     }
 
-    /** Writes the status guarded on the target's current one; activating a user resets its password and two-factor attempt counters and clears both locks. */
+    /** Writes the status guarded on the target's current one; activating a user resets its password and MFA attempt counters and clears both locks. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         {
@@ -453,34 +443,35 @@ export class UserService {
         }
 
         if (status === EnumUserStatus.active) {
-            await this.userTwoFactorService.resetAttemptInTx(tx, id);
+            await this.mfaService.resetAttemptInTx(tx, id);
         }
 
         return row;
     }
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {
-        const [checkUsername, checkBadWord, isExist] = await Promise.all([
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existsByUsername(username),
-        ]);
+        const [isUsernamePatternInvalid, hasBadWord, isExist] =
+            await Promise.all([
+                this.userUtil.isUsernamePatternInvalid(username),
+                this.userUtil.hasBadWord(username),
+                this.userRepository.existsByUsername(username),
+            ]);
 
         return {
-            badWord: checkBadWord,
+            badWord: hasBadWord,
             exist: isExist,
-            pattern: checkUsername,
+            pattern: isUsernamePatternInvalid,
         };
     }
 
     async checkEmail(email: string): Promise<IUserCheckEmail> {
-        const [checkBadWord, isExist] = await Promise.all([
-            this.userUtil.checkBadWord(email),
+        const [hasBadWord, isExist] = await Promise.all([
+            this.userUtil.hasBadWord(email),
             this.userRepository.existsByEmail(email),
         ]);
 
         return {
-            badWord: checkBadWord,
+            badWord: hasBadWord,
             exist: isExist,
         };
     }
@@ -498,27 +489,6 @@ export class UserService {
             identity,
             deletedAt
         );
-    }
-
-    /** A null record maps to a disabled status; isPendingConfirmation is true while a pending secret is held. */
-    mapTwoFactor(twoFactor: TwoFactor | null): IUserTwoFactorStatus {
-        if (twoFactor === null) {
-            return {
-                isEnabled: false,
-                isPendingConfirmation: false,
-                backupCodesRemaining: 0,
-                confirmedAt: null,
-                lastUsedAt: null,
-            };
-        }
-
-        return {
-            isEnabled: twoFactor.enabled,
-            isPendingConfirmation: !!twoFactor.pendingSecret,
-            backupCodesRemaining: twoFactor.backupCodes.length,
-            confirmedAt: twoFactor.confirmedAt,
-            lastUsedAt: twoFactor.lastUsedAt,
-        };
     }
 
     revokesSessionsOn(status: EnumUserStatus): boolean {

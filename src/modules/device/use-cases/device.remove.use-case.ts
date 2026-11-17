@@ -50,7 +50,15 @@ export class DeviceRemoveUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
         deviceOwnershipId: string,
-        { password, method, code, backupCode, otp }: DeviceRemoveRequestDto
+        {
+            password,
+            method,
+            code,
+            backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
+            otp,
+        }: DeviceRemoveRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         const userId = authContext.userId;
@@ -65,6 +73,8 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -77,7 +87,6 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    user,
                     check
                 );
                 const { deviceOwnership, revokedSessions } =

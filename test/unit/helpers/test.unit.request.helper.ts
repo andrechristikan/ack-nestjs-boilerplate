@@ -127,7 +127,6 @@ export function buildUser(id: string, email: string): IUser {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 }
 

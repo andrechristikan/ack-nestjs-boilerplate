@@ -107,7 +107,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const admin: IUser = {
         ...user,
@@ -175,7 +174,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
-        userUtil.requiresTwoFactorVerification.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

@@ -1,5 +1,8 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
+import type {
+    IFirebasePushPayload,
+    IFirebasePushResult,
+} from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -8,7 +11,11 @@ import {
     EnumNotificationPushProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
-import type { INotificationPushSendOutcome } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationPushSendOutcome,
+    INotificationPushTokenPair,
+    INotificationStepFailure,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { Injectable } from '@nestjs/common';
@@ -31,6 +38,75 @@ export class NotificationPushDeliveryService {
         );
 
         throw new UnrecoverableError(message);
+    }
+
+    private toEncryptedTokens(
+        pairs: INotificationPushTokenPair[],
+        tokens: string[]
+    ): string[] {
+        return pairs
+            .filter(pair => tokens.includes(pair.token))
+            .map(pair => pair.encrypted);
+    }
+
+    private toStepFailure(
+        step: EnumNotificationStep,
+        reason: unknown
+    ): INotificationStepFailure {
+        const rawError =
+            reason instanceof Error ? reason : new Error(String(reason));
+
+        return { step, rawError };
+    }
+
+    private toTokenPairs(
+        userId: string,
+        encryptedTokens: string[]
+    ): INotificationPushTokenPair[] {
+        return encryptedTokens.map(encrypted => {
+            const token = this.notificationUtil.decryptPayload(
+                encrypted,
+                userId
+            );
+
+            return { encrypted, token };
+        });
+    }
+
+    private toMulticastOutcome(
+        pairs: INotificationPushTokenPair[],
+        { failureTokens, retryTokens }: IFirebasePushResult,
+        encryptedFailureTokens: string[] | null
+    ): INotificationPushSendOutcome {
+        const failed = this.toEncryptedTokens(pairs, failureTokens);
+        const merged = [...(encryptedFailureTokens ?? []), ...failed];
+        const pending = this.toEncryptedTokens(pairs, retryTokens);
+        let failure: INotificationStepFailure | null = null;
+        if (pending.length > 0) {
+            const message = this.messageService.setMessage(
+                'notification.queue.push.error.tokensPending',
+                { properties: { count: pending.length } }
+            );
+            failure = {
+                step: EnumNotificationStep.sendMulticast,
+                rawError: new Error(message),
+            };
+        }
+
+        return {
+            encryptedFailureTokens: [...new Set(merged)],
+            encryptedPendingTokens: pending,
+            failure,
+        };
+    }
+
+    toStepSummary(failedSteps: INotificationStepFailure[]): string {
+        const steps = failedSteps.map(({ step }) => step);
+
+        return this.messageService.setMessage(
+            'notification.queue.error.stepsFailed',
+            { properties: { steps: steps.join(', ') } }
+        );
     }
 
     async stampProcessed(
@@ -59,7 +135,7 @@ export class NotificationPushDeliveryService {
         encryptedFailureTokens: string[] | null,
         encryptedPendingTokens: string[] | null
     ): Promise<INotificationPushSendOutcome> {
-        const pairs = this.notificationUtil.toTokenPairs(
+        const pairs = this.toTokenPairs(
             userId,
             encryptedPendingTokens ?? encryptedTokens
         );
@@ -69,13 +145,13 @@ export class NotificationPushDeliveryService {
                 payload
             );
 
-            return this.notificationUtil.toMulticastOutcome(
+            return this.toMulticastOutcome(
                 pairs,
                 result,
                 encryptedFailureTokens
             );
         } catch (error: unknown) {
-            const failure = this.notificationUtil.toStepFailure(
+            const failure = this.toStepFailure(
                 EnumNotificationStep.sendMulticast,
                 error
             );

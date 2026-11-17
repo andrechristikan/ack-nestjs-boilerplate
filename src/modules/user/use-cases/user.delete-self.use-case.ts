@@ -22,8 +22,8 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -50,7 +50,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
-        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly mfaService: MfaService,
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userSocialService: UserSocialService,
         private readonly workspaceService: WorkspaceService,
@@ -101,7 +101,15 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
-        { password, method, code, backupCode, otp }: UserDeleteSelfRequestDto
+        {
+            password,
+            method,
+            code,
+            backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
+            otp,
+        }: UserDeleteSelfRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         this.userService.assertSelfDeletable(user);
@@ -119,6 +127,8 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -132,7 +142,6 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        user,
                         check
                     );
                     await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
@@ -172,7 +181,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         userId
                     );
                     await this.userSocialService.removeByUserInTx(tx, userId);
-                    await this.userTwoFactorService.removeInTx(tx, userId);
+                    await this.mfaService.deleteByUserInTx(tx, userId);
                     await this.sessionService.revokeAllByUserInTx(
                         tx,
                         userId,

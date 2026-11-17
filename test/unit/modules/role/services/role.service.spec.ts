@@ -1168,7 +1168,6 @@ describe('RoleService', () => {
             deletedAt: null,
             deletedBy: null,
             role: roleWithPolicies,
-            twoFactor: null,
         };
 
         it('returns an empty policy list for a superAdmin, bypassing the required roles', async () => {

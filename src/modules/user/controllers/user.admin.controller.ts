@@ -27,7 +27,6 @@ import { UserGetOneUseCase } from '@modules/user/use-cases/user.get-one.use-case
 import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
 import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.update-status-by-admin.use-case';
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
-import { UserResetTwoFactorByAdminUseCase } from '@modules/user/use-cases/user.reset-two-factor-by-admin.use-case';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
 import { UserExportByAdminUseCase } from '@modules/user/use-cases/user.export-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -100,7 +99,6 @@ export class UserAdminController {
         private readonly userCreateByAdminUseCase: UserCreateByAdminUseCase,
         private readonly userUpdateStatusByAdminUseCase: UserUpdateStatusByAdminUseCase,
         private readonly userUpdatePasswordByAdminUseCase: UserUpdatePasswordByAdminUseCase,
-        private readonly userResetTwoFactorByAdminUseCase: UserResetTwoFactorByAdminUseCase,
         private readonly userImportByAdminUseCase: UserImportByAdminUseCase,
         private readonly userExportByAdminUseCase: UserExportByAdminUseCase
     ) {}
@@ -229,36 +227,6 @@ export class UserAdminController {
         userId: string
     ): Promise<IResponseReturn<void>> {
         return this.userUpdatePasswordByAdminUseCase.execute(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            userContext,
-            userId
-        );
-    }
-
-    @Doc({ summary: 'reset user' })
-    @Response('user.twoFactor.resetByAdmin')
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
-        action: [EnumPolicyAction.read, EnumPolicyAction.update],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Patch('/2fa/:userId/reset')
-    async resetTwoFactorByAdmin(
-        @RequestContext() requestContext: IRequestContext,
-        @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @UserContext() userContext: IUserContext,
-        @Param('userId', { schema: RequestMongoIdSchema })
-        userId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.userResetTwoFactorByAdminUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,

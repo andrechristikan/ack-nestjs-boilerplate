@@ -53,11 +53,11 @@ describe('AuthPasswordUtil', () => {
         util = module.get(AuthPasswordUtil);
     });
 
-    describe('validatePassword', () => {
+    describe('isPasswordMatched', () => {
         it('delegates to the argon2 compare', async () => {
             helperHashService.argon2Compare.mockResolvedValue(true);
 
-            const result = await util.validatePassword('plain', 'hash');
+            const result = await util.isPasswordMatched('plain', 'hash');
 
             expect(result).toBe(true);
             expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
@@ -137,9 +137,9 @@ describe('AuthPasswordUtil', () => {
         });
     });
 
-    describe('checkPasswordExpired', () => {
+    describe('isPasswordExpired', () => {
         it('returns false when no expiry is set', () => {
-            expect(util.checkPasswordExpired(null)).toBe(false);
+            expect(util.isPasswordExpired(null)).toBe(false);
         });
 
         it('returns true when the expiry date has passed', () => {
@@ -147,7 +147,7 @@ describe('AuthPasswordUtil', () => {
                 new Date('2026-02-01T00:00:00.000Z')
             );
 
-            const result = util.checkPasswordExpired(
+            const result = util.isPasswordExpired(
                 new Date('2026-01-01T00:00:00.000Z')
             );
 
@@ -159,7 +159,7 @@ describe('AuthPasswordUtil', () => {
                 new Date('2026-01-01T00:00:00.000Z')
             );
 
-            const result = util.checkPasswordExpired(
+            const result = util.isPasswordExpired(
                 new Date('2026-02-01T00:00:00.000Z')
             );
 

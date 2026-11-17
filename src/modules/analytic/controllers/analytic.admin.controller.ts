@@ -64,6 +64,8 @@ import type {
     IAnalyticMassRegistration,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
+    IAnalyticMfaAdoption,
+    IAnalyticMfaAttemptSnapshot,
     IAnalyticMobileChurn,
     IAnalyticNearLockout,
     IAnalyticPasswordResetEnumeration,
@@ -76,8 +78,6 @@ import type {
     IAnalyticStatusCountList,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
-    IAnalyticTwoFactorAdoption,
-    IAnalyticTwoFactorAttemptSnapshot,
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -101,8 +101,8 @@ import { AnalyticSessionDeviceRatioResponseSchema } from '@modules/analytic/dtos
 import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
 import { AnalyticTermPolicyAcceptanceRateResponseSchema } from '@modules/analytic/dtos/response/analytic.term-policy-acceptance-rate.response.dto';
 import { AnalyticTermPolicyTimeToAcceptResponseSchema } from '@modules/analytic/dtos/response/analytic.term-policy-time-to-accept.response.dto';
-import { AnalyticTwoFactorAdoptionResponseSchema } from '@modules/analytic/dtos/response/analytic.two-factor-adoption.response.dto';
-import { AnalyticTwoFactorAttemptResponseSchema } from '@modules/analytic/dtos/response/analytic.two-factor-attempt.response.dto';
+import { AnalyticMfaAdoptionResponseSchema } from '@modules/analytic/dtos/response/analytic.mfa-adoption.response.dto';
+import { AnalyticMfaAttemptResponseSchema } from '@modules/analytic/dtos/response/analytic.mfa-attempt.response.dto';
 import { AnalyticVerificationFunnelResponseSchema } from '@modules/analytic/dtos/response/analytic.verification-funnel.response.dto';
 import { AnalyticWorkspaceCountResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-count.response.dto';
 import {
@@ -177,11 +177,11 @@ import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cas
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthAdminForcePasswordUseCase } from '@modules/analytic/use-cases/analytic.auth-admin-force-password.use-case';
-import { AnalyticAuthTwoFactorAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-adoption.use-case';
-import { AnalyticAuthTwoFactorAdminResetUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-admin-reset.use-case';
-import { AnalyticAuthTwoFactorVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-verify-success.use-case';
+import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
+import { AnalyticAuthMfaAdminResetUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-admin-reset.use-case';
+import { AnalyticAuthMfaVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-verify-success.use-case';
 import { AnalyticAuthBackupCodeRegenerationUseCase } from '@modules/analytic/use-cases/analytic.auth-backup-code-regeneration.use-case';
-import { AnalyticAuthTwoFactorAttemptUseCase } from '@modules/analytic/use-cases/analytic.auth-two-factor-attempt.use-case';
+import { AnalyticAuthMfaAttemptUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-attempt.use-case';
 import { AnalyticDevicesRegistrationUseCase } from '@modules/analytic/use-cases/analytic.devices-registration.use-case';
 import { AnalyticDevicesPlatformUseCase } from '@modules/analytic/use-cases/analytic.devices-platform.use-case';
 import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
@@ -269,11 +269,11 @@ export class AnalyticAdminController {
         private readonly analyticAuthPasswordChangeUseCase: AnalyticAuthPasswordChangeUseCase,
         private readonly analyticAuthForgotPasswordConversionUseCase: AnalyticAuthForgotPasswordConversionUseCase,
         private readonly analyticAuthAdminForcePasswordUseCase: AnalyticAuthAdminForcePasswordUseCase,
-        private readonly analyticAuthTwoFactorAdoptionUseCase: AnalyticAuthTwoFactorAdoptionUseCase,
-        private readonly analyticAuthTwoFactorAdminResetUseCase: AnalyticAuthTwoFactorAdminResetUseCase,
-        private readonly analyticAuthTwoFactorVerifySuccessUseCase: AnalyticAuthTwoFactorVerifySuccessUseCase,
+        private readonly analyticAuthMfaAdoptionUseCase: AnalyticAuthMfaAdoptionUseCase,
+        private readonly analyticAuthMfaAdminResetUseCase: AnalyticAuthMfaAdminResetUseCase,
+        private readonly analyticAuthMfaVerifySuccessUseCase: AnalyticAuthMfaVerifySuccessUseCase,
         private readonly analyticAuthBackupCodeRegenerationUseCase: AnalyticAuthBackupCodeRegenerationUseCase,
-        private readonly analyticAuthTwoFactorAttemptUseCase: AnalyticAuthTwoFactorAttemptUseCase,
+        private readonly analyticAuthMfaAttemptUseCase: AnalyticAuthMfaAttemptUseCase,
         private readonly analyticDevicesRegistrationUseCase: AnalyticDevicesRegistrationUseCase,
         private readonly analyticDevicesPlatformUseCase: AnalyticDevicesPlatformUseCase,
         private readonly analyticDevicesPushTokenUseCase: AnalyticDevicesPushTokenUseCase,
@@ -924,8 +924,8 @@ export class AnalyticAdminController {
     }
 
     @Doc({ summary: 'admin get two factor adoption snapshot' })
-    @Response('analytic.authTwoFactorAdoption', {
-        schema: AnalyticTwoFactorAdoptionResponseSchema,
+    @Response('analytic.authMfaAdoption', {
+        schema: AnalyticMfaAdoptionResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -937,15 +937,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/auth/two-factor-adoption')
-    async authTwoFactorAdoption(): Promise<
-        IResponseReturn<IAnalyticTwoFactorAdoption>
-    > {
-        return this.analyticAuthTwoFactorAdoptionUseCase.execute();
+    @Get('/auth/mfa-adoption')
+    async authMfaAdoption(): Promise<IResponseReturn<IAnalyticMfaAdoption>> {
+        return this.analyticAuthMfaAdoptionUseCase.execute();
     }
 
     @Doc({ summary: 'admin get admin two factor reset count by date range' })
-    @Response('analytic.authTwoFactorAdminReset', {
+    @Response('analytic.authMfaAdminReset', {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -958,16 +956,16 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/auth/two-factor-admin-reset')
-    async authTwoFactorAdminReset(
+    @Get('/auth/mfa-admin-reset')
+    async authMfaAdminReset(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthTwoFactorAdminResetUseCase.execute(query);
+        return this.analyticAuthMfaAdminResetUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get two factor verify success count by date range' })
-    @Response('analytic.authTwoFactorVerifySuccess', {
+    @Response('analytic.authMfaVerifySuccess', {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -980,12 +978,12 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/auth/two-factor-verify-success')
-    async authTwoFactorVerifySuccess(
+    @Get('/auth/mfa-verify-success')
+    async authMfaVerifySuccess(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthTwoFactorVerifySuccessUseCase.execute(query);
+        return this.analyticAuthMfaVerifySuccessUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get backup code regeneration count by date range' })
@@ -1011,8 +1009,8 @@ export class AnalyticAdminController {
     }
 
     @Doc({ summary: 'admin get two factor attempt snapshot' })
-    @Response('analytic.authTwoFactorAttempt', {
-        schema: AnalyticTwoFactorAttemptResponseSchema,
+    @Response('analytic.authMfaAttempt', {
+        schema: AnalyticMfaAttemptResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1024,11 +1022,11 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/auth/two-factor-attempt')
-    async authTwoFactorAttempt(): Promise<
-        IResponseReturn<IAnalyticTwoFactorAttemptSnapshot>
+    @Get('/auth/mfa-attempt')
+    async authMfaAttempt(): Promise<
+        IResponseReturn<IAnalyticMfaAttemptSnapshot>
     > {
-        return this.analyticAuthTwoFactorAttemptUseCase.execute();
+        return this.analyticAuthMfaAttemptUseCase.execute();
     }
 
     @Doc({ summary: 'admin get device registration count by date range' })

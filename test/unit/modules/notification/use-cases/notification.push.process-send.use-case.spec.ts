@@ -263,18 +263,30 @@ describe('NotificationPushProcessSendUseCase', () => {
 
         it('records the pending tokens and throws, stamping no sent, while a token is pending', async () => {
             const rawError = new Error('pending');
+            const failure = {
+                step: EnumNotificationStep.sendMulticast,
+                rawError,
+            };
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: [],
                 encryptedPendingTokens: ['cipher(token-1)'],
-                failure: {
-                    step: EnumNotificationStep.sendMulticast,
-                    rawError,
-                },
+                failure,
             });
+            notificationPushDeliveryService.toStepSummary.mockReturnValue(
+                'steps failed'
+            );
 
             await expect(
                 useCase.execute('outbox-id', data)
-            ).rejects.toBeInstanceOf(QueueException);
+            ).rejects.toMatchObject({
+                constructor: QueueException,
+                message: 'steps failed',
+                rawError,
+            });
+
+            expect(
+                notificationPushDeliveryService.toStepSummary
+            ).toHaveBeenCalledWith([failure]);
 
             expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
                 completedSteps: [EnumNotificationStep.updateProcessAt],

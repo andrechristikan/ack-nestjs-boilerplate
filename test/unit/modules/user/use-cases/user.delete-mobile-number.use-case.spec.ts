@@ -8,8 +8,8 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -26,6 +26,18 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
 
 describe('UserDeleteMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
@@ -44,8 +56,9 @@ describe('UserDeleteMobileNumberUseCase', () => {
     const tx = {} as IDatabaseTransactionClient;
     const passwordOnly: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: null,
+        mfa: null,
         verificationId: null,
+        passkeyChallengeToken: null,
     };
     const mobileNumber: IUserMobileNumber = {
         id: 'mobile-swift',
@@ -126,6 +139,8 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -142,7 +157,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user,
                 passwordOnly
             );
             expect(
@@ -161,7 +175,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
             );
         });
 
-        it('passes the two-factor and email-code fields of the request on', async () => {
+        it('passes the MFA and email-code fields of the request on', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -170,9 +184,11 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 mobileNumber.id,
                 {
                     ...dto,
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -184,9 +200,11 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.mobileNumberDelete,
                     password: 'Current-pass1',
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -212,6 +230,8 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -279,7 +299,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
-            const failure = new AuthTwoFactorInvalidException();
+            const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
                 failure
             );

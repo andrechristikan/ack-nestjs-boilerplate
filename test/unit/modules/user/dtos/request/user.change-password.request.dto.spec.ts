@@ -1,11 +1,11 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
 
 describe('UserChangePasswordRequestSchema', () => {
     const payload = {
         newPassword: 'abcDE12345@@!',
         password: 'oldPassword1',
-        method: EnumAuthTwoFactorMethod.code,
+        method: EnumMfaMethod.totp,
         code: '654321',
         backupCode: 'ABCD1234EF',
         otp: '123456',

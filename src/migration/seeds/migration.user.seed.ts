@@ -326,10 +326,10 @@ export class MigrationUserSeed
                                             .flat(),
                                     },
                                 },
-                                twoFactor: {
+                                mfa: {
                                     create: {
-                                        enabled: false,
-                                        lastUsedStep: null,
+                                        backupCodes: [],
+                                        lockedUntil: null,
                                         createdBy: MigrationUserSuperAdminId,
                                         updatedBy: MigrationUserSuperAdminId,
                                     },
@@ -372,7 +372,9 @@ export class MigrationUserSeed
                     await tx.workspaceJoinRequest.deleteMany({});
                     await tx.workspaceInvite.deleteMany({});
                     await tx.workspaceMember.deleteMany({});
-                    await tx.twoFactor.deleteMany({});
+                    await tx.mfaChallenge.deleteMany({});
+                    await tx.mfaTotp.deleteMany({});
+                    await tx.mfa.deleteMany({});
                     await tx.session.deleteMany({});
                     await tx.deviceOwnership.deleteMany({});
                     await tx.verification.deleteMany({});

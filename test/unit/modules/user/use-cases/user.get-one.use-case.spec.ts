@@ -61,7 +61,6 @@ describe('UserGetOneUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {

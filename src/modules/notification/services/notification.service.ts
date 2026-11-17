@@ -26,6 +26,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationPushProcess,
     EnumNotificationQueue,
+    EnumNotificationSmsProcess,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -39,8 +40,11 @@ import type {
     INotificationNotifyEffect,
     INotificationPushCleanupTokensEffect,
     INotificationPushSendEffect,
+    INotificationSmsSendEffect,
 } from '@modules/notification/interfaces/notification.interface';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { ConfigService } from '@nestjs/config';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type {
@@ -77,6 +81,7 @@ export class NotificationService {
     private readonly stepPattern: string;
     private readonly termPolicyBatchPattern: string;
     private readonly termPolicyBatchResendPattern: string;
+    private readonly encryptionSecretKey: string;
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
@@ -86,9 +91,13 @@ export class NotificationService {
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
+        private readonly helperEncryptionService: HelperEncryptionService,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService
     ) {
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
         this.stepPattern = this.configService.get<string>(
             'notification.idempotencyKey.stepPattern'
         )!;
@@ -119,6 +128,15 @@ export class NotificationService {
         };
     }
 
+    private encryptPayload(value: string, context: string): string {
+        return this.helperEncryptionService.aes256Encrypt(
+            value,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            context
+        );
+    }
+
     private sealContext(
         context: INotificationContext | INotificationWorkspaceInviteFields,
         secrets: string[],
@@ -134,10 +152,7 @@ export class NotificationService {
             }
 
             const sealedField = this.notificationUtil.toSealedField(field);
-            sealed[sealedField] = this.notificationUtil.encryptPayload(
-                value,
-                encryptionContext
-            );
+            sealed[sealedField] = this.encryptPayload(value, encryptionContext);
         }
 
         return sealed;
@@ -223,6 +238,36 @@ export class NotificationService {
         };
     }
 
+    private sendSmsEffect(
+        kind: EnumNotificationKind,
+        notificationId: string,
+        context: INotificationSealedData,
+        { userId, username }: INotificationRecipientRecord,
+        encryptedMobileNumber: string
+    ): INotificationSmsSendEffect {
+        const { queuePriority } = NotificationKindContract[kind];
+        const idempotencyKey = this.toStepKey(
+            notificationId,
+            EnumNotificationStep.sendSms
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationSms,
+            name: EnumNotificationSmsProcess.send,
+            data: {
+                kind,
+                notificationId,
+                userId,
+                username,
+                encryptedMobileNumber,
+                context,
+                completedSteps: [],
+            },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
     private toKeyValues(
         process: string,
         sealed: INotificationSealedRecord
@@ -276,9 +321,9 @@ export class NotificationService {
         { id, email, username }: IUserRecipient,
         tokens: string[]
     ): INotificationSnapshot {
-        const encryptedEmail = this.notificationUtil.encryptPayload(email, id);
+        const encryptedEmail = this.encryptPayload(email, id);
         const encryptedTokens = [...new Set(tokens)].map(token =>
-            this.notificationUtil.encryptPayload(token, id)
+            this.encryptPayload(token, id)
         );
 
         return { username, encryptedEmail, encryptedTokens };
@@ -324,10 +369,7 @@ export class NotificationService {
         const { reference } = payload;
         const { secrets, queuePriority } =
             NotificationKindContract[EnumNotificationKind.workspaceInvite];
-        const encryptedEmail = this.notificationUtil.encryptPayload(
-            email,
-            reference
-        );
+        const encryptedEmail = this.encryptPayload(email, reference);
         const sealed = this.sealContext(payload, secrets, reference);
         const idempotencyKey = this.helperStringService.fillPattern(
             this.keyPatterns[EnumNotificationKeyPattern.referencePattern],
@@ -346,14 +388,25 @@ export class NotificationService {
         };
     }
 
+    /** The recipient record with the address, each distinct token, and the mobile number, when one is given, encrypted against the user id. */
     toRecipientRecord(
         user: IUserRecipient,
         tokens: string[],
+        mobileNumber: string | null,
         channels: EnumNotificationChannel[]
     ): INotificationRecipientRecord {
         const snapshot = this.sealSnapshot(user, tokens);
+        let encryptedMobileNumber: string | null = null;
+        if (mobileNumber !== null) {
+            encryptedMobileNumber = this.encryptPayload(mobileNumber, user.id);
+        }
 
-        return { userId: user.id, ...snapshot, channels };
+        return {
+            userId: user.id,
+            ...snapshot,
+            encryptedMobileNumber,
+            channels,
+        };
     }
 
     /** The encrypted address and the encrypted tokens of the devices with a live session now, to be read before a revoke ends those sessions. */
@@ -371,10 +424,10 @@ export class NotificationService {
     ): INotificationRecipientRecord {
         const channels = this.notificationUtil.resolveChannels(kind, []);
 
-        return { userId, ...snapshot, channels };
+        return { userId, ...snapshot, encryptedMobileNumber: null, channels };
     }
 
-    /** Creates the notification on the caller's transaction and adds its email and push rows: email when the channels hold it, push when the channels hold it and the recipient has tokens. */
+    /** Creates the notification on the caller's transaction and adds its channel rows: email when the channels hold it, push when they hold it and the recipient has tokens, sms when they hold it and the recipient has a number. */
     async createInTx(
         tx: IDatabaseTransactionClient,
         notificationId: string,
@@ -382,7 +435,13 @@ export class NotificationService {
         context: INotificationSealedData,
         recipient: INotificationRecipientRecord
     ): Promise<void> {
-        const { userId, username, channels, encryptedTokens } = recipient;
+        const {
+            userId,
+            username,
+            channels,
+            encryptedTokens,
+            encryptedMobileNumber,
+        } = recipient;
         const metadata = this.notificationUtil.toMetadata(
             kind,
             context,
@@ -416,6 +475,20 @@ export class NotificationService {
                 notificationId,
                 context,
                 recipient
+            );
+            effects.push(effect);
+        }
+
+        if (
+            channels.includes(EnumNotificationChannel.sms) &&
+            encryptedMobileNumber !== null
+        ) {
+            const effect = this.sendSmsEffect(
+                kind,
+                notificationId,
+                context,
+                recipient,
+                encryptedMobileNumber
             );
             effects.push(effect);
         }
@@ -485,10 +558,7 @@ export class NotificationService {
         });
         const encryptedRecipients = recipients.map(
             ({ userId, notificationId, email, username }) => {
-                const encryptedEmail = this.notificationUtil.encryptPayload(
-                    email,
-                    userId
-                );
+                const encryptedEmail = this.encryptPayload(email, userId);
 
                 return { userId, notificationId, encryptedEmail, username };
             }

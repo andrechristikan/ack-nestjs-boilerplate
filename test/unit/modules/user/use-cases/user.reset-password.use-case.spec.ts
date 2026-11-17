@@ -1,6 +1,6 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
-import { AuthTwoFactorAttemptMaxException } from '@modules/auth/exceptions/auth.two-factor-attempt-max.exception';
+import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserLoginFrom,
@@ -16,11 +17,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type {
-    PasswordHistory,
-    TwoFactor,
-    User,
-} from '@generated/prisma-client/client';
+import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -31,9 +28,10 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaMethodRequiredException } from '@modules/mfa/exceptions/mfa.method-required.exception';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
@@ -51,15 +49,16 @@ import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
+import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type {
     IUser,
     IUserForgotPassword,
-    IUserTwoFactorCheck,
-    IUserTwoFactorVerifyResult,
 } from '@modules/user/interfaces/user.interface';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
 import {
@@ -71,8 +70,9 @@ describe('UserResetPasswordUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const mfaChallengeService: MockProxy<MfaChallengeService> =
+        mock<MfaChallengeService>();
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -135,7 +135,6 @@ describe('UserResetPasswordUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const password: IAuthPassword = {
         passwordHash: 'hashed',
@@ -177,37 +176,12 @@ describe('UserResetPasswordUseCase', () => {
     };
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
-    const twoFactorRow: TwoFactor = {
-        id: 'two-factor-linden',
-        userId: 'user-linden',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: true,
-        requiredSetup: false,
-        confirmedAt: new Date('2026-01-05T00:00:00.000Z'),
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-    const twoFactorUser: IUser = { ...user, twoFactor: twoFactorRow };
-    const twoFactorSetupUser: IUser = {
-        ...user,
-        twoFactor: { ...twoFactorRow, requiredSetup: true },
-    };
     const passwordHistory = { id: 'history-linden' } as PasswordHistory;
-    const twoFactorVerified: IUserTwoFactorVerifyResult = {
-        method: EnumAuthTwoFactorMethod.code,
-        newBackupCodes: null,
-    };
-    const twoFactorChecked: IUserTwoFactorCheck = {
-        verified: twoFactorVerified,
+    const mfaChecked: IMfaCheck = {
+        method: EnumMfaMethod.totp,
         totpStep: 58123456,
+        backupCodeIndex: null,
+        passkey: null,
     };
     const updatedRow = {
         id: 'user-linden',
@@ -229,7 +203,7 @@ describe('UserResetPasswordUseCase', () => {
                 _workspaceContext,
                 input
             ) =>
-                input.action === EnumActivityLogAction.userVerifyTwoFactor
+                input.action === EnumActivityLogAction.userVerifyMfa
                     ? verifyEntry
                     : resetEntry
         );
@@ -238,7 +212,7 @@ describe('UserResetPasswordUseCase', () => {
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
-        userTwoFactorService.checkIfRequired.mockResolvedValue(null);
+        mfaService.isEnabled.mockResolvedValue(false);
         authPasswordUtil.createContextWords.mockReturnValue([
             'ACK Boilerplate',
             'linden',
@@ -250,9 +224,10 @@ describe('UserResetPasswordUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
                 {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
+                    provide: MfaService,
+                    useValue: mfaService,
                 },
+                { provide: MfaChallengeService, useValue: mfaChallengeService },
                 {
                     provide: PasswordHistoryService,
                     useValue: passwordHistoryService,
@@ -283,11 +258,6 @@ describe('UserResetPasswordUseCase', () => {
             newPassword: 'new-password',
             token: 'raw-token',
         };
-
-        const resetTwoFactorRow = {
-            ...resetRow,
-            user: twoFactorUser,
-        } as IUserForgotPassword;
 
         beforeEach(() => {
             userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
@@ -382,12 +352,8 @@ describe('UserResetPasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordUtil.createPassword
             );
-            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                user,
-                { code: null, backupCode: null, method: null }
-            );
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-linden');
+            expect(mfaService.check).not.toHaveBeenCalled();
             expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'new-password'
             );
@@ -446,10 +412,7 @@ describe('UserResetPasswordUseCase', () => {
                 'user-linden',
                 password.passwordCreated
             );
-            expect(userTwoFactorService.verifyInTx).not.toHaveBeenCalled();
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(calls).toEqual([
                 'begin',
                 'snapshot',
@@ -489,48 +452,43 @@ describe('UserResetPasswordUseCase', () => {
             );
         });
 
-        it('verifies two-factor of the reset user, records it on the transaction, and adds the verify entry when two-factor was verified', async () => {
-            userTwoFactorService.checkIfRequired.mockResolvedValue(
-                twoFactorChecked
-            );
-            userPasswordService.getOneActiveReset.mockResolvedValue(
-                resetTwoFactorRow
-            );
+        it('checks the MFA proof of the reset user, completes it on the transaction, and adds the verify entry', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockResolvedValue(mfaChecked);
 
             await useCase.execute(requestContext, apiKeyContext, {
                 ...dto,
                 code: '123456',
-                method: EnumAuthTwoFactorMethod.code,
+                method: EnumMfaMethod.totp,
             });
 
-            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
+            expect(mfaService.check).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                twoFactorUser,
+                'user-linden',
                 {
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '123456',
                     backupCode: null,
-                }
+                    passkeyResponse: null,
+                },
+                null
             );
-            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledWith(
+            expect(mfaService.completeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
-                twoFactorChecked
+                mfaChecked
             );
-            expect(userTwoFactorService.verifyInTx).toHaveBeenCalledBefore(
+            expect(mfaService.completeInTx).toHaveBeenCalledBefore(
                 userService.updatePasswordInTx
             );
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).toHaveBeenCalledWith(tx, twoFactorUser, twoFactorVerified);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    action: EnumActivityLogAction.userVerifyMfa,
                     userId: 'user-linden',
                     createdBy: 'user-linden',
                 }
@@ -542,54 +500,187 @@ describe('UserResetPasswordUseCase', () => {
             ]);
         });
 
-        it('records no two-factor verification while the service verified nothing', async () => {
-            userPasswordService.getOneActiveReset.mockResolvedValue({
-                ...resetRow,
-                user: twoFactorSetupUser,
+        describe('with a passkey', () => {
+            const passkeyResponse = {
+                id: 'credential-linden',
+                rawId: 'credential-linden',
+                response: {
+                    clientDataJSON: 'client-data',
+                    authenticatorData: 'authenticator-data',
+                    signature: 'signature',
+                },
+                clientExtensionResults: {},
+                type: 'public-key' as const,
+            };
+            const passkeyDto: UserForgotPasswordResetRequestDto = {
+                ...dto,
+                method: EnumMfaMethod.passkey,
+                passkeyChallengeToken: 'challenge-token',
+                passkeyResponse,
+            };
+            const passkeyChecked: IMfaCheck = {
+                method: EnumMfaMethod.passkey,
+                totpStep: null,
+                backupCodeIndex: null,
+                passkey: { id: 'passkey-linden', counter: 3 },
+            };
+
+            beforeEach(() => {
+                mfaService.isEnabled.mockResolvedValue(true);
+                mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                    'webauthn-challenge'
+                );
+                mfaService.check.mockResolvedValue(passkeyChecked);
             });
 
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).resolves.toEqual({});
+            it('checks the assertion against the resetPassword challenge, claims it and completes the check on the transaction before the password write', async () => {
+                await useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    passkeyDto
+                );
 
-            expect(userTwoFactorService.checkIfRequired).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                twoFactorSetupUser,
-                { code: null, backupCode: null, method: null }
-            );
-            expect(
-                userTwoFactorService.recordVerificationInTx
-            ).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).not.toHaveBeenCalledWith(
-                expect.objectContaining({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                }),
-                requestContext,
-                apiKeyContext,
-                null,
-                null
-            );
-            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
-                tx,
-                'user-linden',
-                password,
-                'user-linden'
-            );
+                expect(
+                    mfaChallengeService.getWebAuthnChallengeForUser
+                ).toHaveBeenCalledWith(
+                    'challenge-token',
+                    EnumMfaChallengePurpose.resetPassword,
+                    'user-linden'
+                );
+                expect(mfaService.check).toHaveBeenCalledWith(
+                    requestContext,
+                    apiKeyContext,
+                    'user-linden',
+                    {
+                        method: EnumMfaMethod.passkey,
+                        code: null,
+                        backupCode: null,
+                        passkeyResponse,
+                    },
+                    'webauthn-challenge'
+                );
+                expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
+                    tx,
+                    'challenge-token',
+                    EnumMfaChallengePurpose.resetPassword,
+                    'user-linden'
+                );
+                expect(mfaService.completeInTx).toHaveBeenCalledWith(
+                    tx,
+                    'user-linden',
+                    passkeyChecked
+                );
+                expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
+                    mfaService.completeInTx
+                );
+                expect(mfaService.completeInTx).toHaveBeenCalledBefore(
+                    userService.updatePasswordInTx
+                );
+            });
+
+            it('throws MfaChallengeInvalidException and checks nothing when the challenge service rejects the token', async () => {
+                mfaChallengeService.getWebAuthnChallengeForUser.mockRejectedValue(
+                    new MfaChallengeInvalidException()
+                );
+
+                await expect(
+                    useCase.execute(requestContext, apiKeyContext, passkeyDto)
+                ).rejects.toBeInstanceOf(MfaChallengeInvalidException);
+
+                expect(
+                    mfaChallengeService.getWebAuthnChallengeForUser
+                ).toHaveBeenCalledWith(
+                    'challenge-token',
+                    EnumMfaChallengePurpose.resetPassword,
+                    'user-linden'
+                );
+                expect(mfaService.check).not.toHaveBeenCalled();
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            });
+
+            it('rethrows the failure the check counts and writes and claims nothing on a wrong passkey', async () => {
+                const mismatch = new MfaInvalidException();
+                mfaService.check.mockRejectedValue(mismatch);
+
+                await expect(
+                    useCase.execute(requestContext, apiKeyContext, passkeyDto)
+                ).rejects.toBe(mismatch);
+
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+            });
+
+            it('sends no WebAuthn challenge to the check and claims nothing when the token is missing', async () => {
+                const { passkeyChallengeToken: _token, ...withoutToken } =
+                    passkeyDto;
+                mfaService.check.mockRejectedValue(new MfaInvalidException());
+
+                await expect(
+                    useCase.execute(requestContext, apiKeyContext, withoutToken)
+                ).rejects.toBeInstanceOf(MfaInvalidException);
+
+                expect(
+                    mfaChallengeService.getWebAuthnChallengeForUser
+                ).not.toHaveBeenCalled();
+                expect(mfaService.check).toHaveBeenCalledWith(
+                    requestContext,
+                    apiKeyContext,
+                    'user-linden',
+                    expect.objectContaining({ method: EnumMfaMethod.passkey }),
+                    null
+                );
+            });
+
+            it('reads and claims no challenge for a TOTP proof', async () => {
+                mfaService.check.mockResolvedValue(mfaChecked);
+
+                await useCase.execute(requestContext, apiKeyContext, {
+                    ...passkeyDto,
+                    method: EnumMfaMethod.totp,
+                    code: '123456',
+                });
+
+                expect(
+                    mfaChallengeService.getWebAuthnChallengeForUser
+                ).not.toHaveBeenCalled();
+                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+                expect(mfaService.check).toHaveBeenCalledWith(
+                    requestContext,
+                    apiKeyContext,
+                    'user-linden',
+                    expect.objectContaining({ method: EnumMfaMethod.totp }),
+                    null
+                );
+            });
+
+            it('ignores the MFA fields when MFA is off', async () => {
+                mfaService.isEnabled.mockResolvedValue(false);
+
+                await useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    passkeyDto
+                );
+
+                expect(
+                    mfaChallengeService.getWebAuthnChallengeForUser
+                ).not.toHaveBeenCalled();
+                expect(mfaService.check).not.toHaveBeenCalled();
+                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+            });
         });
 
-        it('answers the attempt limit when the two-factor budget is spent and writes nothing', async () => {
-            const limit = new AuthTwoFactorAttemptMaxException();
-            userPasswordService.getOneActiveReset.mockResolvedValue(
-                resetTwoFactorRow
-            );
-            userTwoFactorService.checkIfRequired.mockRejectedValue(limit);
+        it('answers the attempt limit when the MFA budget is spent and writes nothing', async () => {
+            const limit = new MfaAttemptMaxException();
+            userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, {
                     ...dto,
                     code: '123456',
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                 })
             ).rejects.toBe(limit);
 
@@ -597,11 +688,10 @@ describe('UserResetPasswordUseCase', () => {
         });
 
         it('throws the method-required exception and writes nothing', async () => {
-            userPasswordService.getOneActiveReset.mockResolvedValue(
-                resetTwoFactorRow
-            );
-            userTwoFactorService.checkIfRequired.mockRejectedValue(
-                new AuthTwoFactorMethodRequiredException()
+            userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaService.check.mockRejectedValue(
+                new MfaMethodRequiredException()
             );
 
             await expect(
@@ -610,13 +700,13 @@ describe('UserResetPasswordUseCase', () => {
                     code: '123456',
                 })
             ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.methodRequired,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.twoFactorMethodRequired
+                    EnumMfaStatusCodeError[
+                        EnumMfaStatusCodeError.methodRequired
                     ],
-                messagePath: 'auth.error.twoFactorMethodRequired',
+                messagePath: 'mfa.error.methodRequired',
             });
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();

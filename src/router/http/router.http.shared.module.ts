@@ -2,6 +2,8 @@ import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use
 import { ActivityLogSharedController } from '@modules/activity-log/controllers/activity-log.shared.controller';
 import { DeviceSharedController } from '@modules/device/controllers/device.shared.controller';
 import { DeviceUseCaseModule } from '@modules/device/device.use-case.module';
+import { MfaSharedController } from '@modules/mfa/controllers/mfa.shared.controller';
+import { MfaUseCaseModule } from '@modules/mfa/mfa.use-case.module';
 import { NotificationSharedController } from '@modules/notification/controllers/notification.shared.controller';
 import { NotificationUseCaseModule } from '@modules/notification/notification.use-case.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
@@ -26,6 +28,7 @@ import { Module } from '@nestjs/common';
         TermPolicySharedController,
         DeviceSharedController,
         NotificationSharedController,
+        MfaSharedController,
     ],
     providers: [],
     exports: [],
@@ -37,6 +40,7 @@ import { Module } from '@nestjs/common';
         SessionUseCaseModule,
         TermPolicyUseCaseModule,
         NotificationUseCaseModule,
+        MfaUseCaseModule,
         WorkspaceUseCaseModule,
 
         UserModule,

@@ -35,18 +35,6 @@ describe('UserSchema', () => {
         policies: [policy],
     };
 
-    const twoFactor = {
-        id: 'two-factor-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        userId: 'user-1',
-        enabled: true,
-        requiredSetup: false,
-        confirmedAt: new Date('2026-01-03T00:00:00.000Z'),
-    };
-
     const photo = {
         bucket: 'user-bucket',
         key: 'users/user-1/profile/photo.jpg',
@@ -86,7 +74,6 @@ describe('UserSchema', () => {
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
         photo,
-        twoFactor,
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -108,7 +95,6 @@ describe('UserSchema', () => {
             lastLoginFrom: null,
             lastLoginWith: null,
             photo: null,
-            twoFactor: null,
         };
 
         const result = UserSchema.parse(nullRow);
@@ -126,6 +112,13 @@ describe('UserSchema', () => {
         expect(() =>
             UserSchema.parse({ ...row, status: 'unknownStatus' })
         ).toThrow();
+    });
+
+    it('strips the mfa key', () => {
+        const result = UserSchema.parse({ ...row, mfa: null });
+
+        expect(result).toEqual(row);
+        expect(result).not.toHaveProperty('mfa');
     });
 
     it('strips an undeclared key', () => {

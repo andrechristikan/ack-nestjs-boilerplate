@@ -24,6 +24,7 @@ import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-i
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IUserVerificationEmailTarget,
+    IUserVerificationMobileCreate,
     IUserVerificationReauthenticationCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
@@ -79,6 +80,7 @@ export class UserVerificationService {
                 token,
                 type: EnumVerificationType.reauthentication,
                 action,
+                mobileNumberId: null,
                 to: email,
                 expiredAt,
                 verifiedAt: null,
@@ -86,6 +88,34 @@ export class UserVerificationService {
             },
             otp,
             action,
+            expiredInMinutes: this.verificationExpiredInMinutes,
+        };
+    }
+
+    private createMobile(
+        to: string,
+        mobileNumberId: string
+    ): IUserVerificationMobileCreate {
+        const otp = this.helperNumberService.randomDigits(
+            this.verificationOtpLength
+        );
+        const token = this.helperHashService.sha256Hash(otp);
+        const reference = this.userVerificationUtil.createReference();
+        const expiredAt = this.userVerificationUtil.createExpiredAt();
+
+        return {
+            verification: {
+                reference,
+                token,
+                type: EnumVerificationType.mobileNumber,
+                action: null,
+                mobileNumberId,
+                to,
+                expiredAt,
+                verifiedAt: null,
+                isUsed: false,
+            },
+            otp,
             expiredInMinutes: this.verificationExpiredInMinutes,
         };
     }
@@ -350,6 +380,104 @@ export class UserVerificationService {
         await this.outboxService.addInTx(tx, effect);
     }
 
+    /** False while the number's latest code, used or not, was created inside the resend window. */
+    async isMobileResendable(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<boolean> {
+        const lastVerification =
+            await this.userVerificationRepository.findOneLatestByMobileNumber(
+                userId,
+                mobileNumberId
+            );
+        if (!lastVerification) {
+            return true;
+        }
+
+        const isInsideResendWindow = this.userUtil.isInsideResendWindow(
+            lastVerification.createdAt,
+            this.userVerificationUtil.verificationResendInMinutes
+        );
+
+        return !isInsideResendWindow;
+    }
+
+    /** Resolves the unused, unexpired code row of the user, number, and code; throws when none matches, writing nothing. */
+    async getOneActiveByMobileOtp(
+        userId: string,
+        mobileNumberId: string,
+        otp: string
+    ): Promise<Verification> {
+        const hashedOtp = this.helperHashService.sha256Hash(otp);
+        const verification =
+            await this.userVerificationRepository.findOneActiveByMobileOtp(
+                userId,
+                mobileNumberId,
+                hashedOtp
+            );
+        if (!verification) {
+            throw new UserTokenInvalidException();
+        }
+
+        return verification;
+    }
+
+    /** Marks the number's unused codes used on the caller's transaction, so a code sent for the number's earlier digits stops working. */
+    async expireActiveByMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string
+    ): Promise<void> {
+        await this.userVerificationRepository.markUnusedMobileUsedInTx(
+            tx,
+            mobileNumberId
+        );
+    }
+
+    /** The number a code row was sent to while the row is unused and unexpired; null otherwise. */
+    async getOneActiveMobileRecipient(
+        verificationId: string
+    ): Promise<string | null> {
+        const verification =
+            await this.userVerificationRepository.findOneActiveMobileById(
+                verificationId
+            );
+
+        return verification?.to ?? null;
+    }
+
+    /** Marks the number's unused codes used, creates the new code row, and adds the verificationMobileNumber effect on the caller's transaction. */
+    async sendMobileInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string,
+        to: string
+    ): Promise<void> {
+        const created = this.createMobile(to, mobileNumberId);
+
+        await this.userVerificationRepository.markUnusedMobileUsedInTx(
+            tx,
+            mobileNumberId
+        );
+        const verification = await this.userVerificationRepository.createInTx(
+            tx,
+            userId,
+            created.verification,
+            userId
+        );
+        const effect = this.notificationService.notify(
+            EnumNotificationKind.verificationMobileNumber,
+            {
+                userId,
+                proceedBy: userId,
+                verificationId: verification.id,
+                otp: created.otp,
+                reference: created.verification.reference,
+                expiredInMinutes: created.expiredInMinutes,
+            }
+        );
+        await this.outboxService.addInTx(tx, effect);
+    }
+
     /** Marks the verification used now; false when it was used or expired first. */
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
@@ -364,6 +492,22 @@ export class UserVerificationService {
             verifiedAt,
             userId
         );
+    }
+
+    /** Marks the mobile verification used now; a verification used or expired first throws UserTokenInvalidException. */
+    async markMobileUsedInTx(
+        tx: IDatabaseTransactionClient,
+        verificationId: string,
+        userId: string
+    ): Promise<void> {
+        const isMarkedUsed = await this.markUsedInTx(
+            tx,
+            verificationId,
+            userId
+        );
+        if (!isMarkedUsed) {
+            throw new UserTokenInvalidException();
+        }
     }
 
     async createInTx(

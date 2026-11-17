@@ -189,6 +189,42 @@ describe('ActivityLogService', () => {
             });
         });
 
+        it('records userVerifyMfaFailed on a public route with the user id and createdBy the contract requires', () => {
+            const result = service.recordEffectFromPayload(
+                { ...payload, actorUserId: null, workspaceId: null },
+                {
+                    action: EnumActivityLogAction.userVerifyMfaFailed,
+                    userId: 'user-1',
+                    createdBy: 'user-1',
+                }
+            );
+
+            expect(result.data).toMatchObject({
+                rows: [
+                    {
+                        action: EnumActivityLogAction.userVerifyMfaFailed,
+                        userId: 'user-1',
+                        createdBy: 'user-1',
+                        workspaceId: null,
+                    },
+                ],
+            });
+        });
+
+        it('throws for userVerifyMfaFailed on a public route when the entry omits the user id and createdBy', () => {
+            let thrown: unknown;
+            try {
+                service.recordEffectFromPayload(
+                    { ...payload, actorUserId: null, workspaceId: null },
+                    { action: EnumActivityLogAction.userVerifyMfaFailed }
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject(contractInvalid);
+        });
+
         it('throws when the action carries no contract', () => {
             let thrown: unknown;
             try {

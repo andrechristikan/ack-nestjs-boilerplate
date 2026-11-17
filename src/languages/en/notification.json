@@ -21,6 +21,10 @@
             "title": "Email Verification",
             "body": "Hi {username}, please verify your email address to activate your account."
         },
+        "verificationMobileNumber": {
+            "title": "Mobile Number Verification",
+            "body": "Hi {username}, a verification code was sent to your mobile number."
+        },
         "reauthenticationOtp": {
             "title": "Confirmation Code",
             "body": "Hi {username}, a one-time code was sent to confirm a sensitive action on your account."
@@ -57,9 +61,9 @@
             "title": "New Device Login",
             "body": "Hi {username}, there is a new device login from {device} in {city} at {loginAt}."
         },
-        "resetTwoFactorByAdmin": {
-            "title": "Two-Factor Authentication Reset",
-            "body": "Hi {username}, your two-factor authentication has been reset by admin."
+        "resetMfaByAdmin": {
+            "title": "Multi-Factor Authentication Reset",
+            "body": "Hi {username}, your multi-factor authentication has been reset by admin."
         },
         "temporaryPasswordByAdmin": {
             "title": "Temporary Password",
@@ -90,9 +94,12 @@
             "body": "Hi {username}, your request to join the workspace {workspaceName} has been rejected. Reason: {rejectReasonLabel}."
         }
     },
+    "sms": {
+        "verificationMobileNumber": "Your verification code is {otp}. Reference {reference}. It expires in {expiredInMinutes} minutes."
+    },
     "loginLockedMethod": {
         "password": "Password",
-        "twoFactor": "Two-factor"
+        "mfa": "Multi-factor authentication"
     },
     "rejectReason": {
         "notAFit": "Not a good fit",
@@ -132,6 +139,12 @@
                 "tokensPending": "{count} push tokens pending retry."
             },
             "send": "Push notification {process} sent."
+        },
+        "sms": {
+            "send": "SMS notification {process} sent.",
+            "error": {
+                "unknownProcess": "No {process} job handler exists."
+            }
         }
     },
     "error": {

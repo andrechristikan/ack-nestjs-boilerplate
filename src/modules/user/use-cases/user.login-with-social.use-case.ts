@@ -19,6 +19,7 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -62,6 +63,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     constructor(
         private readonly userAuthService: UserAuthService,
         private readonly userService: UserService,
+        private readonly mfaService: MfaService,
         private readonly userSocialService: UserSocialService,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly notificationService: NotificationService,
@@ -257,13 +259,14 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
-        const lastWorkspaceId =
-            await this.workspaceMemberService.resolveLastWorkspaceId(
+        const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
+            this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
                 user.lastWorkspaceId
-            );
+            ),
+            this.mfaService.isEnabled(user.id),
+        ]);
         const isUnverified = this.userUtil.isUnverified(user);
-        const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
 
         return this.outboxService.withTransaction(
             async (tx): Promise<IUserLoginOutcome> => {
@@ -285,7 +288,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             user
                         );
                 }
-                if (!isTwoFactorEnabled) {
+                if (!isMfaEnabled) {
                     const { tokens } =
                         await this.userAuthService.createTokenAndSessionInTx(
                             tx,
@@ -299,29 +302,26 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                         );
 
                     return {
-                        isTwoFactorEnable: false,
+                        isMfaRequired: false,
                         lastWorkspaceId,
                         lastWorkspaceChangedAt,
                         tokens,
                     };
                 }
 
-                const twoFactor =
-                    await this.userAuthService.createTwoFactorChallengeInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        user,
-                        device,
-                        loginFrom,
-                        loginWith
-                    );
+                const mfa = await this.userAuthService.createMfaChallengeInTx(
+                    tx,
+                    user.id,
+                    device,
+                    loginFrom,
+                    loginWith
+                );
 
                 return {
-                    isTwoFactorEnable: true,
+                    isMfaRequired: true,
                     lastWorkspaceId,
                     lastWorkspaceChangedAt,
-                    twoFactor,
+                    mfa,
                 };
             }
         );
@@ -403,7 +403,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
             return {
                 data: {
-                    isTwoFactorEnable: false,
+                    isMfaRequired: false,
                     lastWorkspaceId,
                     lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
                     tokens,

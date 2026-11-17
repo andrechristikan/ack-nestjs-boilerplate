@@ -295,7 +295,14 @@ const codeStyleRules = {
 
 // Enhanced code quality rules
 const codeQualityRules = {
-    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/prefer-nullish-coalescing': [
+        'error',
+        {
+            ignorePrimitives: { boolean: true },
+            ignoreMixedLogicalExpressions: true,
+            ignoreBooleanCoercion: true,
+        },
+    ],
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': [
         'error',

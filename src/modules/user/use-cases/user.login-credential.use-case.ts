@@ -7,6 +7,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -33,6 +34,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userVerificationService: UserVerificationService,
+        private readonly mfaService: MfaService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly activityLogService: ActivityLogService,
         private readonly userUtil: UserUtil,
@@ -52,13 +54,14 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: write must not run if an earlier step throws
-        const lastWorkspaceId =
-            await this.workspaceMemberService.resolveLastWorkspaceId(
+        const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
+            this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
                 user.lastWorkspaceId
-            );
-        const isTwoFactorEnabled = this.userUtil.isTwoFactorEnabled(user);
-        if (!isTwoFactorEnabled) {
+            ),
+            this.mfaService.isEnabled(user.id),
+        ]);
+        if (!isMfaEnabled) {
             const { tokens } = await this.outboxService.withTransaction(
                 async tx => {
                     await this.userPasswordService.resetPasswordAttemptInTx(
@@ -80,24 +83,22 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             );
 
             return {
-                isTwoFactorEnable: false,
+                isMfaRequired: false,
                 lastWorkspaceId,
                 lastWorkspaceChangedAt,
                 tokens,
             };
         }
 
-        const twoFactor = await this.outboxService.withTransaction(async tx => {
+        const mfa = await this.outboxService.withTransaction(async tx => {
             await this.userPasswordService.resetPasswordAttemptInTx(
                 tx,
                 user.id
             );
 
-            return this.userAuthService.createTwoFactorChallengeInTx(
+            return this.userAuthService.createMfaChallengeInTx(
                 tx,
-                requestContext,
-                apiKeyContext,
-                user,
+                user.id,
                 device,
                 loginFrom,
                 loginWith
@@ -105,10 +106,10 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         });
 
         return {
-            isTwoFactorEnable: true,
+            isMfaRequired: true,
             lastWorkspaceId,
             lastWorkspaceChangedAt,
-            twoFactor,
+            mfa,
         };
     }
 

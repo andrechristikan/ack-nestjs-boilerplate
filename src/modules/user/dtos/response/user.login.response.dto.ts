@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { UserTwoFactorResponseSchema } from '@modules/user/dtos/response/user.two-factor.response.dto';
+import { UserLoginMfaResponseSchema } from '@modules/user/dtos/response/user.login-mfa.response.dto';
 
 /** @public */
 export const UserLoginResponseSchema = z.object({
-    isTwoFactorEnable: z.boolean().meta({
+    isMfaRequired: z.boolean().meta({
         description:
-            'Indicates whether an additional 2FA verification step is enable',
+            'Indicates whether an additional MFA verification step is required',
         example: false,
     }),
     lastWorkspaceId: z.string().nullable().meta({
@@ -22,9 +22,9 @@ export const UserLoginResponseSchema = z.object({
     tokens: AuthTokenResponseSchema.optional().meta({
         description: 'Provides access and refresh tokens upon successful login',
     }),
-    twoFactor: UserTwoFactorResponseSchema.optional().meta({
+    mfa: UserLoginMfaResponseSchema.optional().meta({
         description:
-            'Provides details for completing the 2FA verification step',
+            'Provides details for completing the MFA verification step',
     }),
 });
 

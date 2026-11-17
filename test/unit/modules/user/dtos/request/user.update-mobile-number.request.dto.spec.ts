@@ -1,4 +1,4 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 describe('UserUpdateMobileNumberRequestSchema', () => {
@@ -18,7 +18,7 @@ describe('UserUpdateMobileNumberRequestSchema', () => {
         const full = {
             ...payload,
             password: 'Current-pass1',
-            method: EnumAuthTwoFactorMethod.code,
+            method: EnumMfaMethod.totp,
             code: '654321',
             backupCode: 'ABCD1234EF',
             otp: '123456',

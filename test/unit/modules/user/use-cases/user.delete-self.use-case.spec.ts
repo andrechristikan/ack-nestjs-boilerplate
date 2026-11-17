@@ -28,8 +28,8 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -48,7 +48,7 @@ import type {
     IUser,
     IUserReauthenticationCheck,
 } from '@modules/user/interfaces/user.interface';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import {
@@ -57,6 +57,18 @@ import {
     buildAuthJwtAccessContext,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
 
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -69,10 +81,9 @@ describe('UserDeleteSelfUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userSocialService: MockProxy<UserSocialService> =
         mock<UserSocialService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -139,7 +150,6 @@ describe('UserDeleteSelfUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -164,13 +174,10 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
                 {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
-                },
-                {
                     provide: UserMobileNumberService,
                     useValue: userMobileNumberService,
                 },
+                { provide: MfaService, useValue: mfaService },
                 { provide: UserSocialService, useValue: userSocialService },
                 { provide: WorkspaceService, useValue: workspaceService },
                 {
@@ -215,8 +222,9 @@ describe('UserDeleteSelfUseCase', () => {
 
         const check: IUserReauthenticationCheck = {
             isPasswordChecked: true,
-            twoFactor: null,
+            mfa: null,
             verificationId: null,
+            passkeyChallengeToken: null,
         };
 
         const photo = {
@@ -356,8 +364,8 @@ describe('UserDeleteSelfUseCase', () => {
 
                 return 1;
             });
-            userTwoFactorService.removeInTx.mockImplementation(async () => {
-                calls.push('removeTwoFactor');
+            mfaService.deleteByUserInTx.mockImplementation(async () => {
+                calls.push('deleteMfa');
             });
             sessionService.revokeAllByUserInTx.mockImplementation(async () => {
                 calls.push('revokeSessions');
@@ -395,6 +403,8 @@ describe('UserDeleteSelfUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -421,7 +431,7 @@ describe('UserDeleteSelfUseCase', () => {
                 tx,
                 'user-cinder'
             );
-            expect(userTwoFactorService.removeInTx).toHaveBeenCalledWith(
+            expect(mfaService.deleteByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cinder'
             );
@@ -457,7 +467,7 @@ describe('UserDeleteSelfUseCase', () => {
                 'removeProjectMemberships',
                 'removeMobileNumbers',
                 'removeSocials',
-                'removeTwoFactor',
+                'deleteMfa',
                 'revokeSessions',
                 'deleteUser',
                 'deletePhotoRow',
@@ -511,7 +521,6 @@ describe('UserDeleteSelfUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                baseUser,
                 check
             );
             expect(
@@ -764,7 +773,7 @@ describe('UserDeleteSelfUseCase', () => {
             ).toHaveBeenCalledTimes(1);
         });
 
-        it('passes the two-factor and email-code fields of the request on', async () => {
+        it('passes the MFA and email-code fields of the request on', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -772,9 +781,11 @@ describe('UserDeleteSelfUseCase', () => {
                 userContext,
                 {
                     ...dto,
-                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    method: EnumMfaMethod.backupCode,
                     backupCode: 'BACKUP1',
                     code: '654321',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -786,9 +797,11 @@ describe('UserDeleteSelfUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.deleteSelf,
                     password: 'plain-password',
-                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    method: EnumMfaMethod.backupCode,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );

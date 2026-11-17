@@ -140,7 +140,6 @@ describe('UserRegistrationService', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const created: IUser[] = [createdUser];
     const histories: IPasswordHistoryCreate[] = [

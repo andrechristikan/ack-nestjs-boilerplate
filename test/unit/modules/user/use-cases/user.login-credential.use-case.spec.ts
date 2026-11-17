@@ -14,7 +14,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -39,10 +38,11 @@ import { UserPasswordExpiredException } from '@modules/user/exceptions/user.pass
 import type {
     IUser,
     IUserLoginOutcome,
-    IUserLoginTwoFactorChallenge,
-    IUserTwoFactorEnabled,
+    IUserLoginMfaChallenge,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
@@ -56,6 +56,7 @@ describe('UserLoginCredentialUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -80,7 +81,7 @@ describe('UserLoginCredentialUseCase', () => {
         refreshToken: 'refresh-token',
     };
     const tokenOutcome: IUserLoginOutcome = {
-        isTwoFactorEnable: false,
+        isMfaRequired: false,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
         tokens,
@@ -101,24 +102,6 @@ describe('UserLoginCredentialUseCase', () => {
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
-    };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-bramble',
-        userId: 'user-bramble',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
     };
     const baseUser: IUser = {
         id: 'user-bramble',
@@ -164,26 +147,12 @@ describe('UserLoginCredentialUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
-    const enabledTwoFactor = { ...twoFactor, enabled: true };
-    const twoFactorUser: IUserTwoFactorEnabled = {
-        ...baseUser,
-        twoFactor: enabledTwoFactor,
-    };
-    const verifyChallenge: IUserLoginTwoFactorChallenge = {
-        isRequiredSetup: false,
+    const mfaChallenge: IUserLoginMfaChallenge = {
         challengeToken: 'challenge-token',
-        challengeExpiresInMs: 60000,
-        backupCodesRemaining: 1,
-    };
-    const setupChallenge: IUserLoginTwoFactorChallenge = {
-        isRequiredSetup: true,
-        challengeToken: 'challenge-token',
-        challengeExpiresInMs: 60000,
-        backupCodesRemaining: 1,
-        otpauthUrl: 'otpauth://totp/secret',
-        secret: 'secret',
+        expiresInMs: 60000,
+        methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
+        passkeyOptions: { challenge: 'challenge-webauthn' },
     };
     const session: IUserLoginSession = {
         tokens,
@@ -197,11 +166,8 @@ describe('UserLoginCredentialUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userUtil.resolveLoginActivityLogAction.mockReturnValue(
-            EnumActivityLogAction.userLoginCredential
-        );
         userUtil.isUnverified.mockReturnValue(false);
-        userUtil.isTwoFactorEnabled.mockReturnValue(false);
+        mfaService.isEnabled.mockResolvedValue(false);
         deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
@@ -221,6 +187,7 @@ describe('UserLoginCredentialUseCase', () => {
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: UserUtil, useValue: userUtil },
+                { provide: MfaService, useValue: mfaService },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -531,7 +498,7 @@ describe('UserLoginCredentialUseCase', () => {
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
             expect(
-                userAuthService.createTwoFactorChallengeInTx
+                userAuthService.createMfaChallengeInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -674,12 +641,12 @@ describe('UserLoginCredentialUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('rejects an unverified two-factor user with the unverified error before any challenge or session', async () => {
+        it('rejects an unverified MFA user with the unverified error before any challenge or session', async () => {
             userUtil.isUnverified.mockReturnValue(true);
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+            mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
-                user: { ...twoFactorUser, isVerified: false },
+                user: { ...baseUser, isVerified: false },
             });
             userVerificationService.isEmailResendable.mockResolvedValue(false);
             userAuthService.assertVerified.mockImplementation(() => {
@@ -691,50 +658,66 @@ describe('UserLoginCredentialUseCase', () => {
             ).rejects.toMatchObject(emailNotVerifiedFields);
 
             expect(
-                userAuthService.createTwoFactorChallengeInTx
+                userAuthService.createMfaChallengeInTx
             ).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('creates a challenge with the passed context and issues nothing for an already set-up two-factor user', async () => {
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+        it('answers methods without passkey and null passkeyOptions for a TOTP-only user', async () => {
+            const totpChallenge: IUserLoginMfaChallenge = {
+                ...mfaChallenge,
+                methods: [EnumMfaMethod.totp, EnumMfaMethod.backupCode],
+                passkeyOptions: null,
+            };
+            mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
-                user: twoFactorUser,
+                user: baseUser,
             });
-            userAuthService.createTwoFactorChallengeInTx.mockResolvedValue(
-                verifyChallenge
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                totpChallenge
+            );
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).resolves.toMatchObject({
+                data: { isMfaRequired: true, mfa: totpChallenge },
+            });
+        });
+
+        it('creates a challenge with the passed context and issues nothing for an MFA user', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
+            userAuthService.getOneForCredentialLogin.mockResolvedValue({
+                ...counted,
+                user: baseUser,
+            });
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                mfaChallenge
             );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).resolves.toEqual({
                 data: {
-                    isTwoFactorEnable: true,
+                    isMfaRequired: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt: null,
-                    twoFactor: verifyChallenge,
+                    mfa: mfaChallenge,
                 },
             });
-
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-bramble');
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-bramble');
             expect(
                 userPasswordService.resetPasswordAttemptInTx
-            ).toHaveBeenCalledBefore(
-                userAuthService.createTwoFactorChallengeInTx
-            );
-            expect(
-                userAuthService.createTwoFactorChallengeInTx
-            ).toHaveBeenCalledWith(
+            ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
+            expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
                 tx,
-                requestContext,
-                apiKeyContext,
-                twoFactorUser,
+                'user-bramble',
                 deviceIdentity,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential
@@ -772,25 +755,25 @@ describe('UserLoginCredentialUseCase', () => {
             ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
         });
 
-        it('returns the resolved lastWorkspaceId on the two-factor outcome', async () => {
-            userUtil.isTwoFactorEnabled.mockReturnValue(true);
+        it('returns the resolved lastWorkspaceId on the MFA outcome', async () => {
+            mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
-                user: { ...twoFactorUser, ...lastWorkspace },
+                user: { ...baseUser, ...lastWorkspace },
             });
-            userAuthService.createTwoFactorChallengeInTx.mockResolvedValue(
-                setupChallenge
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                mfaChallenge
             );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).resolves.toEqual({
                 data: {
-                    isTwoFactorEnable: true,
+                    isMfaRequired: true,
                     lastWorkspaceId: null,
                     lastWorkspaceChangedAt:
                         lastWorkspace.lastWorkspaceChangedAt,
-                    twoFactor: setupChallenge,
+                    mfa: mfaChallenge,
                 },
             });
 
@@ -799,9 +782,7 @@ describe('UserLoginCredentialUseCase', () => {
             ).toHaveBeenCalledWith('user-bramble', 'workspace-stale');
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
-            ).toHaveBeenCalledBefore(
-                userAuthService.createTwoFactorChallengeInTx
-            );
+            ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
         });
     });
 });

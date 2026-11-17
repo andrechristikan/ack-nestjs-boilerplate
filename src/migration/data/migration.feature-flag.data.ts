@@ -31,6 +31,12 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
         isEnable: true,
     },
     {
+        key: EnumFeatureFlagKey.loginWithPasskey,
+        description: 'Enable login with passkey',
+        rolloutPercent: 100,
+        isEnable: true,
+    },
+    {
         key: EnumFeatureFlagKey.signUp,
         description: 'Enable user sign up',
         rolloutPercent: 100,

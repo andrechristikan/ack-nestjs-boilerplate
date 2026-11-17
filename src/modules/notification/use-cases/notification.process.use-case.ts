@@ -11,6 +11,8 @@ import { NotificationService } from '@modules/notification/services/notification
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -20,6 +22,7 @@ export class NotificationProcessUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly userService: UserService,
+        private readonly userVerificationService: UserVerificationService,
         private readonly deviceService: DeviceService,
         private readonly notificationService: NotificationService,
         private readonly notificationUtil: NotificationUtil,
@@ -70,9 +73,18 @@ export class NotificationProcessUseCase implements IAppUseCase<
                 return { message };
             }
 
+            let mobileNumber: string | null = null;
+            if (channels.includes(EnumNotificationChannel.sms)) {
+                mobileNumber =
+                    await this.userVerificationService.getOneActiveMobileRecipient(
+                        String(context.verificationId)
+                    );
+            }
+
             recipient = this.notificationService.toRecipientRecord(
                 user,
                 tokens,
+                mobileNumber,
                 channels
             );
         }

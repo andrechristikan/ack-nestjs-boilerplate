@@ -1,10 +1,10 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 
 describe('UserForgotPasswordResetRequestSchema', () => {
     const payload = {
         newPassword: 'abcDE12345@@!',
-        method: EnumAuthTwoFactorMethod.code,
+        method: EnumMfaMethod.totp,
         code: '654321',
         backupCode: 'ABCD1234EF',
         token: 'a1b2c3d4e5f6g7h8i9j0',
@@ -93,6 +93,61 @@ describe('UserForgotPasswordResetRequestSchema', () => {
             UserForgotPasswordResetRequestSchema.parse({
                 ...payload,
                 token: 'a'.repeat(201),
+            })
+        ).toThrow();
+    });
+
+    it('parses a passkey payload with its challenge token and assertion', () => {
+        const passkeyPayload = {
+            newPassword: payload.newPassword,
+            token: payload.token,
+            method: EnumMfaMethod.passkey,
+            passkeyChallengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
+            passkeyResponse: {
+                id: 'credential-one',
+                rawId: 'credential-one',
+                response: {
+                    clientDataJSON: 'client-data',
+                    authenticatorData: 'authenticator-data',
+                    signature: 'signature',
+                },
+                clientExtensionResults: {},
+                type: 'public-key' as const,
+            },
+        };
+
+        const result =
+            UserForgotPasswordResetRequestSchema.parse(passkeyPayload);
+
+        expect(result).toEqual(passkeyPayload);
+    });
+
+    it('accepts a passkeyChallengeToken of 128 characters and rejects an empty one and one of 129', () => {
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                passkeyChallengeToken: 'a'.repeat(128),
+            })
+        ).not.toThrow();
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                passkeyChallengeToken: '',
+            })
+        ).toThrow();
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                passkeyChallengeToken: 'a'.repeat(129),
+            })
+        ).toThrow();
+    });
+
+    it('rejects a passkeyResponse that is not an assertion', () => {
+        expect(() =>
+            UserForgotPasswordResetRequestSchema.parse({
+                ...payload,
+                passkeyResponse: { id: 'credential-one' },
             })
         ).toThrow();
     });

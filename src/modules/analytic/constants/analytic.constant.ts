@@ -25,6 +25,8 @@ import type {
     IAnalyticLockoutMetrics,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
+    IAnalyticMfaAdoption,
+    IAnalyticMfaAttemptSnapshot,
     IAnalyticMobileChurn,
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
@@ -32,8 +34,6 @@ import type {
     IAnalyticStatusCount,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
-    IAnalyticTwoFactorAdoption,
-    IAnalyticTwoFactorAttemptSnapshot,
     IAnalyticVerificationFunnel,
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
@@ -104,17 +104,17 @@ export const AnalyticForgotPasswordConversionCacheSchema = z.object({
 }) satisfies z.ZodType<IAnalyticForgotPasswordConversion>;
 
 /** @public */
-export const AnalyticTwoFactorAdoptionCacheSchema = z.object({
+export const AnalyticMfaAdoptionCacheSchema = z.object({
     enabled: z.number(),
     total: z.number(),
     rate: z.number(),
-}) satisfies z.ZodType<IAnalyticTwoFactorAdoption>;
+}) satisfies z.ZodType<IAnalyticMfaAdoption>;
 
 /** @public */
-export const AnalyticTwoFactorAttemptSnapshotCacheSchema = z.object({
+export const AnalyticMfaAttemptSnapshotCacheSchema = z.object({
     usersWithAttempts: z.number(),
     totalAttempts: z.number(),
-}) satisfies z.ZodType<IAnalyticTwoFactorAttemptSnapshot>;
+}) satisfies z.ZodType<IAnalyticMfaAttemptSnapshot>;
 
 /** @public */
 export const AnalyticVerificationFunnelCacheSchema = z.object({

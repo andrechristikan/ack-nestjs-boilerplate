@@ -74,7 +74,6 @@ describe('UserForgotPasswordUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
     const forgot: IUserForgotPasswordCreate = {
         reference: 'FGT-linden',

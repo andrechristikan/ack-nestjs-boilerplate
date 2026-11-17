@@ -77,7 +77,6 @@ describe('TermPolicyGuard', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     let guard: TermPolicyGuard;

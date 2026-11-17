@@ -6,6 +6,7 @@ import { NotificationUseCaseModule } from '@modules/notification/notification.us
 import { NotificationEmailProcessor } from '@modules/notification/processors/notification.email.processor';
 import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
 import { NotificationPushProcessor } from '@modules/notification/processors/notification.push.processor';
+import { NotificationSmsProcessor } from '@modules/notification/processors/notification.sms.processor';
 import { SessionProcessor } from '@modules/session/processors/session.processor';
 import { SessionUseCaseModule } from '@modules/session/session.use-case.module';
 import { TermPolicyProcessor } from '@modules/term-policy/processors/term-policy.processor';
@@ -24,6 +25,7 @@ import { Module } from '@nestjs/common';
         NotificationProcessor,
         NotificationEmailProcessor,
         NotificationPushProcessor,
+        NotificationSmsProcessor,
         OutboxProcessor,
         SessionProcessor,
         TermPolicyProcessor,

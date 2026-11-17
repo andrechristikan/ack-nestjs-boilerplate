@@ -1412,7 +1412,7 @@ describe('AnalyticFraudService', () => {
                 [
                     EnumActivityLogAction.userLoginFailed,
                     EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                    EnumActivityLogAction.userReachMaxMfaAttempt,
                 ],
                 startDate,
                 now
@@ -1736,7 +1736,7 @@ describe('AnalyticFraudService', () => {
     describe('computeBackupCodeNewDevice', () => {
         it('flags a regeneration followed by a new device for the same user, reading the regenerations page by page', async () => {
             const regenerateActions = [
-                EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                EnumActivityLogAction.userRegenerateMfaBackupCodes,
             ];
             activityLogAnalyticService.getPageByActionsInRange
                 .mockResolvedValueOnce({
@@ -1747,7 +1747,7 @@ describe('AnalyticFraudService', () => {
                         {
                             id: 'regenerate-1',
                             userId: 'user-1',
-                            action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                            action: EnumActivityLogAction.userRegenerateMfaBackupCodes,
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,
@@ -1761,7 +1761,7 @@ describe('AnalyticFraudService', () => {
                         {
                             id: 'regenerate-2',
                             userId: 'user-2',
-                            action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                            action: EnumActivityLogAction.userRegenerateMfaBackupCodes,
                             ipAddress: null,
                             createdAt: startDate,
                             workspaceId: null,

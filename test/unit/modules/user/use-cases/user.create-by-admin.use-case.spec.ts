@@ -16,7 +16,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { Country, TwoFactor } from '@generated/prisma-client/client';
+import type { Country } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
@@ -108,24 +108,6 @@ describe('UserCreateByAdminUseCase', () => {
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'welcomeByAdmin-user-bramble',
     };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-bramble',
-        userId: 'user-bramble',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
     const baseUser: IUser = {
         id: 'user-bramble',
         name: 'Bramble Fox',
@@ -170,9 +152,8 @@ describe('UserCreateByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
-    const committedUser: IUser = { ...baseUser, twoFactor };
+    const committedUser: IUser = baseUser;
     const country: Country = {
         id: 'country-bramble',
         name: 'Indonesia',
@@ -217,6 +198,7 @@ describe('UserCreateByAdminUseCase', () => {
             token: 'hashed-token',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: 'bramble@example.com',
             expiredAt: new Date('2026-03-05T00:00:00.000Z'),
             verifiedAt: null,

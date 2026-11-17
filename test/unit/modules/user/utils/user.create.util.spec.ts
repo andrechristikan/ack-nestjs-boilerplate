@@ -14,10 +14,7 @@ import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type {
-    TwoFactor,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
@@ -59,24 +56,6 @@ describe('UserCreateUtil', () => {
         updatedBy: null,
         policies: [],
     };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-harbor',
-        userId: 'user-harbor',
-        secret: null,
-        pendingSecret: null,
-        backupCodes: [],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
     const user: IUser = {
         id: 'user-harbor',
         name: 'Harbor Quill',
@@ -110,7 +89,6 @@ describe('UserCreateUtil', () => {
         deletedAt: null,
         deletedBy: null,
         role,
-        twoFactor,
     };
 
     const personalContext: IUserSignUpWorkspacePersonal = {

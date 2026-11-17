@@ -28,9 +28,12 @@ import { NotificationProcessUseCase } from '@modules/notification/use-cases/noti
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 
 describe('NotificationProcessUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
+    const userVerificationService: MockProxy<UserVerificationService> =
+        mock<UserVerificationService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
@@ -64,6 +67,7 @@ describe('NotificationProcessUseCase', () => {
         username: 'invitee',
         encryptedEmail: 'encrypted-email',
         encryptedTokens: ['encrypted-token'],
+        encryptedMobileNumber: null,
         channels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
@@ -126,6 +130,10 @@ describe('NotificationProcessUseCase', () => {
             providers: [
                 NotificationProcessUseCase,
                 { provide: UserService, useValue: userService },
+                {
+                    provide: UserVerificationService,
+                    useValue: userVerificationService,
+                },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: NotificationUtil, useValue: notificationUtil },
@@ -164,8 +172,12 @@ describe('NotificationProcessUseCase', () => {
             expect(notificationService.toRecipientRecord).toHaveBeenCalledWith(
                 user,
                 ['token'],
+                null,
                 recipient.channels
             );
+            expect(
+                userVerificationService.getOneActiveMobileRecipient
+            ).not.toHaveBeenCalled();
             expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
                 recipient,
                 notificationId: 'notification-id',
@@ -179,6 +191,95 @@ describe('NotificationProcessUseCase', () => {
             );
             expect(result).toEqual({
                 message: 'notification.queue.notify',
+            });
+        });
+
+        describe('a kind whose channels hold sms', () => {
+            const smsData: INotificationNotifyPayload = {
+                kind: EnumNotificationKind.verificationMobileNumber,
+                context: {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    verificationId: 'verification-id',
+                    reference: 'VRF-abc',
+                    expiredInMinutes: 5,
+                    encryptedOtp: 'encrypted-otp',
+                },
+                recipient: null,
+                notificationId: null,
+            };
+            const smsChannels = [
+                EnumNotificationChannel.sms,
+                EnumNotificationChannel.silent,
+            ];
+
+            beforeEach(() => {
+                userService.getOneActive.mockResolvedValue(user);
+                notificationService.getListUserSetting.mockResolvedValue([]);
+                deviceService.getNotificationTokens.mockResolvedValue([]);
+                notificationUtil.resolveChannels.mockReturnValue(smsChannels);
+                databaseUtil.createId.mockReturnValue('notification-id');
+            });
+
+            it('reads the number from the verification row and passes it into the recipient', async () => {
+                userVerificationService.getOneActiveMobileRecipient.mockResolvedValue(
+                    '+6281234567890'
+                );
+                const smsRecipient: INotificationRecipientRecord = {
+                    ...recipient,
+                    encryptedMobileNumber: 'encrypted-number',
+                    channels: smsChannels,
+                };
+                notificationService.toRecipientRecord.mockReturnValue(
+                    smsRecipient
+                );
+
+                await useCase.execute('outbox-id', smsData);
+
+                expect(
+                    userVerificationService.getOneActiveMobileRecipient
+                ).toHaveBeenCalledWith('verification-id');
+                expect(
+                    notificationService.toRecipientRecord
+                ).toHaveBeenCalledWith(user, [], '+6281234567890', smsChannels);
+                expect(outboxService.updateData).toHaveBeenCalledWith(
+                    'outbox-id',
+                    {
+                        recipient: smsRecipient,
+                        notificationId: 'notification-id',
+                    }
+                );
+                expect(notificationService.createInTx).toHaveBeenCalledWith(
+                    tx,
+                    'notification-id',
+                    EnumNotificationKind.verificationMobileNumber,
+                    smsData.context,
+                    smsRecipient
+                );
+            });
+
+            it('passes no number when the row is used or expired', async () => {
+                userVerificationService.getOneActiveMobileRecipient.mockResolvedValue(
+                    null
+                );
+
+                await useCase.execute('outbox-id', smsData);
+
+                expect(
+                    notificationService.toRecipientRecord
+                ).toHaveBeenCalledWith(user, [], null, smsChannels);
+            });
+
+            it('reads no number on a later attempt', async () => {
+                await useCase.execute('outbox-id', {
+                    ...smsData,
+                    recipient,
+                    notificationId: 'notification-id',
+                });
+
+                expect(
+                    userVerificationService.getOneActiveMobileRecipient
+                ).not.toHaveBeenCalled();
             });
         });
 

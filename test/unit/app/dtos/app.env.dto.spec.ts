@@ -57,8 +57,10 @@ describe('AppEnvSchema', () => {
             AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
             AUTH_JWT_REFRESH_TOKEN_EXPIRED: '7d',
 
-            AUTH_TWO_FACTOR_ISSUER: 'ack',
-            AUTH_TWO_FACTOR_ENCRYPTION_KEY: encryptionSecret,
+            MFA_TOTP_ISSUER: 'ack',
+            MFA_TOTP_ENCRYPTION_KEY: encryptionSecret,
+            MFA_PASSKEY_RP_ID: 'localhost',
+            MFA_PASSKEY_ORIGINS: 'http://localhost:3000',
 
             CACHE_REDIS_URL: 'redis://localhost:6379/0',
             QUEUE_REDIS_URL: 'redis://localhost:6379/1',
@@ -111,8 +113,10 @@ describe('AppEnvSchema', () => {
                 AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
                 AUTH_JWT_REFRESH_TOKEN_EXPIRED: '7d',
 
-                AUTH_TWO_FACTOR_ISSUER: 'ack',
-                AUTH_TWO_FACTOR_ENCRYPTION_KEY: encryptionSecret,
+                MFA_TOTP_ISSUER: 'ack',
+                MFA_TOTP_ENCRYPTION_KEY: encryptionSecret,
+                MFA_PASSKEY_RP_ID: 'localhost',
+                MFA_PASSKEY_ORIGINS: 'http://localhost:3000',
 
                 CACHE_REDIS_URL: 'redis://localhost:6379/0',
                 QUEUE_REDIS_URL: 'redis://localhost:6379/1',
@@ -244,6 +248,22 @@ describe('AppEnvSchema', () => {
             );
         });
 
+        it.each([
+            ['MFA_TOTP_ISSUER'],
+            ['MFA_TOTP_ENCRYPTION_KEY'],
+            ['MFA_PASSKEY_RP_ID'],
+            ['MFA_PASSKEY_ORIGINS'],
+        ])('rejects a missing %s', key => {
+            const withoutKey = { ...validEnv };
+            delete withoutKey[key];
+            const result = AppEnvSchema.safeParse(withoutKey);
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: [key] })
+            );
+        });
+
         it('rejects an empty APP_NAME', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
@@ -304,16 +324,16 @@ describe('AppEnvSchema', () => {
             );
         });
 
-        it('rejects a two-factor encryption key with a character outside base64url', () => {
+        it('rejects an MFA encryption key with a character outside base64url', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
-                AUTH_TWO_FACTOR_ENCRYPTION_KEY: `${'a'.repeat(63)}+`,
+                MFA_TOTP_ENCRYPTION_KEY: `${'a'.repeat(63)}+`,
             });
 
             expect(result.success).toBe(false);
             expect(result.error?.issues).toContainEqual(
                 expect.objectContaining({
-                    path: ['AUTH_TWO_FACTOR_ENCRYPTION_KEY'],
+                    path: ['MFA_TOTP_ENCRYPTION_KEY'],
                 })
             );
         });
@@ -1009,6 +1029,144 @@ describe('AppEnvSchema', () => {
             });
 
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('MFA root secret', () => {
+        it('rejects a missing MFA_TOTP_ENCRYPTION_KEY when only the former MFA_ENCRYPTION_KEY is set', () => {
+            const withFormerKey = { ...validEnv };
+            delete withFormerKey.MFA_TOTP_ENCRYPTION_KEY;
+            const result = AppEnvSchema.safeParse({
+                ...withFormerKey,
+                MFA_ENCRYPTION_KEY: encryptionSecret,
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: ['MFA_TOTP_ENCRYPTION_KEY'] })
+            );
+        });
+
+        it('keeps no MFA_ENCRYPTION_KEY in the parsed env', () => {
+            const result = AppEnvSchema.parse({
+                ...validEnv,
+                MFA_ENCRYPTION_KEY: encryptionSecret,
+            });
+
+            expect(result).not.toHaveProperty('MFA_ENCRYPTION_KEY');
+        });
+    });
+
+    describe('MFA_PASSKEY_ORIGINS refinement', () => {
+        const rpId = 'example.test';
+
+        it('parses exact origins, a subdomain wildcard under the RP ID, an android key hash, and a local http origin', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS:
+                    ' https://example.test, https://*.example.test,android:apk-key-hash:x,http://localhost:3000,, ',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it('parses a wildcard whose domain lies under the RP ID', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS: 'https://*.app.example.test',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it.each([
+            ['a wildcard with no domain', 'https://*'],
+            ['a trailing slash', 'https://example.test/'],
+            ['a path', 'https://example.test/app'],
+            ['a missing scheme', 'example.test'],
+            ['an http wildcard', 'http://*.example.test'],
+            ['a wildcard outside the RP ID', 'https://*.other.test'],
+            [
+                'a wildcard that only ends with the RP ID text',
+                'https://*.notexample.test',
+            ],
+            ['an empty android key hash', 'android:apk-key-hash:'],
+            ['an origin with a non-ASCII host', 'https://exämple.test'],
+            ['only separators', ' , '],
+        ])('rejects %s', (_label, origins) => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS: origins,
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({ path: ['MFA_PASSKEY_ORIGINS'] })
+            );
+        });
+
+        it.each([
+            [EnumAppEnvironment.local],
+            [EnumAppEnvironment.development],
+            [EnumAppEnvironment.staging],
+        ])('parses a bare wildcard outside production in %s', appEnv => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: appEnv,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS: '*',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it('parses a bare wildcard among listed origins outside production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.development,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS: '*,https://example.test',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it.each([['*'], ['*,https://example.test']])(
+            'rejects the origins %s in production',
+            origins => {
+                const result = AppEnvSchema.safeParse({
+                    ...validEnv,
+                    APP_ENV: EnumAppEnvironment.production,
+                    CORS_ALLOWED_ORIGIN: 'https://a.example.com',
+                    MFA_PASSKEY_RP_ID: rpId,
+                    MFA_PASSKEY_ORIGINS: origins,
+                });
+
+                expect(result.success).toBe(false);
+                expect(result.error?.issues).toHaveLength(1);
+                expect(result.error?.issues[0]).toMatchObject({
+                    path: ['MFA_PASSKEY_ORIGINS'],
+                    message: expect.stringContaining('*'),
+                });
+            }
+        );
+
+        it('names the refused entry in the message', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                MFA_PASSKEY_RP_ID: rpId,
+                MFA_PASSKEY_ORIGINS: 'https://example.test,https://*',
+            });
+
+            expect(result.error?.issues).toContainEqual(
+                expect.objectContaining({
+                    path: ['MFA_PASSKEY_ORIGINS'],
+                    message: expect.stringContaining('https://*'),
+                })
+            );
         });
     });
 });

@@ -3,20 +3,15 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
-import {
-    EnumNotificationKind,
-    EnumNotificationStep,
-} from '@modules/notification/enums/notification.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { MessageService } from '@common/message/services/message.service';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 describe('NotificationUtil', () => {
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
@@ -29,68 +24,14 @@ describe('NotificationUtil', () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
-        messageService.setMessage.mockImplementation((path: string) => path);
         vi.mocked(configService.get).mockReturnValue('secret-key');
         helperDateService.createFromIso.mockReturnValue(loginAtDate);
         helperDateService.formatToRFC2822.mockReturnValue(loginAtRfc2822);
         util = new NotificationUtil(
             configService,
             helperEncryptionService,
-            messageService,
             helperDateService
         );
-    });
-
-    describe('toStepFailure', () => {
-        it('keeps an Error reason as the raw error', () => {
-            const rawError = new Error('down');
-
-            const failure = util.toStepFailure(
-                EnumNotificationStep.sendEmail,
-                rawError
-            );
-
-            expect(failure).toEqual({
-                step: EnumNotificationStep.sendEmail,
-                rawError,
-            });
-            expect(failure.rawError).toBe(rawError);
-        });
-
-        it('wraps a non-Error reason into an Error carrying its string form', () => {
-            const failure = util.toStepFailure(
-                EnumNotificationStep.sendPush,
-                'boom'
-            );
-
-            expect(failure.step).toBe(EnumNotificationStep.sendPush);
-            expect(failure.rawError).toBeInstanceOf(Error);
-            expect(failure.rawError.message).toBe('boom');
-        });
-    });
-
-    describe('toStepSummary', () => {
-        it('summarizes failed steps by step name only', () => {
-            messageService.setMessage.mockImplementation(
-                (path: string, options) =>
-                    `${path}|${String(options?.properties?.steps)}`
-            );
-
-            expect(
-                util.toStepSummary([
-                    {
-                        step: EnumNotificationStep.sendEmail,
-                        rawError: new Error('prisma secret'),
-                    },
-                    {
-                        step: EnumNotificationStep.sendPush,
-                        rawError: new Error('boom'),
-                    },
-                ])
-            ).toBe(
-                `notification.queue.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
-            );
-        });
     });
 
     describe('decryptPayload', () => {
@@ -100,22 +41,6 @@ describe('NotificationUtil', () => {
             expect(util.decryptPayload('cipher', 'user-id')).toBe('plain');
             expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
                 'cipher',
-                'secret-key',
-                'notification.payload',
-                'user-id'
-            );
-        });
-    });
-
-    describe('encryptPayload', () => {
-        it('encrypts the value under the notification purpose with the given context', () => {
-            helperEncryptionService.aes256Encrypt.mockReturnValue('cipher');
-
-            const result = util.encryptPayload('plain', 'user-id');
-
-            expect(result).toBe('cipher');
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'plain',
                 'secret-key',
                 'notification.payload',
                 'user-id'
@@ -254,157 +179,6 @@ describe('NotificationUtil', () => {
         });
     });
 
-    describe('toTokenPairs', () => {
-        it('pairs each encrypted token with its plain token decrypted for the user', () => {
-            helperEncryptionService.aes256Decrypt.mockImplementation(
-                (encrypted: string) =>
-                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
-            );
-
-            expect(
-                util.toTokenPairs('user-id', [
-                    'cipher(token-1)',
-                    'cipher(token-2)',
-                ])
-            ).toEqual([
-                { encrypted: 'cipher(token-1)', token: 'token-1' },
-                { encrypted: 'cipher(token-2)', token: 'token-2' },
-            ]);
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher(token-1)',
-                'secret-key',
-                'notification.payload',
-                'user-id'
-            );
-        });
-
-        it('rethrows a decryption failure', () => {
-            const failure = new Error('decrypt');
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
-                throw failure;
-            });
-
-            expect(() =>
-                util.toTokenPairs('user-id', ['cipher(token-1)'])
-            ).toThrow(failure);
-        });
-    });
-
-    describe('toMulticastOutcome', () => {
-        const pairs = [
-            { encrypted: 'cipher(token-1)', token: 'token-1' },
-            { encrypted: 'cipher(token-2)', token: 'token-2' },
-        ];
-
-        it('maps the failure tokens back to their ciphertexts with no failure when none is pending', () => {
-            const outcome = util.toMulticastOutcome(
-                pairs,
-                {
-                    successCount: 1,
-                    failureCount: 1,
-                    failureTokens: ['token-1'],
-                    retryTokens: [],
-                },
-                null
-            );
-
-            expect(outcome).toEqual({
-                encryptedFailureTokens: ['cipher(token-1)'],
-                encryptedPendingTokens: [],
-                failure: null,
-            });
-            expect(messageService.setMessage).not.toHaveBeenCalled();
-        });
-
-        it('merges the recorded failure tokens and drops duplicates', () => {
-            const outcome = util.toMulticastOutcome(
-                pairs,
-                {
-                    successCount: 1,
-                    failureCount: 1,
-                    failureTokens: ['token-1'],
-                    retryTokens: [],
-                },
-                ['cipher(old)', 'cipher(token-1)']
-            );
-
-            expect(outcome.encryptedFailureTokens).toEqual([
-                'cipher(old)',
-                'cipher(token-1)',
-            ]);
-        });
-
-        it('keeps the retry tokens as pending and fails the multicast step', () => {
-            const outcome = util.toMulticastOutcome(
-                pairs,
-                {
-                    successCount: 0,
-                    failureCount: 2,
-                    failureTokens: [],
-                    retryTokens: ['token-1', 'token-2'],
-                },
-                null
-            );
-
-            expect(outcome).toEqual({
-                encryptedFailureTokens: [],
-                encryptedPendingTokens: ['cipher(token-1)', 'cipher(token-2)'],
-                failure: {
-                    step: EnumNotificationStep.sendMulticast,
-                    rawError: new Error(
-                        'notification.queue.push.error.tokensPending'
-                    ),
-                },
-            });
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'notification.queue.push.error.tokensPending',
-                { properties: { count: 2 } }
-            );
-        });
-    });
-
-    describe('toTemplateLabel', () => {
-        it.each([
-            [EnumNotificationKind.welcome, 'welcome'],
-            [EnumNotificationKind.welcomeSocial, 'welcome social'],
-            [EnumNotificationKind.welcomeByAdmin, 'welcome by admin'],
-            [EnumNotificationKind.verificationEmail, 'verification email'],
-            [EnumNotificationKind.verifiedEmail, 'verified email'],
-            [
-                EnumNotificationKind.verifiedMobileNumber,
-                'verified mobile number',
-            ],
-            [EnumNotificationKind.changePassword, 'change password'],
-            [
-                EnumNotificationKind.temporaryPasswordByAdmin,
-                'temporary password by admin',
-            ],
-            [EnumNotificationKind.resetPassword, 'reset password'],
-            [EnumNotificationKind.forgotPassword, 'forgot password'],
-            [
-                EnumNotificationKind.resetTwoFactorByAdmin,
-                'reset two factor by admin',
-            ],
-            [EnumNotificationKind.newDeviceLogin, 'new device login'],
-            [EnumNotificationKind.publishTermPolicy, 'publish term policy'],
-            [EnumNotificationKind.workspaceInvite, 'workspace invite'],
-            [
-                EnumNotificationKind.workspaceJoinRequest,
-                'workspace join request',
-            ],
-            [
-                EnumNotificationKind.workspaceJoinAccepted,
-                'workspace join accepted',
-            ],
-            [
-                EnumNotificationKind.workspaceJoinRejected,
-                'workspace join rejected',
-            ],
-        ])('returns the lowercase words of %s', (process, label) => {
-            expect(util.toTemplateLabel(process)).toBe(label);
-        });
-    });
-
     describe('resolveChannels', () => {
         const userActivityEmailOff = {
             type: EnumNotificationType.userActivity,
@@ -477,7 +251,7 @@ describe('NotificationUtil', () => {
         it.each([
             EnumNotificationKind.temporaryPasswordByAdmin,
             EnumNotificationKind.resetPassword,
-            EnumNotificationKind.resetTwoFactorByAdmin,
+            EnumNotificationKind.resetMfaByAdmin,
         ])('lists %s as mandatory so no setting reaches it', kind => {
             expect(NotificationKindContract[kind].isMandatory).toBe(true);
         });

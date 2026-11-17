@@ -27,6 +27,22 @@ export interface IUserVerificationRepository {
         userId: string,
         action: EnumUserReauthenticationAction
     ): Promise<void>;
+    findOneLatestByMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null>;
+    findOneActiveByMobileOtp(
+        userId: string,
+        mobileNumberId: string,
+        token: string
+    ): Promise<Verification | null>;
+    findOneActiveMobileById(
+        verificationId: string
+    ): Promise<Verification | null>;
+    markUnusedMobileUsedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string
+    ): Promise<void>;
     markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
@@ -41,6 +57,7 @@ export interface IUserVerificationRepository {
             token,
             type,
             action,
+            mobileNumberId,
             to,
             expiredAt,
             verifiedAt,

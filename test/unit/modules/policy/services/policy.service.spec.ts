@@ -90,7 +90,6 @@ describe('PolicyService', () => {
             updatedBy: null,
             policies: [policy],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {

@@ -91,10 +91,6 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                     isRevoked: false,
                     revokedAt: null,
                     revokedById: null,
-                    biometricEnabled: false,
-                    biometricToken: null,
-                    biometricType: null,
-                    biometricEnabledAt: null,
                 }),
             },
             create: {

@@ -385,14 +385,16 @@ export class UserProfileService {
         username: Lowercase<string>
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
-        const [checkUsername, checkBadWord, exist] = await Promise.all([
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existsByUsername(username),
-        ]);
-        if (checkUsername) {
+        const [isUsernamePatternInvalid, hasBadWord, exist] = await Promise.all(
+            [
+                this.userUtil.isUsernamePatternInvalid(username),
+                this.userUtil.hasBadWord(username),
+                this.userRepository.existsByUsername(username),
+            ]
+        );
+        if (isUsernamePatternInvalid) {
             throw new UserUsernameNotAllowedException();
-        } else if (checkBadWord) {
+        } else if (hasBadWord) {
             throw new UserUsernameContainBadWordException();
         } else if (exist) {
             throw new UserUsernameExistException();

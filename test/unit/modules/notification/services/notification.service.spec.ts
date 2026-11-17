@@ -35,6 +35,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationPushProcess,
     EnumNotificationQueue,
+    EnumNotificationSmsProcess,
 } from '@modules/notification/enums/notification.enum';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
@@ -60,6 +61,8 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
@@ -80,6 +83,8 @@ describe('NotificationService', () => {
         mock<NotificationUserSettingRepository>();
     const notificationUtil: MockProxy<NotificationUtil> =
         mock<NotificationUtil>();
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
     let service: NotificationService;
 
     const notification: Notification = {
@@ -111,6 +116,7 @@ describe('NotificationService', () => {
     };
 
     const configValues: Record<string, string> = {
+        'app.encryptionSecretKey': 'secret-key',
         'notification.idempotencyKey.userPattern': '{process}-{userId}',
         'notification.idempotencyKey.referencePattern': '{process}-{reference}',
         'notification.idempotencyKey.joinRequestPattern':
@@ -181,6 +187,10 @@ describe('NotificationService', () => {
                     useValue: notificationUserSettingRepository,
                 },
                 { provide: NotificationUtil, useValue: notificationUtil },
+                {
+                    provide: HelperEncryptionService,
+                    useValue: helperEncryptionService,
+                },
             ],
         }).compile();
         service = module.get(NotificationService);
@@ -206,12 +216,16 @@ describe('NotificationService', () => {
                 idempotencyKey: null,
             });
             expect(helperStringService.fillPattern).not.toHaveBeenCalled();
-            expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
+            expect(
+                helperEncryptionService.aes256Encrypt
+            ).not.toHaveBeenCalled();
         });
 
         it('returns the reauthentication code effect with the code sealed against the recipient and no idempotency key', () => {
             notificationUtil.toSealedField.mockReturnValue('encryptedOtp');
-            notificationUtil.encryptPayload.mockReturnValue('encrypted-otp');
+            helperEncryptionService.aes256Encrypt.mockReturnValue(
+                'encrypted-otp'
+            );
 
             const result = service.notify(
                 EnumNotificationKind.reauthenticationOtp,
@@ -244,8 +258,10 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.high,
                 idempotencyKey: null,
             });
-            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 '482913',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'user-id'
             );
             expect(helperStringService.fillPattern).not.toHaveBeenCalled();
@@ -278,14 +294,18 @@ describe('NotificationService', () => {
                 idempotencyKey: null,
             });
             expect(helperStringService.fillPattern).not.toHaveBeenCalled();
-            expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
+            expect(
+                helperEncryptionService.aes256Encrypt
+            ).not.toHaveBeenCalled();
         });
 
         it('returns the notify effect with the link sealed against the recipient and the reference key', () => {
             notificationUtil.toSealedField.mockReturnValue(
                 'encryptedInviteAcceptLink'
             );
-            notificationUtil.encryptPayload.mockReturnValue('encrypted-link');
+            helperEncryptionService.aes256Encrypt.mockReturnValue(
+                'encrypted-link'
+            );
             helperStringService.fillPattern.mockReturnValue(
                 'workspaceInvite-WI-ref'
             );
@@ -317,8 +337,10 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'workspaceInvite-WI-ref',
             });
-            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 'https://app.test/invite/token',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'user-id'
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
@@ -327,6 +349,54 @@ describe('NotificationService', () => {
                     process: EnumNotificationKind.workspaceInvite,
                     reference: 'WI-ref',
                 })
+            );
+        });
+
+        it('returns the verificationMobileNumber effect with the code sealed against the recipient and the reference key', () => {
+            notificationUtil.toSealedField.mockReturnValue('encryptedOtp');
+            helperEncryptionService.aes256Encrypt.mockReturnValue(
+                'encrypted-otp'
+            );
+            helperStringService.fillPattern.mockReturnValue(
+                'verificationMobileNumber-VRF-abc'
+            );
+
+            const result = service.notify(
+                EnumNotificationKind.verificationMobileNumber,
+                {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    verificationId: 'verification-id',
+                    otp: '482913',
+                    reference: 'VRF-abc',
+                    expiredInMinutes: 5,
+                }
+            );
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notification,
+                name: EnumNotificationProcess.notify,
+                data: {
+                    kind: EnumNotificationKind.verificationMobileNumber,
+                    context: {
+                        userId: 'user-id',
+                        proceedBy: 'user-id',
+                        verificationId: 'verification-id',
+                        encryptedOtp: 'encrypted-otp',
+                        reference: 'VRF-abc',
+                        expiredInMinutes: 5,
+                    },
+                    recipient: null,
+                    notificationId: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'verificationMobileNumber-VRF-abc',
+            });
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                '482913',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
+                'user-id'
             );
         });
 
@@ -375,7 +445,9 @@ describe('NotificationService', () => {
                     reference: 'outbox-id',
                 }
             );
-            expect(notificationUtil.encryptPayload).not.toHaveBeenCalled();
+            expect(
+                helperEncryptionService.aes256Encrypt
+            ).not.toHaveBeenCalled();
         });
 
         it('leaves a non-string context field out of the idempotency key values', () => {
@@ -409,7 +481,7 @@ describe('NotificationService', () => {
             notificationUtil.toSealedField.mockReturnValue(
                 'encryptedInviteAcceptLink'
             );
-            notificationUtil.encryptPayload
+            helperEncryptionService.aes256Encrypt
                 .mockReturnValueOnce('encrypted-email')
                 .mockReturnValueOnce('encrypted-link');
             helperStringService.fillPattern.mockReturnValue(
@@ -439,14 +511,22 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'sendUnregistered-WI-ref',
             });
-            expect(notificationUtil.encryptPayload).toHaveBeenNthCalledWith(
+            expect(
+                helperEncryptionService.aes256Encrypt
+            ).toHaveBeenNthCalledWith(
                 1,
                 'invitee@example.com',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'WI-ref'
             );
-            expect(notificationUtil.encryptPayload).toHaveBeenNthCalledWith(
+            expect(
+                helperEncryptionService.aes256Encrypt
+            ).toHaveBeenNthCalledWith(
                 2,
                 'https://app.test/invite/token',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'WI-ref'
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
@@ -466,13 +546,14 @@ describe('NotificationService', () => {
                 email: 'user@example.com',
                 username: 'user',
             };
-            notificationUtil.encryptPayload.mockImplementation(
+            helperEncryptionService.aes256Encrypt.mockImplementation(
                 (value: string) => `cipher(${value})`
             );
 
             const result = service.toRecipientRecord(
                 user,
                 ['token-1', 'token-1', 'token-2'],
+                null,
                 [EnumNotificationChannel.email]
             );
 
@@ -481,10 +562,39 @@ describe('NotificationService', () => {
                 username: 'user',
                 encryptedEmail: 'cipher(user@example.com)',
                 encryptedTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                encryptedMobileNumber: null,
                 channels: [EnumNotificationChannel.email],
             });
-            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 'user@example.com',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
+                'user-id'
+            );
+        });
+
+        it('encrypts the mobile number against the user id when one is given', () => {
+            const user: IUserRecipient = {
+                id: 'user-id',
+                email: 'user@example.com',
+                username: 'user',
+            };
+            helperEncryptionService.aes256Encrypt.mockImplementation(
+                (value: string) => `cipher(${value})`
+            );
+
+            const result = service.toRecipientRecord(
+                user,
+                [],
+                '+6281234567890',
+                [EnumNotificationChannel.sms]
+            );
+
+            expect(result.encryptedMobileNumber).toBe('cipher(+6281234567890)');
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                '+6281234567890',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'user-id'
             );
         });
@@ -502,7 +612,7 @@ describe('NotificationService', () => {
                 'token-1',
                 'token-2',
             ]);
-            notificationUtil.encryptPayload.mockImplementation(
+            helperEncryptionService.aes256Encrypt.mockImplementation(
                 (value: string) => `cipher(${value})`
             );
 
@@ -516,8 +626,10 @@ describe('NotificationService', () => {
             expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
                 'user-id'
             );
-            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 'token-2',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'user-id'
             );
         });
@@ -548,6 +660,7 @@ describe('NotificationService', () => {
                 username: 'user',
                 encryptedEmail: 'cipher(user@example.com)',
                 encryptedTokens: ['cipher(token-1)'],
+                encryptedMobileNumber: null,
                 channels,
             });
             expect(notificationUtil.resolveChannels).toHaveBeenCalledWith(
@@ -565,6 +678,7 @@ describe('NotificationService', () => {
             username: 'invitee',
             encryptedEmail: 'encrypted-email',
             encryptedTokens: ['encrypted-token'],
+            encryptedMobileNumber: null,
             channels: [
                 EnumNotificationChannel.email,
                 EnumNotificationChannel.push,
@@ -677,6 +791,89 @@ describe('NotificationService', () => {
             );
 
             expect(notificationRepository.createInTx).toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('adds an sms row keyed by the sendSms step when the channels hold sms and the recipient has a number', async () => {
+            helperStringService.fillPattern.mockImplementation(
+                (_pattern: string, values: Record<string, string>) =>
+                    `${values.notificationId}-${values.step}`
+            );
+            const smsContext: INotificationSealedData = {
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                verificationId: 'verification-id',
+                reference: 'VRF-abc',
+                expiredInMinutes: 5,
+                encryptedOtp: 'encrypted-otp',
+            };
+
+            await service.createInTx(
+                tx,
+                'notification-id',
+                EnumNotificationKind.verificationMobileNumber,
+                smsContext,
+                {
+                    ...recipient,
+                    encryptedMobileNumber: 'encrypted-number',
+                    channels: [
+                        EnumNotificationChannel.sms,
+                        EnumNotificationChannel.silent,
+                    ],
+                }
+            );
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                {
+                    queue: EnumNotificationQueue.notificationSms,
+                    name: EnumNotificationSmsProcess.send,
+                    data: {
+                        kind: EnumNotificationKind.verificationMobileNumber,
+                        notificationId: 'notification-id',
+                        userId: 'user-id',
+                        username: 'invitee',
+                        encryptedMobileNumber: 'encrypted-number',
+                        context: smsContext,
+                        completedSteps: [],
+                    },
+                    priority: EnumQueuePriority.medium,
+                    idempotencyKey: 'notification-id-sendSms',
+                },
+            ]);
+        });
+
+        it('adds no sms row when the recipient has no number', async () => {
+            await service.createInTx(
+                tx,
+                'notification-id',
+                EnumNotificationKind.verificationMobileNumber,
+                sealedContext,
+                {
+                    ...recipient,
+                    channels: [
+                        EnumNotificationChannel.sms,
+                        EnumNotificationChannel.silent,
+                    ],
+                }
+            );
+
+            expect(notificationRepository.createInTx).toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('adds no sms row when the channels do not hold sms', async () => {
+            await service.createInTx(
+                tx,
+                'notification-id',
+                EnumNotificationKind.workspaceInvite,
+                sealedContext,
+                {
+                    ...recipient,
+                    encryptedMobileNumber: 'encrypted-number',
+                    channels: [EnumNotificationChannel.inApp],
+                }
+            );
+
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -805,8 +1002,8 @@ describe('NotificationService', () => {
         ];
 
         beforeEach(() => {
-            notificationUtil.encryptPayload.mockImplementation(
-                (value: string, context: string) => `enc-${context}-${value}`
+            helperEncryptionService.aes256Encrypt.mockImplementation(
+                (value: string, ...rest: string[]) => `enc-${rest[2]}-${value}`
             );
         });
 
@@ -820,8 +1017,10 @@ describe('NotificationService', () => {
                 recipients
             );
 
-            expect(notificationUtil.encryptPayload).toHaveBeenCalledWith(
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
                 'u1@example.com',
+                'secret-key',
+                NotificationPayloadEncryptionPurpose,
                 'u1'
             );
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(

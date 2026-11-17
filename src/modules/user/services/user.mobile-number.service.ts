@@ -3,6 +3,9 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
@@ -13,6 +16,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserService } from '@modules/user/services/user.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Injectable } from '@nestjs/common';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -22,6 +26,8 @@ export class UserMobileNumberService {
     constructor(
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly userService: UserService,
+        private readonly userVerificationService: UserVerificationService,
+        private readonly helperDateService: HelperDateService,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService
     ) {}
@@ -109,6 +115,44 @@ export class UserMobileNumberService {
         return mobileNumber;
     }
 
+    /** Resolves the number of the user; throws when it is not the user's or is already verified. */
+    async getOneUnverifiedMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<IUserMobileNumberSummary> {
+        const mobileNumber = await this.getOneMobileNumber(
+            userId,
+            mobileNumberId
+        );
+        if (mobileNumber.isVerified) {
+            throw new UserMobileNumberAlreadyVerifiedException();
+        }
+
+        return mobileNumber;
+    }
+
+    /** Marks the number verified now on the caller's transaction; throws when it was verified or deleted first. */
+    async markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string
+    ): Promise<void> {
+        const verifiedAt = this.helperDateService.create();
+        const isMarked = await this.userMobileNumberRepository.markVerifiedInTx(
+            tx,
+            userId,
+            mobileNumberId,
+            verifiedAt
+        );
+        if (!isMarked) {
+            throw new UserTokenInvalidException();
+        }
+    }
+
+    toDialableNumber({ phoneCode, number }: IUserMobileNumberSummary): string {
+        return `+${phoneCode}${number}`;
+    }
+
     /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification; a duplicate or an invalid phone code throws before any write. */
     async updateMobileNumberInTx(
         tx: IDatabaseTransactionClient,
@@ -133,10 +177,9 @@ export class UserMobileNumberService {
             throw new UserMobileNumberInvalidException();
         }
 
-        const isVerified =
-            current.number === number && current.phoneCode === phoneCode
-                ? current.isVerified
-                : false;
+        const isChanged =
+            current.number !== number || current.phoneCode !== phoneCode;
+        const isVerified = isChanged ? false : current.isVerified;
 
         const mobileNumber = await this.userMobileNumberRepository.updateInTx(
             tx,
@@ -149,6 +192,12 @@ export class UserMobileNumberService {
             isVerified
         );
         await this.userService.touchUpdatedByInTx(tx, userId);
+        if (isChanged) {
+            await this.userVerificationService.expireActiveByMobileNumberInTx(
+                tx,
+                current.id
+            );
+        }
 
         const entry = this.activityLogService.recordEffect(
             requestContext,
@@ -182,6 +231,10 @@ export class UserMobileNumberService {
         }
 
         await this.userService.touchUpdatedByInTx(tx, userId);
+        await this.userVerificationService.expireActiveByMobileNumberInTx(
+            tx,
+            mobileNumberId
+        );
 
         const entry = this.activityLogService.recordEffect(
             requestContext,

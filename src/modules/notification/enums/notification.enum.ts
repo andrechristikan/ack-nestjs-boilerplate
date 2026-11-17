@@ -3,6 +3,7 @@ export enum EnumNotificationQueue {
     notification = 'notification',
     notificationEmail = 'notificationEmail',
     notificationPush = 'notificationPush',
+    notificationSms = 'notificationSms',
 }
 
 /** @public */
@@ -25,11 +26,17 @@ export enum EnumNotificationPushProcess {
 }
 
 /** @public */
+export enum EnumNotificationSmsProcess {
+    send = 'send',
+}
+
+/** @public */
 export enum EnumNotificationKind {
     welcome = 'welcome',
     welcomeSocial = 'welcomeSocial',
     welcomeByAdmin = 'welcomeByAdmin',
     verificationEmail = 'verificationEmail',
+    verificationMobileNumber = 'verificationMobileNumber',
     reauthenticationOtp = 'reauthenticationOtp',
     verifiedEmail = 'verifiedEmail',
     verifiedMobileNumber = 'verifiedMobileNumber',
@@ -37,7 +44,7 @@ export enum EnumNotificationKind {
     changePassword = 'changePassword',
     forgotPassword = 'forgotPassword',
     resetPassword = 'resetPassword',
-    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    resetMfaByAdmin = 'resetMfaByAdmin',
     loginLocked = 'loginLocked',
     newDeviceLogin = 'newDeviceLogin',
     publishTermPolicy = 'publishTermPolicy',
@@ -52,13 +59,14 @@ export enum EnumNotificationKind {
 /** @public */
 export enum EnumNotificationLoginLockedMethod {
     password = 'password',
-    twoFactor = 'twoFactor',
+    mfa = 'mfa',
 }
 
 /** @public */
 export enum EnumNotificationStep {
     sendEmail = 'sendEmail',
     sendPush = 'sendPush',
+    sendSms = 'sendSms',
     updateProcessAt = 'updateProcessAt',
     sendMulticast = 'sendMulticast',
     updateSentAt = 'updateSentAt',

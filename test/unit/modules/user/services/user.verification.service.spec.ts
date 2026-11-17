@@ -38,6 +38,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     INotificationReauthenticationOtpContext,
     INotificationVerificationLinkContext,
+    INotificationVerificationMobileNumberContext,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -130,7 +131,6 @@ describe('UserVerificationService', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     const verification: Verification = {
@@ -852,6 +852,7 @@ describe('UserVerificationService', () => {
                     token: 'hashed-otp',
                     type: EnumVerificationType.reauthentication,
                     action: EnumUserReauthenticationAction.mobileNumberAdd,
+                    mobileNumberId: null,
                     to: 'flint@example.com',
                     expiredAt,
                     verifiedAt: null,
@@ -886,6 +887,225 @@ describe('UserVerificationService', () => {
         });
     });
 
+    describe('sendMobileInTx', () => {
+        const expiredAt = new Date('2026-03-01T00:05:00.000Z');
+        const context: INotificationVerificationMobileNumberContext = {
+            userId: 'user-flint',
+            proceedBy: 'user-flint',
+            verificationId: 'verification-mobile',
+            otp: '123456',
+            reference: 'VRF-mobile',
+            expiredInMinutes: 5,
+        };
+
+        beforeEach(() => {
+            helperNumberService.randomDigits.mockReturnValue('123456');
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationUtil.createReference.mockReturnValue('VRF-mobile');
+            userVerificationUtil.createExpiredAt.mockReturnValue(expiredAt);
+        });
+
+        it('stores the SHA-256 hash of the OTP with the mobile number type and the number id, and never the OTP itself', async () => {
+            userVerificationRepository.createInTx.mockResolvedValue({
+                ...verification,
+                id: 'verification-mobile',
+            });
+
+            await service.sendMobileInTx(
+                tx,
+                'user-flint',
+                'mobile-flint',
+                '+6281234567890'
+            );
+
+            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
+            expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-flint',
+                {
+                    reference: 'VRF-mobile',
+                    token: 'hashed-otp',
+                    type: EnumVerificationType.mobileNumber,
+                    action: null,
+                    mobileNumberId: 'mobile-flint',
+                    to: '+6281234567890',
+                    expiredAt,
+                    verifiedAt: null,
+                    isUsed: false,
+                },
+                'user-flint'
+            );
+        });
+
+        it('marks the number earlier unused rows used before it creates the new row, then adds the verificationMobileNumber effect on the given tx', async () => {
+            userVerificationRepository.createInTx.mockResolvedValue({
+                ...verification,
+                id: 'verification-mobile',
+            });
+
+            await service.sendMobileInTx(
+                tx,
+                'user-flint',
+                'mobile-flint',
+                '+6281234567890'
+            );
+
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userVerificationRepository.markUnusedMobileUsedInTx
+            ).toHaveBeenCalledWith(tx, 'mobile-flint');
+            expect(
+                userVerificationRepository.markUnusedMobileUsedInTx
+            ).toHaveBeenCalledBefore(userVerificationRepository.createInTx);
+            expect(notificationService.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.verificationMobileNumber,
+                context
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                notifyEffect
+            );
+        });
+
+        it('adds no effect when the row write throws', async () => {
+            userVerificationRepository.createInTx.mockRejectedValue(
+                new Error('boom')
+            );
+
+            await expect(
+                service.sendMobileInTx(
+                    tx,
+                    'user-flint',
+                    'mobile-flint',
+                    '+6281234567890'
+                )
+            ).rejects.toThrow('boom');
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('isMobileResendable', () => {
+        it('returns true when the number has no code row', async () => {
+            userVerificationRepository.findOneLatestByMobileNumber.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.isMobileResendable('user-flint', 'mobile-flint')
+            ).resolves.toBe(true);
+
+            expect(
+                userVerificationRepository.findOneLatestByMobileNumber
+            ).toHaveBeenCalledWith('user-flint', 'mobile-flint');
+            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
+        });
+
+        it('returns false while the latest row, used or not, is inside the resend window', async () => {
+            userVerificationRepository.findOneLatestByMobileNumber.mockResolvedValue(
+                { ...verification, isUsed: true }
+            );
+            userUtil.isInsideResendWindow.mockReturnValue(true);
+
+            await expect(
+                service.isMobileResendable('user-flint', 'mobile-flint')
+            ).resolves.toBe(false);
+
+            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
+                verification.createdAt,
+                7
+            );
+        });
+
+        it('returns true outside the resend window', async () => {
+            userVerificationRepository.findOneLatestByMobileNumber.mockResolvedValue(
+                verification
+            );
+            userUtil.isInsideResendWindow.mockReturnValue(false);
+
+            await expect(
+                service.isMobileResendable('user-flint', 'mobile-flint')
+            ).resolves.toBe(true);
+        });
+    });
+
+    describe('getOneActiveByMobileOtp', () => {
+        it('returns the row scoped by user, number, and the hash of the code', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationRepository.findOneActiveByMobileOtp.mockResolvedValue(
+                verification
+            );
+
+            await expect(
+                service.getOneActiveByMobileOtp(
+                    'user-flint',
+                    'mobile-flint',
+                    '123456'
+                )
+            ).resolves.toBe(verification);
+
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
+            expect(
+                userVerificationRepository.findOneActiveByMobileOtp
+            ).toHaveBeenCalledWith('user-flint', 'mobile-flint', 'hashed-otp');
+        });
+
+        it('throws UserTokenInvalidException when no active row matches', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
+            userVerificationRepository.findOneActiveByMobileOtp.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getOneActiveByMobileOtp(
+                    'user-flint',
+                    'mobile-flint',
+                    '123456'
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                messagePath: 'user.error.verificationTokenInvalid',
+            });
+        });
+    });
+
+    describe('expireActiveByMobileNumberInTx', () => {
+        it('marks the number unused rows used on the given tx', async () => {
+            await service.expireActiveByMobileNumberInTx(tx, 'mobile-flint');
+
+            expect(
+                userVerificationRepository.markUnusedMobileUsedInTx
+            ).toHaveBeenCalledWith(tx, 'mobile-flint');
+        });
+    });
+
+    describe('getOneActiveMobileRecipient', () => {
+        it('returns the number the active row was sent to', async () => {
+            userVerificationRepository.findOneActiveMobileById.mockResolvedValue(
+                { ...verification, to: '+6281234567890' }
+            );
+
+            await expect(
+                service.getOneActiveMobileRecipient('verification-flint')
+            ).resolves.toBe('+6281234567890');
+
+            expect(
+                userVerificationRepository.findOneActiveMobileById
+            ).toHaveBeenCalledWith('verification-flint');
+        });
+
+        it('returns null for a used or expired row', async () => {
+            userVerificationRepository.findOneActiveMobileById.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getOneActiveMobileRecipient('verification-flint')
+            ).resolves.toBeNull();
+        });
+    });
+
     describe('markUsedInTx', () => {
         it('marks the verification used at now and returns whether the guard held', async () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
@@ -900,6 +1120,36 @@ describe('UserVerificationService', () => {
         });
     });
 
+    describe('markMobileUsedInTx', () => {
+        it('marks the verification used at now', async () => {
+            userVerificationRepository.markUsedInTx.mockResolvedValue(true);
+
+            await service.markMobileUsedInTx(
+                tx,
+                'verification-flint',
+                'user-flint'
+            );
+
+            expect(
+                userVerificationRepository.markUsedInTx
+            ).toHaveBeenCalledWith(tx, 'verification-flint', now, 'user-flint');
+        });
+
+        it('throws UserTokenInvalidException when the verification was used or expired first', async () => {
+            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+
+            await expect(
+                service.markMobileUsedInTx(
+                    tx,
+                    'verification-flint',
+                    'user-flint'
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
+        });
+    });
+
     describe('createInTx', () => {
         it('delegates to the repository', async () => {
             const createVerification: IUserCreateVerification = {
@@ -907,6 +1157,7 @@ describe('UserVerificationService', () => {
                 token: 'hashed-token',
                 type: EnumVerificationType.email,
                 action: null,
+                mobileNumberId: null,
                 to: 'flint@example.com',
                 expiredAt: new Date('2026-03-05T00:00:00.000Z'),
                 verifiedAt: null,

@@ -57,16 +57,13 @@ export class TermPolicyUtil {
     }
 
     /** Builds the S3 key `{path}/{language}.{extension}` with the extension lowercased, dropping a leading slash. */
-    createRandomFilenameContentWithPath(
+    getContentKey(
         type: EnumTermPolicyType,
         version: number,
         language: EnumMessageLanguage,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.helperStringService.fillPattern(
-            this.uploadContentPath,
-            { type, version: version.toString() }
-        );
+        const path: string = this.getPath(type, version);
 
         let fullPath: string = `${path}/${language}.${extension.toLowerCase()}`;
         if (fullPath.startsWith('/')) {

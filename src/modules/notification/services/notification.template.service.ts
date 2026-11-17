@@ -7,17 +7,17 @@ import type {
     INotificationTemplateEmail,
     INotificationTemplateName,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 @Injectable()
 export class NotificationTemplateService {
-    constructor(
-        private readonly awsSESService: AwsSESService,
-        private readonly notificationUtil: NotificationUtil
-    ) {}
+    constructor(private readonly awsSESService: AwsSESService) {}
+
+    private toTemplateLabel(name: INotificationTemplateName): string {
+        return name.replace(/[A-Z]/g, letter => ` ${letter.toLowerCase()}`);
+    }
 
     private getTemplateEmail(
         name: INotificationTemplateName
@@ -143,13 +143,13 @@ export class NotificationTemplateService {
                         'utf8'
                     ),
                 };
-            case EnumNotificationKind.resetTwoFactorByAdmin:
+            case EnumNotificationKind.resetMfaByAdmin:
                 return {
                     subject: 'Reset Two Factor By Admin',
                     htmlBody: readFileSync(
                         join(
                             templateDir,
-                            'notification.reset-two-factor-by-admin.template.hbs'
+                            'notification.reset-mfa-by-admin.template.hbs'
                         ),
                         'utf8'
                     ),
@@ -255,7 +255,7 @@ export class NotificationTemplateService {
                 htmlBody: template.htmlBody,
             });
         } catch (err: unknown) {
-            const label = this.notificationUtil.toTemplateLabel(name);
+            const label = this.toTemplateLabel(name);
             throw new AppUnknownException(
                 err,
                 `Failed to import ${label} template`
@@ -273,7 +273,7 @@ export class NotificationTemplateService {
                 return null;
             }
 
-            const label = this.notificationUtil.toTemplateLabel(name);
+            const label = this.toTemplateLabel(name);
             throw new AppUnknownException(
                 err,
                 `Failed to get ${label} template`
@@ -285,7 +285,7 @@ export class NotificationTemplateService {
         try {
             await this.awsSESService.deleteTemplate({ name });
         } catch (err: unknown) {
-            const label = this.notificationUtil.toTemplateLabel(name);
+            const label = this.toTemplateLabel(name);
             throw new AppUnknownException(
                 err,
                 `Failed to delete ${label} template`

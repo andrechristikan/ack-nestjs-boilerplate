@@ -51,32 +51,20 @@ import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/u
 import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserDeleteMobileNumberRequestSchema } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
 import type { UserDeleteMobileNumberRequestDto } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
+import { UserVerifyMobileNumberRequestSchema } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
+import type { UserVerifyMobileNumberRequestDto } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
 import { UserReauthenticationSendRequestSchema } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
-import { UserTwoFactorDisableRequestSchema } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorRegenerateBackupCodeRequestSchema } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserTwoFactorSetupRequestSchema } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
-import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import type {
     IUserContext,
     IUserMobileNumber,
     IUserProfile,
-    IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-case';
 import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
@@ -88,12 +76,9 @@ import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-p
 import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
 import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+import { UserSendVerificationMobileNumberUseCase } from '@modules/user/use-cases/user.send-verification-mobile-number.use-case';
+import { UserVerifyMobileNumberUseCase } from '@modules/user/use-cases/user.verify-mobile-number.use-case';
 import { UserClaimUsernameUseCase } from '@modules/user/use-cases/user.claim-username.use-case';
-import { UserGetTwoFactorStatusUseCase } from '@modules/user/use-cases/user.get-two-factor-status.use-case';
-import { UserSetupTwoFactorUseCase } from '@modules/user/use-cases/user.setup-two-factor.use-case';
-import { UserEnableTwoFactorUseCase } from '@modules/user/use-cases/user.enable-two-factor.use-case';
-import { UserDisableTwoFactorUseCase } from '@modules/user/use-cases/user.disable-two-factor.use-case';
-import { UserRegenerateTwoFactorBackupCodesUseCase } from '@modules/user/use-cases/user.regenerate-two-factor-backup-codes.use-case';
 import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
 import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user.send-reauthentication-otp.use-case';
 import {
@@ -129,12 +114,9 @@ export class UserSharedController {
         private readonly userAddMobileNumberUseCase: UserAddMobileNumberUseCase,
         private readonly userUpdateMobileNumberUseCase: UserUpdateMobileNumberUseCase,
         private readonly userDeleteMobileNumberUseCase: UserDeleteMobileNumberUseCase,
+        private readonly userSendVerificationMobileNumberUseCase: UserSendVerificationMobileNumberUseCase,
+        private readonly userVerifyMobileNumberUseCase: UserVerifyMobileNumberUseCase,
         private readonly userClaimUsernameUseCase: UserClaimUsernameUseCase,
-        private readonly userGetTwoFactorStatusUseCase: UserGetTwoFactorStatusUseCase,
-        private readonly userSetupTwoFactorUseCase: UserSetupTwoFactorUseCase,
-        private readonly userEnableTwoFactorUseCase: UserEnableTwoFactorUseCase,
-        private readonly userDisableTwoFactorUseCase: UserDisableTwoFactorUseCase,
-        private readonly userRegenerateTwoFactorBackupCodesUseCase: UserRegenerateTwoFactorBackupCodesUseCase,
         private readonly userLogoutUseCase: UserLogoutUseCase,
         private readonly userSendReauthenticationOtpUseCase: UserSendReauthenticationOtpUseCase
     ) {}
@@ -389,9 +371,59 @@ export class UserSharedController {
         );
     }
 
+    @Doc({ summary: 'send a verification code to a user mobile number' })
+    @Response('user.sendVerificationMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/verification/send')
+    async sendVerificationMobileNumber(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        mobileNumberId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.userSendVerificationMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            mobileNumberId
+        );
+    }
+
+    @Doc({ summary: 'verify a user mobile number with its code' })
+    @Response('user.verifyMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/mobile-number/:mobileNumberId/verify')
+    async verifyMobileNumber(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        mobileNumberId: string,
+        @Body({ schema: UserVerifyMobileNumberRequestSchema })
+        body: UserVerifyMobileNumberRequestDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userVerifyMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            mobileNumberId,
+            body
+        );
+    }
+
     @Doc({
         summary:
-            'send a one-time code by email for one sensitive action; for an account with no password and no two-factor',
+            'send a one-time code by email for one sensitive action; for an account with no password and no MFA',
     })
     @Response('user.sendReauthenticationOtp')
     @TermPolicyAcceptanceProtected()
@@ -442,136 +474,6 @@ export class UserSharedController {
         );
     }
 
-    @Doc({ summary: 'get current two-factor authentication status' })
-    @Response('user.twoFactor.status', {
-        schema: UserTwoFactorStatusResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/2fa/status/get')
-    async getTwoFactorStatus(
-        @UserContext() userContext: IUserContext
-    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
-        return this.userGetTwoFactorStatusUseCase.execute(userContext);
-    }
-
-    @Doc({
-        summary:
-            'start two-factor setup with the current password and receive secret; requires an unused backup code while two-factor is enabled',
-    })
-    @Response('user.twoFactor.setup', {
-        schema: UserTwoFactorSetupResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/2fa/setup')
-    async setupTwoFactor(
-        @RequestContext() requestContext: IRequestContext,
-        @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @UserContext() userContext: IUserContext,
-        @Body({ schema: UserTwoFactorSetupRequestSchema })
-        body: UserTwoFactorSetupRequestDto
-    ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userSetupTwoFactorUseCase.execute(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            userContext,
-            body
-        );
-    }
-
-    @Doc({
-        summary: 'enable two-factor authentication with the current password',
-    })
-    @Response('user.twoFactor.enable', {
-        schema: UserTwoFactorEnableResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/2fa/enable')
-    async enableTwoFactor(
-        @RequestContext() requestContext: IRequestContext,
-        @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @UserContext() userContext: IUserContext,
-        @Body({ schema: UserTwoFactorEnableRequestSchema })
-        body: UserTwoFactorEnableRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userEnableTwoFactorUseCase.execute(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            userContext,
-            body
-        );
-    }
-
-    @Doc({ summary: 'disable two-factor authentication' })
-    @Response('user.twoFactor.disable')
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Delete('/2fa/disable')
-    async disableTwoFactor(
-        @RequestContext() requestContext: IRequestContext,
-        @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @UserContext() userContext: IUserContext,
-        @Body({ schema: UserTwoFactorDisableRequestSchema })
-        body: UserTwoFactorDisableRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.userDisableTwoFactorUseCase.execute(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            userContext,
-            body
-        );
-    }
-
-    @Doc({ summary: 'regenerate two-factor backup codes' })
-    @Response('user.twoFactor.regenerateBackupCodes', {
-        schema: UserTwoFactorEnableResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/2fa/backup-code/regenerate')
-    async regenerateTwoFactorBackupCodes(
-        @RequestContext() requestContext: IRequestContext,
-        @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @UserContext() userContext: IUserContext,
-        @Body({ schema: UserTwoFactorRegenerateBackupCodeRequestSchema })
-        body: UserTwoFactorRegenerateBackupCodeRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userRegenerateTwoFactorBackupCodesUseCase.execute(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            userContext,
-            body
-        );
-    }
-
     @Doc({
         summary:
             'logout from current session, invalidating the access token and deleting the session.',
@@ -594,6 +496,4 @@ export class UserSharedController {
             authContext
         );
     }
-
-    // TODO: Verify number implementation, but which provider?
 }

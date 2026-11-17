@@ -95,7 +95,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: null,
     };
 
     beforeEach(async () => {

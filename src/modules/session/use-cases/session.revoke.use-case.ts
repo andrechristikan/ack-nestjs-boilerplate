@@ -48,7 +48,15 @@ export class SessionRevokeUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
         sessionId: string,
-        { password, method, code, backupCode, otp }: SessionRevokeRequestDto
+        {
+            password,
+            method,
+            code,
+            backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
+            otp,
+        }: SessionRevokeRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         const userId = authContext.userId;
@@ -63,6 +71,8 @@ export class SessionRevokeUseCase implements IAppUseCase<
                 method: method ?? null,
                 code: code ?? null,
                 backupCode: backupCode ?? null,
+                passkeyChallengeToken: passkeyChallengeToken ?? null,
+                passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
             }
         );
@@ -75,7 +85,6 @@ export class SessionRevokeUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    user,
                     check
                 );
                 await this.sessionService.revokeInTx(

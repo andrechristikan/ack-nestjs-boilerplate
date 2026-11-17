@@ -94,10 +94,6 @@ describe('DeviceService', () => {
         lastActiveAt: now,
         notificationToken: null,
         notificationProvider: null,
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
     };
     const deviceOwnershipDetail: IDeviceOwnership = {
         ...deviceOwnership,

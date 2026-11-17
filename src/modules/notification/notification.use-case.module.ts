@@ -15,6 +15,7 @@ import { NotificationProcessUseCase } from '@modules/notification/use-cases/noti
 import { NotificationEmailProcessSendUseCase } from '@modules/notification/use-cases/notification.email.process-send.use-case';
 import { NotificationEmailProcessSendUnregisteredUseCase } from '@modules/notification/use-cases/notification.email.process-send-unregistered.use-case';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
+import { NotificationSmsProcessSendUseCase } from '@modules/notification/use-cases/notification.sms.process-send.use-case';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -32,6 +33,7 @@ import { Module } from '@nestjs/common';
         NotificationEmailProcessSendUseCase,
         NotificationEmailProcessSendUnregisteredUseCase,
         NotificationPushProcessSendUseCase,
+        NotificationSmsProcessSendUseCase,
     ],
     exports: [
         NotificationGetListCursorUseCase,
@@ -46,6 +48,7 @@ import { Module } from '@nestjs/common';
         NotificationEmailProcessSendUseCase,
         NotificationEmailProcessSendUnregisteredUseCase,
         NotificationPushProcessSendUseCase,
+        NotificationSmsProcessSendUseCase,
     ],
     imports: [
         DeviceModule,

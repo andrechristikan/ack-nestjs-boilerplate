@@ -100,7 +100,6 @@ describe('RoleCreateByAdminUseCase', () => {
         deletedAt: null,
         deletedBy: null,
         role: actorRole,
-        twoFactor: null,
     };
     const actor: IRoleActor = {
         roleId: actorRole.id,

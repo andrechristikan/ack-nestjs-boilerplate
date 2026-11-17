@@ -115,6 +115,76 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
+    async findOneLatestByMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null> {
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async findOneActiveByMobileOtp(
+        userId: string,
+        mobileNumberId: string,
+        token: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async findOneActiveMobileById(
+        verificationId: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                id: verificationId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async markUnusedMobileUsedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string
+    ): Promise<void> {
+        await tx.verification.updateMany({
+            where: {
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+            },
+            data: {
+                isUsed: true,
+            },
+        });
+    }
+
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
@@ -141,6 +211,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             token,
             type,
             action,
+            mobileNumberId,
             to,
             expiredAt,
             verifiedAt,
@@ -155,6 +226,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 token,
                 type,
                 action,
+                mobileNumberId,
                 to,
                 expiredAt,
                 verifiedAt,

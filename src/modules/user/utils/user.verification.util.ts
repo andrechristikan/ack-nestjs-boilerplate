@@ -120,6 +120,7 @@ export class UserVerificationUtil {
             token: hashedToken,
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: email,
             expiredAt,
             verifiedAt,

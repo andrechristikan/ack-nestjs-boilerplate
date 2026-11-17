@@ -3,6 +3,7 @@ import type {
     EnumNotificationProcess,
     EnumNotificationPushProcess,
     EnumNotificationQueue,
+    EnumNotificationSmsProcess,
 } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import {
@@ -60,6 +61,13 @@ export interface INotificationVerificationLinkContext extends INotificationConte
     link: string;
     reference: string;
     expiredAt: string;
+    expiredInMinutes: number;
+}
+
+export interface INotificationVerificationMobileNumberContext extends INotificationContextBase {
+    verificationId: string;
+    otp: string;
+    reference: string;
     expiredInMinutes: number;
 }
 
@@ -149,6 +157,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.welcomeSocial]: INotificationContextBase;
     [EnumNotificationKind.welcomeByAdmin]: INotificationPasswordContext;
     [EnumNotificationKind.verificationEmail]: INotificationVerificationLinkContext;
+    [EnumNotificationKind.verificationMobileNumber]: INotificationVerificationMobileNumberContext;
     [EnumNotificationKind.reauthenticationOtp]: INotificationReauthenticationOtpContext;
     [EnumNotificationKind.verifiedEmail]: INotificationReferenceContext;
     [EnumNotificationKind.verifiedMobileNumber]: INotificationVerifiedMobileNumberContext;
@@ -156,7 +165,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.changePassword]: INotificationContextBase;
     [EnumNotificationKind.forgotPassword]: INotificationVerificationLinkContext;
     [EnumNotificationKind.resetPassword]: INotificationSnapshotContext;
-    [EnumNotificationKind.resetTwoFactorByAdmin]: INotificationSnapshotContext;
+    [EnumNotificationKind.resetMfaByAdmin]: INotificationSnapshotContext;
     [EnumNotificationKind.loginLocked]: INotificationLoginLockedContext;
     [EnumNotificationKind.newDeviceLogin]: INotificationNewDeviceLoginContext;
     [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
@@ -209,6 +218,7 @@ export type INotificationRecipientRecord = {
     username: string;
     encryptedEmail: string;
     encryptedTokens: string[];
+    encryptedMobileNumber: string | null;
     channels: EnumNotificationChannel[];
 };
 
@@ -234,6 +244,16 @@ export type INotificationSealedInviteContext = Pick<
     'reference'
 > &
     INotificationSealedRecord;
+
+export interface INotificationSmsSendPayload {
+    kind: EnumNotificationKind;
+    notificationId: string;
+    userId: string;
+    username: string;
+    encryptedMobileNumber: string;
+    context: INotificationSealedData;
+    completedSteps: EnumNotificationStep[];
+}
 
 export interface INotificationEmailSendUnregisteredPayload {
     encryptedEmail: string;
@@ -355,7 +375,8 @@ export type INotificationPushCleanupStaleTokensResult = {
 
 export type INotificationTemplateName = Exclude<
     EnumNotificationKind,
-    EnumNotificationKind.userAcceptTermPolicy
+    | EnumNotificationKind.userAcceptTermPolicy
+    | EnumNotificationKind.verificationMobileNumber
 >;
 
 export type INotificationTemplateEmail = {
@@ -391,6 +412,12 @@ export interface INotificationPushSendEffect extends IOutboxEffect {
     queue: EnumNotificationQueue.notificationPush;
     name: EnumNotificationPushProcess.send;
     data: INotificationPushSendPayload;
+}
+
+export interface INotificationSmsSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationSms;
+    name: EnumNotificationSmsProcess.send;
+    data: INotificationSmsSendPayload;
 }
 
 export interface INotificationPushCleanupTokensEffect extends IOutboxEffect {

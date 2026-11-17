@@ -28,7 +28,6 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
-    IUserWithTwoFactor,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -183,7 +182,6 @@ export class UserRepository implements IUserRepository {
             where: { email, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
             },
         });
     }
@@ -194,7 +192,6 @@ export class UserRepository implements IUserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -210,7 +207,6 @@ export class UserRepository implements IUserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -225,17 +221,7 @@ export class UserRepository implements IUserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
             },
-        });
-    }
-
-    async findOneWithTwoFactorById(
-        id: string
-    ): Promise<IUserWithTwoFactor | null> {
-        return this.databaseService.client.user.findUnique({
-            where: { id, deletedAt: null },
-            include: { twoFactor: true },
         });
     }
 
@@ -246,7 +232,6 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
             },
         });
     }
@@ -258,7 +243,6 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
             },
         });
     }
@@ -278,7 +262,6 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
             },
             take,
         });
@@ -312,7 +295,7 @@ export class UserRepository implements IUserRepository {
             },
         });
 
-        return { ...user, twoFactor: null };
+        return user;
     }
 
     async createManyInTx(

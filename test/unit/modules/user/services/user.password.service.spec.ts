@@ -16,7 +16,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -112,25 +111,6 @@ describe('UserPasswordService', () => {
         'forgotPassword.linkPattern': '{homeUrl}/reset?token={token}',
     };
 
-    const baseTwoFactor: TwoFactor = {
-        id: 'two-factor-hollow',
-        userId: 'user-hollow',
-        secret: 'encrypted-secret',
-        pendingSecret: null,
-        backupCodes: ['hash-one'],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-
     const baseUser: IUser = {
         id: 'user-hollow',
         name: 'Hollow Pike',
@@ -175,7 +155,6 @@ describe('UserPasswordService', () => {
             updatedBy: null,
             policies: [],
         },
-        twoFactor: baseTwoFactor,
     };
 
     const password: IAuthPassword = {

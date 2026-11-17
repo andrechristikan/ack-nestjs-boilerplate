@@ -63,6 +63,27 @@ describe('LoggerUtil', () => {
                 user: { password: LoggerRedactedValue, name: 'ok' },
             });
         });
+
+        it('redacts backupCodes, otpauthUrl and passkeyChallengeToken at any depth', () => {
+            const result = util.redactValue({
+                body: {
+                    backupCodes: ['AAAA', 'BBBB'],
+                    totp: {
+                        otpauthUrl: 'otpauth://totp/app?secret=abc',
+                        name: 'ok',
+                    },
+                },
+                passkeyChallengeToken: 'raw-token',
+            });
+
+            expect(result).toEqual({
+                body: {
+                    backupCodes: LoggerRedactedValue,
+                    totp: { otpauthUrl: LoggerRedactedValue, name: 'ok' },
+                },
+                passkeyChallengeToken: LoggerRedactedValue,
+            });
+        });
     });
 
     describe('serializeRequest', () => {

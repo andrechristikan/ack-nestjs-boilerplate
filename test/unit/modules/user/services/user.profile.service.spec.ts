@@ -12,11 +12,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type {
-    Country,
-    TwoFactor,
-    UserPhoto,
-} from '@generated/prisma-client/client';
+import type { Country, UserPhoto } from '@generated/prisma-client/client';
 import { NotFound } from '@aws-sdk/client-s3';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
@@ -94,24 +90,6 @@ describe('UserProfileService', () => {
         updatedBy: null,
         policies: [],
     };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-persimmon',
-        userId: 'user-persimmon',
-        secret: null,
-        pendingSecret: null,
-        backupCodes: [],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
     const country: Country = {
         id: 'country-persimmon',
         name: 'Amber Coast',
@@ -158,7 +136,6 @@ describe('UserProfileService', () => {
         deletedAt: null,
         deletedBy: null,
         role,
-        twoFactor,
         mobileNumbers: [],
         country,
     };
@@ -1035,8 +1012,8 @@ describe('UserProfileService', () => {
         });
 
         it('claims the username', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
 
             await service.claimUsername(
@@ -1062,8 +1039,8 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameNotAllowedException when the pattern rejects it', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(true);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(true);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
 
             const call = service.claimUsername(
@@ -1085,8 +1062,8 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameContainBadWordException when the word is blocked', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(true);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(true);
             userRepository.existsByUsername.mockResolvedValue(false);
 
             const call = service.claimUsername(
@@ -1108,8 +1085,8 @@ describe('UserProfileService', () => {
         });
 
         it('throws UserUsernameExistException when the username is taken', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(true);
 
             const call = service.claimUsername(
@@ -1131,8 +1108,8 @@ describe('UserProfileService', () => {
         });
 
         it('maps a username unique collision to UserUsernameExistException', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
             const collision = new Error('unique');
             userRepository.claimUsernameInTx.mockRejectedValue(collision);
@@ -1157,8 +1134,8 @@ describe('UserProfileService', () => {
         });
 
         it('rethrows an AppBaseException raised while claiming', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
             const error = new UserUsernameExistException();
             userRepository.claimUsernameInTx.mockRejectedValue(error);
@@ -1183,8 +1160,8 @@ describe('UserProfileService', () => {
         });
 
         it('wraps an unknown error raised while claiming', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(false);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(false);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
             const error = new Error('boom');
             userRepository.claimUsernameInTx.mockRejectedValue(error);

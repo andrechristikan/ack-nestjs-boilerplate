@@ -16,6 +16,8 @@ import {
     AnalyticLockoutMetricsCacheSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
+    AnalyticMfaAdoptionCacheSchema,
+    AnalyticMfaAttemptSnapshotCacheSchema,
     AnalyticMobileChurnCacheSchema,
     AnalyticProjectCountPageCacheSchema,
     AnalyticProjectCreationCacheSchema,
@@ -23,8 +25,6 @@ import {
     AnalyticStatusCountsCacheSchema,
     AnalyticTermPolicyAcceptanceRateCacheSchema,
     AnalyticTermPolicyTimeToAcceptCacheSchema,
-    AnalyticTwoFactorAdoptionCacheSchema,
-    AnalyticTwoFactorAttemptSnapshotCacheSchema,
     AnalyticVerificationFunnelsCacheSchema,
     AnalyticWorkspaceCountPageCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
@@ -39,6 +39,8 @@ import type {
     IAnalyticLockoutMetrics,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
+    IAnalyticMfaAdoption,
+    IAnalyticMfaAttemptSnapshot,
     IAnalyticMobileChurn,
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
@@ -46,8 +48,6 @@ import type {
     IAnalyticStatusCount,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
-    IAnalyticTwoFactorAdoption,
-    IAnalyticTwoFactorAttemptSnapshot,
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -65,7 +65,7 @@ import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant'
 import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
 import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.forgot-password.analytic.service';
 import { UserMobileNumberAnalyticService } from '@modules/user/services/user.mobile-number.analytic.service';
-import { UserTwoFactorAnalyticService } from '@modules/user/services/user.two-factor.analytic.service';
+import { MfaAnalyticService } from '@modules/mfa/services/mfa.analytic.service';
 import { UserVerificationAnalyticService } from '@modules/user/services/user.verification.analytic.service';
 import { WorkspaceAnalyticService } from '@modules/workspace/services/workspace.analytic.service';
 import { WorkspaceInviteAnalyticService } from '@modules/workspace/services/workspace.invite.analytic.service';
@@ -96,7 +96,7 @@ export class AnalyticDashboardService {
         private readonly helperStringService: HelperStringService,
         private readonly userAnalyticService: UserAnalyticService,
         private readonly userForgotPasswordAnalyticService: UserForgotPasswordAnalyticService,
-        private readonly userTwoFactorAnalyticService: UserTwoFactorAnalyticService,
+        private readonly mfaAnalyticService: MfaAnalyticService,
         private readonly userVerificationAnalyticService: UserVerificationAnalyticService,
         private readonly userMobileNumberAnalyticService: UserMobileNumberAnalyticService,
         private readonly activityLogAnalyticService: ActivityLogAnalyticService,
@@ -554,7 +554,7 @@ export class AnalyticDashboardService {
                     this.activityLogAnalyticService.getCountByActionsInRange(
                         [
                             EnumActivityLogAction.userReachMaxPasswordAttempt,
-                            EnumActivityLogAction.userReachMaxTwoFactorAttempt,
+                            EnumActivityLogAction.userReachMaxMfaAttempt,
                         ],
                         startDate,
                         endDate
@@ -813,21 +813,21 @@ export class AnalyticDashboardService {
         );
     }
 
-    async authTwoFactorAdoption(): Promise<IAnalyticTwoFactorAdoption> {
-        const metric = EnumAnalyticDashboardMetric.authTwoFactorAdoption;
+    async authMfaAdoption(): Promise<IAnalyticMfaAdoption> {
+        const metric = EnumAnalyticDashboardMetric.authMfaAdoption;
         const key = this.dashboardKey(metric, null, null);
 
         return this.cacheService.readThrough(
             key,
-            AnalyticTwoFactorAdoptionCacheSchema,
+            AnalyticMfaAdoptionCacheSchema,
             this.analyticCache.dashboardTtlInMs,
             async () => {
                 const [activeUserCount, enabled] = await Promise.all([
                     this.userAnalyticService.getCountActive(),
-                    this.userTwoFactorAnalyticService.getEnabledCount(),
+                    this.mfaAnalyticService.getEnabledCount(),
                 ]);
 
-                return this.userTwoFactorAnalyticService.mapAdoption(
+                return this.mfaAnalyticService.mapAdoption(
                     enabled,
                     activeUserCount
                 );
@@ -835,11 +835,11 @@ export class AnalyticDashboardService {
         );
     }
 
-    async authTwoFactorAdminReset(
+    async authMfaAdminReset(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const metric = EnumAnalyticDashboardMetric.authTwoFactorAdminReset;
+        const metric = EnumAnalyticDashboardMetric.authMfaAdminReset;
         const key = this.dashboardKey(metric, startDate, endDate);
 
         return this.cacheService.readThrough(
@@ -849,7 +849,7 @@ export class AnalyticDashboardService {
             async () => {
                 const count =
                     await this.activityLogAnalyticService.getCountByActionsInRange(
-                        [EnumActivityLogAction.userResetTwoFactorByAdmin],
+                        [EnumActivityLogAction.userResetMfaByAdmin],
                         startDate,
                         endDate
                     );
@@ -859,11 +859,11 @@ export class AnalyticDashboardService {
         );
     }
 
-    async authTwoFactorVerifySuccess(
+    async authMfaVerifySuccess(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const metric = EnumAnalyticDashboardMetric.authTwoFactorVerify;
+        const metric = EnumAnalyticDashboardMetric.authMfaVerify;
         const key = this.dashboardKey(metric, startDate, endDate);
 
         return this.cacheService.readThrough(
@@ -873,7 +873,7 @@ export class AnalyticDashboardService {
             async () => {
                 const count =
                     await this.activityLogAnalyticService.getCountByActionsInRange(
-                        [EnumActivityLogAction.userVerifyTwoFactor],
+                        [EnumActivityLogAction.userVerifyMfa],
                         startDate,
                         endDate
                     );
@@ -897,9 +897,7 @@ export class AnalyticDashboardService {
             async () => {
                 const count =
                     await this.activityLogAnalyticService.getCountByActionsInRange(
-                        [
-                            EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                        ],
+                        [EnumActivityLogAction.userRegenerateMfaBackupCodes],
                         startDate,
                         endDate
                     );
@@ -909,15 +907,15 @@ export class AnalyticDashboardService {
         );
     }
 
-    async authTwoFactorAttempt(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        const metric = EnumAnalyticDashboardMetric.authTwoFactorAttempt;
+    async authMfaAttempt(): Promise<IAnalyticMfaAttemptSnapshot> {
+        const metric = EnumAnalyticDashboardMetric.authMfaAttempt;
         const key = this.dashboardKey(metric, null, null);
 
         return this.cacheService.readThrough(
             key,
-            AnalyticTwoFactorAttemptSnapshotCacheSchema,
+            AnalyticMfaAttemptSnapshotCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            () => this.userTwoFactorAnalyticService.getAttemptSnapshot()
+            () => this.mfaAnalyticService.getAttemptSnapshot()
         );
     }
 

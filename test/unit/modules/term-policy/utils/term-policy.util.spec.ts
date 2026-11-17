@@ -135,13 +135,28 @@ describe('TermPolicyUtil', () => {
         });
     });
 
-    describe('createRandomFilenameContentWithPath', () => {
+    describe('getContentKey', () => {
+        it('answers the versioned key of the type, version, and language', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'term-policies/termsOfService/v1'
+            );
+
+            const result = util.getContentKey(
+                EnumTermPolicyType.termsOfService,
+                1,
+                EnumMessageLanguage.en,
+                { extension: EnumFileExtensionTemplate.hbs }
+            );
+
+            expect(result).toBe('term-policies/termsOfService/v1/en.hbs');
+        });
+
         it('appends the language and extension to the filled path', () => {
             helperStringService.fillPattern.mockReturnValue(
                 'term-policies/privacy/1'
             );
 
-            const result = util.createRandomFilenameContentWithPath(
+            const result = util.getContentKey(
                 EnumTermPolicyType.privacy,
                 1,
                 EnumMessageLanguage.en,
@@ -156,7 +171,7 @@ describe('TermPolicyUtil', () => {
                 '/term-policies/privacy/1'
             );
 
-            const result = util.createRandomFilenameContentWithPath(
+            const result = util.getContentKey(
                 EnumTermPolicyType.privacy,
                 1,
                 EnumMessageLanguage.en,
@@ -171,7 +186,7 @@ describe('TermPolicyUtil', () => {
                 'term-policies/privacy/1'
             );
 
-            const result = util.createRandomFilenameContentWithPath(
+            const result = util.getContentKey(
                 EnumTermPolicyType.privacy,
                 1,
                 EnumMessageLanguage.en,

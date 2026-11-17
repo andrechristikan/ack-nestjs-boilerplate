@@ -8,8 +8,8 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -29,6 +29,18 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
 
+const passkeyResponse = {
+    id: 'AbC_-123',
+    rawId: 'AbC_-123',
+    response: {
+        clientDataJSON: 'clientDataQuartz',
+        authenticatorData: 'authenticatorDataQuartz',
+        signature: 'signatureQuartz',
+    },
+    clientExtensionResults: {},
+    type: 'public-key',
+} as const;
+
 describe('UserAddMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
@@ -47,19 +59,20 @@ describe('UserAddMobileNumberUseCase', () => {
     const tx = {} as IDatabaseTransactionClient;
     const passwordOnly: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: null,
+        mfa: null,
         verificationId: null,
+        passkeyChallengeToken: null,
     };
-    const withTwoFactor: IUserReauthenticationCheck = {
+    const withMfa: IUserReauthenticationCheck = {
         isPasswordChecked: true,
-        twoFactor: {
-            verified: {
-                method: EnumAuthTwoFactorMethod.code,
-                newBackupCodes: null,
-            },
+        mfa: {
+            method: EnumMfaMethod.totp,
             totpStep: 7,
+            backupCodeIndex: null,
+            passkey: null,
         },
         verificationId: null,
+        passkeyChallengeToken: null,
     };
     const mobileNumber: IUserMobileNumber = {
         id: 'mobile-swift',
@@ -147,6 +160,8 @@ describe('UserAddMobileNumberUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -160,7 +175,6 @@ describe('UserAddMobileNumberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user,
                 passwordOnly
             );
             expect(
@@ -185,7 +199,7 @@ describe('UserAddMobileNumberUseCase', () => {
             ).toHaveBeenCalledWith('user-swift', numberInput, null);
         });
 
-        it('passes the two-factor and email-code fields of the request on', async () => {
+        it('passes the MFA and email-code fields of the request on', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -194,9 +208,11 @@ describe('UserAddMobileNumberUseCase', () => {
 
                 {
                     ...dto,
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -208,9 +224,11 @@ describe('UserAddMobileNumberUseCase', () => {
                 {
                     action: EnumUserReauthenticationAction.mobileNumberAdd,
                     password: 'Current-pass1',
-                    method: EnumAuthTwoFactorMethod.code,
+                    method: EnumMfaMethod.totp,
                     code: '654321',
                     backupCode: 'BACKUP1',
+                    passkeyChallengeToken: 'challenge-quartz',
+                    passkeyResponse,
                     otp: '123456',
                 }
             );
@@ -235,6 +253,8 @@ describe('UserAddMobileNumberUseCase', () => {
                     method: null,
                     code: null,
                     backupCode: null,
+                    passkeyChallengeToken: null,
+                    passkeyResponse: null,
                     otp: null,
                 }
             );
@@ -300,7 +320,7 @@ describe('UserAddMobileNumberUseCase', () => {
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
-            const failure = new AuthTwoFactorInvalidException();
+            const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
                 failure
             );
@@ -321,10 +341,8 @@ describe('UserAddMobileNumberUseCase', () => {
             expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
-        it('answers AuthTwoFactorInvalidException on a write conflict when a two-factor proof was checked', async () => {
-            userAuthService.assertReauthentication.mockResolvedValue(
-                withTwoFactor
-            );
+        it('answers MfaInvalidException on a write conflict when a MFA proof was checked', async () => {
+            userAuthService.assertReauthentication.mockResolvedValue(withMfa);
             outboxService.withTransaction.mockRejectedValue(
                 new Error('write conflict')
             );
@@ -342,12 +360,12 @@ describe('UserAddMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toMatchObject({
-                module: 'auth',
-                messagePath: 'auth.error.twoFactorInvalid',
+                module: 'mfa',
+                messagePath: 'mfa.error.invalid',
             });
         });
 
-        it('wraps a write conflict in AppUnknownException when no two-factor proof was checked', async () => {
+        it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
             outboxService.withTransaction.mockRejectedValue(
                 new Error('write conflict')
             );

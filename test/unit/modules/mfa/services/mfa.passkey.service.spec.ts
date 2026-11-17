@@ -1,0 +1,1103 @@
+import { ConfigService } from '@nestjs/config';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialCreationOptionsJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+    RegistrationResponseJSON,
+} from '@simplewebauthn/server';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
+import type { MfaPasskey } from '@generated/prisma-client/client';
+import type { IMfaPasskey } from '@modules/mfa/interfaces/mfa.interface';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import type { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
+import type { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import {
+    buildClientDataJson,
+    createMfaPasskeyService,
+} from '@test/unit/helpers/test.unit.mfa.helper';
+
+vi.mock('@simplewebauthn/server', () => ({
+    generateAuthenticationOptions: vi.fn(),
+    generateRegistrationOptions: vi.fn(),
+    verifyAuthenticationResponse: vi.fn(),
+    verifyRegistrationResponse: vi.fn(),
+}));
+
+describe('MfaPasskeyService', () => {
+    const mfaPasskeyRepository: MockProxy<MfaPasskeyRepository> =
+        mock<MfaPasskeyRepository>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configGet = vi.fn<(key: string) => unknown>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+
+    let service: MfaPasskeyService;
+    let generateAuthenticationOptions: typeof import('@simplewebauthn/server').generateAuthenticationOptions;
+    let generateRegistrationOptions: typeof import('@simplewebauthn/server').generateRegistrationOptions;
+    let verifyAuthenticationResponse: typeof import('@simplewebauthn/server').verifyAuthenticationResponse;
+    let verifyRegistrationResponse: typeof import('@simplewebauthn/server').verifyRegistrationResponse;
+
+    const options = {
+        challenge: 'challenge-quartz',
+    } as PublicKeyCredentialCreationOptionsJSON;
+
+    const stored: MfaPasskey = {
+        id: 'passkey-one',
+        userId: 'user-quartz',
+        credentialId: 'credential-one',
+        publicKey: 'ZGVm-w',
+        counter: 5,
+        transports: ['internal'],
+        deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+        backedUp: true,
+        name: 'iPhone',
+        lastUsedAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: 'user-quartz',
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+    const assertion: AuthenticationResponseJSON = {
+        id: 'credential-one',
+        rawId: 'credential-one',
+        response: {
+            clientDataJSON: buildClientDataJson('https://app.example.test'),
+            authenticatorData: 'authenticator-data',
+            signature: 'signature',
+        },
+        clientExtensionResults: {},
+        type: 'public-key',
+    };
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => {
+            const values: Record<string, unknown> = {
+                'mfa.passkey.rpId': 'example.test',
+                'mfa.passkey.rpName': 'Ack Example',
+                'mfa.passkey.origins': [
+                    'https://*.example.test',
+                    'https://app.other.test',
+                    'android:apk-key-hash:x',
+                ],
+                'mfa.passkey.maxPerUser': 10,
+            };
+
+            return values[key];
+        });
+
+        service = await createMfaPasskeyService({
+            mfaPasskeyRepository,
+            helperDateService,
+            configService,
+        });
+        ({
+            generateAuthenticationOptions,
+            generateRegistrationOptions,
+            verifyAuthenticationResponse,
+            verifyRegistrationResponse,
+        } = await import('@simplewebauthn/server'));
+    });
+
+    describe('getRegistrationOptions', () => {
+        it('passes the relying party, the required verification, and the passkeys of the user as excluded credentials to the library', async () => {
+            mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue([
+                { credentialId: 'credential-one', transports: ['internal'] },
+                { credentialId: 'credential-two', transports: [] },
+            ]);
+            vi.mocked(generateRegistrationOptions).mockResolvedValue(options);
+
+            await expect(
+                service.getRegistrationOptions(
+                    'user-quartz',
+                    'quartz@example.test',
+                    'quartz'
+                )
+            ).resolves.toBe(options);
+
+            expect(
+                mfaPasskeyRepository.findCredentialsByUserId
+            ).toHaveBeenCalledWith('user-quartz');
+            expect(generateRegistrationOptions).toHaveBeenCalledWith({
+                rpName: 'Ack Example',
+                rpID: 'example.test',
+                userID: new TextEncoder().encode('user-quartz'),
+                userName: 'quartz@example.test',
+                userDisplayName: 'quartz',
+                attestationType: 'none',
+                authenticatorSelection: {
+                    residentKey: 'required',
+                    userVerification: 'required',
+                },
+                excludeCredentials: [
+                    { id: 'credential-one', transports: ['internal'] },
+                    { id: 'credential-two', transports: [] },
+                ],
+            });
+        });
+    });
+
+    describe('getAssertionOptions', () => {
+        const requestOptions = {
+            challenge: 'challenge-quartz',
+        } as PublicKeyCredentialRequestOptionsJSON;
+
+        it('passes the relying party, the required verification, and the passkeys of the user as allowed credentials to the library', async () => {
+            mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue([
+                { credentialId: 'credential-one', transports: ['internal'] },
+                { credentialId: 'credential-two', transports: [] },
+            ]);
+            vi.mocked(generateAuthenticationOptions).mockResolvedValue(
+                requestOptions
+            );
+
+            await expect(
+                service.getAssertionOptions('user-quartz')
+            ).resolves.toBe(requestOptions);
+
+            expect(
+                mfaPasskeyRepository.findCredentialsByUserId
+            ).toHaveBeenCalledWith('user-quartz');
+            expect(generateAuthenticationOptions).toHaveBeenCalledWith({
+                rpID: 'example.test',
+                userVerification: 'required',
+                allowCredentials: [
+                    { id: 'credential-one', transports: ['internal'] },
+                    { id: 'credential-two', transports: [] },
+                ],
+            });
+        });
+
+        it('allows no credential for a null user without reading the repository', async () => {
+            vi.mocked(generateAuthenticationOptions).mockResolvedValue(
+                requestOptions
+            );
+
+            await service.getAssertionOptions(null);
+
+            expect(
+                mfaPasskeyRepository.findCredentialsByUserId
+            ).not.toHaveBeenCalled();
+            expect(generateAuthenticationOptions).toHaveBeenCalledWith({
+                rpID: 'example.test',
+                userVerification: 'required',
+                allowCredentials: [],
+            });
+        });
+    });
+
+    describe('getOneForLogin', () => {
+        it('answers the stored passkey of a credential id', async () => {
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(
+                stored
+            );
+
+            await expect(
+                service.getOneForLogin('credential-one')
+            ).resolves.toBe(stored);
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).toHaveBeenCalledWith('credential-one');
+        });
+
+        it('throws MfaPasskeyInvalidException when no passkey holds the credential id', async () => {
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(null);
+
+            await expect(
+                service.getOneForLogin('credential-one')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+            });
+        });
+    });
+
+    describe('checkAssertion', () => {
+        beforeEach(() => {
+            mfaPasskeyRepository.existsByUserId.mockResolvedValue(true);
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(
+                stored
+            );
+            vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+                verified: true,
+                authenticationInfo: { newCounter: 8 },
+            } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
+        });
+
+        it('throws MfaMethodUnavailableException for a user without a passkey', async () => {
+            mfaPasskeyRepository.existsByUserId.mockResolvedValue(false);
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.methodUnavailable,
+            });
+            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+        });
+
+        it('verifies the assertion against the stored challenge, the response origin, the relying party id, and the stored credential', async () => {
+            await service.checkAssertion(
+                'user-quartz',
+                assertion,
+                'challenge-stored'
+            );
+
+            expect(verifyAuthenticationResponse).toHaveBeenCalledWith({
+                response: assertion,
+                expectedChallenge: 'challenge-stored',
+                expectedOrigin: 'https://app.example.test',
+                expectedRPID: 'example.test',
+                credential: {
+                    id: 'credential-one',
+                    publicKey: new Uint8Array(
+                        Buffer.from('ZGVm-w', 'base64url')
+                    ),
+                    counter: 5,
+                    transports: ['internal'],
+                },
+                requireUserVerification: true,
+            });
+        });
+
+        it.each([
+            ['an exact entry', 'https://app.other.test'],
+            ['a label under a wildcard entry', 'https://app.example.test'],
+            [
+                'several labels under a wildcard entry',
+                'https://a.b.example.test',
+            ],
+            ['an android entry', 'android:apk-key-hash:x'],
+        ])(
+            'passes the response origin of %s to the library',
+            async (_label, origin) => {
+                await service.checkAssertion(
+                    'user-quartz',
+                    {
+                        ...assertion,
+                        response: {
+                            ...assertion.response,
+                            clientDataJSON: buildClientDataJson(origin),
+                        },
+                    },
+                    'challenge-stored'
+                );
+
+                expect(verifyAuthenticationResponse).toHaveBeenCalledWith(
+                    expect.objectContaining({ expectedOrigin: origin })
+                );
+            }
+        );
+
+        it.each([
+            ['the wildcard domain itself', 'https://example.test'],
+            ['an origin outside every entry', 'https://evil.test'],
+            ['a wildcard label over http', 'http://app.example.test'],
+            ['a wildcard label with a port', 'https://app.example.test:8443'],
+            [
+                'a host that only ends with the domain text',
+                'https://appexample.test',
+            ],
+            ['an origin that is not a URL', 'app.example.test'],
+            ['an origin that is not a string', 7],
+            ['an origin that is missing', undefined],
+        ])(
+            'answers null without calling the library for %s',
+            async (_label, origin) => {
+                const clientDataJSON = Buffer.from(
+                    JSON.stringify({ origin })
+                ).toString('base64url');
+
+                await expect(
+                    service.checkAssertion(
+                        'user-quartz',
+                        {
+                            ...assertion,
+                            response: { ...assertion.response, clientDataJSON },
+                        },
+                        'challenge-stored'
+                    )
+                ).resolves.toBeNull();
+                expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+            }
+        );
+
+        it.each([
+            ['not base64url JSON', 'client-data'],
+            ['a JSON array', Buffer.from('[]').toString('base64url')],
+            ['JSON null', Buffer.from('null').toString('base64url')],
+        ])(
+            'answers null without calling the library for a clientDataJSON that is %s',
+            async (_label, clientDataJSON) => {
+                await expect(
+                    service.checkAssertion(
+                        'user-quartz',
+                        {
+                            ...assertion,
+                            response: { ...assertion.response, clientDataJSON },
+                        },
+                        'challenge-stored'
+                    )
+                ).resolves.toBeNull();
+                expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+            }
+        );
+
+        describe('with the origin entry *', () => {
+            beforeEach(async () => {
+                const configImplementation = configGet.getMockImplementation()!;
+                configGet.mockImplementation((key: string) =>
+                    key === 'mfa.passkey.origins'
+                        ? ['*']
+                        : configImplementation(key)
+                );
+                service = await createMfaPasskeyService({
+                    mfaPasskeyRepository,
+                    helperDateService,
+                    configService,
+                });
+                ({ verifyAuthenticationResponse } =
+                    await import('@simplewebauthn/server'));
+                vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+                    verified: true,
+                    authenticationInfo: { newCounter: 8 },
+                } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
+            });
+
+            it.each([
+                ['an https origin', 'https://anything.test'],
+                ['an origin with a port', 'http://localhost:3000'],
+                ['an android origin', 'android:apk-key-hash:anything'],
+            ])(
+                'passes the response origin of %s to the library',
+                async (_label, origin) => {
+                    await service.checkAssertion(
+                        'user-quartz',
+                        {
+                            ...assertion,
+                            response: {
+                                ...assertion.response,
+                                clientDataJSON: buildClientDataJson(origin),
+                            },
+                        },
+                        'challenge-stored'
+                    );
+
+                    expect(verifyAuthenticationResponse).toHaveBeenCalledWith(
+                        expect.objectContaining({ expectedOrigin: origin })
+                    );
+                }
+            );
+
+            it.each([
+                [
+                    'an origin that is not a URL',
+                    buildClientDataJson('anything'),
+                ],
+                ['not base64url JSON', 'client-data'],
+            ])(
+                'answers null without calling the library for %s',
+                async (_label, clientDataJSON) => {
+                    await expect(
+                        service.checkAssertion(
+                            'user-quartz',
+                            {
+                                ...assertion,
+                                response: {
+                                    ...assertion.response,
+                                    clientDataJSON,
+                                },
+                            },
+                            'challenge-stored'
+                        )
+                    ).resolves.toBeNull();
+                    expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+                }
+            );
+        });
+
+        it('answers the passkey id and the new counter of a valid assertion and counts nothing', async () => {
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toEqual({ id: 'passkey-one', counter: 8 });
+        });
+
+        it('answers null for a null response without verifying', async () => {
+            await expect(
+                service.checkAssertion('user-quartz', null, 'challenge-stored')
+            ).resolves.toBeNull();
+            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+        });
+
+        it('answers null for a null challenge without verifying', async () => {
+            await expect(
+                service.checkAssertion('user-quartz', assertion, null)
+            ).resolves.toBeNull();
+            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+        });
+
+        it('answers null for an unknown credential id', async () => {
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(null);
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toBeNull();
+            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+        });
+
+        it('answers null for a credential of another user even when its assertion is valid', async () => {
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue({
+                ...stored,
+                userId: 'user-other',
+            });
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toBeNull();
+            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+        });
+
+        it('answers null when the library throws', async () => {
+            vi.mocked(verifyAuthenticationResponse).mockRejectedValue(
+                new Error('bad signature')
+            );
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toBeNull();
+        });
+
+        it('answers null when the library reports the assertion unverified', async () => {
+            vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+                verified: false,
+                authenticationInfo: { newCounter: 8 },
+            } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toBeNull();
+        });
+
+        it('answers null for a counter of 5 against a stored 5', async () => {
+            vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+                verified: true,
+                authenticationInfo: { newCounter: 5 },
+            } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toBeNull();
+        });
+
+        it('accepts a counter of 0 against a stored 0', async () => {
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue({
+                ...stored,
+                counter: 0,
+            });
+            vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
+                verified: true,
+                authenticationInfo: { newCounter: 0 },
+            } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
+
+            await expect(
+                service.checkAssertion(
+                    'user-quartz',
+                    assertion,
+                    'challenge-stored'
+                )
+            ).resolves.toEqual({ id: 'passkey-one', counter: 0 });
+        });
+    });
+
+    describe('markUsedInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const now = new Date('2026-03-01T00:00:00.000Z');
+
+        it('stamps the counter and the last use of the passkey on the given tx', async () => {
+            helperDateService.create.mockReturnValue(now);
+            mfaPasskeyRepository.markUsedInTx.mockResolvedValue(true);
+
+            await service.markUsedInTx(tx, 'passkey-one', 8, 'user-quartz');
+
+            expect(mfaPasskeyRepository.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'passkey-one',
+                8,
+                now,
+                'user-quartz'
+            );
+        });
+
+        it('throws MfaPasskeyInvalidException when the passkey is gone', async () => {
+            helperDateService.create.mockReturnValue(now);
+            mfaPasskeyRepository.markUsedInTx.mockResolvedValue(false);
+
+            await expect(
+                service.markUsedInTx(tx, 'passkey-one', 8, 'user-quartz')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+            });
+        });
+    });
+
+    describe('registerInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const response = {
+            id: 'credential-new',
+            rawId: 'credential-new',
+            response: {
+                clientDataJSON: buildClientDataJson('https://app.example.test'),
+                attestationObject: 'attestation',
+            },
+            clientExtensionResults: {},
+            type: 'public-key',
+        } satisfies RegistrationResponseJSON;
+        const publicKey = new Uint8Array([100, 101, 102, 251]);
+        const created: IMfaPasskey = {
+            id: 'passkey-new',
+            name: 'iPhone',
+            deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+            backedUp: true,
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            lastUsedAt: null,
+        };
+
+        beforeEach(() => {
+            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(2);
+            mfaPasskeyRepository.existsByCredentialIdInTx.mockResolvedValue(
+                false
+            );
+            mfaPasskeyRepository.createInTx.mockResolvedValue(created);
+            vi.mocked(verifyRegistrationResponse).mockResolvedValue({
+                verified: true,
+                registrationInfo: {
+                    credential: {
+                        id: 'credential-new',
+                        publicKey,
+                        counter: 7,
+                        transports: ['internal', 'hybrid'],
+                    },
+                    credentialDeviceType: 'multiDevice',
+                    credentialBackedUp: true,
+                },
+            } as Awaited<ReturnType<typeof verifyRegistrationResponse>>);
+        });
+
+        it('verifies the attestation against the stored challenge, the response origin, and the relying party id', async () => {
+            await service.registerInTx(
+                tx,
+                'user-quartz',
+                'iPhone',
+                response,
+                'challenge-stored'
+            );
+
+            expect(verifyRegistrationResponse).toHaveBeenCalledWith({
+                response,
+                expectedChallenge: 'challenge-stored',
+                expectedOrigin: 'https://app.example.test',
+                expectedRPID: 'example.test',
+            });
+        });
+
+        it.each([
+            ['an exact entry', 'https://app.other.test'],
+            ['a label under a wildcard entry', 'https://app.example.test'],
+            ['an android entry', 'android:apk-key-hash:x'],
+        ])(
+            'passes the response origin of %s to the library',
+            async (_label, origin) => {
+                await service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    {
+                        ...response,
+                        response: {
+                            ...response.response,
+                            clientDataJSON: buildClientDataJson(origin),
+                        },
+                    },
+                    'challenge-stored'
+                );
+
+                expect(verifyRegistrationResponse).toHaveBeenCalledWith(
+                    expect.objectContaining({ expectedOrigin: origin })
+                );
+            }
+        );
+
+        it.each([
+            [
+                'the wildcard domain itself',
+                buildClientDataJson('https://example.test'),
+            ],
+            [
+                'an origin outside every entry',
+                buildClientDataJson('https://evil.test'),
+            ],
+            ['a clientDataJSON that is not base64url JSON', 'client-data'],
+            [
+                'a clientDataJSON with no origin',
+                Buffer.from('{}').toString('base64url'),
+            ],
+        ])(
+            'throws MfaPasskeyInvalidException without calling the library for %s',
+            async (_label, clientDataJSON) => {
+                await expect(
+                    service.registerInTx(
+                        tx,
+                        'user-quartz',
+                        'iPhone',
+                        {
+                            ...response,
+                            response: { ...response.response, clientDataJSON },
+                        },
+                        'challenge-stored'
+                    )
+                ).rejects.toMatchObject({
+                    module: 'mfa',
+                    statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+                    messagePath: 'mfa.error.passkeyInvalid',
+                });
+
+                expect(verifyRegistrationResponse).not.toHaveBeenCalled();
+                expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+            }
+        );
+
+        describe('with the origin entry *', () => {
+            beforeEach(async () => {
+                const configImplementation = configGet.getMockImplementation()!;
+                configGet.mockImplementation((key: string) =>
+                    key === 'mfa.passkey.origins'
+                        ? ['*']
+                        : configImplementation(key)
+                );
+                service = await createMfaPasskeyService({
+                    mfaPasskeyRepository,
+                    helperDateService,
+                    configService,
+                });
+                ({ verifyRegistrationResponse } =
+                    await import('@simplewebauthn/server'));
+                vi.mocked(verifyRegistrationResponse).mockResolvedValue({
+                    verified: true,
+                    registrationInfo: {
+                        credential: {
+                            id: 'credential-new',
+                            publicKey,
+                            counter: 7,
+                            transports: ['internal'],
+                        },
+                        credentialDeviceType: 'multiDevice',
+                        credentialBackedUp: true,
+                    },
+                } as Awaited<ReturnType<typeof verifyRegistrationResponse>>);
+            });
+
+            it.each([
+                ['an https origin', 'https://anything.test'],
+                ['an origin with a port', 'http://localhost:3000'],
+                ['an android origin', 'android:apk-key-hash:anything'],
+            ])(
+                'passes the response origin of %s to the library',
+                async (_label, origin) => {
+                    await service.registerInTx(
+                        tx,
+                        'user-quartz',
+                        'iPhone',
+                        {
+                            ...response,
+                            response: {
+                                ...response.response,
+                                clientDataJSON: buildClientDataJson(origin),
+                            },
+                        },
+                        'challenge-stored'
+                    );
+
+                    expect(verifyRegistrationResponse).toHaveBeenCalledWith(
+                        expect.objectContaining({ expectedOrigin: origin })
+                    );
+                }
+            );
+
+            it.each([
+                [
+                    'an origin that is not a URL',
+                    buildClientDataJson('anything'),
+                ],
+                ['not base64url JSON', 'client-data'],
+            ])(
+                'throws MfaPasskeyInvalidException without calling the library for %s',
+                async (_label, clientDataJSON) => {
+                    await expect(
+                        service.registerInTx(
+                            tx,
+                            'user-quartz',
+                            'iPhone',
+                            {
+                                ...response,
+                                response: {
+                                    ...response.response,
+                                    clientDataJSON,
+                                },
+                            },
+                            'challenge-stored'
+                        )
+                    ).rejects.toMatchObject({
+                        module: 'mfa',
+                        statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+                    });
+
+                    expect(verifyRegistrationResponse).not.toHaveBeenCalled();
+                }
+            );
+        });
+
+        it('stores the credential id, the base64url public key, the counter, the transports, the device type, the backed-up flag, and the name, and answers the created passkey', async () => {
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored'
+                )
+            ).resolves.toBe(created);
+
+            expect(mfaPasskeyRepository.countByUserIdInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            expect(
+                mfaPasskeyRepository.existsByCredentialIdInTx
+            ).toHaveBeenCalledWith(tx, 'credential-new');
+            expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(tx, {
+                userId: 'user-quartz',
+                credentialId: 'credential-new',
+                publicKey: 'ZGVm-w',
+                counter: 7,
+                transports: ['internal', 'hybrid'],
+                deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+                backedUp: true,
+                name: 'iPhone',
+            });
+        });
+
+        it('stores no transports when the library reports none', async () => {
+            vi.mocked(verifyRegistrationResponse).mockResolvedValue({
+                verified: true,
+                registrationInfo: {
+                    credential: {
+                        id: 'credential-new',
+                        publicKey,
+                        counter: 0,
+                    },
+                    credentialDeviceType: 'singleDevice',
+                    credentialBackedUp: false,
+                },
+            } as Awaited<ReturnType<typeof verifyRegistrationResponse>>);
+
+            await service.registerInTx(
+                tx,
+                'user-quartz',
+                'Key',
+                response,
+                'challenge-stored'
+            );
+
+            expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                expect.objectContaining({
+                    transports: [],
+                    deviceType: EnumMfaPasskeyDeviceType.singleDevice,
+                    backedUp: false,
+                    counter: 0,
+                })
+            );
+        });
+
+        it('throws MfaPasskeyLimitException for the passkey after the last one allowed, verifying nothing', async () => {
+            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(10);
+
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyLimit,
+                statusCodeKey: 'passkeyLimit',
+                messagePath: 'mfa.error.passkeyLimit',
+            });
+
+            expect(verifyRegistrationResponse).not.toHaveBeenCalled();
+            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaPasskeyInvalidException when the library does not verify the attestation', async () => {
+            vi.mocked(verifyRegistrationResponse).mockResolvedValue({
+                verified: false,
+            });
+
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+                messagePath: 'mfa.error.passkeyInvalid',
+            });
+
+            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaPasskeyInvalidException when the library throws', async () => {
+            vi.mocked(verifyRegistrationResponse).mockRejectedValue(
+                new Error('origin mismatch')
+            );
+
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+                messagePath: 'mfa.error.passkeyInvalid',
+            });
+
+            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaPasskeyAlreadyRegisteredException for a known credential id', async () => {
+            mfaPasskeyRepository.existsByCredentialIdInTx.mockResolvedValue(
+                true
+            );
+
+            await expect(
+                service.registerInTx(
+                    tx,
+                    'user-quartz',
+                    'iPhone',
+                    response,
+                    'challenge-stored'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyAlreadyRegistered,
+                messagePath: 'mfa.error.passkeyAlreadyRegistered',
+            });
+
+            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getList', () => {
+        it('answers the passkeys of the user', async () => {
+            const passkeys: IMfaPasskey[] = [
+                {
+                    id: 'passkey-one',
+                    name: 'iPhone',
+                    deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+                    backedUp: true,
+                    createdAt: new Date('2026-03-01T00:00:00.000Z'),
+                    lastUsedAt: null,
+                },
+            ];
+            mfaPasskeyRepository.findManyByUserId.mockResolvedValue(passkeys);
+
+            await expect(service.getList('user-quartz')).resolves.toBe(
+                passkeys
+            );
+
+            expect(mfaPasskeyRepository.findManyByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+        });
+    });
+
+    describe('existsByUser', () => {
+        it('answers whether the user holds a passkey', async () => {
+            mfaPasskeyRepository.existsByUserId.mockResolvedValue(true);
+
+            await expect(service.existsByUser('user-quartz')).resolves.toBe(
+                true
+            );
+
+            expect(mfaPasskeyRepository.existsByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+        });
+    });
+
+    describe('assertHasPasskey', () => {
+        it('returns when the user holds a passkey', async () => {
+            mfaPasskeyRepository.existsByUserId.mockResolvedValue(true);
+
+            await expect(
+                service.assertHasPasskey('user-quartz')
+            ).resolves.toBeUndefined();
+
+            expect(mfaPasskeyRepository.existsByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+        });
+
+        it('throws MfaMethodUnavailableException for a user without a passkey', async () => {
+            mfaPasskeyRepository.existsByUserId.mockResolvedValue(false);
+
+            await expect(
+                service.assertHasPasskey('user-quartz')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                messagePath: 'mfa.error.methodUnavailable',
+            });
+        });
+    });
+
+    describe('existsByUserInTx', () => {
+        it('answers whether the user holds a passkey on the given tx', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            mfaPasskeyRepository.existsByUserIdInTx.mockResolvedValue(false);
+
+            await expect(
+                service.existsByUserInTx(tx, 'user-quartz')
+            ).resolves.toBe(false);
+
+            expect(
+                mfaPasskeyRepository.existsByUserIdInTx
+            ).toHaveBeenCalledWith(tx, 'user-quartz');
+        });
+    });
+
+    describe('updateNameInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('renames a passkey of the user on the given tx', async () => {
+            mfaPasskeyRepository.updateNameInTx.mockResolvedValue(true);
+
+            await service.updateNameInTx(
+                tx,
+                'user-quartz',
+                'passkey-one',
+                'Laptop'
+            );
+
+            expect(mfaPasskeyRepository.updateNameInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                'passkey-one',
+                'Laptop'
+            );
+        });
+
+        it('throws MfaPasskeyNotFoundException for the passkey of another user', async () => {
+            mfaPasskeyRepository.updateNameInTx.mockResolvedValue(false);
+
+            await expect(
+                service.updateNameInTx(
+                    tx,
+                    'user-quartz',
+                    'passkey-other',
+                    'Laptop'
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyNotFound,
+                messagePath: 'mfa.error.passkeyNotFound',
+            });
+        });
+    });
+
+    describe('deleteInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('deletes a passkey of the user on the given tx', async () => {
+            mfaPasskeyRepository.deleteInTx.mockResolvedValue(true);
+
+            await service.deleteInTx(tx, 'user-quartz', 'passkey-one');
+
+            expect(mfaPasskeyRepository.deleteInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                'passkey-one'
+            );
+        });
+
+        it('throws MfaPasskeyNotFoundException for the passkey of another user', async () => {
+            mfaPasskeyRepository.deleteInTx.mockResolvedValue(false);
+
+            await expect(
+                service.deleteInTx(tx, 'user-quartz', 'passkey-other')
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyNotFound,
+                messagePath: 'mfa.error.passkeyNotFound',
+            });
+        });
+    });
+
+    describe('deleteByUserInTx', () => {
+        it('deletes every passkey of the user on the given tx', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await service.deleteByUserInTx(tx, 'user-quartz');
+
+            expect(mfaPasskeyRepository.deleteByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+        });
+    });
+});

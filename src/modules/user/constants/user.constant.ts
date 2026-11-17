@@ -11,10 +11,6 @@ export const UserContextStoreKey = 'UserContextStoreKey';
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /** @public */
-export const UserTwoFactorChallengeEncryptionPurpose =
-    'user.twoFactorChallenge.notificationToken';
-
-/** @public */
 export const UserUsernameRegex = /^[a-zA-Z0-9-_]+$/;
 
 /** @public */
@@ -90,7 +86,6 @@ export const UserAdminListSelect = {
             policies: true,
         },
     },
-    twoFactor: true,
 } satisfies Prisma.UserSelect;
 
 /** @public */
@@ -107,6 +102,7 @@ export const UserLoginAnalyticActions: EnumActivityLogAction[] = [
     EnumActivityLogAction.userLoginCredential,
     EnumActivityLogAction.userLoginGoogle,
     EnumActivityLogAction.userLoginApple,
+    EnumActivityLogAction.userLoginPasskey,
 ];
 
 /** @public */

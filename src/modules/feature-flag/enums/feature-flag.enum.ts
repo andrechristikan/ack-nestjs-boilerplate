@@ -3,6 +3,7 @@ export enum EnumFeatureFlagKey {
     loginWithGoogle = 'loginWithGoogle',
     loginWithApple = 'loginWithApple',
     loginWithCredential = 'loginWithCredential',
+    loginWithPasskey = 'loginWithPasskey',
     signUp = 'signUp',
     changePassword = 'changePassword',
     workspace = 'workspace',

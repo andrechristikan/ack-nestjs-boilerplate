@@ -88,7 +88,6 @@ describe('UserProfileResponseSchema', () => {
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
         photo: null,
-        twoFactor: null,
         country,
         mobileNumbers: [mobileNumber],
     };
@@ -117,44 +116,23 @@ describe('UserProfileResponseSchema', () => {
         expect(result).not.toHaveProperty('password');
     });
 
-    it('strips two-factor secret material', () => {
-        const twoFactor = {
-            id: 'two-factor-1',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: 'user-1',
-            updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-            updatedBy: 'user-1',
-            userId: 'user-1',
-            enabled: true,
-            requiredSetup: false,
-            confirmedAt: new Date('2026-01-03T00:00:00.000Z'),
-            secret: 'encrypted-secret',
-            pendingSecret: 'encrypted-pending-secret',
-            backupCodes: ['hash-one', 'hash-two'],
-            attempt: 2,
-            lastUsedAt: new Date('2026-01-04T00:00:00.000Z'),
-        };
-
+    it('strips the mfa key', () => {
         const result = UserProfileResponseSchema.parse({
             ...row,
-            twoFactor,
+            mfa: {
+                id: 'mfa-1',
+                userId: 'user-1',
+                backupCodes: ['encrypted-backup-code'],
+                attempt: 0,
+                lockedUntil: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: 'user-1',
+                updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+                updatedBy: 'user-1',
+            },
         });
 
-        expect(result.twoFactor).not.toHaveProperty('secret');
-        expect(result.twoFactor).not.toHaveProperty('pendingSecret');
-        expect(result.twoFactor).not.toHaveProperty('backupCodes');
-        expect(result.twoFactor).not.toHaveProperty('attempt');
-        expect(result.twoFactor).not.toHaveProperty('lastUsedAt');
-        expect(result.twoFactor).toEqual({
-            id: twoFactor.id,
-            createdAt: twoFactor.createdAt,
-            createdBy: twoFactor.createdBy,
-            updatedAt: twoFactor.updatedAt,
-            updatedBy: twoFactor.updatedBy,
-            userId: twoFactor.userId,
-            enabled: twoFactor.enabled,
-            requiredSetup: twoFactor.requiredSetup,
-            confirmedAt: twoFactor.confirmedAt,
-        });
+        expect(result).toEqual(row);
+        expect(result).not.toHaveProperty('mfa');
     });
 });

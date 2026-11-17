@@ -25,10 +25,12 @@ import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserForgotPasswordRequestSchema } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserLoginSetupTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import { UserLoginPasskeyRequestSchema } from '@modules/user/dtos/request/user.login-passkey.request.dto';
+import type { UserLoginPasskeyRequestDto } from '@modules/user/dtos/request/user.login-passkey.request.dto';
+import { UserResetPasswordGenerateMfaRequestSchema } from '@modules/user/dtos/request/user.reset-password-generate-mfa.request.dto';
+import type { UserResetPasswordGenerateMfaRequestDto } from '@modules/user/dtos/request/user.reset-password-generate-mfa.request.dto';
+import { UserLoginVerifyMfaRequestSchema } from '@modules/user/dtos/request/user.login-verify-mfa.request.dto';
+import type { UserLoginVerifyMfaRequestDto } from '@modules/user/dtos/request/user.login-verify-mfa.request.dto';
 import { UserLoginRequestSchema } from '@modules/user/dtos/request/user.login.request.dto';
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSendEmailVerificationRequestSchema } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
@@ -37,19 +39,26 @@ import { UserSignUpRequestSchema } from '@modules/user/dtos/request/user.sign-up
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { UserVerifyEmailRequestSchema } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserResetPasswordGenerateMfaResponseSchema } from '@modules/user/dtos/response/user.reset-password-generate-mfa.response.dto';
+import type { UserResetPasswordGenerateMfaResponseDto } from '@modules/user/dtos/response/user.reset-password-generate-mfa.response.dto';
+import { UserLoginPasskeyGenerateResponseSchema } from '@modules/user/dtos/response/user.login-passkey-generate.response.dto';
+import type { UserLoginPasskeyGenerateResponseDto } from '@modules/user/dtos/response/user.login-passkey-generate.response.dto';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserLoginOutcome,
+    IUserLoginTokenOutcome,
+} from '@modules/user/interfaces/user.interface';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
 import { UserSendVerificationEmailUseCase } from '@modules/user/use-cases/user.send-verification-email.use-case';
 import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-password.use-case';
+import { UserResetPasswordGenerateMfaUseCase } from '@modules/user/use-cases/user.reset-password-generate-mfa.use-case';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
-import { UserLoginVerifyTwoFactorUseCase } from '@modules/user/use-cases/user.login-verify-two-factor.use-case';
-import { UserLoginSetupTwoFactorUseCase } from '@modules/user/use-cases/user.login-setup-two-factor.use-case';
+import { UserLoginVerifyMfaUseCase } from '@modules/user/use-cases/user.login-verify-mfa.use-case';
+import { UserLoginGeneratePasskeyUseCase } from '@modules/user/use-cases/user.login-generate-passkey.use-case';
+import { UserLoginWithPasskeyUseCase } from '@modules/user/use-cases/user.login-with-passkey.use-case';
 import {
     Body,
     Controller,
@@ -80,8 +89,10 @@ export class UserPublicController {
         private readonly userSendVerificationEmailUseCase: UserSendVerificationEmailUseCase,
         private readonly userForgotPasswordUseCase: UserForgotPasswordUseCase,
         private readonly userResetPasswordUseCase: UserResetPasswordUseCase,
-        private readonly userLoginVerifyTwoFactorUseCase: UserLoginVerifyTwoFactorUseCase,
-        private readonly userLoginSetupTwoFactorUseCase: UserLoginSetupTwoFactorUseCase
+        private readonly userResetPasswordGenerateMfaUseCase: UserResetPasswordGenerateMfaUseCase,
+        private readonly userLoginVerifyMfaUseCase: UserLoginVerifyMfaUseCase,
+        private readonly userLoginGeneratePasskeyUseCase: UserLoginGeneratePasskeyUseCase,
+        private readonly userLoginWithPasskeyUseCase: UserLoginWithPasskeyUseCase
     ) {}
 
     @Doc({ summary: 'login with credential' })
@@ -251,42 +262,69 @@ export class UserPublicController {
         );
     }
 
-    @Doc({ summary: 'user verify two factor during login' })
-    @Response('user.verifyTwoFactor', { schema: AuthTokenResponseSchema })
+    @Doc({ summary: 'user reset password multi-factor authentication options' })
+    @Response('user.resetPasswordGenerateMfa', {
+        schema: UserResetPasswordGenerateMfaResponseSchema,
+    })
+    @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
-    @Patch('/login/2fa/verify')
-    async loginVerifyTwoFactor(
+    @HttpCode(HttpStatus.OK)
+    @Post('/password/reset/mfa/generate')
+    async resetGenerateMfa(
+        @Body({ schema: UserResetPasswordGenerateMfaRequestSchema })
+        body: UserResetPasswordGenerateMfaRequestDto
+    ): Promise<IResponseReturn<UserResetPasswordGenerateMfaResponseDto>> {
+        return this.userResetPasswordGenerateMfaUseCase.execute(body);
+    }
+
+    @Doc({ summary: 'user verify multi-factor authentication during login' })
+    @Response('user.verifyMfa', { schema: AuthTokenResponseSchema })
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @ApiKeyProtected()
+    @Patch('/login/mfa/verify')
+    async loginVerifyMfa(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @Body({ schema: UserLoginVerifyTwoFactorRequestSchema })
-        body: UserLoginVerifyTwoFactorRequestDto
+        @Body({ schema: UserLoginVerifyMfaRequestSchema })
+        body: UserLoginVerifyMfaRequestDto
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userLoginVerifyTwoFactorUseCase.execute(
+        return this.userLoginVerifyMfaUseCase.execute(
             requestContext,
             apiKeyContext,
             body
         );
     }
 
-    @Doc({
-        summary:
-            'user enable two factor during login after reset by admin. Required setup 2FA flow',
+    @Doc({ summary: 'generate passkey options for passwordless login' })
+    @Response('user.loginGeneratePasskey', {
+        schema: UserLoginPasskeyGenerateResponseSchema,
     })
-    @Response('user.loginSetupTwoFactor', {
-        schema: UserTwoFactorEnableResponseSchema,
-    })
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithPasskey)
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/login/2fa/enable')
-    async verifyLoginTwoFactor(
+    @Post('/login/passkey/generate')
+    async loginGeneratePasskey(): Promise<
+        IResponseReturn<UserLoginPasskeyGenerateResponseDto>
+    > {
+        return this.userLoginGeneratePasskeyUseCase.execute();
+    }
+
+    @Doc({ summary: 'login with passkey' })
+    @Response('user.loginWithPasskey', { schema: UserLoginResponseSchema })
+    @FeatureFlagProtected(EnumFeatureFlagKey.loginWithPasskey)
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/login/passkey')
+    async loginWithPasskey(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
-        @Body({ schema: UserLoginSetupTwoFactorRequestSchema })
-        body: UserLoginSetupTwoFactorRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userLoginSetupTwoFactorUseCase.execute(
+        @Body({ schema: UserLoginPasskeyRequestSchema })
+        body: UserLoginPasskeyRequestDto
+    ): Promise<IResponseReturn<IUserLoginTokenOutcome>> {
+        return this.userLoginWithPasskeyUseCase.execute(
             requestContext,
             apiKeyContext,
             body

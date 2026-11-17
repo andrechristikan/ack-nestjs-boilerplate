@@ -111,7 +111,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
             updatedBy: null,
             policies: [policy],
         },
-        twoFactor: null,
     };
 
     const policyMetadata: IActivityLogMetadata = {

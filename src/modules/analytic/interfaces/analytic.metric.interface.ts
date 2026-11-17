@@ -54,13 +54,13 @@ export interface IAnalyticForgotPasswordConversion {
     rate: number;
 }
 
-export interface IAnalyticTwoFactorAdoption {
+export interface IAnalyticMfaAdoption {
     enabled: number;
     total: number;
     rate: number;
 }
 
-export interface IAnalyticTwoFactorAttemptSnapshot {
+export interface IAnalyticMfaAttemptSnapshot {
     usersWithAttempts: number;
     totalAttempts: number;
 }

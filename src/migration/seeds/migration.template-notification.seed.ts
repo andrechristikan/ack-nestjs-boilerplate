@@ -49,7 +49,7 @@ export class MigrationTemplateEmailNotificationSeed
             tempPasswordEmail,
             verificationEmail,
             welcomeEmail,
-            resetTwoFactorByAdminEmail,
+            resetMfaByAdminEmail,
             newDeviceLoginEmail,
             loginLockedEmail,
             publishTermPolicyEmail,
@@ -89,7 +89,7 @@ export class MigrationTemplateEmailNotificationSeed
                 EnumNotificationKind.welcome
             ),
             this.notificationTemplateService.emailGet(
-                EnumNotificationKind.resetTwoFactorByAdmin
+                EnumNotificationKind.resetMfaByAdmin
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.newDeviceLogin
@@ -221,15 +221,15 @@ export class MigrationTemplateEmailNotificationSeed
             promises.push(welcomeEmailImport);
         }
 
-        if (!resetTwoFactorByAdminEmail) {
+        if (!resetMfaByAdminEmail) {
             this.logger.log(
                 'Reset Two Factor By Admin Email template missing, importing...'
             );
-            const resetTwoFactorByAdminEmailImport =
+            const resetMfaByAdminEmailImport =
                 this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.resetTwoFactorByAdmin
+                    EnumNotificationKind.resetMfaByAdmin
                 );
-            promises.push(resetTwoFactorByAdminEmailImport);
+            promises.push(resetMfaByAdminEmailImport);
         }
 
         if (!loginLockedEmail) {
@@ -391,7 +391,7 @@ export class MigrationTemplateEmailNotificationSeed
                     EnumNotificationKind.welcome
                 ),
                 this.notificationTemplateService.emailDelete(
-                    EnumNotificationKind.resetTwoFactorByAdmin
+                    EnumNotificationKind.resetMfaByAdmin
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.newDeviceLogin

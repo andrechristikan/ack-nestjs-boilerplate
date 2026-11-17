@@ -11,21 +11,22 @@ import {
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
-    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/server';
+import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import type {
     Country,
     EnumUserReauthenticationAction,
     ForgotPassword,
     Prisma,
-    TwoFactor,
-    TwoFactorChallenge,
-    TwoFactorChallengeDevice,
     User,
     UserMobileNumber,
     UserPhoto,
@@ -55,20 +56,12 @@ export interface IUserDeletedIdentity {
     username: string;
 }
 
-export interface IUserWithTwoFactor extends User {
-    twoFactor: TwoFactor | null;
-}
-
-export interface IUser extends IUserWithTwoFactor {
+export interface IUser extends User {
     role: IRoleWithPolicies;
 }
 
 export interface IUserContext {
     user: IUser;
-}
-
-export interface IUserTwoFactorEnabled extends IUser {
-    twoFactor: TwoFactor;
 }
 
 export interface IUserPasswordSet extends IUser {
@@ -135,6 +128,12 @@ export interface IUserVerificationReauthenticationCreate {
     verification: IUserCreateVerification;
     otp: string;
     action: EnumUserReauthenticationAction;
+    expiredInMinutes: number;
+}
+
+export interface IUserVerificationMobileCreate {
+    verification: IUserCreateVerification;
+    otp: string;
     expiredInMinutes: number;
 }
 
@@ -314,100 +313,30 @@ export interface IUserForgotPasswordPrepared {
     forgot: IUserForgotPasswordCreate;
 }
 
-export interface IUserTwoFactorStatus {
-    isEnabled: boolean;
-    isPendingConfirmation: boolean;
-    backupCodesRemaining: number;
-    confirmedAt: Date | null;
-    lastUsedAt: Date | null;
-}
-
-export interface IUserTwoFactorLoginSetup {
-    user: IUser;
-    pendingSecret: string;
-}
-
-export interface IUserTwoFactorSetup {
-    secret: string;
-    otpauthUrl: string;
-}
-
-export interface IUserTwoFactorSetupSecret extends IUserTwoFactorSetup {
-    encryptedSecret: string;
-}
-
-export interface IUserTwoFactorVerifyInput {
-    method: EnumAuthTwoFactorMethod | null;
-    code: string | null;
-    backupCode: string | null;
-}
-
-export interface IUserTwoFactorVerifyResult {
-    method: EnumAuthTwoFactorMethod;
-    newBackupCodes: string[] | null;
-}
-
-export interface IUserTwoFactorCheck {
-    verified: IUserTwoFactorVerifyResult;
-    totpStep: number | null;
-}
-
 export interface IUserReauthenticationInput {
     action: EnumUserReauthenticationAction;
     password: string | null;
-    method: EnumAuthTwoFactorMethod | null;
+    method: EnumMfaMethod | null;
     code: string | null;
     backupCode: string | null;
+    passkeyChallengeToken: string | null;
+    passkeyResponse: AuthenticationResponseJSON | null;
     otp: string | null;
 }
 
 export interface IUserReauthenticationCheck {
     isPasswordChecked: boolean;
-    twoFactor: IUserTwoFactorCheck | null;
+    mfa: IMfaCheck | null;
     verificationId: string | null;
+    passkeyChallengeToken: string | null;
 }
 
-export interface IUserTwoFactorChallengeCreate {
-    userId: string;
-    tokenHash: string;
-    device: TwoFactorChallengeDevice;
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
-    expiredAt: Date;
-}
-
-export type IUserTwoFactorChallengeRow = TwoFactorChallenge;
-
-export interface IUserTwoFactorChallengeToken {
+export interface IUserLoginMfaChallenge {
     challengeToken: string;
     expiresInMs: number;
+    methods: EnumMfaMethod[];
+    passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null;
 }
-
-export interface IUserTwoFactorChallenge {
-    userId: string;
-    device: IDeviceIdentity;
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
-}
-
-interface IUserLoginTwoFactorChallengeBase {
-    challengeToken: string;
-    challengeExpiresInMs: number;
-    backupCodesRemaining: number;
-}
-
-export interface IUserLoginTwoFactorSetupChallenge extends IUserLoginTwoFactorChallengeBase {
-    isRequiredSetup: true;
-    otpauthUrl: string;
-    secret: string;
-}
-
-export interface IUserLoginTwoFactorVerifyChallenge extends IUserLoginTwoFactorChallengeBase {
-    isRequiredSetup: false;
-}
-
-export type IUserLoginTwoFactorChallenge =
-    IUserLoginTwoFactorSetupChallenge | IUserLoginTwoFactorVerifyChallenge;
 
 interface IUserLoginOutcomeBase {
     lastWorkspaceId: string | null;
@@ -415,19 +344,18 @@ interface IUserLoginOutcomeBase {
 }
 
 export interface IUserLoginTokenOutcome extends IUserLoginOutcomeBase {
-    isTwoFactorEnable: false;
+    isMfaRequired: false;
     tokens: IAuthToken;
-    twoFactor?: never;
+    mfa?: never;
 }
 
-export interface IUserLoginTwoFactorOutcome extends IUserLoginOutcomeBase {
-    isTwoFactorEnable: true;
-    twoFactor: IUserLoginTwoFactorChallenge;
+export interface IUserLoginMfaOutcome extends IUserLoginOutcomeBase {
+    isMfaRequired: true;
+    mfa: IUserLoginMfaChallenge;
     tokens?: never;
 }
 
-export type IUserLoginOutcome =
-    IUserLoginTokenOutcome | IUserLoginTwoFactorOutcome;
+export type IUserLoginOutcome = IUserLoginTokenOutcome | IUserLoginMfaOutcome;
 
 export interface IUserAnalyticGroupCount<T extends string = string> {
     key: T;

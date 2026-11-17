@@ -1,7 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 import type { Algorithm } from 'jsonwebtoken';
-import type { HashAlgorithm, OTPStrategy } from 'otplib';
 
 export interface IConfigAuth {
     jwt: {
@@ -55,25 +54,6 @@ export interface IConfigAuth {
     jwks: {
         requestsPerMinute: number;
         cacheMaxAgeInMs: number;
-    };
-    twoFactor: {
-        strategy: OTPStrategy;
-        algorithm: HashAlgorithm;
-        issuer: string;
-        digits: number;
-        periodInSeconds: number;
-        window: number;
-        secretLength: number;
-        challengeTtlInMs: number;
-        maxAttempt: number;
-        lockDurationInMs: number;
-        backupCodes: {
-            count: number;
-            length: number;
-        };
-        encryption: {
-            key: string;
-        };
     };
 }
 
@@ -151,25 +131,6 @@ export default registerAs('auth', (): IConfigAuth => {
         jwks: {
             requestsPerMinute: 60,
             cacheMaxAgeInMs: ms('10m'),
-        },
-        twoFactor: {
-            strategy: 'totp',
-            algorithm: 'sha1',
-            issuer: process.env.AUTH_TWO_FACTOR_ISSUER!,
-            digits: 6,
-            periodInSeconds: ms('30s') / 1000,
-            window: 1,
-            secretLength: 32,
-            challengeTtlInMs: ms('5m'),
-            backupCodes: {
-                count: 8,
-                length: 10,
-            },
-            maxAttempt: 5,
-            lockDurationInMs: ms('15m'),
-            encryption: {
-                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
-            },
         },
     };
 });

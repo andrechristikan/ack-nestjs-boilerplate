@@ -93,13 +93,3 @@ export interface IAuthTokenSignInput extends IAuthLoginIdentifiers {
     deviceOwnershipId: string;
     loginAt: Date;
 }
-
-export interface IAuthTwoFactorBackupCodes {
-    codes: string[];
-    hashes: string[];
-}
-
-export interface IAuthTwoFactorBackupCodesVerifyResult {
-    isValid: boolean;
-    index: number;
-}

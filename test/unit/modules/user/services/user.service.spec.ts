@@ -15,7 +15,7 @@ import {
     EnumVerificationType,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
+import type { Mfa } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -40,7 +40,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -72,8 +72,7 @@ describe('UserService', () => {
     const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const userTwoFactorService: MockProxy<UserTwoFactorService> =
-        mock<UserTwoFactorService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
@@ -109,17 +108,10 @@ describe('UserService', () => {
         updatedBy: null,
         policies: [],
     };
-    const twoFactor: TwoFactor = {
-        id: 'two-factor-cobalt',
+    const mfa: Mfa = {
+        id: 'mfa-cobalt',
         userId: 'user-cobalt',
-        secret: null,
-        pendingSecret: null,
         backupCodes: [],
-        enabled: false,
-        requiredSetup: false,
-        confirmedAt: null,
-        lastUsedAt: null,
-        lastUsedStep: null,
         attempt: 0,
         lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -161,10 +153,9 @@ describe('UserService', () => {
         deletedAt: null,
         deletedBy: null,
         role,
-        twoFactor,
     };
 
-    const { role: _role, ...userWithTwoFactor } = baseUser;
+    const { role: _role, ...userRow } = baseUser;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -191,8 +182,8 @@ describe('UserService', () => {
                     useValue: userVerificationService,
                 },
                 {
-                    provide: UserTwoFactorService,
-                    useValue: userTwoFactorService,
+                    provide: MfaService,
+                    useValue: mfaService,
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
@@ -207,7 +198,7 @@ describe('UserService', () => {
 
     describe('validateUserGuard', () => {
         it('throws UserAccountNotFoundException when the user row is gone', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue(null);
+            userRepository.findOneById.mockResolvedValue(null);
 
             const call = service.validateUserGuard(
                 {
@@ -230,8 +221,8 @@ describe('UserService', () => {
         });
 
         it('throws UserBlockedForbiddenException when the user is blocked', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue({
-                ...userWithTwoFactor,
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
                 status: EnumUserStatus.blocked,
             });
 
@@ -255,8 +246,8 @@ describe('UserService', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue({
-                ...userWithTwoFactor,
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
                 status: EnumUserStatus.inactive,
             });
 
@@ -280,11 +271,9 @@ describe('UserService', () => {
         });
 
         it('skips the password expiry check for a social session', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue(
-                userWithTwoFactor
-            );
+            userRepository.findOneById.mockResolvedValue(userRow);
             roleService.getOne.mockResolvedValue(role);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             await expect(
                 service.validateUserGuard(
@@ -295,16 +284,12 @@ describe('UserService', () => {
                     false
                 )
             ).resolves.toEqual(baseUser);
-            expect(
-                authPasswordUtil.checkPasswordExpired
-            ).not.toHaveBeenCalled();
+            expect(authPasswordUtil.isPasswordExpired).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue(
-                userWithTwoFactor
-            );
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
+            userRepository.findOneById.mockResolvedValue(userRow);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             const call = service.validateUserGuard(
                 {
@@ -326,11 +311,11 @@ describe('UserService', () => {
         });
 
         it('throws UserEmailNotVerifiedException when verification is required and missing', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue({
-                ...userWithTwoFactor,
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
                 isVerified: false,
             });
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             const call = service.validateUserGuard(
                 {
@@ -352,11 +337,9 @@ describe('UserService', () => {
         });
 
         it('returns the user when every check passes', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue(
-                userWithTwoFactor
-            );
+            userRepository.findOneById.mockResolvedValue(userRow);
             roleService.getOne.mockResolvedValue(role);
-            authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             await expect(
                 service.validateUserGuard(
@@ -367,15 +350,15 @@ describe('UserService', () => {
                     true
                 )
             ).resolves.toEqual(baseUser);
-            expect(
-                userRepository.findOneWithTwoFactorById
-            ).toHaveBeenCalledWith('user-cobalt');
+            expect(userRepository.findOneById).toHaveBeenCalledWith(
+                'user-cobalt'
+            );
             expect(roleService.getOne).toHaveBeenCalledWith(role.id);
         });
 
         it('does not read the role for a blocked user', async () => {
-            userRepository.findOneWithTwoFactorById.mockResolvedValue({
-                ...userWithTwoFactor,
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
                 status: EnumUserStatus.blocked,
             });
 
@@ -433,7 +416,6 @@ describe('UserService', () => {
                 deletedAt: null,
                 deletedBy: null,
                 role,
-                twoFactor,
             };
             const response: IResponsePaginationReturn<IUserList> = {
                 type: EnumPaginationType.offset,
@@ -535,6 +517,7 @@ describe('UserService', () => {
             token: 'hashed-token',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: 'cobalt@example.com',
             expiredAt: new Date('2026-02-01T00:00:00.000Z'),
             verifiedAt: null,
@@ -569,25 +552,24 @@ describe('UserService', () => {
             verification: null,
             createdBy: 'admin-cobalt',
         };
-        const marigoldTwoFactor: TwoFactor = {
-            ...twoFactor,
-            id: 'two-factor-marigold',
+        const marigoldMfa: Mfa = {
+            ...mfa,
+            id: 'mfa-marigold',
             userId: 'user-marigold',
         };
 
-        it('writes the users, then the verification row when the input carries one and the disabled two-factor row per user', async () => {
+        it('writes the users, then the verification row when the input carries one and the Mfa row per user', async () => {
             const marigold: IUser = {
                 ...baseUser,
                 id: 'user-marigold',
-                twoFactor: null,
             };
             userRepository.createManyInTx.mockResolvedValue([
-                { ...baseUser, twoFactor: null },
+                baseUser,
                 marigold,
             ]);
-            userTwoFactorService.createDisabledInTx
-                .mockResolvedValueOnce(twoFactor)
-                .mockResolvedValueOnce(marigoldTwoFactor);
+            mfaService.createInTx
+                .mockResolvedValueOnce(mfa)
+                .mockResolvedValueOnce(marigoldMfa);
 
             const result = await service.createManyInTx(tx, [
                 withVerification,
@@ -605,16 +587,17 @@ describe('UserService', () => {
                 verification,
                 'user-cobalt'
             );
-            expect(
-                userTwoFactorService.createDisabledInTx
-            ).toHaveBeenCalledWith(tx, 'user-cobalt', 'user-cobalt');
-            expect(
-                userTwoFactorService.createDisabledInTx
-            ).toHaveBeenCalledWith(tx, 'user-marigold', 'admin-cobalt');
-            expect(result).toEqual([
-                { ...baseUser, twoFactor },
-                { ...marigold, twoFactor: marigoldTwoFactor },
-            ]);
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                'user-cobalt'
+            );
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marigold',
+                'admin-cobalt'
+            );
+            expect(result).toEqual([baseUser, marigold]);
         });
 
         it('issues no statement for an empty list', async () => {
@@ -622,9 +605,7 @@ describe('UserService', () => {
 
             await expect(service.createManyInTx(tx, [])).resolves.toEqual([]);
             expect(userVerificationService.createInTx).not.toHaveBeenCalled();
-            expect(
-                userTwoFactorService.createDisabledInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaService.createInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -849,6 +830,7 @@ describe('UserService', () => {
             token: 'hashed-token',
             type: EnumVerificationType.email,
             action: null,
+            mobileNumberId: null,
             to: input.email,
             expiredAt: new Date('2026-02-01T00:00:00.000Z'),
             verifiedAt: now,
@@ -1003,8 +985,8 @@ describe('UserService', () => {
 
     describe('checkUsername', () => {
         it('combines the pattern, bad-word and existence checks', async () => {
-            userUtil.checkUsernamePattern.mockReturnValue(true);
-            userUtil.checkBadWord.mockResolvedValue(false);
+            userUtil.isUsernamePatternInvalid.mockReturnValue(true);
+            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(true);
 
             await expect(service.checkUsername('cobaltReyes')).resolves.toEqual(
@@ -1019,7 +1001,7 @@ describe('UserService', () => {
 
     describe('checkEmail', () => {
         it('combines the bad-word and existence checks', async () => {
-            userUtil.checkBadWord.mockResolvedValue(true);
+            userUtil.hasBadWord.mockReturnValue(true);
             userRepository.existsByEmail.mockResolvedValue(false);
 
             await expect(
@@ -1167,7 +1149,7 @@ describe('UserService', () => {
             );
         });
 
-        it('resets the two-factor attempt counter in the same transaction when activating', async () => {
+        it('resets the MFA attempt counter in the same transaction when activating', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
 
             await service.updateStatusByAdminInTx(
@@ -1176,13 +1158,13 @@ describe('UserService', () => {
                 EnumUserStatus.active
             );
 
-            expect(userTwoFactorService.resetAttemptInTx).toHaveBeenCalledWith(
+            expect(mfaService.resetAttemptInTx).toHaveBeenCalledWith(
                 tx,
                 target.id
             );
         });
 
-        it('leaves the two-factor counter when the status is not active', async () => {
+        it('leaves the MFA counter when the status is not active', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
 
             await service.updateStatusByAdminInTx(
@@ -1191,9 +1173,7 @@ describe('UserService', () => {
                 EnumUserStatus.inactive
             );
 
-            expect(
-                userTwoFactorService.resetAttemptInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
 
         it('throws UserStatusInvalidException without writing when the status is unchanged', async () => {
@@ -1232,9 +1212,7 @@ describe('UserService', () => {
                 statusCode: EnumUserStatusCodeError.statusInvalid,
                 messagePath: 'user.error.statusInvalid',
             });
-            expect(
-                userTwoFactorService.resetAttemptInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -1259,48 +1237,6 @@ describe('UserService', () => {
                 identity,
                 now
             );
-        });
-    });
-
-    describe('mapTwoFactor', () => {
-        it('maps an enabled two-factor row with a pending secret', () => {
-            const enabledTwoFactor: TwoFactor = {
-                ...twoFactor,
-                secret: 'secret',
-                pendingSecret: 'pending-secret',
-                backupCodes: ['code-one', 'code-two'],
-                enabled: true,
-                confirmedAt: new Date('2026-01-05T00:00:00.000Z'),
-                lastUsedAt: new Date('2026-01-06T00:00:00.000Z'),
-            };
-
-            expect(service.mapTwoFactor(enabledTwoFactor)).toEqual({
-                isEnabled: true,
-                isPendingConfirmation: true,
-                backupCodesRemaining: 2,
-                confirmedAt: enabledTwoFactor.confirmedAt,
-                lastUsedAt: enabledTwoFactor.lastUsedAt,
-            });
-        });
-
-        it('maps a disabled two-factor row with no pending secret', () => {
-            expect(service.mapTwoFactor(twoFactor)).toEqual({
-                isEnabled: false,
-                isPendingConfirmation: false,
-                backupCodesRemaining: 0,
-                confirmedAt: null,
-                lastUsedAt: null,
-            });
-        });
-
-        it('maps a missing two-factor row as disabled', () => {
-            expect(service.mapTwoFactor(null)).toEqual({
-                isEnabled: false,
-                isPendingConfirmation: false,
-                backupCodesRemaining: 0,
-                confirmedAt: null,
-                lastUsedAt: null,
-            });
         });
     });
 

@@ -81,6 +81,21 @@ export const NotificationKindContract: INotificationKindContracts = {
         templateFields: ['link', 'reference', 'expiredAt', 'expiredInMinutes'],
         dateFields: ['expiredAt'],
     },
+    [EnumNotificationKind.verificationMobileNumber]: {
+        type: EnumNotificationType.userActivity,
+        priority: EnumNotificationPriority.high,
+        isMandatory: true,
+        title: 'notification.notify.verificationMobileNumber.title',
+        body: 'notification.notify.verificationMobileNumber.body',
+        pendingChannels: [EnumNotificationChannel.sms],
+        deliveredChannels: [EnumNotificationChannel.silent],
+        queuePriority: EnumQueuePriority.medium,
+        secrets: ['otp'],
+        keyPattern: EnumNotificationKeyPattern.referencePattern,
+        metadataFields: [],
+        templateFields: ['otp', 'reference', 'expiredInMinutes'],
+        dateFields: [],
+    },
     [EnumNotificationKind.reauthenticationOtp]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.high,
@@ -195,12 +210,12 @@ export const NotificationKindContract: INotificationKindContracts = {
         templateFields: [],
         dateFields: [],
     },
-    [EnumNotificationKind.resetTwoFactorByAdmin]: {
+    [EnumNotificationKind.resetMfaByAdmin]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,
         isMandatory: true,
-        title: 'notification.notify.resetTwoFactorByAdmin.title',
-        body: 'notification.notify.resetTwoFactorByAdmin.body',
+        title: 'notification.notify.resetMfaByAdmin.title',
+        body: 'notification.notify.resetMfaByAdmin.body',
         pendingChannels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,

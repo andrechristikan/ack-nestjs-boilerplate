@@ -95,24 +95,23 @@ describe('NotificationPushDeliveryService', () => {
     });
 
     describe('sendMulticast', () => {
-        const pairs = [{ encrypted: 'cipher(token-1)', token: 'token-1' }];
         const payload = { title: 'Title', body: 'Body' };
+        const emptyResult: IFirebasePushResult = {
+            successCount: 1,
+            failureCount: 0,
+            failureTokens: [],
+            retryTokens: [],
+        };
+
+        beforeEach(() => {
+            notificationUtil.decryptPayload.mockImplementation(
+                (encrypted: string) =>
+                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
+            );
+        });
 
         it('sends to the pending tokens when recorded and returns the outcome', async () => {
-            const outcome = {
-                encryptedFailureTokens: [],
-                encryptedPendingTokens: [],
-                failure: null,
-            };
-            const result: IFirebasePushResult = {
-                successCount: 1,
-                failureCount: 0,
-                failureTokens: [],
-                retryTokens: [],
-            };
-            notificationUtil.toTokenPairs.mockReturnValue(pairs);
-            firebaseService.sendMulticast.mockResolvedValue(result);
-            notificationUtil.toMulticastOutcome.mockReturnValue(outcome);
+            firebaseService.sendMulticast.mockResolvedValue(emptyResult);
 
             const sent = await service.sendMulticast(
                 'user-id',
@@ -122,48 +121,138 @@ describe('NotificationPushDeliveryService', () => {
                 ['cipher(token-1)']
             );
 
-            expect(notificationUtil.toTokenPairs).toHaveBeenCalledWith(
-                'user-id',
-                ['cipher(token-1)']
+            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
+                'cipher(token-1)',
+                'user-id'
             );
             expect(firebaseService.sendMulticast).toHaveBeenCalledWith(
                 ['token-1'],
                 payload
             );
-            expect(notificationUtil.toMulticastOutcome).toHaveBeenCalledWith(
-                pairs,
-                result,
-                []
-            );
-            expect(sent).toBe(outcome);
+            expect(sent).toEqual({
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: [],
+                failure: null,
+            });
+            expect(messageService.setMessage).not.toHaveBeenCalled();
         });
 
         it('sends to every token when none is pending', async () => {
-            notificationUtil.toTokenPairs.mockReturnValue(pairs);
+            firebaseService.sendMulticast.mockResolvedValue(emptyResult);
 
             await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)'],
+                ['cipher(token-1)', 'cipher(token-2)'],
                 payload,
                 null,
                 null
             );
 
-            expect(notificationUtil.toTokenPairs).toHaveBeenCalledWith(
-                'user-id',
-                ['cipher(token-1)']
+            expect(firebaseService.sendMulticast).toHaveBeenCalledWith(
+                ['token-1', 'token-2'],
+                payload
             );
         });
 
-        it('returns the recorded tokens with the failure when the send rejects', async () => {
+        it('rethrows a decryption failure', async () => {
+            const failure = new Error('decrypt');
+            notificationUtil.decryptPayload.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                service.sendMulticast(
+                    'user-id',
+                    ['cipher(token-1)'],
+                    payload,
+                    null,
+                    null
+                )
+            ).rejects.toBe(failure);
+            expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
+        });
+
+        it('maps the failure tokens back to their ciphertexts with no failure when none is pending', async () => {
+            firebaseService.sendMulticast.mockResolvedValue({
+                successCount: 1,
+                failureCount: 1,
+                failureTokens: ['token-1'],
+                retryTokens: [],
+            });
+
+            const sent = await service.sendMulticast(
+                'user-id',
+                ['cipher(token-1)', 'cipher(token-2)'],
+                payload,
+                null,
+                null
+            );
+
+            expect(sent).toEqual({
+                encryptedFailureTokens: ['cipher(token-1)'],
+                encryptedPendingTokens: [],
+                failure: null,
+            });
+            expect(messageService.setMessage).not.toHaveBeenCalled();
+        });
+
+        it('merges the recorded failure tokens and drops duplicates', async () => {
+            firebaseService.sendMulticast.mockResolvedValue({
+                successCount: 1,
+                failureCount: 1,
+                failureTokens: ['token-1'],
+                retryTokens: [],
+            });
+
+            const sent = await service.sendMulticast(
+                'user-id',
+                ['cipher(token-1)', 'cipher(token-2)'],
+                payload,
+                ['cipher(old)', 'cipher(token-1)'],
+                null
+            );
+
+            expect(sent.encryptedFailureTokens).toEqual([
+                'cipher(old)',
+                'cipher(token-1)',
+            ]);
+        });
+
+        it('keeps the retry tokens as pending and fails the multicast step', async () => {
+            firebaseService.sendMulticast.mockResolvedValue({
+                successCount: 0,
+                failureCount: 2,
+                failureTokens: [],
+                retryTokens: ['token-1', 'token-2'],
+            });
+
+            const sent = await service.sendMulticast(
+                'user-id',
+                ['cipher(token-1)', 'cipher(token-2)'],
+                payload,
+                null,
+                null
+            );
+
+            expect(sent).toEqual({
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                failure: {
+                    step: EnumNotificationStep.sendMulticast,
+                    rawError: new Error(
+                        'notification.queue.push.error.tokensPending'
+                    ),
+                },
+            });
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.queue.push.error.tokensPending',
+                { properties: { count: 2 } }
+            );
+        });
+
+        it('returns the recorded tokens with the Error as the failure when the send rejects', async () => {
             const error = new Error('fcm');
-            const failure = {
-                step: EnumNotificationStep.sendMulticast,
-                rawError: error,
-            };
-            notificationUtil.toTokenPairs.mockReturnValue(pairs);
             firebaseService.sendMulticast.mockRejectedValue(error);
-            notificationUtil.toStepFailure.mockReturnValue(failure);
 
             const sent = await service.sendMulticast(
                 'user-id',
@@ -173,15 +262,55 @@ describe('NotificationPushDeliveryService', () => {
                 null
             );
 
-            expect(notificationUtil.toStepFailure).toHaveBeenCalledWith(
-                EnumNotificationStep.sendMulticast,
-                error
-            );
             expect(sent).toEqual({
                 encryptedFailureTokens: ['cipher(token-9)'],
                 encryptedPendingTokens: null,
-                failure,
+                failure: {
+                    step: EnumNotificationStep.sendMulticast,
+                    rawError: error,
+                },
             });
+            expect(sent.failure?.rawError).toBe(error);
+        });
+
+        it('wraps a non-Error rejection into an Error carrying its string form', async () => {
+            firebaseService.sendMulticast.mockRejectedValue('boom');
+
+            const sent = await service.sendMulticast(
+                'user-id',
+                ['cipher(token-1)'],
+                payload,
+                null,
+                null
+            );
+
+            expect(sent.failure?.step).toBe(EnumNotificationStep.sendMulticast);
+            expect(sent.failure?.rawError).toBeInstanceOf(Error);
+            expect(sent.failure?.rawError.message).toBe('boom');
+        });
+    });
+
+    describe('toStepSummary', () => {
+        it('summarizes failed steps by step name only', () => {
+            messageService.setMessage.mockImplementation(
+                (path: string, options) =>
+                    `${path}|${String(options?.properties?.steps)}`
+            );
+
+            expect(
+                service.toStepSummary([
+                    {
+                        step: EnumNotificationStep.sendEmail,
+                        rawError: new Error('prisma secret'),
+                    },
+                    {
+                        step: EnumNotificationStep.sendPush,
+                        rawError: new Error('boom'),
+                    },
+                ])
+            ).toBe(
+                `notification.queue.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
+            );
         });
     });
 

@@ -10,6 +10,7 @@ import { NotificationService } from '@modules/notification/services/notification
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
+    EnumMfaChallengePurpose,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserReauthenticationAction,
@@ -20,6 +21,12 @@ import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { DeviceService } from '@modules/device/services/device.service';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
+import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -37,20 +44,20 @@ import { UserReauthenticationOtpRequiredException } from '@modules/user/exceptio
 import type {
     IUser,
     IUserCredential,
-    IUserLoginTwoFactorChallenge,
+    IUserLoginMfaChallenge,
     IUserReauthenticationCheck,
     IUserReauthenticationInput,
-    IUserTwoFactorCheck,
-    IUserTwoFactorEnabled,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
+import type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/server';
 import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -63,7 +70,9 @@ export class UserAuthService {
         private readonly userVerificationService: UserVerificationService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly userService: UserService,
-        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly mfaService: MfaService,
+        private readonly mfaChallengeService: MfaChallengeService,
+        private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
         private readonly authJwtService: AuthJwtService,
@@ -73,7 +82,6 @@ export class UserAuthService {
         private readonly notificationService: NotificationService,
         private readonly requestContextService: RequestContextService,
         private readonly activityLogService: ActivityLogService,
-        private readonly userUtil: UserUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -89,8 +97,20 @@ export class UserAuthService {
         };
     }
 
-    private requiresTwoFactorSetup(user: IUserTwoFactorEnabled): boolean {
-        return user.twoFactor.requiredSetup;
+    private resolveLoginActivityLogAction(
+        loginWith: EnumUserLoginWith
+    ): EnumActivityLogAction {
+        switch (loginWith) {
+            case EnumUserLoginWith.socialApple:
+                return EnumActivityLogAction.userLoginApple;
+            case EnumUserLoginWith.socialGoogle:
+                return EnumActivityLogAction.userLoginGoogle;
+            case EnumUserLoginWith.passkey:
+                return EnumActivityLogAction.userLoginPasskey;
+            case EnumUserLoginWith.credential:
+            default:
+                return EnumActivityLogAction.userLoginCredential;
+        }
     }
 
     private assertSocialLoginAllowed(user: IUser | null): IUser {
@@ -101,6 +121,41 @@ export class UserAuthService {
         }
 
         return user;
+    }
+
+    private async assertPasskeyReauthentication(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        user: IUser,
+        passkeyChallengeToken: string,
+        passkeyResponse: AuthenticationResponseJSON
+    ): Promise<IUserReauthenticationCheck> {
+        const webAuthnChallenge =
+            await this.mfaChallengeService.getWebAuthnChallengeForUser(
+                passkeyChallengeToken,
+                EnumMfaChallengePurpose.reauthentication,
+                user.id
+            );
+
+        const mfa = await this.mfaService.check(
+            requestContext,
+            apiKeyContext,
+            user.id,
+            {
+                method: EnumMfaMethod.passkey,
+                code: null,
+                backupCode: null,
+                passkeyResponse,
+            },
+            webAuthnChallenge
+        );
+
+        return {
+            isPasswordChecked: false,
+            mfa,
+            verificationId: null,
+            passkeyChallengeToken,
+        };
     }
 
     /** Resolves the active credential user of an email, counting nothing; an unknown, inactive, or passwordless account throws the credential error. */
@@ -127,7 +182,7 @@ export class UserAuthService {
             return false;
         }
 
-        return this.authPasswordUtil.validatePassword(
+        return this.authPasswordUtil.isPasswordMatched(
             plainPassword,
             hashedPassword
         );
@@ -179,17 +234,16 @@ export class UserAuthService {
         );
     }
 
-    /** Throws when the account holds a password or two-factor requiring verification, the stronger proofs the email code never replaces. */
-    assertReauthenticationOtpAllowed(user: IUser): void {
+    /** Throws when the account holds a password or has MFA on, the stronger proofs the email code never replaces. */
+    async assertReauthenticationOtpAllowed(user: IUser): Promise<void> {
         const credential = this.userPasswordService.getCredential(user);
-        const isTwoFactorRequired =
-            this.userUtil.requiresTwoFactorVerification(user);
-        if (credential !== null || isTwoFactorRequired) {
+        const isMfaEnabled = await this.mfaService.isEnabled(user.id);
+        if (credential !== null || isMfaEnabled) {
             throw new UserReauthenticationOtpNotAllowedException();
         }
     }
 
-    /** Asserts the current password when the account has one, a two-factor proof when two-factor requires verification except for the twoFactorEnable action, and the email code of the action for an account with neither, writing nothing on a match. */
+    /** Asserts one passkey proof as the whole re-authentication when both passkey fields are present; otherwise the current password when the account has one, an MFA proof when MFA is on except for the mfaTotpEnable action, and the email code of the action for an account with neither, writing nothing on a match. */
     async assertReauthentication(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
@@ -200,12 +254,24 @@ export class UserAuthService {
             method,
             code,
             backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
             otp,
         }: IUserReauthenticationInput
     ): Promise<IUserReauthenticationCheck> {
+        if (passkeyChallengeToken !== null && passkeyResponse !== null) {
+            return this.assertPasskeyReauthentication(
+                requestContext,
+                apiKeyContext,
+                user,
+                passkeyChallengeToken,
+                passkeyResponse
+            );
+        }
+
         const credential = this.userPasswordService.getCredential(user);
         const isPasswordChecked = credential !== null;
-        // Sequential by design: a failed password counts no two-factor failure
+        // Sequential by design: a failed password counts no MFA failure
         await this.assertCurrentPassword(
             requestContext,
             apiKeyContext,
@@ -213,23 +279,23 @@ export class UserAuthService {
             password
         );
 
-        const isTwoFactorRequired =
-            this.userUtil.requiresTwoFactorVerification(user);
-        const requiresTwoFactor =
-            isTwoFactorRequired &&
-            action !== EnumUserReauthenticationAction.twoFactorEnable;
-        let twoFactor: IUserTwoFactorCheck | null = null;
-        if (requiresTwoFactor) {
-            twoFactor = await this.userTwoFactorService.check(
+        const isMfaEnabled = await this.mfaService.isEnabled(user.id);
+        const requiresMfa =
+            isMfaEnabled &&
+            action !== EnumUserReauthenticationAction.mfaTotpEnable;
+        let mfaCheck: IMfaCheck | null = null;
+        if (requiresMfa) {
+            mfaCheck = await this.mfaService.check(
                 requestContext,
                 apiKeyContext,
-                user,
-                { method, code, backupCode }
+                user.id,
+                { method, code, backupCode, passkeyResponse: null },
+                null
             );
         }
 
         let verificationId: string | null = null;
-        if (!isPasswordChecked && !isTwoFactorRequired) {
+        if (!isPasswordChecked && !isMfaEnabled) {
             if (otp === null) {
                 throw new UserReauthenticationOtpRequiredException();
             }
@@ -243,46 +309,50 @@ export class UserAuthService {
             verificationId = verification.id;
         }
 
-        return { isPasswordChecked, twoFactor, verificationId };
+        return {
+            isPasswordChecked,
+            mfa: mfaCheck,
+            verificationId,
+            passkeyChallengeToken: null,
+        };
     }
 
-    /** Completes the proofs assertReauthentication checked on the caller's transaction: the password counter reset, the TOTP step accept with the two-factor counter reset, the verification record consuming a backup code, then the verify entry, and the email code marked used, throwing when it was used first. */
+    /** Completes the proofs assertReauthentication checked on the caller's transaction: the passkey challenge claim, the password counter reset, the MFA completion with the verify entry, and the email code marked used, throwing when it was used first. */
     async completeReauthenticationInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        user: IUser,
         {
             isPasswordChecked,
-            twoFactor,
+            mfa,
             verificationId,
+            passkeyChallengeToken,
         }: IUserReauthenticationCheck
     ): Promise<void> {
+        if (passkeyChallengeToken !== null) {
+            await this.mfaChallengeService.consumeInTx(
+                tx,
+                passkeyChallengeToken,
+                EnumMfaChallengePurpose.reauthentication,
+                authContext.userId
+            );
+        }
         if (isPasswordChecked) {
             await this.userPasswordService.resetPasswordAttemptInTx(
                 tx,
                 authContext.userId
             );
         }
-        if (twoFactor !== null) {
-            await this.userTwoFactorService.verifyInTx(
-                tx,
-                authContext.userId,
-                twoFactor
-            );
-            await this.userTwoFactorService.recordVerificationInTx(
-                tx,
-                user,
-                twoFactor.verified
-            );
+        if (mfa !== null) {
+            await this.mfaService.completeInTx(tx, authContext.userId, mfa);
             const entry = this.activityLogService.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
+                    action: EnumActivityLogAction.userVerifyMfa,
                     userId: authContext.userId,
                     createdBy: authContext.userId,
                 }
@@ -303,9 +373,9 @@ export class UserAuthService {
     }
 
     assertPasswordNotExpired(user: IUser): void {
-        const checkPasswordExpired: boolean =
-            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired);
-        if (checkPasswordExpired) {
+        const isPasswordExpired: boolean =
+            this.authPasswordUtil.isPasswordExpired(user.passwordExpired);
+        if (isPasswordExpired) {
             throw new UserPasswordExpiredException();
         }
     }
@@ -397,8 +467,7 @@ export class UserAuthService {
             })
         );
         const now = this.helperDateService.create();
-        const loginAction =
-            this.userUtil.resolveLoginActivityLogAction(loginWith);
+        const loginAction = this.resolveLoginActivityLogAction(loginWith);
         const upserted = await this.deviceService.upsertForLoginInTx(
             tx,
             user.id,
@@ -519,57 +588,59 @@ export class UserAuthService {
         return { tokens, sessionId };
     }
 
-    /** Creates the login challenge on the caller's transaction; when setup is required, also generates and saves a pending authenticator secret with its setup entry. */
-    async createTwoFactorChallengeInTx(
+    /** Resolves the active verified user of an MFA login challenge; a user with MFA off throws MfaNotEnabledException. */
+    async getOneForMfaLogin(userId: string): Promise<IUser> {
+        const [user, isMfaEnabled] = await Promise.all([
+            this.userRepository.findOneWithRoleById(userId),
+            this.mfaService.isEnabled(userId),
+        ]);
+        if (!user) {
+            throw new UserNotFoundException();
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new UserInactiveForbiddenException();
+        } else if (!user.isVerified) {
+            throw new UserEmailNotVerifiedException();
+        } else if (!isMfaEnabled) {
+            throw new MfaNotEnabledException();
+        }
+
+        return user;
+    }
+
+    /** Resolves the active verified user of a passkey; a missing or inactive user throws the credential error. */
+    async getOneForPasskeyLogin(userId: string): Promise<IUser> {
+        const user = await this.userRepository.findOneWithRoleById(userId);
+        if (!user || user.status !== EnumUserStatus.active) {
+            throw new UserCredentialInvalidException();
+        }
+        this.assertVerified(user);
+
+        return user;
+    }
+
+    /** Creates the login challenge on the caller's transaction and answers its token, the methods the user can finish with, and the passkey request options when the user owns a passkey. */
+    async createMfaChallengeInTx(
         tx: IDatabaseTransactionClient,
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUserTwoFactorEnabled,
+        userId: string,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
-    ): Promise<IUserLoginTwoFactorChallenge> {
-        const challengePromise = this.userTwoFactorService.createChallengeInTx(
-            tx,
-            user.id,
+    ): Promise<IUserLoginMfaChallenge> {
+        const methods = await this.mfaService.getLoginMethods(userId);
+        let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
+        if (methods.includes(EnumMfaMethod.passkey)) {
+            passkeyOptions =
+                await this.mfaPasskeyService.getAssertionOptions(userId);
+        }
+        const token = await this.mfaChallengeService.createInTx(tx, {
+            purpose: EnumMfaChallengePurpose.login,
+            userId,
             device,
             loginFrom,
-            loginWith
-        );
-        const requiresSetup = this.requiresTwoFactorSetup(user);
-        if (requiresSetup) {
-            const [
-                { challengeToken, expiresInMs },
-                { encryptedSecret, otpauthUrl, secret },
-            ] = await Promise.all([
-                challengePromise,
-                this.userTwoFactorService.setup(user),
-            ]);
-            await this.userTwoFactorService.saveSetupInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                user.id,
-                encryptedSecret
-            );
+            loginWith,
+            webAuthnChallenge: passkeyOptions?.challenge ?? null,
+        });
 
-            return {
-                isRequiredSetup: true,
-                challengeToken,
-                challengeExpiresInMs: expiresInMs,
-                backupCodesRemaining: user.twoFactor.backupCodes.length,
-                otpauthUrl,
-                secret,
-            };
-        }
-
-        const { challengeToken, expiresInMs } = await challengePromise;
-
-        return {
-            isRequiredSetup: false,
-            challengeToken,
-            challengeExpiresInMs: expiresInMs,
-            backupCodesRemaining: user.twoFactor.backupCodes.length,
-        };
+        return { ...token, methods, passkeyOptions };
     }
 }
