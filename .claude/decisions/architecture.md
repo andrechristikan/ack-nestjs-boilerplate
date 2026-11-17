@@ -49,10 +49,12 @@ Rule: `security.md`, Request store.
 - A job rebuilds the CLS store from its payload (`ClsService.run`): hidden state another job can forget to set.
 - The full context in a job payload: a delayed or retried job decides on rows copied at request time.
 
-### The feature dependency order puts workspace above user and password-history above auth
+### The feature dependency order puts workspace above user, password-history above auth, and mfa between notification and term-policy
 
 Rule: `layering.md`, Dependency order.
 
+- Two-factor kept in `user` and `auth`: the pieces in `auth` had no caller there, and one factor's logic sat in two modules.
+- `mfa` above `user`: the login and the re-authentication in `user` call it, so `user` would need a higher module's service.
 - User above workspace: workspace services need user lookups and `lastWorkspaceId` writes as their own logic, while the user-side calls into workspace are orchestration that fits a use case.
 - Password-history in the kernel: its service injects `AuthPasswordUtil`, so it sits above auth.
 - `AuthPasswordUtil` in the kit: it is auth-specific, and the kit takes only a module-agnostic concept with three callers or more.
@@ -231,7 +233,7 @@ Rule: `cache.md`.
 Rule: `role.md`.
 
 - No cache: three models per request.
-- Cache the user too: every user write (status, role, password, profile, two-factor) would need an invalidation, and a missed one delays a block.
+- Cache the user too: every user write (status, role, password, profile, MFA) would need an invalidation, and a missed one delays a block.
 
 ### `CacheService.readThrough` is the one cache loader
 

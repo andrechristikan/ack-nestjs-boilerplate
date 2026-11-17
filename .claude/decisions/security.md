@@ -40,39 +40,98 @@ Rule: `credential-policy.md`, Passwords.
 
 ### An attempt counter counts failures only
 
-Rule: `session.md`, Two-factor.
+Rule: `session.md`, MFA.
 
 - Count first, the reset folded into the flow's transaction: a correct password followed by a failing business step raises the counter and can reach a lockout.
 - Count first, the reset as a write outside the flow's transaction: a second write per flow breaks the one transaction per flow.
 
 ### A spent attempt budget is a temporary lock with an email
 
-Rule: `session.md`, Two-factor.
+Rule: `session.md`, MFA.
 
 - Deactivating the account: a stranger switches the account off and signs its owner out.
 - A temporary `inactive` status with a delayed reactivation job: it mixes with an admin's deactivation, needs a job that can fail, and still revokes the owner's sessions.
 - A timed lock with no email: the owner never learns someone is guessing.
 
-## Two-factor
+## MFA
 
-### The login challenge is a row
+### The challenge is a row, one type for every purpose
 
-Rule: `session.md`, Two-factor.
+Rule: `session.md`, MFA.
 
-- The challenge as Redis state read with `GETDEL`: a Redis read error turns into `AuthTwoFactorChallengeInvalidException`, the wrong answer.
+- The challenge as Redis state read with `GETDEL`: a Redis read error turns into `MfaChallengeInvalidException`, the wrong answer.
+- A model per purpose: the token, the expiry, and the claim would be the same statements five times.
 
-### Two-factor stays opt-in
+### MFA stays opt-in
 
-Rule: `session.md`, Two-factor.
+Rule: `session.md`, MFA.
 
-- Mandatory two-factor: a product decision the boilerplate leaves to the product built on it.
+- Mandatory MFA: a product decision the boilerplate leaves to the product built on it.
 
 ### TOTP stays on SHA-1 with window 1
 
-Rule: `session.md`, Two-factor.
+Rule: `session.md`, MFA.
 
 - SHA-256: Google Authenticator on Android and Microsoft Authenticator compute SHA-1 regardless, so setup fails silently.
 - `window` 0: a code typed at the end of its step fails on network delay, against RFC 6238's guidance.
+
+### Biometric sign-in is a WebAuthn passkey through `@simplewebauthn/server`
+
+Rule: `session.md`, MFA.
+
+- A hand-made device key pair on `DeviceOwnership`: a private protocol every client would implement, without WebAuthn's origin binding.
+- Biometric and passkey as separate factors: Face ID, a fingerprint, and a security key reach the server as the same WebAuthn assertion.
+- WebAuthn on `node:crypto`: CBOR, COSE, and attestation parsing are security code the library already tests.
+
+### SMS is no MFA factor
+
+Rule: `session.md`, MFA.
+
+- An SMS code on a verified number: a text message is open to SIM swap and interception, and no provider is chosen.
+
+### Several factors enrolled, one picked per challenge
+
+Rule: `session.md`, MFA.
+
+- Exactly one active factor: adding a passkey would turn TOTP off, and a lost device would leave only the backup codes.
+
+### One attempt budget across every MFA method
+
+Rule: `session.md`, MFA.
+
+- A budget per method: switching method would hand an attacker a fresh set of tries.
+
+### Backup codes follow the first and last factor
+
+Rule: `session.md`, MFA.
+
+- Backup codes for TOTP only: a passkey-only user who loses the device has no recovery.
+
+### An admin MFA reset removes every factor without forced enrolment
+
+Rule: `session.md`, MFA.
+
+- `requiredSetup` and enrolment at the next login: MFA is optional for everyone else, and a reset serves a user who lost the device.
+
+### A passkey alone signs a user in
+
+Rule: `login.md`.
+
+- TOTP or a backup code after a passkey: every assertion requires user verification, so the passkey is two factors already.
+
+### The passkey relying party is required environment config
+
+Rule: `session.md`, MFA.
+
+- An optional integration: a passkey has no third party whose credentials may be unset; the values are the deployment's own domain.
+- Deriving it from `HOME_URL` and `CORS_ALLOWED_ORIGIN`: the relying-party id is a bare domain, and a mobile app's origin is in neither key.
+
+### A password reset proves any enrolled MFA method
+
+Rule: `login.md`.
+
+- TOTP or a backup code only: a passkey-only user could not reset.
+- No MFA on the reset: a stolen inbox alone would take the account.
 
 ## Sessions
 
@@ -126,12 +185,21 @@ Rule: `role.md`.
 
 Rule: `credential-policy.md`, Re-authentication.
 
-- Two-factor alone when it is on: a stolen code alone would change the account.
+- MFA alone when it is on: a stolen code alone would change the account.
 - A rule per flow: the flows drift apart.
-- The session alone for an account with no password and no two-factor: a stolen or unlocked device could change the account.
+- The session alone for an account with no password and MFA off: a stolen or unlocked device could change the account.
 - The email code replacing the password: the weaker proof would stand in for a stronger one the user holds.
 - One code and one window for every action: a two-step flow waits, and a code for one action could serve another.
 - A time-boxed re-authenticated session: it adds session state and drops the one-use code.
+- A passkey standing for the code only: a passkey with user verification proves possession and the user at once, so a password beside it adds nothing.
+
+## Verification
+
+### A mobile-number code requested inside the resend window answers 200
+
+Rule: `login.md`.
+
+- A resend-limit error as the re-authentication code has: the mobile send mirrors email verification, and both verifications answer alike.
 
 ## Headers and files
 

@@ -2,7 +2,7 @@
 
 An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so replace an old shape with the best-practice shape directly and change every call site. No backward compatibility, compat flag, `v1`/`v2` pair, deprecated-but-kept field, backfill, data-migration note, or existing-rows consequence. Four domain groups:
 
-- identity and auth: JWT with JWKS, social sign-in, API keys, sessions, devices, two-factor
+- identity and auth: JWT with JWKS, social sign-in, API keys, sessions, devices, MFA
 - access control: roles, CASL policy abilities, term-policy gating, feature flags
 - workspace and project: mandatory multi-workspace, invites, join requests, workspace-scoped projects
 - platform: notifications, file upload and S3 presign, activity log, i18n, health, country data

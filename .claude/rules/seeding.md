@@ -42,7 +42,7 @@ src/migration/
 
 ## Term policies
 
-The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPath`, `TermPolicyUtil.createRandomFilenameContentWithPath`).
+The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPath`, `TermPolicyUtil.getContentKey`).
 
 - When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
 - It fails when a required type (`termsOfService`, `privacy`) is not published after the run.

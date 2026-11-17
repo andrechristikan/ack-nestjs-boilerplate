@@ -7,20 +7,20 @@ paths:
 
 # Notifications
 
-Two channels, email (`AwsSESService`) and push (`FirebaseService`), each with its own queue and processor beside the main `EnumNotificationQueue.notification`. A request never sends inline. Every notification job is an outbox row (`effects.md`); every notification queue dedupes by its `jobId`, the row's key, never `deduplication`.
+Three channels, email (`AwsSESService`), push (`FirebaseService`), and sms (`NotificationSmsDeliveryService`, the pending adapter of `layering.md`), each with its own queue and processor beside the main `EnumNotificationQueue.notification`. A request never sends inline. Every notification job is an outbox row (`effects.md`); every notification queue dedupes by its `jobId`, the row's key, never `deduplication`.
 
 Producing a notification, its key, and the `snapshot`: `notify.md`.
 
 ## Recipient
 
 - The processor passes the row id on: `execute(outboxId, data)`, `outboxId: string`, for every use case that records step state. A `null` id, a job with no row, is an `UnrecoverableError` in the processor.
-- `NotificationProcessUseCase` resolves the recipient on the first attempt: user, address, settings, and live-session tokens through `UserService`, `NotificationService`, and `DeviceService`; a missing or inactive user writes no row and sends nothing. It encrypts them and records them through `OutboxService.updateData`; a later attempt reuses the recorded recipient.
+- `NotificationProcessUseCase` resolves the recipient on the first attempt: user, address, settings, and live-session tokens through `UserService`, `NotificationService`, and `DeviceService`; a missing or inactive user writes no row and sends nothing. A kind whose channels hold `sms` takes the number from its verification row (`UserVerificationService.getOneActiveMobileRecipient`); a used or expired row gives none. It encrypts them and records them through `OutboxService.updateData`; a later attempt reuses the recorded recipient.
 - Channels are `NotificationUtil.resolveChannels`: the contract's channels minus those the user disabled for a toggleable, non-mandatory type. Only `silent` left writes no row and sends nothing.
 
 ## Fan-out and send
 
-- After the recipient, `NotificationProcessUseCase` opens one `OutboxService.withTransaction`: it creates the `Notification` row, its id generated and recorded beforehand, and adds one row per channel with `addManyInTx`, keyed by `notification.idempotencyKey.stepPattern`. Email goes when the channels hold `email` and the recipient has an address, push when the channels hold `push` and the recipient has tokens; a recipient with neither gets no channel row.
-- One use case per channel step: `NotificationEmailProcessSendUseCase`, `NotificationEmailProcessSendUnregisteredUseCase`, `NotificationPushProcessSendUseCase`. Each picks its values from the context by the kind's `NotificationKindContract` row: `templateFields` for the SES template data, `metadataFields` for the push title and body properties, `username` added to both; the SES template name is the kind. A contract row holds data only, no function.
+- After the recipient, `NotificationProcessUseCase` opens one `OutboxService.withTransaction`: it creates the `Notification` row, its id generated and recorded beforehand, and adds one row per channel with `addManyInTx`, keyed by `notification.idempotencyKey.stepPattern`. Email goes when the channels hold `email` and the recipient has an address, push when the channels hold `push` and the recipient has tokens, sms when the channels hold `sms` and the recipient has a number; a recipient with none gets no channel row.
+- One use case per channel step: `NotificationEmailProcessSendUseCase`, `NotificationEmailProcessSendUnregisteredUseCase`, `NotificationPushProcessSendUseCase`, `NotificationSmsProcessSendUseCase`. Each picks its values from the context by the kind's `NotificationKindContract` row: `templateFields` for the SES template data, `metadataFields` for the push title and body properties, `username` added to both; the SES template name is the kind. A contract row holds data only, no function.
 - `dateFields` on the contract row names the context fields holding a date. `Notification.metadata` keeps them ISO; `NotificationUtil` formats them to RFC 2822 when it builds the SES template data, the push properties, and the message properties of the notification list's title and body.
 - No service or use case exists per kind. A kind costs its enum member, its contract row, its messages, its context type, and its template.
 - Step state between attempts lives in the row through `OutboxService.updateData`, never `job.updateData`: the recipient, the notification id, `completedSteps`, `encryptedPendingTokens`, `encryptedFailureTokens`. A retry skips a completed step.
