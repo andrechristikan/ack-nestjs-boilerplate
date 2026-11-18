@@ -69,4 +69,36 @@ describe('NotificationSmsProcessor delivery errors', () => {
         );
         expect(logs).toContain('Job failed provider failure');
     });
+
+    describe('dispatch', () => {
+        it('routes verificationMobileNumber to processVerificationMobileNumber', async () => {
+            job.name = EnumNotificationSmsProcess.verificationMobileNumber;
+            service.processVerificationMobileNumber.mockResolvedValue({
+                message: 'ok',
+            });
+
+            const result = await processor.process(job);
+
+            expect(
+                service.processVerificationMobileNumber
+            ).toHaveBeenCalledWith(job);
+            expect(service.processSecurityAlert).not.toHaveBeenCalled();
+            expect(result).toEqual({ message: 'ok' });
+        });
+
+        it.each([
+            EnumNotificationSmsProcess.newDeviceLogin,
+            EnumNotificationSmsProcess.resetTwoFactorByAdmin,
+        ])('still routes %s to processSecurityAlert', async name => {
+            job.name = name;
+            service.processSecurityAlert.mockResolvedValue({ message: 'ok' });
+
+            await processor.process(job);
+
+            expect(service.processSecurityAlert).toHaveBeenCalledWith(job);
+            expect(
+                service.processVerificationMobileNumber
+            ).not.toHaveBeenCalled();
+        });
+    });
 });

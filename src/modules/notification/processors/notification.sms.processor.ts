@@ -1,5 +1,8 @@
 import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
-import type { INotificationSendSmsPayload } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationSendSmsPayload,
+    INotificationSendSmsVerificationPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationSmsProcessorService } from '@modules/notification/services/notification.sms.processor.service';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
@@ -9,7 +12,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
- * Consumes the sms queue (SNS); every job is a security alert.
+ * Consumes the sms queue (SNS); security alerts and account verification codes.
  */
 @QueueProcessor(EnumQueue.notificationSms)
 export class NotificationSmsProcessor extends QueueProcessorBase {
@@ -30,6 +33,14 @@ export class NotificationSmsProcessor extends QueueProcessorBase {
                 return await this.notificationSmsProcessorService.processSecurityAlert(
                     job as Job<
                         INotificationSendSmsPayload,
+                        IQueueResponse,
+                        EnumNotificationSmsProcess
+                    >
+                );
+            case EnumNotificationSmsProcess.verificationMobileNumber:
+                return await this.notificationSmsProcessorService.processVerificationMobileNumber(
+                    job as Job<
+                        INotificationSendSmsVerificationPayload,
                         IQueueResponse,
                         EnumNotificationSmsProcess
                     >

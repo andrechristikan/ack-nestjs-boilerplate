@@ -1,14 +1,19 @@
 import { Test } from '@nestjs/testing';
 import { Job } from 'bullmq';
+import { NotificationSmsAccountDomain } from '@modules/notification/domains/notification.sms.account.domain';
 import { NotificationSmsSecurityDomain } from '@modules/notification/domains/notification.sms.security.domain';
 import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
-import type { INotificationSendSmsPayload } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationSendSmsPayload,
+    INotificationSendSmsVerificationPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationSmsProcessorService } from '@modules/notification/services/notification.sms.processor.service';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { mock } from 'vitest-mock-extended';
 
 describe('NotificationSmsProcessorService', () => {
     const notificationSmsSecurityDomain = mock<NotificationSmsSecurityDomain>();
+    const notificationSmsAccountDomain = mock<NotificationSmsAccountDomain>();
     let service: NotificationSmsProcessorService;
 
     const summary: IQueueResponse = { message: 'SMS processed' };
@@ -39,6 +44,10 @@ describe('NotificationSmsProcessorService', () => {
                     provide: NotificationSmsSecurityDomain,
                     useValue: notificationSmsSecurityDomain,
                 },
+                {
+                    provide: NotificationSmsAccountDomain,
+                    useValue: notificationSmsAccountDomain,
+                },
             ],
         }).compile();
         service = module.get(NotificationSmsProcessorService);
@@ -63,6 +72,50 @@ describe('NotificationSmsProcessorService', () => {
             notificationSmsSecurityDomain.process.mockRejectedValue(error);
 
             await expect(service.processSecurityAlert(job)).rejects.toBe(error);
+        });
+    });
+
+    describe('processVerificationMobileNumber', () => {
+        const verificationPayload: INotificationSendSmsVerificationPayload = {
+            userId: 'user-id',
+            notificationId: 'notification-id',
+            phoneNumber: '+628123456789',
+            encryptedOtp: 'cipher',
+            expiredInMinutes: 5,
+        };
+        const verificationJob = {
+            attemptsMade: 0,
+            opts: { attempts: 3 },
+            data: verificationPayload,
+        } as Job<
+            INotificationSendSmsVerificationPayload,
+            IQueueResponse,
+            EnumNotificationSmsProcess
+        >;
+
+        it('routes the payload to the sms account domain and returns its summary', async () => {
+            notificationSmsAccountDomain.processVerificationMobileNumber.mockResolvedValue(
+                summary
+            );
+
+            const result =
+                await service.processVerificationMobileNumber(verificationJob);
+
+            expect(
+                notificationSmsAccountDomain.processVerificationMobileNumber
+            ).toHaveBeenCalledWith(verificationPayload);
+            expect(result).toEqual(summary);
+        });
+
+        it('propagates a domain failure so BullMQ retries the job', async () => {
+            const error = new Error('delivery failed');
+            notificationSmsAccountDomain.processVerificationMobileNumber.mockRejectedValue(
+                error
+            );
+
+            await expect(
+                service.processVerificationMobileNumber(verificationJob)
+            ).rejects.toBe(error);
         });
     });
 });
