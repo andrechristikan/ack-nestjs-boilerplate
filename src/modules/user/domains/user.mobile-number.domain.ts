@@ -394,21 +394,19 @@ export class UserMobileNumberDomain {
         userId: string,
         mobileNumberId: string
     ): Promise<void> {
-        const mobileNumberPromise =
-            this.userMobileNumberRepository.findOneMobileNumber(
+        const mobileNumber =
+            await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
                 mobileNumberId
             );
-        const cooldownPromise = this.assertMobileVerificationCooldown(userId);
-        const [mobileNumber] = await Promise.all([
-            mobileNumberPromise,
-            cooldownPromise,
-        ]);
         if (!mobileNumber) {
             throw new UserMobileNumberNotFoundException();
         } else if (mobileNumber.isVerified) {
             throw new UserMobileNumberAlreadyVerifiedException();
         }
+
+        // Sequential by design: ownership and state are answered before the cooldown.
+        await this.assertMobileVerificationCooldown(userId);
 
         try {
             const verification = this.createMobileVerification();
@@ -494,12 +492,6 @@ export class UserMobileNumberDomain {
 
         try {
             const now = this.helperDateService.create();
-            const verifiedEvent = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userVerifiedMobileNumber,
-                userId,
-                createdBy: userId,
-            });
-            const events = [verifiedEvent];
             const row = await this.databaseService.withTransaction(async tx => {
                 // Sequential by design: statements on one tx run one at a time; each write re-checks the state read above, and a throw rolls both back.
                 const isCodeUsed =
@@ -512,7 +504,7 @@ export class UserMobileNumberDomain {
                     throw new UserMobileNumberOtpInvalidException();
                 }
 
-                const verifiedMobileNumber =
+                const markedMobileNumber =
                     await this.userMobileNumberRepository.markVerifiedInTx(
                         tx,
                         mobileNumber.id,
@@ -520,16 +512,14 @@ export class UserMobileNumberDomain {
                         mobileNumber.phoneCode,
                         now
                     );
-                if (!verifiedMobileNumber) {
+                if (!markedMobileNumber) {
                     throw new UserMobileNumberOtpInvalidException();
                 }
 
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
 
-                return verifiedMobileNumber;
+                return markedMobileNumber;
             });
-
-            this.activityLogDomain.stagePrepared(events);
 
             return row;
         } catch (err: unknown) {

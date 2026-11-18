@@ -96,11 +96,6 @@ export interface INotificationForgotPasswordEncryptedPayload extends INotificati
     resendInMinutes: number;
 }
 
-export interface INotificationVerifiedMobileNumberPayload extends INotificationVerifiedEmailPayload {
-    resendInMinutes: number;
-    mobileNumber: string;
-}
-
 export interface INotificationVerificationMobileNumberPayload {
     mobileNumberId: string;
     phoneNumber: string;

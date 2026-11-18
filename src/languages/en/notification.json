@@ -29,10 +29,6 @@
             "title": "Verify your mobile number",
             "body": "A verification code was sent to {mobileNumber}."
         },
-        "verifiedMobileNumber": {
-            "title": "Mobile Number Verified",
-            "body": "Hi {username}, your mobile number {mobileNumber} has been verified successfully."
-        },
         "changePassword": {
             "title": "Password Changed",
             "body": "Hi {username}, your password has been changed successfully."

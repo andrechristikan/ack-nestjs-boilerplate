@@ -12,7 +12,6 @@ import type {
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
@@ -34,7 +33,6 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 export class NotificationEmailQueue {
     private readonly dedupTtlInMs: number;
     private readonly verificationExpiredInMs: number;
-    private readonly verificationResendInMs: number;
     private readonly forgotPasswordResendInMs: number;
     private readonly encryptionSecretKey: string;
 
@@ -49,9 +47,6 @@ export class NotificationEmailQueue {
         )!;
         this.verificationExpiredInMs = this.configService.get<number>(
             'verification.expiredInMs'
-        )!;
-        this.verificationResendInMs = this.configService.get<number>(
-            'verification.resendInMs'
         )!;
         this.forgotPasswordResendInMs = this.configService.get<number>(
             'forgotPassword.resendInMs'
@@ -374,48 +369,6 @@ export class NotificationEmailQueue {
                     ttl: this.forgotPasswordResendInMs,
                 },
                 priority: EnumQueuePriority.high,
-            }
-        );
-    }
-
-    async sendVerifiedMobileNumber(
-        {
-            email,
-            username,
-            userId,
-            notificationId,
-        }: INotificationEmailSendPayload,
-        {
-            mobileNumber,
-            reference,
-            resendInMinutes,
-        }: INotificationVerifiedMobileNumberPayload
-    ): Promise<void> {
-        const payload: INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload> =
-            {
-                send: {
-                    userId,
-                    email,
-                    username,
-                    notificationId,
-                },
-                data: {
-                    mobileNumber,
-                    reference,
-                    resendInMinutes,
-                },
-            };
-
-        await this.emailQueue.add(
-            EnumNotificationProcess.verifiedMobileNumber,
-            payload,
-            {
-                jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
-                deduplication: {
-                    id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
-                    ttl: this.verificationResendInMs,
-                },
-                priority: EnumQueuePriority.low,
             }
         );
     }

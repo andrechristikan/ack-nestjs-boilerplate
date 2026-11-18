@@ -11,13 +11,14 @@ const activityLog = JSON.parse(
 ) as Record<string, unknown>;
 
 describe('ActivityLogActionContract mobile number verification', () => {
-    it.each([
-        'userSendVerificationMobileNumber',
-        'userVerifiedMobileNumber',
-    ] as const)('has a row and an en key for %s', action => {
+    it('has a row and an en key for userSendVerificationMobileNumber', () => {
         expect(
-            ActivityLogActionContract[EnumActivityLogAction[action]]
+            ActivityLogActionContract[
+                EnumActivityLogAction.userSendVerificationMobileNumber
+            ]
         ).toBeDefined();
-        expect(Object.keys(activityLog)).toContain(action);
+        expect(Object.keys(activityLog)).toContain(
+            'userSendVerificationMobileNumber'
+        );
     });
 });

@@ -180,31 +180,6 @@ describe('NotificationProcessorService', () => {
         });
     });
 
-    describe('processVerifiedMobileNumber', () => {
-        it('forwards userId and data to the account domain', async () => {
-            const data = {
-                reference: 'ref-1',
-                resendInMinutes: 5,
-                mobileNumber: '+15551234567',
-            };
-            notificationAccountDomain.processVerifiedMobileNumber.mockResolvedValue(
-                response
-            );
-            const job = buildJob<INotificationQueuePayload<typeof data>>({
-                userId: 'user-id',
-                proceedBy: 'user-id',
-                data,
-            });
-
-            const result = await service.processVerifiedMobileNumber(job);
-
-            expect(
-                notificationAccountDomain.processVerifiedMobileNumber
-            ).toHaveBeenCalledWith('user-id', data);
-            expect(result).toBe(response);
-        });
-    });
-
     describe('processVerificationMobileNumber', () => {
         it('forwards userId and data to the account domain', async () => {
             const data = {

@@ -71,14 +71,6 @@ export const NotificationKindContract: Record<
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
-    [EnumNotificationKind.verifiedMobileNumber]: {
-        type: EnumNotificationType.userActivity,
-        priority: EnumNotificationPriority.normal,
-        title: 'notification.notify.verifiedMobileNumber.title',
-        body: 'notification.notify.verifiedMobileNumber.body',
-        pendingChannels: [EnumNotificationChannel.email],
-        deliveredChannels: [EnumNotificationChannel.silent],
-    },
     [EnumNotificationKind.temporaryPasswordByAdmin]: {
         type: EnumNotificationType.securityAlert,
         priority: EnumNotificationPriority.critical,

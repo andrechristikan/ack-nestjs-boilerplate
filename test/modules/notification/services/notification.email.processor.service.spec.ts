@@ -245,27 +245,6 @@ describe('NotificationEmailProcessorService', () => {
         });
     });
 
-    describe('processVerifiedMobileNumber', () => {
-        it('forwards send and data to the account domain', async () => {
-            const data = {
-                reference: 'ref-1',
-                resendInMinutes: 5,
-                mobileNumber: '+15551234567',
-            };
-            notificationEmailAccountDomain.processVerifiedMobileNumber.mockResolvedValue(
-                response
-            );
-            const job = buildJob({ send, data });
-
-            const result = await service.processVerifiedMobileNumber(job);
-
-            expect(
-                notificationEmailAccountDomain.processVerifiedMobileNumber
-            ).toHaveBeenCalledWith(send, data);
-            expect(result).toBe(response);
-        });
-    });
-
     describe('processResetTwoFactorByAdmin', () => {
         it('forwards send to the security domain', async () => {
             notificationEmailSecurityDomain.processResetTwoFactorByAdmin.mockResolvedValue(

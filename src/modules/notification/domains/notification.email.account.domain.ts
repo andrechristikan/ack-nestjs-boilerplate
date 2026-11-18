@@ -6,7 +6,6 @@ import type {
     INotificationEmailSendPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -188,29 +187,5 @@ export class NotificationEmailAccountDomain {
         });
 
         return { message: 'Email verified email processed', result };
-    }
-
-    async processVerifiedMobileNumber(
-        { email, username, cc, bcc }: INotificationEmailSendPayload,
-        { reference, mobileNumber }: INotificationVerifiedMobileNumberPayload
-    ): Promise<IQueueResponse> {
-        const result = await this.awsSESService.send({
-            templateName: EnumNotificationProcess.verifiedMobileNumber,
-            recipients: [email],
-            sender: this.noreplyEmail,
-            templateData: {
-                ...this.defaultTemplateData,
-                username,
-                reference,
-                mobileNumber,
-            },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
-        });
-
-        return {
-            message: 'Mobile number verified email processed',
-            result,
-        };
     }
 }

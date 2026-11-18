@@ -6,7 +6,6 @@ import type {
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -277,56 +276,6 @@ export class NotificationAccountDomain {
 
         return {
             message: 'Verification mobile number notification processed',
-        };
-    }
-
-    async processVerifiedMobileNumber(
-        userId: string,
-        data: INotificationVerifiedMobileNumberPayload
-    ): Promise<IQueueResponse> {
-        const user = await this.userDomain.getOneActive(userId);
-
-        if (!user) {
-            return {
-                message:
-                    'User not found, skipping verified mobile number notification',
-            };
-        }
-
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-        };
-
-        const censoredMobileNumber = this.helperStringService.censor(
-            data.mobileNumber
-        );
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.verifiedMobileNumber,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: {
-                        username: user.username,
-                        mobileNumber: censoredMobileNumber,
-                    },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendVerifiedMobileNumber(
-                emailPayload,
-                data
-            ),
-        ]);
-
-        return {
-            message: 'Mobile number verified notification processed',
-            results,
         };
     }
 }

@@ -838,7 +838,6 @@ enum EnumActivityLogAction {
   userVerifiedEmail
   userSendVerificationEmail
   userSendVerificationMobileNumber
-  userVerifiedMobileNumber
   userSignedUp
   userResetPassword
   userRevokeSession

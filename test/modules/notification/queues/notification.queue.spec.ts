@@ -460,34 +460,6 @@ describe('NotificationQueue', () => {
         });
     });
 
-    describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job, medium priority', async () => {
-            const verifiedMobile = {
-                reference: 'ref-1',
-                resendInMinutes: 5,
-                mobileNumber: '+15551234567',
-            };
-
-            await queue.sendVerifiedMobileNumber('user-id', verifiedMobile);
-
-            expect(notificationQueue.add).toHaveBeenCalledWith(
-                EnumNotificationProcess.verifiedMobileNumber,
-                {
-                    userId: 'user-id',
-                    data: verifiedMobile,
-                    proceedBy: 'user-id',
-                },
-                {
-                    priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: `${EnumNotificationProcess.verifiedMobileNumber}-user-id`,
-                        ttl: 60_000,
-                    },
-                }
-            );
-        });
-    });
-
     describe('sendUserAcceptTermPolicy', () => {
         it('enqueues the userAcceptTermPolicy job deduplicated by user and term policy, low priority', async () => {
             const payload: INotificationAcceptTermPolicyPayload = {

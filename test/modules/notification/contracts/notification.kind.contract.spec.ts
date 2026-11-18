@@ -16,15 +16,10 @@ const notification = JSON.parse(
         resolve(process.cwd(), 'src/languages/en/notification.json'),
         'utf8'
     )
-) as Record<string, unknown>;
-
-const get = (obj: object, path: string): unknown =>
-    path
-        .split('.')
-        .reduce<unknown>(
-            (acc, k) => (acc as Record<string, unknown>)?.[k],
-            obj
-        );
+) as {
+    notify: Record<string, { title: string; body: string }>;
+    sms: Record<string, string>;
+};
 
 describe('NotificationKindContract channel declarations', () => {
     it('preserves the original pending channel lists for every kind', () => {
@@ -40,7 +35,6 @@ describe('NotificationKindContract channel declarations', () => {
             welcomeByAdmin: ['email'],
             verificationEmail: ['email'],
             verifiedEmail: ['email'],
-            verifiedMobileNumber: ['email'],
             verificationMobileNumber: ['sms'],
             temporaryPasswordByAdmin: ['email', 'push'],
             changePassword: ['email'],
@@ -66,13 +60,17 @@ describe('NotificationKindContract channel declarations', () => {
         expect(row.deliveredChannels).toEqual([EnumNotificationChannel.silent]);
         expect(row.priority).toBe(EnumNotificationPriority.high);
         expect(row.type).toBe(EnumNotificationType.userActivity);
+        expect(row.title).toBe(
+            'notification.notify.verificationMobileNumber.title'
+        );
+        expect(row.body).toBe(
+            'notification.notify.verificationMobileNumber.body'
+        );
         expect(
-            get(notification, row.title.replace('notification.', ''))
+            notification.notify.verificationMobileNumber.title
         ).toBeDefined();
-        expect(
-            get(notification, row.body.replace('notification.', ''))
-        ).toBeDefined();
-        expect(get(notification, 'sms.verificationMobileNumber')).toBeDefined();
+        expect(notification.notify.verificationMobileNumber.body).toBeDefined();
+        expect(notification.sms.verificationMobileNumber).toBeDefined();
         expect(Object.values(EnumNotificationSmsProcess)).toContain(
             EnumNotificationSmsProcess.verificationMobileNumber
         );

@@ -28,8 +28,8 @@ export class NotificationSmsAccountDomain {
     }
 
     /**
-     * Sends the one-time code to the phone number; skips when SNS is off, the
-     * number is empty, or the SMS delivery row is missing.
+     * Sends the one-time code to the phone number; skips when SNS is off or the
+     * number is empty.
      */
     async processVerificationMobileNumber({
         userId,

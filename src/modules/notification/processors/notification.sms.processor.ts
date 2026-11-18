@@ -4,9 +4,10 @@ import type {
     INotificationSendSmsVerificationPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationSmsProcessorService } from '@modules/notification/services/notification.sms.processor.service';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -38,13 +39,21 @@ export class NotificationSmsProcessor extends QueueProcessorBase {
                     >
                 );
             case EnumNotificationSmsProcess.verificationMobileNumber:
-                return await this.notificationSmsProcessorService.processVerificationMobileNumber(
-                    job as Job<
-                        INotificationSendSmsVerificationPayload,
-                        IQueueResponse,
-                        EnumNotificationSmsProcess
-                    >
-                );
+                try {
+                    return await this.notificationSmsProcessorService.processVerificationMobileNumber(
+                        job as Job<
+                            INotificationSendSmsVerificationPayload,
+                            IQueueResponse,
+                            EnumNotificationSmsProcess
+                        >
+                    );
+                } catch (error: unknown) {
+                    if (error instanceof HelperDecryptFailedException) {
+                        throw new UnrecoverableError(error.message);
+                    }
+
+                    throw error;
+                }
             default:
                 return {
                     message: `No notification processor found for the given job name ${job.name}`,

@@ -1018,9 +1018,12 @@ describe('UserMobileNumberDomain', () => {
             verifiedAt: null,
         };
 
-        it('throws UserMobileNumberNotFoundException when the user does not own the number', async () => {
+        it('throws UserMobileNumberNotFoundException inside the cooldown when the user does not own the number, before the cooldown lookup', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 null
+            );
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                latestVerification
             );
 
             const call = domain.resendMobileNumberVerification(
@@ -1043,18 +1046,24 @@ describe('UserMobileNumberDomain', () => {
             expect(
                 userMobileNumberRepository.findOneMobileNumber
             ).toHaveBeenCalledWith('user-marlin', 'missing');
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendVerificationMobileNumber
             ).not.toHaveBeenCalled();
         });
 
-        it('throws UserMobileNumberAlreadyVerifiedException when the number is verified', async () => {
+        it('throws UserMobileNumberAlreadyVerifiedException inside the cooldown when the number is verified, before the cooldown lookup', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue({
                 ...ownedMobileNumber,
                 isVerified: true,
                 verifiedAt: now,
             });
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                latestVerification
+            );
 
             const call = domain.resendMobileNumberVerification(
                 'user-marlin',
@@ -1073,6 +1082,9 @@ describe('UserMobileNumberDomain', () => {
                     ],
                 messagePath: 'user.error.mobileNumberAlreadyVerified',
             });
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendVerificationMobileNumber
@@ -1253,7 +1265,7 @@ describe('UserMobileNumberDomain', () => {
             expiredAt: new Date('2026-03-01T00:05:00.000Z'),
             createdAt: new Date('2026-03-01T00:00:00.000Z'),
         };
-        const verifiedMobileNumber: IUserMobileNumber = {
+        const markedMobileNumber: IUserMobileNumber = {
             ...mobileNumber,
             isVerified: true,
             verifiedAt: now,
@@ -1417,7 +1429,7 @@ describe('UserMobileNumberDomain', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('marks the code used and the number verified in one transaction, stages the event, and sends no notification', async () => {
+        it('marks the code used and the number verified in one transaction, stages no activity, and sends no notification', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 ownedMobileNumber
             );
@@ -1434,14 +1446,11 @@ describe('UserMobileNumberDomain', () => {
             userMobileNumberRepository.markVerifiedInTx.mockImplementation(
                 async () => {
                     callOrder.push('markVerifiedInTx');
-                    return verifiedMobileNumber;
+                    return markedMobileNumber;
                 }
             );
             userDomain.touchUpdatedByInTx.mockImplementation(async () => {
                 callOrder.push('touchUpdatedByInTx');
-            });
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
             });
 
             const result = await domain.verifyMobileNumber(
@@ -1450,7 +1459,7 @@ describe('UserMobileNumberDomain', () => {
                 '654321'
             );
 
-            expect(result).toBe(verifiedMobileNumber);
+            expect(result).toBe(markedMobileNumber);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userVerificationRepository.markUsedActiveMobileNumberInTx
@@ -1468,23 +1477,13 @@ describe('UserMobileNumberDomain', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.userVerifiedMobileNumber,
-                userId: 'user-marlin',
-                createdBy: 'user-marlin',
-            });
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
-            ]);
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
                 'markUsedActiveMobileNumberInTx',
                 'markVerifiedInTx',
                 'touchUpdatedByInTx',
-                'stagePrepared',
             ]);
-            expect(
-                notificationQueue.sendVerifiedMobileNumber
-            ).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendVerificationMobileNumber
             ).not.toHaveBeenCalled();

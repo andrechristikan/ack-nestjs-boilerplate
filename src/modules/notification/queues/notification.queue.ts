@@ -16,7 +16,6 @@ import type {
     INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerificationMobileNumberPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeByAdminPayload,
     INotificationWorkspaceInviteEncryptedPayload,
@@ -421,30 +420,6 @@ export class NotificationQueue {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
-                    ttl: this.dedupTtlInMs,
-                },
-            }
-        );
-    }
-
-    async sendVerifiedMobileNumber(
-        userId: string,
-        verifiedMobile: INotificationVerifiedMobileNumberPayload
-    ): Promise<void> {
-        const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberPayload> =
-            {
-                userId,
-                data: verifiedMobile,
-                proceedBy: userId,
-            };
-
-        await this.notificationQueue.add(
-            EnumNotificationProcess.verifiedMobileNumber,
-            payload,
-            {
-                priority: EnumQueuePriority.medium,
-                deduplication: {
-                    id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
                     ttl: this.dedupTtlInMs,
                 },
             }
