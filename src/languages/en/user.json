@@ -57,7 +57,7 @@
         "mobileNumberNotFound": "Mobile number not found.",
         "mobileNumberAlreadyVerified": "This mobile number has already been verified.",
         "mobileNumberOtpInvalid": "The verification code is invalid or has expired.",
-        "verificationMobileNumberResendLimitExceeded": "Please wait {resendIn} seconds before requesting another verification code.",
+        "verificationMobileNumberResendLimitExceeded": "Please wait {resendIn} minutes before requesting a new verification code.",
         "usernameExist": "This username has already been taken.",
         "usernameNotAllowed": "This username is not allowed.",
         "usernameContainBadWord": "Username contains inappropriate words.",

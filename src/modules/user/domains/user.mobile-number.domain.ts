@@ -190,7 +190,11 @@ export class UserMobileNumberDomain {
                     userId,
                     mobileNumber.id,
                     `${mobileNumber.phoneCode}${mobileNumber.number}`,
-                    verification,
+                    {
+                        hashedOtp: verification.hashedOtp,
+                        reference: verification.reference,
+                        expiredAt: verification.expiredAt,
+                    },
                     now
                 );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
@@ -311,7 +315,11 @@ export class UserMobileNumberDomain {
                     userId,
                     checkMobileNumberExist.id,
                     `${phoneCode}${number}`,
-                    verification,
+                    {
+                        hashedOtp: verification.hashedOtp,
+                        reference: verification.reference,
+                        expiredAt: verification.expiredAt,
+                    },
                     now
                 );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
@@ -423,7 +431,11 @@ export class UserMobileNumberDomain {
                     userId,
                     mobileNumber.id,
                     `${mobileNumber.phoneCode}${mobileNumber.number}`,
-                    verification,
+                    {
+                        hashedOtp: verification.hashedOtp,
+                        reference: verification.reference,
+                        expiredAt: verification.expiredAt,
+                    },
                     now
                 );
             });
@@ -489,18 +501,29 @@ export class UserMobileNumberDomain {
             });
             const events = [verifiedEvent];
             const row = await this.databaseService.withTransaction(async tx => {
-                // Sequential by design: statements on one tx run one at a time.
-                await this.userVerificationRepository.markUsedInTx(
-                    tx,
-                    verification.id,
-                    now
-                );
+                // Sequential by design: statements on one tx run one at a time; each write re-checks the state read above, and a throw rolls both back.
+                const isCodeUsed =
+                    await this.userVerificationRepository.markUsedActiveMobileNumberInTx(
+                        tx,
+                        verification.id,
+                        now
+                    );
+                if (!isCodeUsed) {
+                    throw new UserMobileNumberOtpInvalidException();
+                }
+
                 const verifiedMobileNumber =
                     await this.userMobileNumberRepository.markVerifiedInTx(
                         tx,
                         mobileNumber.id,
+                        mobileNumber.number,
+                        mobileNumber.phoneCode,
                         now
                     );
+                if (!verifiedMobileNumber) {
+                    throw new UserMobileNumberOtpInvalidException();
+                }
+
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
 
                 return verifiedMobileNumber;

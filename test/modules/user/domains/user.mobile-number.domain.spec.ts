@@ -126,7 +126,7 @@ describe('UserMobileNumberDomain', () => {
         type: EnumVerificationType.mobileNumber,
         to: '+628123456789',
         token: 'hashed',
-        reference: 'VRF-OLDOLDOL',
+        reference: 'VRF-PREVIOUS',
         isUsed: false,
         verifiedAt: null,
         expiredAt: new Date('2026-03-01T00:04:00.000Z'),
@@ -319,7 +319,11 @@ describe('UserMobileNumberDomain', () => {
                 'user-marlin',
                 mobileNumber.id,
                 '+628123456789',
-                verificationCreate,
+                {
+                    hashedOtp: verificationCreate.hashedOtp,
+                    reference: verificationCreate.reference,
+                    expiredAt: verificationCreate.expiredAt,
+                },
                 now
             );
             expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
@@ -684,7 +688,11 @@ describe('UserMobileNumberDomain', () => {
                 'user-marlin',
                 mobileNumber.id,
                 '+628129999999',
-                verificationCreate,
+                {
+                    hashedOtp: verificationCreate.hashedOtp,
+                    reference: verificationCreate.reference,
+                    expiredAt: verificationCreate.expiredAt,
+                },
                 now
             );
             expect(
@@ -1155,7 +1163,11 @@ describe('UserMobileNumberDomain', () => {
                 'user-marlin',
                 mobileNumber.id,
                 '+628123456789',
-                verificationCreate,
+                {
+                    hashedOtp: verificationCreate.hashedOtp,
+                    reference: verificationCreate.reference,
+                    expiredAt: verificationCreate.expiredAt,
+                },
                 now
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
@@ -1413,10 +1425,10 @@ describe('UserMobileNumberDomain', () => {
                 activeVerification
             );
             const callOrder: string[] = [];
-            userVerificationRepository.markUsedInTx.mockImplementation(
+            userVerificationRepository.markUsedActiveMobileNumberInTx.mockImplementation(
                 async () => {
-                    callOrder.push('markUsedInTx');
-                    return { ...activeVerification, isUsed: true };
+                    callOrder.push('markUsedActiveMobileNumberInTx');
+                    return true;
                 }
             );
             userMobileNumberRepository.markVerifiedInTx.mockImplementation(
@@ -1441,11 +1453,17 @@ describe('UserMobileNumberDomain', () => {
             expect(result).toBe(verifiedMobileNumber);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                userVerificationRepository.markUsedInTx
+                userVerificationRepository.markUsedActiveMobileNumberInTx
             ).toHaveBeenCalledWith(tx, activeVerification.id, now);
             expect(
                 userMobileNumberRepository.markVerifiedInTx
-            ).toHaveBeenCalledWith(tx, mobileNumber.id, now);
+            ).toHaveBeenCalledWith(
+                tx,
+                mobileNumber.id,
+                mobileNumber.number,
+                mobileNumber.phoneCode,
+                now
+            );
             expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin'
@@ -1459,7 +1477,7 @@ describe('UserMobileNumberDomain', () => {
                 event,
             ]);
             expect(callOrder).toEqual([
-                'markUsedInTx',
+                'markUsedActiveMobileNumberInTx',
                 'markVerifiedInTx',
                 'touchUpdatedByInTx',
                 'stagePrepared',
@@ -1470,6 +1488,70 @@ describe('UserMobileNumberDomain', () => {
             expect(
                 notificationQueue.sendVerificationMobileNumber
             ).not.toHaveBeenCalled();
+        });
+
+        it('throws UserMobileNumberOtpInvalidException and leaves the number unverified when the code is no longer active at write time', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                ownedMobileNumber
+            );
+            userVerificationRepository.findOneActiveMobileNumber.mockResolvedValue(
+                activeVerification
+            );
+            userVerificationRepository.markUsedActiveMobileNumberInTx.mockResolvedValue(
+                false
+            );
+
+            const call = domain.verifyMobileNumber(
+                'user-marlin',
+                mobileNumber.id,
+                '654321'
+            );
+
+            await expect(call).rejects.toBeInstanceOf(
+                UserMobileNumberOtpInvalidException
+            );
+            expect(
+                userVerificationRepository.markUsedActiveMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, activeVerification.id, now);
+            expect(
+                userMobileNumberRepository.markVerifiedInTx
+            ).not.toHaveBeenCalled();
+            expect(userDomain.touchUpdatedByInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('throws UserMobileNumberOtpInvalidException when the number changed between the read and the write', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                ownedMobileNumber
+            );
+            userVerificationRepository.findOneActiveMobileNumber.mockResolvedValue(
+                activeVerification
+            );
+            userVerificationRepository.markUsedActiveMobileNumberInTx.mockResolvedValue(
+                true
+            );
+            userMobileNumberRepository.markVerifiedInTx.mockResolvedValue(null);
+
+            const call = domain.verifyMobileNumber(
+                'user-marlin',
+                mobileNumber.id,
+                '654321'
+            );
+
+            await expect(call).rejects.toBeInstanceOf(
+                UserMobileNumberOtpInvalidException
+            );
+            expect(
+                userMobileNumberRepository.markVerifiedInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                mobileNumber.id,
+                mobileNumber.number,
+                mobileNumber.phoneCode,
+                now
+            );
+            expect(userDomain.touchUpdatedByInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {

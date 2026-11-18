@@ -5,6 +5,7 @@ import type {
     UserMobileNumber,
 } from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -106,14 +107,28 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
     async markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
+        number: string,
+        phoneCode: string,
         verifiedAt: Date
-    ): Promise<UserMobileNumber & { country: Country }> {
-        return tx.userMobileNumber.update({
-            where: { id: mobileNumberId },
+    ): Promise<IUserMobileNumber | null> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: {
+                id: mobileNumberId,
+                number,
+                phoneCode,
+                isVerified: false,
+            },
             data: {
                 isVerified: true,
                 verifiedAt,
             },
+        });
+        if (count !== 1) {
+            return null;
+        }
+
+        return tx.userMobileNumber.findUnique({
+            where: { id: mobileNumberId },
             include: {
                 country: true,
             },

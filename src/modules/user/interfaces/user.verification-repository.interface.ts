@@ -45,6 +45,11 @@ export interface IUserVerificationRepository {
         userId: string,
         mobileNumberId: string
     ): Promise<Verification | null>;
+    markUsedActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date
+    ): Promise<boolean>;
     expireActiveMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
@@ -59,7 +64,10 @@ export interface IUserVerificationRepository {
             hashedOtp,
             reference,
             expiredAt,
-        }: IUserMobileNumberVerificationCreate,
+        }: Pick<
+            IUserMobileNumberVerificationCreate,
+            'hashedOtp' | 'reference' | 'expiredAt'
+        >,
         createdAt: Date
     ): Promise<Verification>;
 }

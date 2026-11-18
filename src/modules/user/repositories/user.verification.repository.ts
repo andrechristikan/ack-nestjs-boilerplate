@@ -170,7 +170,33 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                     gt: today,
                 },
             },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
         });
+    }
+
+    async markUsedActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date
+    ): Promise<boolean> {
+        const { count } = await tx.verification.updateMany({
+            where: {
+                id,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: verifiedAt,
+                },
+            },
+            data: {
+                isUsed: true,
+                verifiedAt,
+            },
+        });
+
+        return count === 1;
     }
 
     async expireActiveMobileNumberInTx(
@@ -202,7 +228,10 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             hashedOtp,
             reference,
             expiredAt,
-        }: IUserMobileNumberVerificationCreate,
+        }: Pick<
+            IUserMobileNumberVerificationCreate,
+            'hashedOtp' | 'reference' | 'expiredAt'
+        >,
         createdAt: Date
     ): Promise<Verification> {
         return tx.verification.create({
