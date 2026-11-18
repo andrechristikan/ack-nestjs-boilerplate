@@ -24,6 +24,8 @@ describe('ActivityLogMetadataResponseSchema', () => {
         channel: 'email',
         type: 'userActivity',
         isActive: true,
+        workspaceId: 'workspace-1',
+        previousOwnerUserId: 'user-3',
     };
 
     it('parses a row into exactly the declared fields', () => {

@@ -45,6 +45,8 @@ import {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
+import { UserService } from '@modules/user/services/user.service';
+import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -78,6 +80,9 @@ describe('WorkspaceJoinRequestService', () => {
         mock<WorkspaceRepository>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
+    const workspaceInviteService: MockProxy<WorkspaceInviteService> =
+        mock<WorkspaceInviteService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -215,6 +220,11 @@ describe('WorkspaceJoinRequestService', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
+                {
+                    provide: WorkspaceInviteService,
+                    useValue: workspaceInviteService,
+                },
+                { provide: UserService, useValue: userService },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
@@ -719,6 +729,14 @@ describe('WorkspaceJoinRequestService', () => {
 
                 return workspaceMember;
             });
+            userService.getEmailByIdInTx.mockResolvedValue(
+                'user-2@example.com'
+            );
+            workspaceInviteService.revokePendingByEmailInTx.mockImplementation(
+                async () => {
+                    calls.push('revokeInvite');
+                }
+            );
             notificationService.notify.mockReturnValue(effect);
             outboxService.addInTx.mockImplementation(async () => {
                 calls.push('addEffect');
@@ -734,7 +752,12 @@ describe('WorkspaceJoinRequestService', () => {
                 'Acme'
             );
 
-            expect(calls).toEqual(['accept', 'createMember', 'addEffect']);
+            expect(calls).toEqual([
+                'accept',
+                'createMember',
+                'revokeInvite',
+                'addEffect',
+            ]);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestRepository.acceptInTx
@@ -751,6 +774,13 @@ describe('WorkspaceJoinRequestService', () => {
                 EnumWorkspaceMemberRole.member,
                 'reviewer-1'
             );
+            expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2'
+            );
+            expect(
+                workspaceInviteService.revokePendingByEmailInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceJoinAccepted,
                 {
@@ -765,6 +795,23 @@ describe('WorkspaceJoinRequestService', () => {
             expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
                 'join-request-1'
             );
+        });
+
+        it('revokes no invite when the requester has no email', async () => {
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
+            userService.getEmailByIdInTx.mockResolvedValue(null);
+
+            await service.acceptJoinRequest(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseJoinRequest,
+                'Acme'
+            );
+
+            expect(
+                workspaceInviteService.revokePendingByEmailInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('adds the reviewer entry and the requester entry on the review tx', async () => {

@@ -42,7 +42,6 @@ import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import {
     Body,
     Controller,
-    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -115,7 +114,8 @@ export class DeviceSharedController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/remove/:deviceOwnershipId')
+    @HttpCode(HttpStatus.OK)
+    @Post('/remove/:deviceOwnershipId')
     async remove(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,

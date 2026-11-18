@@ -6,6 +6,7 @@ import {
     RequestCorrelationIdHeaderName,
     RequestCorrelationIdStoreKey,
     RequestIdHeaderName,
+    RequestIdMaxLength,
     RequestIdRegex,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
@@ -20,6 +21,7 @@ export class RequestRequestIdMiddleware implements NestMiddleware {
         const inboundRequestId = req.headers[RequestIdHeaderName];
         const requestId =
             typeof inboundRequestId === 'string' &&
+            inboundRequestId.length <= RequestIdMaxLength &&
             RequestIdRegex.test(inboundRequestId)
                 ? inboundRequestId
                 : uuid();
@@ -30,6 +32,7 @@ export class RequestRequestIdMiddleware implements NestMiddleware {
             req.headers[RequestCorrelationIdHeaderName];
         const correlationId =
             typeof inboundCorrelationId === 'string' &&
+            inboundCorrelationId.length <= RequestIdMaxLength &&
             RequestIdRegex.test(inboundCorrelationId)
                 ? inboundCorrelationId
                 : uuid();

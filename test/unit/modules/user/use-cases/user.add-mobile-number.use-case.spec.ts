@@ -69,7 +69,7 @@ describe('UserAddMobileNumberUseCase', () => {
         mfa: {
             method: EnumMfaMethod.totp,
             totpStep: 7,
-            backupCodeIndex: null,
+            backupCodeHash: null,
             passkey: null,
         },
         verificationId: null,

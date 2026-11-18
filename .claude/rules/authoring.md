@@ -53,7 +53,7 @@ Binds `docs/*.md`, `.claude/decisions/*.md`, the root people files, `.github/` m
 - A decision is a rule sentence first: the chosen option, and each rejected option as a prohibition, in the rule that owns the concept.
 - `.claude/decisions/` holds what a rule cannot: the reason each rejected alternative lost. Entries on one choice or one topic merge; none is dropped while its rule stands.
 - A rule and an entry never state the same thing: the entry names the choice in its title, points at the rule, and gives reasons only.
-- Two files, entries under `##` topic headings: `architecture.md` and `security.md`. No number, index, status, or date. `README.md` beside them only lists them.
+- One file per scope, a scope as wide as `auth` or `deployment`, ten files at most, entries under `##` sub-scope headings. An entry joins the file whose scope it shares; a scope no file covers is a new file. No number, index, status, or date. `README.md` beside them lists each file and its scope.
 - `/ack-harness` writes an entry, on the owner's word; `writer` does not. Shape: `.claude/skills/ack-harness/references/decision-record.md`.
 
 ## Language

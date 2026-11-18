@@ -107,7 +107,11 @@ describe('UserProcessImportByAdminUseCase', () => {
             name: null,
         },
     ];
-    const payload: IUserImportByAdminPayload = { rows, activityLog };
+    const payload: IUserImportByAdminPayload = {
+        rows,
+        activityLog,
+        created: null,
+    };
     const entryEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
@@ -364,6 +368,43 @@ describe('UserProcessImportByAdminUseCase', () => {
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
             expect(outboxService.add).not.toHaveBeenCalled();
+        });
+
+        it('records the created count on the outbox row inside the transaction that creates the users', async () => {
+            await useCase.execute('outbox-bramble', payload);
+
+            expect(outboxService.updateDataInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-bramble',
+                { created: 1 }
+            );
+            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+                outboxService.updateDataInTx
+            );
+        });
+
+        it('returns the recorded result and touches no service when the payload already holds the created count', async () => {
+            const response = await useCase.execute('outbox-bramble', {
+                ...payload,
+                created: 3,
+            });
+
+            expect(response).toEqual({
+                message: 'user.queue.importByAdmin',
+                created: 3,
+                failed: 0,
+            });
+            expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(countryService.getIdByAlpha2Code).not.toHaveBeenCalled();
+            expect(
+                userImportService.prepareImportByAdmin
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
+            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(notificationService.notify).not.toHaveBeenCalled();
         });
 
         it('notifies each created user with a welcome carrying the admin as the proceeding user', async () => {

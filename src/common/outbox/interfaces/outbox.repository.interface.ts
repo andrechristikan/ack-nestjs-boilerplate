@@ -13,6 +13,10 @@ export interface IOutboxRepository {
         take: number
     ): Promise<Outbox[]>;
     findOneById(id: string): Promise<Outbox | null>;
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<Outbox | null>;
     createManyInTx(
         tx: IDatabaseTransactionClient,
         rows: Prisma.OutboxCreateManyInput[]
@@ -30,4 +34,9 @@ export interface IOutboxRepository {
         failedAt: Date
     ): Promise<void>;
     updateData(id: string, data: Prisma.InputJsonObject): Promise<void>;
+    updateDataInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        data: Prisma.InputJsonObject
+    ): Promise<void>;
 }

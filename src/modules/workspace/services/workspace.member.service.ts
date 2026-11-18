@@ -16,6 +16,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -30,9 +31,11 @@ import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/except
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
+import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -45,6 +48,7 @@ export class WorkspaceMemberService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
+        private readonly userService: UserService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -86,12 +90,10 @@ export class WorkspaceMemberService {
     }
 
     private async transferOwnershipGuarded(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        actorMember: WorkspaceMember,
-        targetMember: WorkspaceMember
+        ownerMember: WorkspaceMember,
+        targetMember: WorkspaceMember,
+        entries: IOutboxEffect[]
     ): Promise<void> {
         const maxWorkspacesPerUser =
             await this.featureFlagService.getMetadataNumber(
@@ -114,7 +116,7 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.promoteToOwnerInTx(
                         tx,
                         workspaceId,
-                        actorMember.id,
+                        ownerMember.id,
                         targetMember.id
                     );
                 if (!promoted) {
@@ -125,42 +127,13 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.demoteOwnerInTx(
                         tx,
                         workspaceId,
-                        actorMember.id
+                        ownerMember.id
                     );
                 if (!demoted) {
                     throw new WorkspaceMemberPeerForbiddenException();
                 }
 
-                const ownerEntry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                        userId: actorMember.userId,
-                        createdBy: actorMember.userId,
-                        workspaceId,
-                        metadata: { targetUserId: targetMember.userId },
-                    }
-                );
-                const newOwnerEntry = this.activityLogService.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                        userId: targetMember.userId,
-                        createdBy: actorMember.userId,
-                        workspaceId,
-                        metadata: { actorUserId: actorMember.userId },
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [
-                    ownerEntry,
-                    newOwnerEntry,
-                ]);
+                await this.outboxService.addManyInTx(tx, entries);
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -272,6 +245,7 @@ export class WorkspaceMemberService {
             throw new WorkspaceSelfTransferException();
         }
 
+        // Sequential by design: gate before the work it guards
         const targetMember =
             await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 workspaceId,
@@ -281,13 +255,136 @@ export class WorkspaceMemberService {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        await this.transferOwnershipGuarded(
+        const targetUser = await this.userService.getOneActive(targetUserId);
+        if (!targetUser) {
+            throw new WorkspaceTransferTargetInactiveException();
+        }
+
+        const ownerEntry = this.activityLogService.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                userId: actorMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }
+        );
+        const newOwnerEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }
+        );
+
+        await this.transferOwnershipGuarded(
             workspaceId,
             actorMember,
-            targetMember
+            targetMember,
+            [ownerEntry, newOwnerEntry]
+        );
+    }
+
+    /** A platform admin swaps the owner of any workspace to an active member and adds the admin, previous owner, and new owner entries in one transaction, dispatched after the commit. */
+    async transferOwnershipByAdmin(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceId: string,
+        targetUserId: string
+    ): Promise<void> {
+        // Sequential by design: gate before the work it guards
+        const workspace =
+            await this.workspaceRepository.findActiveById(workspaceId);
+        if (!workspace) {
+            throw new WorkspaceNotFoundException();
+        }
+
+        const ownerMember =
+            await this.workspaceMemberRepository.findOneOwnerByWorkspace(
+                workspaceId
+            );
+        if (!ownerMember) {
+            throw new WorkspaceMemberNotFoundException();
+        }
+
+        if (targetUserId === ownerMember.userId) {
+            throw new WorkspaceSelfTransferException();
+        }
+
+        const targetMember =
+            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+                workspaceId,
+                targetUserId
+            );
+        if (!targetMember) {
+            throw new WorkspaceMemberNotFoundException();
+        }
+
+        const targetUser = await this.userService.getOneActive(targetUserId);
+        if (!targetUser) {
+            throw new WorkspaceTransferTargetInactiveException();
+        }
+
+        const adminEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminWorkspaceOwnershipTransfer,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
+                workspaceId,
+                metadata: {
+                    workspaceId,
+                    previousOwnerUserId: ownerMember.userId,
+                    targetUserId,
+                },
+            }
+        );
+        const previousOwnerEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
+                userId: ownerMember.userId,
+                createdBy: authContext.userId,
+                workspaceId,
+                metadata: { actorUserId: authContext.userId, targetUserId },
+            }
+        );
+        const newOwnerEntry = this.activityLogService.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
+                userId: targetUserId,
+                createdBy: authContext.userId,
+                workspaceId,
+                metadata: { actorUserId: authContext.userId },
+            }
+        );
+
+        await this.transferOwnershipGuarded(
+            workspaceId,
+            ownerMember,
+            targetMember,
+            [adminEntry, previousOwnerEntry, newOwnerEntry]
         );
     }
 

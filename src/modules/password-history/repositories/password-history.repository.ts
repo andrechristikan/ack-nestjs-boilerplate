@@ -104,4 +104,11 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
     ): Promise<void> {
         await tx.passwordHistory.createMany({ data: entries });
     }
+
+    async deleteManyByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.passwordHistory.deleteMany({ where: { userId } });
+    }
 }

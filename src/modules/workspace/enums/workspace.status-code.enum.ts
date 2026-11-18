@@ -26,4 +26,5 @@ export enum EnumWorkspaceStatusCodeError {
     memberGuardMissing = 51623,
     memberAlreadyExists = 51624,
     ownerTransferRequired = 51625,
+    transferTargetInactive = 51626,
 }

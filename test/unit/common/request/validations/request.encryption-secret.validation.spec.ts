@@ -13,6 +13,12 @@ describe('RequestEncryptionSecretSchema', () => {
         ).toThrow();
     });
 
+    it('reports a length issue for a value shorter than 64 characters', () => {
+        const result = RequestEncryptionSecretSchema.safeParse('A'.repeat(63));
+
+        expect(result.error?.issues[0]?.code).toBe('too_small');
+    });
+
     it('rejects a value carrying a non-base64url character', () => {
         expect(() =>
             RequestEncryptionSecretSchema.parse(`${'A'.repeat(63)}+`)

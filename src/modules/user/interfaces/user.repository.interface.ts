@@ -94,7 +94,7 @@ export interface IUserRepository {
         userId: string,
         { email, username }: IUserDeletedIdentity,
         deletedAt: Date
-    ): Promise<User>;
+    ): Promise<void>;
     claimUsernameInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

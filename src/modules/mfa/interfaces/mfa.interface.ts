@@ -24,7 +24,7 @@ export interface IMfaPasskeyCheck {
 export interface IMfaCheck {
     method: EnumMfaMethod;
     totpStep: number | null;
-    backupCodeIndex: number | null;
+    backupCodeHash: string | null;
     passkey: IMfaPasskeyCheck | null;
 }
 
@@ -75,11 +75,6 @@ export interface IMfaTotpSetup {
 export interface IMfaBackupCodes {
     codes: string[];
     hashes: string[];
-}
-
-export interface IMfaBackupCodesVerifyResult {
-    isValid: boolean;
-    index: number;
 }
 
 export interface IMfaChallengeCreate {

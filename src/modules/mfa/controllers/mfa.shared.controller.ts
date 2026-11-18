@@ -65,7 +65,6 @@ import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import {
     Body,
     Controller,
-    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -177,7 +176,8 @@ export class MfaSharedController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/totp/disable')
+    @HttpCode(HttpStatus.OK)
+    @Post('/totp/disable')
     async disableTotp(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
@@ -336,7 +336,8 @@ export class MfaSharedController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/passkey/:passkeyId/delete')
+    @HttpCode(HttpStatus.OK)
+    @Post('/passkey/:passkeyId/delete')
     async deletePasskey(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,

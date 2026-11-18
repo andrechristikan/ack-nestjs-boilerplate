@@ -21,7 +21,7 @@ export class UserUtil {
         )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
-            wholeWord: false,
+            wholeWord: true,
             grawlix: '*****',
             grawlixChar: '*',
         });
@@ -33,7 +33,7 @@ export class UserUtil {
     }
 
     hasBadWord(str: string): boolean {
-        return this.profanity.exists(str);
+        return this.profanity.exists(str.replace(/[^a-zA-Z]+/g, ' '));
     }
 
     isUnverified(user: IUser): boolean {

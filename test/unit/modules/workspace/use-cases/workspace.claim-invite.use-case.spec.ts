@@ -25,10 +25,12 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
 import {
     buildUser,
@@ -43,6 +45,8 @@ describe('WorkspaceClaimInviteUseCase', () => {
         mock<WorkspaceInviteService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
+    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
+        mock<WorkspaceJoinRequestService>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -116,6 +120,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 {
+                    provide: WorkspaceJoinRequestService,
+                    useValue: workspaceJoinRequestService,
+                },
+                {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
                 },
@@ -160,6 +168,13 @@ describe('WorkspaceClaimInviteUseCase', () => {
 
                 return existingMember;
             });
+            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
+                async () => {
+                    callOrder.push('cancelJoinRequest');
+
+                    return 1;
+                }
+            );
             userService.setLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('setLastWorkspace');
             });
@@ -182,6 +197,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 'validate',
                 'acceptInvite',
                 'createMember',
+                'cancelJoinRequest',
                 'setLastWorkspace',
                 'addEntries',
             ]);
@@ -202,6 +218,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 EnumWorkspaceMemberRole.member,
                 'user-2'
             );
+            expect(
+                workspaceJoinRequestService.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
             expect(userService.setLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2',
@@ -338,7 +357,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on the member insert to WorkspaceInviteAlreadyProcessedException and adds no entry', async () => {
+        it('maps a unique collision on the member insert to WorkspaceMemberAlreadyExistsException and adds no entry', async () => {
             const collision = new Error('unique');
             workspaceMemberService.createInTx.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -352,10 +371,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     body
                 )
             ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
+                constructor: WorkspaceMemberAlreadyExistsException,
                 module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
+                statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
+                messagePath: 'workspace.error.memberAlreadyExists',
             });
             expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
                 collision,

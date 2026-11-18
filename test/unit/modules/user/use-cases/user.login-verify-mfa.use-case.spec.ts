@@ -113,7 +113,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     const checked: IMfaCheck = {
         method: EnumMfaMethod.totp,
         totpStep: 58123456,
-        backupCodeIndex: null,
+        backupCodeHash: null,
         passkey: null,
     };
 
@@ -271,7 +271,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
             const passkeyChecked: IMfaCheck = {
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-one', counter: 8 },
             };
             mfaChallengeService.getLogin.mockResolvedValue({

@@ -344,6 +344,23 @@ export class OutboxService implements OnApplicationBootstrap {
         });
     }
 
+    /** Merges the patch over the row's data at the top level; writes nothing when the row does not exist. */
+    async updateDataInTx(
+        tx: IDatabaseTransactionClient,
+        outboxId: string,
+        patch: Prisma.InputJsonObject
+    ): Promise<void> {
+        const row = await this.outboxRepository.findOneByIdInTx(tx, outboxId);
+        if (row === null) {
+            return;
+        }
+
+        await this.outboxRepository.updateDataInTx(tx, outboxId, {
+            ...(row.data as Prisma.JsonObject),
+            ...patch,
+        });
+    }
+
     /** Dispatches the oldest rows pending longer than outbox.pendingAfterInMs and reconciles the oldest enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each; returns the count dispatched or stamped and never throws. */
     async sweep(): Promise<number> {
         const now = this.helperDateService.create();

@@ -8,6 +8,8 @@ import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activ
 import { ActivityLogImportMetadataSchema } from '@modules/activity-log/dtos/activity-log.import-metadata.dto';
 import { ActivityLogInviteMetadataSchema } from '@modules/activity-log/dtos/activity-log.invite-metadata.dto';
 import { ActivityLogNotificationSettingMetadataSchema } from '@modules/activity-log/dtos/activity-log.notification-setting-metadata.dto';
+import { ActivityLogOwnershipActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.ownership-actor-metadata.dto';
+import { ActivityLogOwnershipTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.ownership-target-metadata.dto';
 import { ActivityLogPolicyMetadataSchema } from '@modules/activity-log/dtos/activity-log.policy-metadata.dto';
 import { ActivityLogRoleMetadataSchema } from '@modules/activity-log/dtos/activity-log.role-metadata.dto';
 import { ActivityLogSessionActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-actor-metadata.dto';
@@ -413,6 +415,11 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogSessionAllActorMetadataSchema,
     },
+    [EnumActivityLogAction.adminWorkspaceOwnershipTransfer]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogOwnershipActorMetadataSchema,
+    },
 
     [EnumActivityLogAction.workspaceCreated]: {
         user: EnumActivityLogUser.target,
@@ -513,6 +520,16 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceOwnershipTransferredByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceOwnershipRemovedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogOwnershipTargetMetadataSchema,
     },
     [EnumActivityLogAction.workspaceInviteCreatedByAdmin]: {
         user: EnumActivityLogUser.target,

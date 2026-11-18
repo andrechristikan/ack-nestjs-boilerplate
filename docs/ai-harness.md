@@ -16,8 +16,7 @@
 
 - [Project Structure Documentation][ref-doc-project-structure]: the module layout the rules describe
 - [Installation Documentation][ref-doc-installation]: the local stack a boot check runs against
-- [Architecture decisions][ref-doc-decisions-architecture]: why the alternatives to an architecture rule were rejected
-- [Security decisions][ref-doc-decisions-security]: why the alternatives to a security rule were rejected
+- [Decisions][ref-doc-decisions]: why the alternatives to a rule were rejected, one file per scope
 
 ## Table of Contents
 
@@ -93,7 +92,7 @@ Each command runs in a fresh session, so it starts from the files the previous o
 2. The session ticks the ticket, records the evidence in `plan.md`, and reports the position to the owner (`3/10`), then moves to the next ticket whose blockers are done.
 3. A check that still fails after two attempts goes to `debugger` for a root cause.
 4. The session runs the gates (`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, coverage per changed file) and boots the app when wiring changed.
-5. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings.
+5. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
 A build that was interrupted resumes from the first ticket that is not done.
 
@@ -107,13 +106,13 @@ A build that was interrupted resumes from the first ticket that is not done.
 4. The session writes the fix list into `review.md` and the owner approves it.
 5. `coder` applies each kept finding as written. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature to the sweep log.
 6. The gates run again and a second `reviewer` reads the fixed findings. A finding still open goes to the owner.
-7. The session names `/ack-doc`, which brings the docs in line with the code and ends by proposing the commit subject.
+7. The session names `/ack-doc`, which brings the docs in line with the code and ends by proposing the commit subject. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
 ## Standalone Commands
 
 | Command | Use it when | Principle |
 | --- | --- | --- |
-| `/ack-debug <symptom>` | something is wrong and the cause is unknown | root cause first, then a fix with a spec |
+| `/ack-debug <symptom>` | something is wrong and the cause is unknown | root cause first, then a fix with a spec; an owner answer that rejected a named alternative is a decision candidate for `/ack-harness` |
 | `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; defects are logged, not fixed |
 | `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins |
 | `/ack-pr <mode>` | a branch is settled and needs a pull request or release notes | every claim traces to the diff |
@@ -280,8 +279,7 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 
 [ref-doc-project-structure]: project-structure.md
 [ref-doc-installation]: installation.md
-[ref-doc-decisions-architecture]: ../.claude/decisions/architecture.md
-[ref-doc-decisions-security]: ../.claude/decisions/security.md
+[ref-doc-decisions]: ../.claude/decisions/README.md
 [ref-skills-cli]: https://github.com/vercel-labs/skills
 [ref-uv]: https://docs.astral.sh/uv/
 [ref-mattpocock-skills]: https://github.com/mattpocock/skills

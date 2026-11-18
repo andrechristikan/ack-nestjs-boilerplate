@@ -17,7 +17,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 
 - Read the code the request touches and the module closest to it in shape.
 - Run `bash .claude/hooks/rules.sh` over the `src/` paths in scope and read each rule it prints.
-- Name the entries in `.claude/decisions/architecture.md` and `.claude/decisions/security.md` that touch the scope before offering any option. Offer no option a rule forbids or an entry rejects.
+- Name the entries in `.claude/decisions/` (`README.md` there lists each file's scope) that touch the scope before offering any option. Offer no option a rule forbids or an entry rejects.
 - Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: challenge each part of the request the need does not justify, before any design.
 
 ## 2. Question rounds

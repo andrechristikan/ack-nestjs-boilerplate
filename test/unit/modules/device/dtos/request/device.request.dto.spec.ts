@@ -70,6 +70,34 @@ describe('DeviceRequestSchema', () => {
         ).toThrow();
     });
 
+    it('rejects a 31-character fingerprint at fingerprint', () => {
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'a'.repeat(31),
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]?.path).toEqual(['fingerprint']);
+    });
+
+    it('reports a length issue for a 31-character fingerprint', () => {
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'a'.repeat(31),
+        });
+
+        expect(result.error?.issues[0]?.code).toBe('too_small');
+    });
+
+    it('accepts a 32-character fingerprint', () => {
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'a'.repeat(32),
+        });
+
+        expect(result.success).toBe(true);
+    });
+
     it('rejects a fingerprint above 128 characters', () => {
         expect(() =>
             DeviceRequestSchema.parse({

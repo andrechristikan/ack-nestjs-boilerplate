@@ -30,6 +30,7 @@ import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -86,6 +87,8 @@ describe('UserDeleteSelfUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userSocialService: MockProxy<UserSocialService> =
         mock<UserSocialService>();
+    const passwordHistoryService: MockProxy<PasswordHistoryService> =
+        mock<PasswordHistoryService>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -179,6 +182,10 @@ describe('UserDeleteSelfUseCase', () => {
                 },
                 { provide: MfaService, useValue: mfaService },
                 { provide: UserSocialService, useValue: userSocialService },
+                {
+                    provide: PasswordHistoryService,
+                    useValue: passwordHistoryService,
+                },
                 { provide: WorkspaceService, useValue: workspaceService },
                 {
                     provide: WorkspaceMemberService,
@@ -241,10 +248,7 @@ describe('UserDeleteSelfUseCase', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             userAuthService.assertReauthentication.mockResolvedValue(check);
             workspaceService.softDeleteOwnedByUserInTx.mockResolvedValue([]);
-            userService.deleteSelfInTx.mockResolvedValue({
-                ...baseUser,
-                photo: null,
-            });
+            userService.deleteSelfInTx.mockResolvedValue();
             sessionService.revokeAllByUserInTx.mockResolvedValue(revoked);
         });
 
@@ -374,8 +378,6 @@ describe('UserDeleteSelfUseCase', () => {
             });
             userService.deleteSelfInTx.mockImplementation(async () => {
                 calls.push('deleteUser');
-
-                return { ...baseUser, photo: null };
             });
             userProfileService.deleteOwnedPhotoInTx.mockImplementation(
                 async () => {
@@ -872,17 +874,29 @@ describe('UserDeleteSelfUseCase', () => {
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
         });
 
-        it('hands the stored photo to the profile domain on the same tx', async () => {
-            userService.deleteSelfInTx.mockResolvedValue({
-                ...baseUser,
-                photo,
-            });
-
+        it('deletes the password history on the same tx', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
                 authContext,
                 userContext,
+                dto
+            );
+
+            expect(
+                passwordHistoryService.removeByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder');
+        });
+
+        it('hands the photo held before the write to the profile domain on the same tx', async () => {
+            const photoUser: IUser = { ...baseUser, photo };
+            userService.deleteSelfInTx.mockResolvedValue();
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                buildUserContext(photoUser),
                 dto
             );
 

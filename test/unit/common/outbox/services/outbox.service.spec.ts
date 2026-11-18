@@ -719,6 +719,37 @@ describe('OutboxService', () => {
         });
     });
 
+    describe('updateDataInTx', () => {
+        it('writes the row data with the patch merged over it on the given transaction', async () => {
+            outboxRepository.findOneByIdInTx.mockResolvedValue({
+                ...purgeRow,
+                data: { userId: 'user-1', created: null },
+            });
+
+            await service.updateDataInTx(tx, 'outbox-1', { created: 3 });
+
+            expect(outboxRepository.findOneByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-1'
+            );
+            expect(outboxRepository.updateDataInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-1',
+                { userId: 'user-1', created: 3 }
+            );
+            expect(outboxRepository.findOneById).not.toHaveBeenCalled();
+            expect(outboxRepository.updateData).not.toHaveBeenCalled();
+        });
+
+        it('writes nothing when the row does not exist', async () => {
+            outboxRepository.findOneByIdInTx.mockResolvedValue(null);
+
+            await service.updateDataInTx(tx, 'outbox-missing', { created: 3 });
+
+            expect(outboxRepository.updateDataInTx).not.toHaveBeenCalled();
+        });
+    });
+
     describe('sweep', () => {
         const pendingCutoff = new Date('2026-11-11T09:59:30.000Z');
         const enqueuedCutoff = new Date('2026-11-11T09:00:00.000Z');

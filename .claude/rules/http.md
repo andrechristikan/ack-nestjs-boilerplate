@@ -17,7 +17,9 @@ paths:
 
 ## Route path shape
 
-Everything in the controller's `path:` is its own resource: `/<action>[/:<id>[/<target>]]`. A noun a route decorator introduces opens a sub-resource: `/<sub-resource>[/:<scope-id>][/:<id>][/<target>]/<action>`, action last. The action is one verb; `<verb>-all` only with no row id; a target is its own segment, never folded into the verb (`/update/:id/status`); one verb per path; method and verb agree. A resource noun is singular; a target after an id may be plural. A path closes on a noun only for how the action is performed (`/login/credential`). An analytic route is a read-only `@Get('/<area>/<metric>[/list]')`, or `@Get('/<area>/<metric>/<noun>/:<id>')` for one subject's read (`/fraud/risk-score/user/:userId`) (`analytic.admin.controller.ts`).
+Everything in the controller's `path:` is its own resource: `/<action>[/:<id>[/<target>]]`. A noun a route decorator introduces opens a sub-resource: `/<sub-resource>[/:<scope-id>][/:<id>][/<target>]/<action>`, action last. The action is one verb; `<verb>-all` only with no row id; a target is its own segment, never folded into the verb (`/update/:id/status`); one verb per path; method and verb agree, except a removal that reads a body (below). A resource noun is singular; a target after an id may be plural. A path closes on a noun only for how the action is performed (`/login/credential`). An analytic route is a read-only `@Get('/<area>/<metric>[/list]')`, or `@Get('/<area>/<metric>/<noun>/:<id>')` for one subject's read (`/fraud/risk-score/user/:userId`) (`analytic.admin.controller.ts`).
+
+A route that reads a body is never `DELETE`: a removal that carries a re-authentication proof is `POST` with `@HttpCode(HttpStatus.OK)`.
 
 ## Responses and OpenAPI
 

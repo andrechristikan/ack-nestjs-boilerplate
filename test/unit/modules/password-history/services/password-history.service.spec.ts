@@ -182,6 +182,18 @@ describe('PasswordHistoryService', () => {
         });
     });
 
+    describe('removeByUserInTx', () => {
+        it('deletes the user histories on the same transaction', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+
+            await service.removeByUserInTx(tx, 'user-id');
+
+            expect(
+                passwordHistoryRepository.deleteManyByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-id');
+        });
+    });
+
     describe('assertNew', () => {
         const history: PasswordHistory = {
             id: 'history-id',

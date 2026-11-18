@@ -394,6 +394,7 @@ export interface IUserDeletePhotoPayload {
 export interface IUserImportByAdminPayload {
     rows: IUserImport[];
     activityLog: IActivityLogActorPayload;
+    created: number | null;
 }
 
 export interface IUserCreateContracts {

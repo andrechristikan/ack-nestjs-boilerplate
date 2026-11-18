@@ -27,6 +27,7 @@ paths:
 
 - Every file under `ci/` is production-ready, and no file name carries `.production`. `ci/docker-compose.yml` serves each deployed environment (`development`, `staging`, `production`), one instance each: the three profiles, `apis` built from `ci/dockerfile`. A release runs `migrate` and the application itself, so a release-managed instance starts `--profile deps` alone; `--profile deps --profile apis` starts them without CI. The compose network is named `app-network` (`name: app-network`), and the release's containers join it. Run it with `-f ci/docker-compose.yml`; `--profile vault up -d vault vault-bootstrap` starts Vault alone.
 - `vault-bootstrap` writes the kv-v2 mount and one read-only policy and AppRole per environment, and no secret. `pnpm vault:push <environment> <env-file>` replaces a path with an env file's keys; `pnpm vault:pull <environment> [out-file]` renders it to an env file. Neither defaults the environment.
+- Vault's unseal key, root token, and AppRole credentials stay in `generated/vault/` on the host; no KMS unseal.
 - `ci/docker-compose.yml` publishes only `apis` and `bullboard`, both bound to `127.0.0.1`, BullBoard behind a login; TLS ends at a proxy in front of the host: the compose files hold no bind-address variable and no proxy service. Ports are in the file.
 - Connections between the compose services are unencrypted.
 - The compose files ship static service credentials, a Vault profile that stays optional, and logs on stdout; short-lived credentials, a mandatory secret manager, and log shipping are the deployment's.

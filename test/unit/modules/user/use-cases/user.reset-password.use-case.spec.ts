@@ -181,7 +181,7 @@ describe('UserResetPasswordUseCase', () => {
     const mfaChecked: IMfaCheck = {
         method: EnumMfaMethod.totp,
         totpStep: 58123456,
-        backupCodeIndex: null,
+        backupCodeHash: null,
         passkey: null,
     };
     const updatedRow = {
@@ -522,7 +522,7 @@ describe('UserResetPasswordUseCase', () => {
             const passkeyChecked: IMfaCheck = {
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-linden', counter: 3 },
             };
 

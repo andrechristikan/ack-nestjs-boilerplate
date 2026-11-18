@@ -49,6 +49,17 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
+    async findOneOwnerByWorkspace(
+        workspaceId: string
+    ): Promise<WorkspaceMember | null> {
+        return this.databaseService.client.workspaceMember.findFirst({
+            where: {
+                workspaceId,
+                role: EnumWorkspaceMemberRole.owner,
+            },
+        });
+    }
+
     async findByIdAndWorkspace(
         workspaceMemberId: string,
         workspaceId: string

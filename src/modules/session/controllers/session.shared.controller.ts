@@ -36,7 +36,16 @@ import {
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
-import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+    Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -75,7 +84,8 @@ export class SessionSharedController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/revoke/:sessionId')
+    @HttpCode(HttpStatus.OK)
+    @Post('/revoke/:sessionId')
     async revoke(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,

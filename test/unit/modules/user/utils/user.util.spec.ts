@@ -145,6 +145,26 @@ describe('UserUtil', () => {
         it('returns false when the text contains no bad word', () => {
             expect(util.hasBadWord('innocent')).toBe(false);
         });
+
+        it.each([
+            // cspell:disable-next-line
+            'hassan',
+            'cassandra',
+            'classic_dave',
+            'analyst01',
+            'titan',
+            'document_guy',
+            'john@essex.ac.uk',
+        ])('returns false for %s, a bad word glued inside a token', value => {
+            expect(util.hasBadWord(value)).toBe(false);
+        });
+
+        it.each(['damn_user', 'damn-user', 'user.damn', 'user1damn2'])(
+            'returns true for %s, a bad word between separators',
+            value => {
+                expect(util.hasBadWord(value)).toBe(true);
+            }
+        );
     });
 
     describe('isUnverified', () => {

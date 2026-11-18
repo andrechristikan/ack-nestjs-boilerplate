@@ -24,6 +24,7 @@ import { UserMobileNumberService } from '@modules/user/services/user.mobile-numb
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -53,6 +54,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userSocialService: UserSocialService,
+        private readonly passwordHistoryService: PasswordHistoryService,
         private readonly workspaceService: WorkspaceService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly workspaceInviteService: WorkspaceInviteService,
@@ -182,21 +184,21 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                     );
                     await this.userSocialService.removeByUserInTx(tx, userId);
                     await this.mfaService.deleteByUserInTx(tx, userId);
+                    await this.passwordHistoryService.removeByUserInTx(
+                        tx,
+                        userId
+                    );
                     await this.sessionService.revokeAllByUserInTx(
                         tx,
                         userId,
                         userId,
                         now
                     );
-                    const deleted = await this.userService.deleteSelfInTx(
-                        tx,
-                        user,
-                        now
-                    );
+                    await this.userService.deleteSelfInTx(tx, user, now);
                     await this.userProfileService.deleteOwnedPhotoInTx(
                         tx,
                         userId,
-                        deleted.photo
+                        user.photo
                     );
 
                     const revokeAllEntry = this.activityLogService.recordEffect(

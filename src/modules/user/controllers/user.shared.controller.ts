@@ -85,7 +85,6 @@ import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user
 import {
     Body,
     Controller,
-    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -351,7 +350,8 @@ export class UserSharedController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/mobile-number/:mobileNumberId/delete')
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,

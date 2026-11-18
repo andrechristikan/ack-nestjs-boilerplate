@@ -1228,11 +1228,11 @@ describe('UserService', () => {
             helperStringService.fillPattern
                 .mockReturnValueOnce(identity.email)
                 .mockReturnValueOnce(identity.username);
-            userRepository.deleteSelfInTx.mockResolvedValue(baseUser);
+            userRepository.deleteSelfInTx.mockResolvedValue();
 
             await expect(
                 service.deleteSelfInTx(tx, baseUser, now)
-            ).resolves.toBe(baseUser);
+            ).resolves.toBeUndefined();
 
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
                 tx,
@@ -1388,7 +1388,7 @@ describe('UserService', () => {
             expect(effect).toEqual({
                 queue: EnumUserQueue.user,
                 name: EnumUserProcess.importByAdmin,
-                data: { rows, activityLog },
+                data: { rows, activityLog, created: null },
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: null,
             });

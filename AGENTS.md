@@ -40,7 +40,7 @@ keys/                   generated JWT keys, encryption secret, and Mongo keyfile
 generated/              swagger, vault init, sweep log, gitignored
 ```
 
-Propose no option a rule forbids or `.claude/decisions/architecture.md` and `security.md` reject unless the owner reopens it.
+Propose no option a rule forbids or an entry in `.claude/decisions/` rejects unless the owner reopens it.
 
 ## Layering
 

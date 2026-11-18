@@ -442,7 +442,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 mfa: {
                     method: EnumMfaMethod.totp,
                     totpStep: 1,
-                    backupCodeIndex: null,
+                    backupCodeHash: null,
                     passkey: null,
                 },
             });

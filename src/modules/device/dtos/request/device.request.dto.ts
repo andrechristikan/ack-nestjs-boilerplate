@@ -4,10 +4,16 @@ import { DeviceFingerprintRegex } from '@modules/device/constants/device.constan
 
 /** @public */
 export const DeviceRequestSchema = z.strictObject({
-    fingerprint: z.string().trim().regex(DeviceFingerprintRegex).meta({
-        description: 'Device fingerprint to uniquely identify the device',
-        example: 'abc123def456ghi789jkl012mno345pq',
-    }),
+    fingerprint: z
+        .string()
+        .trim()
+        .min(32)
+        .max(128)
+        .regex(DeviceFingerprintRegex)
+        .meta({
+            description: 'Device fingerprint to uniquely identify the device',
+            example: 'abc123def456ghi789jkl012mno345pq',
+        }),
     name: z.string().trim().min(1).max(100).optional().meta({
         description: 'Device name',
         example: "John's iPhone 12",

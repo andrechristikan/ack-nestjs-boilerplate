@@ -124,6 +124,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                             ...welcomes,
                             result,
                         ]);
+                        await this.outboxService.updateDataInTx(tx, outboxId, {
+                            created: users.length,
+                        });
 
                         return users;
                     },
@@ -163,8 +166,16 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        { rows, activityLog }: IUserImportByAdminPayload
+        { rows, activityLog, created: recorded }: IUserImportByAdminPayload
     ): Promise<IUserImportByAdminQueueResponse> {
+        if (recorded !== null) {
+            const message = this.messageService.setMessage(
+                'user.queue.importByAdmin'
+            );
+
+            return { message, created: recorded, failed: 0 };
+        }
+
         const { actorUserId } = activityLog;
         // Sequential by design: gate before the work it guards; write after the preparation
         const [role, countryId] = await Promise.all([

@@ -87,4 +87,11 @@ export class PasswordHistoryService {
 
         await this.passwordHistoryRepository.createManyInTx(tx, entries);
     }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await this.passwordHistoryRepository.deleteManyByUserInTx(tx, userId);
+    }
 }

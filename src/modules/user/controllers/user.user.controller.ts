@@ -24,7 +24,7 @@ import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { UserDeleteSelfRequestSchema } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
-import { Body, Controller, Delete } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -49,7 +49,8 @@ export class UserUserController {
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/self/delete')
+    @HttpCode(HttpStatus.OK)
+    @Post('/self/delete')
     async deleteSelf(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,

@@ -349,14 +349,26 @@ export class UserRepository implements IUserRepository {
         userId: string,
         { email, username }: IUserDeletedIdentity,
         deletedAt: Date
-    ): Promise<User> {
-        return tx.user.softDelete({
+    ): Promise<void> {
+        await tx.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
                 email,
                 username,
                 deletedAt,
                 status: EnumUserStatus.inactive,
+                password: null,
+                passwordCreated: null,
+                passwordExpired: null,
+                passwordAttempt: 0,
+                passwordLockedUntil: null,
+                name: null,
+                gender: null,
+                photo: null,
+                lastIPAddress: null,
+                lastLoginAt: null,
+                lastLoginFrom: null,
+                lastLoginWith: null,
             },
         });
     }

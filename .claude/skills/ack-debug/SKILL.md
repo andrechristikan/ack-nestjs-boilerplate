@@ -29,7 +29,7 @@ Agent: debugger
 Symptom: <input, observed result, expected result, where it surfaces>
 Scope: <the modules or paths the symptom names>
 Decision: <the owner's answer to a previous NEEDS_DECISION, or none>
-Decisions to honour: <the entries of .claude/decisions/architecture.md and .claude/decisions/security.md the scope touches, or none>
+Decisions to honour: <the entries of .claude/decisions/ the scope touches (README.md there lists each file's scope), or none>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted>
 ```
 
@@ -69,6 +69,7 @@ Dispatch `reviewer` with `Depth: task`, the pin as the requirement, the changed 
 - The evidence: each command and its decisive output line.
 - The fix and the spec that guards it.
 - Each other place with the same defect, unfixed.
+- Each owner answer that rejected a named alternative, as a decision candidate (the choice, the rejected option, the owner's reason): name `/ack-harness`.
 - The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`. Wait for the owner.
 
 ## Next

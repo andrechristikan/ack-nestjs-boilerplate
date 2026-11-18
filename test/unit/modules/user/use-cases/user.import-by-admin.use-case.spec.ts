@@ -56,6 +56,7 @@ describe('UserImportByAdminUseCase', () => {
                 workspaceId: null,
                 requestLog: requestContext.requestLog,
             },
+            created: null,
         },
         priority: EnumQueuePriority.medium,
         idempotencyKey: null,

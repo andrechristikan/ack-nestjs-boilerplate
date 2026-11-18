@@ -1,7 +1,7 @@
 import type { Prisma } from '@generated/prisma-client/client';
 
 /** @public */
-export const DeviceFingerprintRegex = /^[A-Za-z0-9._:-]{8,128}$/;
+export const DeviceFingerprintRegex = /^[A-Za-z0-9._:-]+$/;
 
 /** @public */
 export const DeviceOwnershipNotificationTokenSelect = {

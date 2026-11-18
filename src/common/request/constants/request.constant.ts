@@ -3,7 +3,10 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /** @public */
-export const RequestIdRegex = /^[A-Za-z0-9._-]{1,128}$/;
+export const RequestIdRegex = /^[A-Za-z0-9._-]+$/;
+
+/** @public */
+export const RequestIdMaxLength = 128;
 
 /** @public */
 export const RequestCustomTimeoutMetaKey = 'RequestCustomTimeoutMetaKey';

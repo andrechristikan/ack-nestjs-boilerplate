@@ -62,6 +62,15 @@ export class OutboxRepository implements IOutboxRepository {
         });
     }
 
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<Outbox | null> {
+        return tx.outbox.findUnique({
+            where: { id },
+        });
+    }
+
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         rows: Prisma.OutboxCreateManyInput[]
@@ -118,6 +127,17 @@ export class OutboxRepository implements IOutboxRepository {
 
     async updateData(id: string, data: Prisma.InputJsonObject): Promise<void> {
         await this.databaseService.client.outbox.update({
+            where: { id },
+            data: { data },
+        });
+    }
+
+    async updateDataInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        data: Prisma.InputJsonObject
+    ): Promise<void> {
+        await tx.outbox.update({
             where: { id },
             data: { data },
         });

@@ -11,6 +11,12 @@ describe('RequestMongoIdSchema', () => {
         expect(() => RequestMongoIdSchema.parse('a'.repeat(23))).toThrow();
     });
 
+    it('reports a length issue for a value shorter than 24 characters', () => {
+        const result = RequestMongoIdSchema.safeParse('a'.repeat(23));
+
+        expect(result.error?.issues[0]?.code).toBe('too_small');
+    });
+
     it('rejects a value carrying a non-hex character', () => {
         expect(() =>
             RequestMongoIdSchema.parse(`${'a'.repeat(23)}z`)

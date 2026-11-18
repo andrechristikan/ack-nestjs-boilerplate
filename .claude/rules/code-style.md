@@ -39,6 +39,7 @@ Contexts run in the `http.md` order.
 - A string naming something this project declares is an enum member (`enum.md`, Literal unions).
 - A literal a third-party contract defines keeps that contract's type: BullMQ `backoff.type: 'exponential'` and the `'failed'` worker event, redis `'PX'`, `'XX'`, `'OK'`, Prisma log levels, `PromiseSettledResult.status`. So does the key list of a utility type under `interfaces/` (`Pick<ApiKey, 'id' | 'name'>`).
 - A log context line is a literal English sentence (`this.logger.error(error, 'Queue job failed')`, `injectable.md`, Logger). Queue text that leaves through `IQueueResponse`, `QueueException`, or a side-effect description is i18n (`queue.md`, Messages).
+- A regex holds the allowed characters and format, never the length of the whole value: that length is `.min()`, `.max()`, or `.length()` on the schema, or a `length` comparison against a constant where no schema reads the value (`RequestIdMaxLength`). A quantifier on part of a value (an email TLD, an ARN account id) is format.
 
 ## Dates
 

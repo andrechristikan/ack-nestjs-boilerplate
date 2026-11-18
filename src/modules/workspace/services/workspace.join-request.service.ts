@@ -34,6 +34,7 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IUserName } from '@modules/user/interfaces/user.interface';
+import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -48,6 +49,7 @@ import type {
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -64,6 +66,8 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceInviteService: WorkspaceInviteService,
+        private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
@@ -322,6 +326,17 @@ export class WorkspaceJoinRequestService {
                     EnumWorkspaceMemberRole.member,
                     reviewerId
                 );
+                const email = await this.userService.getEmailByIdInTx(
+                    tx,
+                    joinRequest.userId
+                );
+                if (email !== null) {
+                    await this.workspaceInviteService.revokePendingByEmailInTx(
+                        tx,
+                        joinRequest.workspaceId,
+                        email
+                    );
+                }
 
                 const effect = this.notificationService.notify(
                     EnumNotificationKind.workspaceJoinAccepted,

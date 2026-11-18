@@ -12,8 +12,10 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -34,6 +36,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly projectMemberService: ProjectMemberService,
         private readonly userService: UserService,
         private readonly activityLogService: ActivityLogService,
@@ -69,6 +72,11 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     invite.workspaceId,
                     userId,
                     invite.workspaceRole,
+                    userId
+                );
+                await this.workspaceJoinRequestService.cancelPendingByUserInTx(
+                    tx,
+                    invite.workspaceId,
                     userId
                 );
                 await this.userService.setLastWorkspaceInTx(
@@ -127,7 +135,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                 'userId'
             );
             if (isAlreadyMember) {
-                throw new WorkspaceInviteAlreadyProcessedException();
+                throw new WorkspaceMemberAlreadyExistsException();
             }
 
             const mapped = this.databaseUtil.toException(err);

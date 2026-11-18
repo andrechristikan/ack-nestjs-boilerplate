@@ -644,6 +644,22 @@ describe('WorkspaceService', () => {
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
         });
 
+        it('throws WorkspaceSlugInvalidException before writing when the slug has an upper-case letter', async () => {
+            await expect(
+                service.updateWorkspaceSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    'Acme'
+                )
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
+            });
+            expect(workspaceRepository.updateSlugInTx).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceSlugInvalidException before writing when the slug is not allowed', async () => {
             await expect(
                 service.updateWorkspaceSlug(

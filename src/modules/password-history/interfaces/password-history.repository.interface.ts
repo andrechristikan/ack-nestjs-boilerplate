@@ -34,4 +34,8 @@ export interface IPasswordHistoryRepository {
         tx: IDatabaseTransactionClient,
         entries: IPasswordHistoryCreate[]
     ): Promise<void>;
+    deleteManyByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void>;
 }

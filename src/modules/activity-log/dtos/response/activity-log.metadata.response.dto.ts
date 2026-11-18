@@ -26,6 +26,15 @@ export const ActivityLogMetadataResponseSchema = z.object({
         description: 'Time of the affected record when the action was recorded',
         example: faker.date.recent().toISOString(),
     }),
+    workspaceId: z.string().optional().meta({
+        description: 'Identifier of the affected workspace',
+        example: faker.database.mongodbObjectId(),
+    }),
+    previousOwnerUserId: z.string().optional().meta({
+        description:
+            'Identifier of the user who owned the workspace before the transfer',
+        example: faker.database.mongodbObjectId(),
+    }),
     sessionId: z.string().optional().meta({
         description: 'Identifier of the affected session',
         example: faker.database.mongodbObjectId(),

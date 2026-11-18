@@ -348,7 +348,7 @@ describe('MfaService', () => {
             ).resolves.toEqual({
                 method: EnumMfaMethod.totp,
                 totpStep: 58123456,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: null,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -423,7 +423,7 @@ describe('MfaService', () => {
             });
         });
 
-        it('verifies a backup code against the stored hashes and answers its index', async () => {
+        it('verifies a backup code against the stored hashes and answers the matched hash', async () => {
             helperHashService.argon2Compare.mockImplementation(
                 async (_value, hash) => hash === 'hash-two'
             );
@@ -439,7 +439,7 @@ describe('MfaService', () => {
             ).resolves.toEqual({
                 method: EnumMfaMethod.backupCode,
                 totpStep: null,
-                backupCodeIndex: 1,
+                backupCodeHash: 'hash-two',
                 passkey: null,
             });
             expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
@@ -459,7 +459,7 @@ describe('MfaService', () => {
                     backupInput,
                     null
                 )
-            ).resolves.toMatchObject({ backupCodeIndex: 0 });
+            ).resolves.toMatchObject({ backupCodeHash: 'hash-one' });
             expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(1);
             expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
                 'backup-one',
@@ -605,7 +605,7 @@ describe('MfaService', () => {
             ).resolves.toEqual({
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-one', counter: 8 },
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -755,7 +755,7 @@ describe('MfaService', () => {
             ).resolves.toEqual({
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-one', counter: 8 },
             });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
@@ -1168,7 +1168,7 @@ describe('MfaService', () => {
             await service.completeInTx(tx, 'user-quartz', {
                 method: EnumMfaMethod.totp,
                 totpStep: 9,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: null,
             });
 
@@ -1189,7 +1189,7 @@ describe('MfaService', () => {
             await service.completeInTx(tx, 'user-quartz', {
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-one', counter: 8 },
             });
 
@@ -1215,7 +1215,7 @@ describe('MfaService', () => {
             await service.completeInTx(tx, 'user-quartz', {
                 method: EnumMfaMethod.backupCode,
                 totpStep: null,
-                backupCodeIndex: 0,
+                backupCodeHash: 'hash-one',
                 passkey: null,
             });
 
@@ -1238,7 +1238,7 @@ describe('MfaService', () => {
             await service.completeInTx(tx, 'user-quartz', {
                 method: EnumMfaMethod.backupCode,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: null,
             });
 
@@ -1253,6 +1253,49 @@ describe('MfaService', () => {
             expect(mfaRepository.consumeBackupCodeInTx).not.toHaveBeenCalled();
         });
 
+        it('removes the matched hash from the row read in the transaction whatever its position', async () => {
+            mfaRepository.findOneByUserIdInTx.mockResolvedValue({
+                ...baseMfa,
+                backupCodes: ['hash-one', 'hash-two'],
+            });
+            mfaRepository.consumeBackupCodeInTx.mockResolvedValue(true);
+
+            await service.completeInTx(tx, 'user-quartz', {
+                method: EnumMfaMethod.backupCode,
+                totpStep: null,
+                backupCodeHash: 'hash-two',
+                passkey: null,
+            });
+
+            expect(mfaRepository.consumeBackupCodeInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                ['hash-one', 'hash-two'],
+                ['hash-one'],
+                'user-quartz'
+            );
+        });
+
+        it('throws MfaInvalidException and consumes nothing when the hash is absent from the row read in the transaction', async () => {
+            mfaRepository.findOneByUserIdInTx.mockResolvedValue({
+                ...baseMfa,
+                backupCodes: ['hash-one'],
+            });
+
+            await expect(
+                service.completeInTx(tx, 'user-quartz', {
+                    method: EnumMfaMethod.backupCode,
+                    totpStep: null,
+                    backupCodeHash: 'hash-two',
+                    passkey: null,
+                })
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.invalid,
+            });
+            expect(mfaRepository.consumeBackupCodeInTx).not.toHaveBeenCalled();
+        });
+
         it('throws MfaInvalidException when the backup codes changed since the check', async () => {
             mfaRepository.findOneByUserIdInTx.mockResolvedValue(baseMfa);
             mfaRepository.consumeBackupCodeInTx.mockResolvedValue(false);
@@ -1261,7 +1304,7 @@ describe('MfaService', () => {
                 service.completeInTx(tx, 'user-quartz', {
                     method: EnumMfaMethod.backupCode,
                     totpStep: null,
-                    backupCodeIndex: 0,
+                    backupCodeHash: 'hash-one',
                     passkey: null,
                 })
             ).rejects.toMatchObject({
@@ -1278,7 +1321,7 @@ describe('MfaService', () => {
                 service.completeInTx(tx, 'user-quartz', {
                     method: EnumMfaMethod.backupCode,
                     totpStep: null,
-                    backupCodeIndex: 0,
+                    backupCodeHash: 'hash-one',
                     passkey: null,
                 })
             ).rejects.toMatchObject({

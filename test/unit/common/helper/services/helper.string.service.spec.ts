@@ -76,6 +76,20 @@ describe('HelperStringService', () => {
             expect(result).toHaveLength(10);
             expect(result.startsWith('user-')).toBe(true);
         });
+
+        it('returns only lower-case letters, digits, and hyphens', () => {
+            for (let i = 0; i < 100; i++) {
+                expect(service.generateSlug('user-', 30)).toMatch(
+                    /^[0-9a-z-]+$/
+                );
+            }
+        });
+
+        it('lower-cases the prefix', () => {
+            expect(service.generateSlug('Ws-', 10).startsWith('ws-')).toBe(
+                true
+            );
+        });
     });
 
     describe('generateSlugCandidates', () => {

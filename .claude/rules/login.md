@@ -15,7 +15,7 @@ MFA and sessions: `session.md`. Role rank and policies: `role.md`. Passwords and
 
 `AuthSocialService` verifies Google with `audience` set to its client id and Apple against the set client ids; an unset provider throws its not-configured exception first, rethrown unwrapped by `AuthService`. A login stamps the last login inside its transaction (`UserService.updateLoginInTx`).
 
-- `blocked` is final: no admin action, a status change included, touches a blocked user; `inactive` is reversible.
+- `blocked` is final: no admin action on the account, a status change included, touches a blocked user, and an admin ownership transfer moves a workspace away from one (`transaction.md`, Queries); `inactive` is reversible.
 - Login answers one invalid-credential error for an unknown email, a wrong password, and an inactive account. Forgot-password and resend-verification answer 200 in every account state, sending only when the account is eligible and outside the resend window (`forgotPassword.resendInMinutes`, `verification.resendInMinutes`). 403 answers a spent attempt budget (`UserPasswordAttemptMaxException`, `MfaAttemptMaxException`).
 - A credential login whose password matches an active, unverified account (`UserUtil.isUnverified`) sends a verification email when `UserVerificationService.isEmailResendable(user)` holds, then throws `UserEmailNotVerifiedException`, email sent or not. That gate is false for a verified user or inside `verification.resendInMinutes`; `getOneForResendByEmail` calls it too. The check runs after the password matched and before the password-expiry check, so an unverified account with an expired password still gets the email.
 - That login records `userSendVerificationEmail` only when it sends: the verification record, the `verificationEmail` effect (`notify.md`), and the entry share one transaction, committed before the throw.
@@ -29,7 +29,8 @@ MFA and sessions: `session.md`. Role rank and policies: `role.md`. Passwords and
 - A passkey alone signs a user in (`UserLoginWithPasskeyUseCase`): the credential login's account checks, no further factor, `loginWith: passkey`. The `loginWithPasskey` flag alone gates it (`MfaService.checkPasskeyLogin` reads no `mfa` flag); registering a passkey reads the `mfa` flag and its `passkeyAllowed`, never `loginWithPasskey`.
 - A password reset on an account with MFA on proves one enrolled method, a passkey included.
 - A mobile-number verification send inside `verification.resendInMinutes` answers 200 and sends nothing.
-- Self-delete rewrites `email` and `username` to `deleted.<id>` (`user.deleteSelf.emailPattern`, `usernamePattern`), a value no sign-up accepts, which frees both for registration. An `admin` or `superAdmin` account cannot delete itself.
+- Self-delete rewrites `email` and `username` to `deleted.<id>` (`user.deleteSelf.emailPattern`, `usernamePattern`), a value no sign-up accepts, which frees both for registration. In the same transaction it clears the credential and personal columns (`UserRepository.deleteSelfInTx`) and deletes the password history (`PasswordHistoryService.removeByUserInTx`); the hash never stays on the deleted row. An `admin` or `superAdmin` account cannot delete itself.
+- `UserUtil.hasBadWord` replaces every run of characters outside `a-z` and `A-Z` with one space and matches whole words: a word inside a longer token passes.
 - A user who owns a workspace with any other member cannot delete their account until they transfer ownership. A workspace with no other member is deleted with the account.
 
 ## Use-case groups

@@ -115,7 +115,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
     const checked: IMfaCheck = {
         method: EnumMfaMethod.passkey,
         totpStep: null,
-        backupCodeIndex: null,
+        backupCodeHash: null,
         passkey: { id: 'passkey-one', counter: 8 },
     };
     const dto = {

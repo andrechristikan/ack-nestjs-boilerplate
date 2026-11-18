@@ -1750,13 +1750,13 @@ describe('UserAuthService', () => {
         const passkeyCheck: IMfaCheck = {
             method: EnumMfaMethod.passkey,
             totpStep: null,
-            backupCodeIndex: null,
+            backupCodeHash: null,
             passkey: { id: 'passkey-halcyon', counter: 5 },
         };
         const mfaCheck: IMfaCheck = {
             method: EnumMfaMethod.totp,
             totpStep: 7,
-            backupCodeIndex: null,
+            backupCodeHash: null,
             passkey: null,
         };
         const reauthenticationVerification: Verification = {
@@ -1827,7 +1827,7 @@ describe('UserAuthService', () => {
             mfaService.check.mockResolvedValue({
                 method: EnumMfaMethod.backupCode,
                 totpStep: null,
-                backupCodeIndex: 0,
+                backupCodeHash: 'hash-one',
                 passkey: null,
             });
 
@@ -1929,7 +1929,7 @@ describe('UserAuthService', () => {
             mfaService.check.mockResolvedValue({
                 method: EnumMfaMethod.backupCode,
                 totpStep: null,
-                backupCodeIndex: 0,
+                backupCodeHash: 'hash-one',
                 passkey: null,
             });
 
@@ -2349,7 +2349,7 @@ describe('UserAuthService', () => {
         const mfaCheck: IMfaCheck = {
             method: EnumMfaMethod.backupCode,
             totpStep: null,
-            backupCodeIndex: 0,
+            backupCodeHash: 'hash-one',
             passkey: null,
         };
         const passwordOnly: IUserReauthenticationCheck = {
@@ -2422,7 +2422,7 @@ describe('UserAuthService', () => {
             const passkeyMfa: IMfaCheck = {
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
-                backupCodeIndex: null,
+                backupCodeHash: null,
                 passkey: { id: 'passkey-halcyon', counter: 5 },
             };
 

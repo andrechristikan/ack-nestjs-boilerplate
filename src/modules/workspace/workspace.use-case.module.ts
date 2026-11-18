@@ -23,6 +23,7 @@ import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-case
 import { WorkspaceAcceptJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.accept-join-request.use-case';
 import { WorkspaceRejectJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.reject-join-request.use-case';
 import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
+import { WorkspaceTransferOwnershipByAdminUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership-by-admin.use-case';
 import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
 import { WorkspaceGetMembersListUseCase } from '@modules/workspace/use-cases/workspace.get-members-list.use-case';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
@@ -58,6 +59,7 @@ import { Module } from '@nestjs/common';
         WorkspaceAcceptJoinRequestUseCase,
         WorkspaceRejectJoinRequestUseCase,
         WorkspaceTransferOwnershipUseCase,
+        WorkspaceTransferOwnershipByAdminUseCase,
         WorkspaceLeaveUseCase,
         WorkspaceGetMembersListUseCase,
         WorkspaceUpdateMemberRoleUseCase,
@@ -89,6 +91,7 @@ import { Module } from '@nestjs/common';
         WorkspaceAcceptJoinRequestUseCase,
         WorkspaceRejectJoinRequestUseCase,
         WorkspaceTransferOwnershipUseCase,
+        WorkspaceTransferOwnershipByAdminUseCase,
         WorkspaceLeaveUseCase,
         WorkspaceGetMembersListUseCase,
         WorkspaceUpdateMemberRoleUseCase,

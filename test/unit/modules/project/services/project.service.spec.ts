@@ -67,7 +67,7 @@ describe('ProjectService', () => {
     let service: ProjectService;
 
     const configValues: Record<string, unknown> = {
-        'project.slugRegex': /^[0-9a-zA-Z-]+$/,
+        'project.slugRegex': /^[0-9a-z-]+$/,
         'project.slugPrefix': 'p-',
         'project.slugMaxLength': 30,
         'project.slugMaxAttempts': 5,
@@ -448,6 +448,22 @@ describe('ProjectService', () => {
     });
 
     describe('updateProjectSlug', () => {
+        it('throws ProjectSlugInvalidException when the slug has an upper-case letter', async () => {
+            await expect(
+                service.updateProjectSlug(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    'Acme'
+                )
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.slugInvalid,
+            });
+            expect(projectRepository.updateSlugInTx).not.toHaveBeenCalled();
+        });
+
         it('throws ProjectSlugInvalidException when the slug is not allowed', async () => {
             const project = baseProject;
 

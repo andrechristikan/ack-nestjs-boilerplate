@@ -22,7 +22,6 @@ import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
 import type {
     IMfaBackupCodes,
-    IMfaBackupCodesVerifyResult,
     IMfaCheck,
     IMfaStatus,
     IMfaVerifyInput,
@@ -87,19 +86,19 @@ export class MfaService {
     private async verifyBackupCode(
         backupCodes: string[],
         input: string
-    ): Promise<IMfaBackupCodesVerifyResult> {
+    ): Promise<string | null> {
         // Sequential by design: an argon2id compare over several hashes, stopping at the first match
-        for (const [index, hash] of backupCodes.entries()) {
+        for (const hash of backupCodes) {
             const isMatch = await this.helperHashService.argon2Compare(
                 input,
                 hash
             );
             if (isMatch) {
-                return { isValid: true, index };
+                return hash;
             }
         }
 
-        return { isValid: false, index: -1 };
+        return null;
     }
 
     private assertNotLocked(mfa: Mfa | null): void {
@@ -146,19 +145,19 @@ export class MfaService {
             return null;
         }
 
-        const { isValid, index } = await this.verifyBackupCode(
+        const backupCodeHash = await this.verifyBackupCode(
             backupCodes,
             normalizedCode
         );
 
-        return isValid
-            ? {
+        return backupCodeHash === null
+            ? null
+            : {
                   method: EnumMfaMethod.backupCode,
                   totpStep: null,
-                  backupCodeIndex: index,
+                  backupCodeHash,
                   passkey: null,
-              }
-            : null;
+              };
     }
 
     private getMetadataKey(
@@ -204,7 +203,7 @@ export class MfaService {
                     : {
                           method,
                           totpStep,
-                          backupCodeIndex: null,
+                          backupCodeHash: null,
                           passkey: null,
                       };
         } else if (method === EnumMfaMethod.passkey) {
@@ -219,7 +218,7 @@ export class MfaService {
                     : {
                           method,
                           totpStep: null,
-                          backupCodeIndex: null,
+                          backupCodeHash: null,
                           passkey,
                       };
         } else {
@@ -545,11 +544,11 @@ export class MfaService {
         return totpStep;
     }
 
-    /** Resets the counter and the lock, then stamps the used passkey, accepts the checked TOTP step once, or removes the used backup code while the stored codes are still the ones it was verified against; either miss throws MfaInvalidException. */
+    /** Resets the counter and the lock, then stamps the used passkey, accepts the checked TOTP step once, or removes the used backup code by its matched hash from the row read in the transaction, guarded on that row's codes; an absent hash or a guard miss throws MfaInvalidException. */
     async completeInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { totpStep, backupCodeIndex, passkey }: IMfaCheck
+        { totpStep, backupCodeHash, passkey }: IMfaCheck
     ): Promise<void> {
         await this.mfaRepository.resetAttemptInTx(tx, userId, userId);
 
@@ -570,7 +569,7 @@ export class MfaService {
             return;
         }
 
-        if (backupCodeIndex !== null) {
+        if (backupCodeHash !== null) {
             const mfa = await this.mfaRepository.findOneByUserIdInTx(
                 tx,
                 userId
@@ -579,8 +578,13 @@ export class MfaService {
                 throw new MfaInvalidException();
             }
 
-            const remainingBackupCodes = [...mfa.backupCodes];
-            remainingBackupCodes.splice(backupCodeIndex, 1);
+            if (!mfa.backupCodes.includes(backupCodeHash)) {
+                throw new MfaInvalidException();
+            }
+
+            const remainingBackupCodes = mfa.backupCodes.filter(
+                hash => hash !== backupCodeHash
+            );
             const isConsumed = await this.mfaRepository.consumeBackupCodeInTx(
                 tx,
                 userId,

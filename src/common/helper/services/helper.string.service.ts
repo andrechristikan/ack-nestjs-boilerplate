@@ -47,7 +47,7 @@ export class HelperStringService {
         const randomLength = maxLength - prefix.length;
         const randomSuffix = this.random(randomLength);
 
-        return `${prefix}${randomSuffix}`;
+        return `${prefix}${randomSuffix}`.toLowerCase();
     }
 
     generateSlugCandidates(

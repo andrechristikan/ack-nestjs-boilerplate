@@ -471,10 +471,10 @@ export class UserService {
         tx: IDatabaseTransactionClient,
         user: IUser,
         deletedAt: Date
-    ): Promise<User> {
+    ): Promise<void> {
         const identity = this.createDeletedIdentity(user);
 
-        return this.userRepository.deleteSelfInTx(
+        await this.userRepository.deleteSelfInTx(
             tx,
             user.id,
             identity,
@@ -510,7 +510,7 @@ export class UserService {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.importByAdmin,
-            data: { rows, activityLog },
+            data: { rows, activityLog, created: null },
             priority: EnumQueuePriority.medium,
             idempotencyKey: null,
         };

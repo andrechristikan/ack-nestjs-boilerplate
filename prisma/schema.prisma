@@ -1085,6 +1085,7 @@ enum EnumActivityLogAction {
   adminUserImport
   adminDeviceRemove
   adminSessionRevokeAll
+  adminWorkspaceOwnershipTransfer
 
   workspaceCreated
   workspaceUpdated
@@ -1106,6 +1107,8 @@ enum EnumActivityLogAction {
   workspaceMemberRoleUpdatedByAdmin
   workspaceMemberRemovedByAdmin
   workspaceOwnershipTransferredByOwner
+  workspaceOwnershipTransferredByAdmin
+  workspaceOwnershipRemovedByAdmin
   workspaceInviteCreatedByAdmin
   workspaceInviteResentByAdmin
   workspaceInviteAcceptedByInvitee

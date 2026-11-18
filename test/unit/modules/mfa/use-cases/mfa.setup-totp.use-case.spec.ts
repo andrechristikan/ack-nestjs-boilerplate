@@ -83,7 +83,7 @@ describe('MfaSetupTotpUseCase', () => {
         mfa: {
             method: EnumMfaMethod.backupCode,
             totpStep: null,
-            backupCodeIndex: 0,
+            backupCodeHash: 'hash-one',
             passkey: null,
         },
         verificationId: null,

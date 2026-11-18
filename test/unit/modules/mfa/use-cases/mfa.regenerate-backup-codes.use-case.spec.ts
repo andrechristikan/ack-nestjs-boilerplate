@@ -76,7 +76,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
         mfa: {
             method: EnumMfaMethod.totp,
             totpStep: 58123456,
-            backupCodeIndex: null,
+            backupCodeHash: null,
             passkey: null,
         },
         verificationId: null,
