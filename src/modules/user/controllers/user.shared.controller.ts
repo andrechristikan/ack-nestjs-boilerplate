@@ -42,6 +42,8 @@ import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/use
 import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserVerifyMobileNumberRequestSchema } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
+import type { UserVerifyMobileNumberRequestDto } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
 import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
@@ -296,6 +298,51 @@ export class UserSharedController {
         );
     }
 
+    @Doc({ summary: 'user resend mobile number verification' })
+    @Response('user.resendMobileNumberVerification')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/verification/resend')
+    async resendMobileNumberVerification(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        mobileNumberId: string
+    ): Promise<void> {
+        await this.userMobileNumberHttpService.resendMobileNumberVerification(
+            userId,
+            mobileNumberId
+        );
+    }
+
+    @Doc({ summary: 'user verify mobile number' })
+    @Response('user.verifyMobileNumber', {
+        schema: UserMobileNumberResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/verify')
+    async verifyMobileNumber(
+        @AuthJwtPayload('userId') userId: string,
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        mobileNumberId: string,
+        @Body({ schema: UserVerifyMobileNumberRequestSchema })
+        body: UserVerifyMobileNumberRequestDto
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
+        return this.userMobileNumberHttpService.verifyMobileNumber(
+            userId,
+            mobileNumberId,
+            body
+        );
+    }
+
     @Doc({ summary: 'user claim username' })
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()
@@ -429,6 +476,4 @@ export class UserSharedController {
             deviceOwnershipId
         );
     }
-
-    // TODO: Verify number implementation, but which provider?
 }

@@ -9,9 +9,11 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
+import { UserMobileNumberOtpInvalidException } from '@modules/user/exceptions/user.mobile-number-otp-invalid.exception';
 import { UserVerificationMobileNumberResendLimitExceededException } from '@modules/user/exceptions/user.verification-mobile-number-resend-limit-exceeded.exception';
 import type {
     IUserMobileNumber,
@@ -120,7 +122,7 @@ export class UserMobileNumberDomain {
 
     private async enqueueMobileVerification(
         userId: string,
-        mobileNumber: IUserMobileNumber,
+        mobileNumber: Pick<IUserMobileNumber, 'id' | 'number' | 'phoneCode'>,
         verification: IUserMobileNumberVerificationCreate
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(
@@ -143,19 +145,20 @@ export class UserMobileNumberDomain {
     ): Promise<IUserMobileNumber> {
         const countryPromise = this.countryDomain.getOne(countryId);
         const cooldownPromise = this.assertMobileVerificationCooldown(userId);
-        const [country] = await Promise.all([countryPromise, cooldownPromise]);
+        const existPromise = this.userMobileNumberRepository.existsMobileNumber(
+            userId,
+            { number, countryId, phoneCode }
+        );
+        const [country, , checkExist] = await Promise.all([
+            countryPromise,
+            cooldownPromise,
+            existPromise,
+        ]);
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
             country.phoneCode,
             phoneCode
         );
-        // Sequential by design: the lookup consumes the resolved country id.
-        const checkExist =
-            await this.userMobileNumberRepository.existsMobileNumber(userId, {
-                number,
-                countryId: country.id,
-                phoneCode,
-            });
         if (!checkValidMobileNumber) {
             throw new UserMobileNumberInvalidException();
         } else if (checkExist) {
@@ -365,6 +368,142 @@ export class UserMobileNumberDomain {
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
 
                 return mobileNumber;
+            });
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return row;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    async resendMobileNumberVerification(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<void> {
+        const mobileNumberPromise =
+            this.userMobileNumberRepository.findOneMobileNumber(
+                userId,
+                mobileNumberId
+            );
+        const cooldownPromise = this.assertMobileVerificationCooldown(userId);
+        const [mobileNumber] = await Promise.all([
+            mobileNumberPromise,
+            cooldownPromise,
+        ]);
+        if (!mobileNumber) {
+            throw new UserMobileNumberNotFoundException();
+        } else if (mobileNumber.isVerified) {
+            throw new UserMobileNumberAlreadyVerifiedException();
+        }
+
+        try {
+            const verification = this.createMobileVerification();
+            const now = this.helperDateService.create();
+            const sendEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userSendVerificationMobileNumber,
+                userId,
+                createdBy: userId,
+            });
+            const events = [sendEvent];
+            await this.databaseService.withTransaction(async tx => {
+                // Sequential by design: statements on one tx run one at a time; the old code expires before the new one exists.
+                await this.userVerificationRepository.expireActiveMobileNumberInTx(
+                    tx,
+                    mobileNumber.id,
+                    now
+                );
+                await this.userVerificationRepository.createMobileNumberInTx(
+                    tx,
+                    userId,
+                    mobileNumber.id,
+                    `${mobileNumber.phoneCode}${mobileNumber.number}`,
+                    verification,
+                    now
+                );
+            });
+
+            this.activityLogDomain.stagePrepared(events);
+
+            // Sequential by design: the SMS must not go out if the transaction throws.
+            await this.enqueueMobileVerification(
+                userId,
+                mobileNumber,
+                verification
+            );
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
+    }
+
+    async verifyMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        otp: string
+    ): Promise<IUserMobileNumber> {
+        const mobileNumber =
+            await this.userMobileNumberRepository.findOneMobileNumber(
+                userId,
+                mobileNumberId
+            );
+        if (!mobileNumber) {
+            throw new UserMobileNumberNotFoundException();
+        } else if (mobileNumber.isVerified) {
+            throw new UserMobileNumberAlreadyVerifiedException();
+        }
+
+        // Sequential by design: a code is read only for a number the user owns and has not verified.
+        const verification =
+            await this.userVerificationRepository.findOneActiveMobileNumber(
+                userId,
+                mobileNumber.id
+            );
+        if (!verification) {
+            throw new UserMobileNumberOtpInvalidException();
+        }
+
+        const hashedOtp = this.helperHashService.sha256Hash(otp);
+        const isOtpValid = this.helperHashService.sha256Compare(
+            hashedOtp,
+            verification.token
+        );
+        if (!isOtpValid) {
+            throw new UserMobileNumberOtpInvalidException();
+        }
+
+        try {
+            const now = this.helperDateService.create();
+            const verifiedEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userVerifiedMobileNumber,
+                userId,
+                createdBy: userId,
+            });
+            const events = [verifiedEvent];
+            const row = await this.databaseService.withTransaction(async tx => {
+                // Sequential by design: statements on one tx run one at a time.
+                await this.userVerificationRepository.markUsedInTx(
+                    tx,
+                    verification.id,
+                    now
+                );
+                const verifiedMobileNumber =
+                    await this.userMobileNumberRepository.markVerifiedInTx(
+                        tx,
+                        mobileNumber.id,
+                        now
+                    );
+                await this.userDomain.touchUpdatedByInTx(tx, userId);
+
+                return verifiedMobileNumber;
             });
 
             this.activityLogDomain.stagePrepared(events);
