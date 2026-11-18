@@ -1,3 +1,4 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationQueryCursorParams,
@@ -19,7 +20,8 @@ import { Injectable } from '@nestjs/common';
 export class PasswordHistoryService {
     constructor(
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
-        private readonly authPasswordUtil: AuthPasswordUtil
+        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -93,5 +95,12 @@ export class PasswordHistoryService {
         userId: string
     ): Promise<void> {
         await this.passwordHistoryRepository.deleteManyByUserInTx(tx, userId);
+    }
+
+    /** Deletes the histories past their reuse period, the rows whose expiredAt is before now; returns the count. */
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.create();
+
+        return this.passwordHistoryRepository.deleteExpiredBefore(now);
     }
 }

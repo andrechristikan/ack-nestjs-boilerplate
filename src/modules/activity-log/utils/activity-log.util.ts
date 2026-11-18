@@ -9,8 +9,10 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
+    IActivityLog,
     IActivityLogActorPayload,
     IActivityLogContextPayload,
+    IActivityLogMasked,
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
@@ -21,6 +23,32 @@ export class ActivityLogUtil {
         private readonly messageService: MessageService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
+
+    private toMasked(row: IActivityLog, userId: string): IActivityLogMasked {
+        if (row.createdBy === userId) {
+            return row;
+        }
+
+        const { metadata } = row;
+        const isMetadataObject =
+            typeof metadata === 'object' &&
+            metadata !== null &&
+            !Array.isArray(metadata);
+        const hidden = {
+            ipAddress: null,
+            userAgent: null,
+            geoLocation: null,
+            createdBy: null,
+        };
+
+        if (!isMetadataObject) {
+            return { ...row, ...hidden };
+        }
+
+        const { actorUserId, ...kept } = metadata;
+
+        return { ...row, ...hidden, metadata: kept };
+    }
 
     getDescription(
         action: EnumActivityLogAction,
@@ -78,5 +106,9 @@ export class ActivityLogUtil {
             ...(metadata !== null && { metadata }),
             createdBy: actorId,
         };
+    }
+
+    toMaskedList(rows: IActivityLog[], userId: string): IActivityLogMasked[] {
+        return rows.map(row => this.toMasked(row, userId));
     }
 }

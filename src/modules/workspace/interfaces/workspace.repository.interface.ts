@@ -18,10 +18,10 @@ export interface IWorkspaceRepository {
     findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
     countByOwnerInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        workspaceIds: string[]
     ): Promise<number>;
     findWithPaginationCursorByMember(
-        userId: string,
+        workspaceIds: string[],
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>>;
     findWithPaginationOffsetByAdmin(
@@ -58,10 +58,12 @@ export interface IWorkspaceRepository {
     ): Promise<boolean>;
     existsOwnedWithOtherMembersInTx(
         tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
         userId: string
     ): Promise<boolean>;
     softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
         userId: string,
         deletedAt: Date
     ): Promise<string[]>;

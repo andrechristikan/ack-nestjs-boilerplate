@@ -77,4 +77,5 @@ export interface IUserVerificationRepository {
         }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

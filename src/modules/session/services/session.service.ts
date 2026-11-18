@@ -58,6 +58,7 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 @Injectable()
 export class SessionService {
     private readonly idleTimeoutInMs: number;
+    private readonly retentionInMs: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -75,6 +76,9 @@ export class SessionService {
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
             'session.idleTimeoutInMs'
+        )!;
+        this.retentionInMs = this.configService.get<number>(
+            'session.retentionInMs'
         )!;
     }
 
@@ -237,6 +241,17 @@ export class SessionService {
             reloaded.jtiDigest,
             jtiDigest
         );
+    }
+
+    /** Deletes the sessions that expired longer ago than session.retentionInMs; returns the count. */
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.create();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.sessionRepository.deleteExpiredBefore(threshold);
     }
 
     /** Invalidates the login key of each session; a Redis connection error throws. */

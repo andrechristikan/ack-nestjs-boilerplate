@@ -330,4 +330,12 @@ export class SessionRepository implements ISessionRepository {
 
         return sessions;
     }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } = await this.databaseService.client.session.deleteMany({
+            where: { expiredAt: { lt: threshold } },
+        });
+
+        return count;
+    }
 }

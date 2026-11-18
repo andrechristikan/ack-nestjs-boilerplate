@@ -23,4 +23,5 @@ export interface IMfaChallengeRepository {
         now: Date,
         updatedBy: string
     ): Promise<boolean>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

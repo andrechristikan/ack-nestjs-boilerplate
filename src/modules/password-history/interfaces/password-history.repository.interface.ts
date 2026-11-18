@@ -38,4 +38,5 @@ export interface IPasswordHistoryRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

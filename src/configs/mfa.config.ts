@@ -14,6 +14,7 @@ export interface IConfigMfa {
         encryptionSecret: string;
     };
     challengeTtlInMs: number;
+    challengeRetentionInMs: number;
     backupCodes: {
         count: number;
         length: number;
@@ -38,6 +39,7 @@ export default registerAs('mfa', (): IConfigMfa => {
             encryptionSecret: process.env.MFA_TOTP_ENCRYPTION_SECRET!,
         },
         challengeTtlInMs: ms('5m'),
+        challengeRetentionInMs: ms('7d'),
         backupCodes: {
             count: 8,
             length: 10,

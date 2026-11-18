@@ -92,6 +92,32 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         return reviewers.map(reviewer => reviewer.userId);
     }
 
+    async findWorkspaceIdsByUser(
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]> {
+        const members =
+            await this.databaseService.client.workspaceMember.findMany({
+                where: { userId, ...(role !== null && { role }) },
+                select: { workspaceId: true },
+            });
+
+        return members.map(member => member.workspaceId);
+    }
+
+    async findWorkspaceIdsByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]> {
+        const members = await tx.workspaceMember.findMany({
+            where: { userId, ...(role !== null && { role }) },
+            select: { workspaceId: true },
+        });
+
+        return members.map(member => member.workspaceId);
+    }
+
     async findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Duration } from 'luxon';
+import { Duration } from 'luxon';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -79,6 +79,7 @@ describe('MfaChallengeService', () => {
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string | number> = {
                 'mfa.challengeTtlInMs': 300000,
+                'mfa.challengeRetentionInMs': 604800000,
                 'app.encryptionSecret': 'app-root-secret',
             };
 
@@ -438,6 +439,29 @@ describe('MfaChallengeService', () => {
 
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the challenges expired before now minus the retention and returns the count', async () => {
+            const retention = Duration.fromObject({ milliseconds: 604800000 });
+            const threshold = new Date('2026-02-22T00:00:00.000Z');
+            helperDateService.createDuration.mockReturnValue(retention);
+            helperDateService.backward.mockReturnValue(threshold);
+            mfaChallengeRepository.deleteExpiredBefore.mockResolvedValue(6);
+
+            await expect(service.purgeExpired()).resolves.toBe(6);
+
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                milliseconds: 604800000,
+            });
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                retention
+            );
+            expect(
+                mfaChallengeRepository.deleteExpiredBefore
+            ).toHaveBeenCalledWith(threshold);
         });
     });
 

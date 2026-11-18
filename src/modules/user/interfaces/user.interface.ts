@@ -423,3 +423,11 @@ export interface IUserImportByAdminQueueResponse extends IQueueResponse {
     created: number;
     failed: number;
 }
+
+export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {
+    sessions: number;
+    mfaChallenges: number;
+    passwordHistories: number;
+    verifications: number;
+    forgotPasswords: number;
+}

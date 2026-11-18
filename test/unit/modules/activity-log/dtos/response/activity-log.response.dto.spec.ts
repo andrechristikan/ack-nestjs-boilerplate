@@ -42,6 +42,18 @@ describe('ActivityLogResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
+    it('parses a row with createdBy, userAgent, ipAddress, and geoLocation all null', () => {
+        const masked = {
+            ...row,
+            createdBy: null,
+            userAgent: null,
+            ipAddress: null,
+            geoLocation: null,
+        };
+
+        expect(ActivityLogResponseSchema.parse(masked)).toEqual(masked);
+    });
+
     it('strips updatedAt, updatedBy, deletedAt, deletedBy, and an undeclared key', () => {
         const result = ActivityLogResponseSchema.parse({
             ...row,

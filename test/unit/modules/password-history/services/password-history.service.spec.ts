@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -24,10 +25,14 @@ describe('PasswordHistoryService', () => {
         mock<PasswordHistoryRepository>();
     const authPasswordUtil: MockProxy<AuthPasswordUtil> =
         mock<AuthPasswordUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const now = new Date('2026-03-01T00:00:00.000Z');
     let service: PasswordHistoryService;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        helperDateService.create.mockReturnValue(now);
         const module = await Test.createTestingModule({
             providers: [
                 PasswordHistoryService,
@@ -36,6 +41,7 @@ describe('PasswordHistoryService', () => {
                     useValue: passwordHistoryRepository,
                 },
                 { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
         service = module.get(PasswordHistoryService);
@@ -191,6 +197,19 @@ describe('PasswordHistoryService', () => {
             expect(
                 passwordHistoryRepository.deleteManyByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-id');
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the histories past their reuse period at now and returns the count', async () => {
+            passwordHistoryRepository.deleteExpiredBefore.mockResolvedValue(5);
+
+            await expect(service.purgeExpired()).resolves.toBe(5);
+
+            expect(
+                passwordHistoryRepository.deleteExpiredBefore
+            ).toHaveBeenCalledWith(now);
+            expect(helperDateService.backward).not.toHaveBeenCalled();
         });
     });
 

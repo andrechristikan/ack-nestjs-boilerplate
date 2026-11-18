@@ -35,6 +35,7 @@ import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exc
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -45,6 +46,7 @@ export class WorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
+        private readonly workspaceService: WorkspaceService,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
@@ -103,11 +105,10 @@ export class WorkspaceMemberService {
 
         try {
             await this.outboxService.withTransaction(async tx => {
-                const ownedCount =
-                    await this.workspaceRepository.countByOwnerInTx(
-                        tx,
-                        targetMember.userId
-                    );
+                const ownedCount = await this.workspaceService.countOwnedInTx(
+                    tx,
+                    targetMember.userId
+                );
                 if (ownedCount >= maxWorkspacesPerUser) {
                     throw new WorkspaceCapReachedException();
                 }

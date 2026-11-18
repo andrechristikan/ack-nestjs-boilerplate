@@ -11,7 +11,10 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -101,8 +104,14 @@ export class WorkspaceService {
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Workspace>> {
+        const workspaceIds =
+            await this.workspaceMemberRepository.findWorkspaceIdsByUser(
+                userId,
+                null
+            );
+
         return this.workspaceRepository.findWithPaginationCursorByMember(
-            userId,
+            workspaceIds,
             pagination
         );
     }
@@ -181,11 +190,7 @@ export class WorkspaceService {
 
             try {
                 return await this.outboxService.withTransaction(async tx => {
-                    const ownedCount =
-                        await this.workspaceRepository.countByOwnerInTx(
-                            tx,
-                            userId
-                        );
+                    const ownedCount = await this.countOwnedInTx(tx, userId);
                     if (ownedCount >= maxWorkspacesPerUser) {
                         throw new WorkspaceCapReachedException();
                     }
@@ -365,13 +370,34 @@ export class WorkspaceService {
         }
     }
 
+    async countOwnedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        const workspaceIds =
+            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
+                tx,
+                userId,
+                EnumWorkspaceMemberRole.owner
+            );
+
+        return this.workspaceRepository.countByOwnerInTx(tx, workspaceIds);
+    }
+
     async assertOwnedHasNoOtherMembersInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
+        const workspaceIds =
+            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
+                tx,
+                userId,
+                EnumWorkspaceMemberRole.owner
+            );
         const hasOtherMembers =
             await this.workspaceRepository.existsOwnedWithOtherMembersInTx(
                 tx,
+                workspaceIds,
                 userId
             );
         if (hasOtherMembers) {
@@ -384,8 +410,16 @@ export class WorkspaceService {
         userId: string,
         deletedAt: Date
     ): Promise<string[]> {
+        const workspaceIds =
+            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
+                tx,
+                userId,
+                EnumWorkspaceMemberRole.owner
+            );
+
         return this.workspaceRepository.softDeleteOwnedByUserInTx(
             tx,
+            workspaceIds,
             userId,
             deletedAt
         );

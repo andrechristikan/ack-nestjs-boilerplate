@@ -86,6 +86,8 @@ Rule: `activity-entry.md`.
 Rule: `activity-log.md`.
 
 - Storing no request log on the affected user's row: the admin's audit view of that row loses it.
+- A second response schema for the shared scope: it differs from the canonical one only in a nullable `userAgent`.
+- The page mapped row by row in each use case: two use cases repeat one loop.
 
 ### A date is stored and passed as ISO 8601 and formatted at render
 

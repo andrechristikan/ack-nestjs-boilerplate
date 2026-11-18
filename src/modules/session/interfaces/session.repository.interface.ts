@@ -89,4 +89,5 @@ export interface ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionUserRef[]>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

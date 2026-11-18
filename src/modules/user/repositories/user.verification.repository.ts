@@ -277,4 +277,13 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             },
         });
     }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.verification.deleteMany({
+                where: { expiredAt: { lt: threshold } },
+            });
+
+        return count;
+    }
 }

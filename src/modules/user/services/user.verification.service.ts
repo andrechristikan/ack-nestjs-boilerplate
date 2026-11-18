@@ -40,6 +40,7 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 export class UserVerificationService {
     private readonly otpLength: number;
     private readonly expiresInMinutes: number;
+    private readonly retentionInMs: number;
 
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
@@ -60,6 +61,9 @@ export class UserVerificationService {
         )!;
         this.expiresInMinutes = this.configService.get<number>(
             'verification.expiresInMinutes'
+        )!;
+        this.retentionInMs = this.configService.get<number>(
+            'verification.retentionInMs'
         )!;
     }
 
@@ -518,5 +522,16 @@ export class UserVerificationService {
             verification,
             createdBy
         );
+    }
+
+    /** Deletes the verifications that expired longer ago than verification.retentionInMs; returns the count. */
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.create();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.userVerificationRepository.deleteExpiredBefore(threshold);
     }
 }

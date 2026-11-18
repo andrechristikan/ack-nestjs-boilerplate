@@ -17,6 +17,7 @@ import type {
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -172,18 +173,23 @@ describe('WorkspaceService', () => {
     });
 
     describe('getListCursorByMember', () => {
-        it('delegates to the repository cursor listing', async () => {
-            const pagination: IPaginationQueryCursorParams = {
-                fingerprint: 'aaaaaaaaaaaaaaaa',
-                limit: 20,
-                orderBy: [],
-            };
+        const pagination: IPaginationQueryCursorParams = {
+            fingerprint: 'aaaaaaaaaaaaaaaa',
+            limit: 20,
+            orderBy: [],
+        };
+
+        it('reads the member workspace ids and lists the workspaces by them', async () => {
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,
                 data: [workspace],
             };
+            workspaceMemberRepository.findWorkspaceIdsByUser.mockResolvedValue([
+                'workspace-1',
+                'workspace-2',
+            ]);
             workspaceRepository.findWithPaginationCursorByMember.mockResolvedValue(
                 page
             );
@@ -195,8 +201,23 @@ describe('WorkspaceService', () => {
 
             expect(result).toBe(page);
             expect(
+                workspaceMemberRepository.findWorkspaceIdsByUser
+            ).toHaveBeenCalledWith('user-1', null);
+            expect(
                 workspaceRepository.findWithPaginationCursorByMember
-            ).toHaveBeenCalledWith('user-1', pagination);
+            ).toHaveBeenCalledWith(['workspace-1', 'workspace-2'], pagination);
+        });
+
+        it('passes an empty id list to the repository unchanged', async () => {
+            workspaceMemberRepository.findWorkspaceIdsByUser.mockResolvedValue(
+                []
+            );
+
+            await service.getListCursorByMember('user-1', pagination);
+
+            expect(
+                workspaceRepository.findWithPaginationCursorByMember
+            ).toHaveBeenCalledWith([], pagination);
         });
     });
 
@@ -319,6 +340,9 @@ describe('WorkspaceService', () => {
             ]);
             databaseUtil.createId.mockReturnValue('workspace-1');
             featureFlagService.getMetadataNumber.mockResolvedValue(5);
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                ['owned-1']
+            );
         });
 
         it('refuses a create for an owner of 2 workspaces when the flag caps at 2', async () => {
@@ -398,9 +422,12 @@ describe('WorkspaceService', () => {
                     ],
                 messagePath: 'workspace.error.capReached',
             });
+            expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
-                'user-1'
+                ['owned-1']
             );
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
@@ -422,9 +449,12 @@ describe('WorkspaceService', () => {
             );
 
             expect(result).toBe(workspace);
+            expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
-                'user-1'
+                ['owned-1']
             );
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
@@ -822,9 +852,13 @@ describe('WorkspaceService', () => {
     });
 
     describe('softDeleteOwnedByUserInTx', () => {
-        it('soft-deletes every live workspace the user owns on the given transaction and returns their ids', async () => {
-            const tx = {} as IDatabaseTransactionClient;
-            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+        const tx = {} as IDatabaseTransactionClient;
+        const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+
+        it('reads the owner workspace ids on the transaction and soft-deletes them, returning their ids', async () => {
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                ['workspace-1', 'workspace-2']
+            );
             workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
                 'workspace-1',
                 'workspace-2',
@@ -835,13 +869,42 @@ describe('WorkspaceService', () => {
             ).resolves.toEqual(['workspace-1', 'workspace-2']);
 
             expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            expect(
                 workspaceRepository.softDeleteOwnedByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', deletedAt);
+            ).toHaveBeenCalledWith(
+                tx,
+                ['workspace-1', 'workspace-2'],
+                'user-1',
+                deletedAt
+            );
+        });
+
+        it('passes an empty owner id list to the repository unchanged', async () => {
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                []
+            );
+            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([]);
+
+            await expect(
+                service.softDeleteOwnedByUserInTx(tx, 'user-1', deletedAt)
+            ).resolves.toEqual([]);
+
+            expect(
+                workspaceRepository.softDeleteOwnedByUserInTx
+            ).toHaveBeenCalledWith(tx, [], 'user-1', deletedAt);
         });
     });
 
     describe('assertOwnedHasNoOtherMembersInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
+
+        beforeEach(() => {
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                ['workspace-1']
+            );
+        });
 
         it('throws WorkspaceOwnerTransferRequiredException when an owned workspace has another member', async () => {
             workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
@@ -862,8 +925,11 @@ describe('WorkspaceService', () => {
                 messagePath: 'workspace.error.ownerTransferRequired',
             });
             expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            expect(
                 workspaceRepository.existsOwnedWithOtherMembersInTx
-            ).toHaveBeenCalledWith(tx, 'user-1');
+            ).toHaveBeenCalledWith(tx, ['workspace-1'], 'user-1');
         });
 
         it('resolves when no owned workspace has another member', async () => {
@@ -874,6 +940,41 @@ describe('WorkspaceService', () => {
             await expect(
                 service.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
             ).resolves.toBeUndefined();
+        });
+    });
+
+    describe('countOwnedInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('reads the owner workspace ids on the transaction and counts them', async () => {
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                ['workspace-1', 'workspace-2']
+            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+
+            await expect(service.countOwnedInTx(tx, 'user-1')).resolves.toBe(2);
+
+            expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                ['workspace-1', 'workspace-2']
+            );
+        });
+
+        it('passes an empty owner id list to the repository unchanged', async () => {
+            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
+                []
+            );
+            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+
+            await expect(service.countOwnedInTx(tx, 'user-1')).resolves.toBe(0);
+
+            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+                tx,
+                []
+            );
         });
     });
 

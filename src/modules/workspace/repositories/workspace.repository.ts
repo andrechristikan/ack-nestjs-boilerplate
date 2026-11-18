@@ -9,10 +9,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import type {
     IWorkspaceCreate,
@@ -69,20 +66,18 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async countByOwnerInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        workspaceIds: string[]
     ): Promise<number> {
         return tx.workspace.count({
             where: {
+                id: { in: workspaceIds },
                 deletedAt: null,
-                members: {
-                    some: { userId, role: EnumWorkspaceMemberRole.owner },
-                },
             },
         });
     }
 
     async findWithPaginationCursorByMember(
-        userId: string,
+        workspaceIds: string[],
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>> {
         return this.paginationService.cursor(
@@ -93,7 +88,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                     AND: [
                         where ?? {},
                         { deletedAt: null },
-                        { members: { some: { userId } } },
+                        { id: { in: workspaceIds } },
                     ],
                 },
             }
@@ -197,22 +192,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async existsOwnedWithOtherMembersInTx(
         tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
         userId: string
     ): Promise<boolean> {
         const workspace = await tx.workspace.findFirst({
             where: {
+                id: { in: workspaceIds },
                 deletedAt: null,
-                AND: [
-                    {
-                        members: {
-                            some: {
-                                userId,
-                                role: EnumWorkspaceMemberRole.owner,
-                            },
-                        },
-                    },
-                    { members: { some: { userId: { not: userId } } } },
-                ],
+                members: { some: { userId: { not: userId } } },
             },
             select: { id: true },
         });
@@ -222,23 +209,22 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
         userId: string,
         deletedAt: Date
     ): Promise<string[]> {
         const where: Prisma.WorkspaceWhereInput = {
+            id: { in: workspaceIds },
             deletedAt: null,
-            members: {
-                some: { userId, role: EnumWorkspaceMemberRole.owner },
-            },
         };
         const workspaces = await tx.workspace.findMany({
             where,
             select: { id: true },
         });
-        const workspaceIds = workspaces.map(({ id }) => id);
+        const liveWorkspaceIds = workspaces.map(({ id }) => id);
 
         const deletedSlugPattern = this.deletedSlugPattern;
-        for (const workspaceId of workspaceIds) {
+        for (const workspaceId of liveWorkspaceIds) {
             await tx.workspace.updateMany({
                 where: { id: workspaceId, deletedAt: null },
                 data: {
@@ -249,6 +235,6 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             });
         }
 
-        return workspaceIds;
+        return liveWorkspaceIds;
     }
 }

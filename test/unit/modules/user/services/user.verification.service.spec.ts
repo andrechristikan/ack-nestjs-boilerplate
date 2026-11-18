@@ -18,6 +18,7 @@ import type { Verification } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { Duration } from 'luxon';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -186,6 +187,7 @@ describe('UserVerificationService', () => {
                 ({
                     'verification.otpLength': 6,
                     'verification.expiresInMinutes': 5,
+                    'verification.retentionInMs': 7776000000,
                 })[key]
         );
 
@@ -1108,6 +1110,31 @@ describe('UserVerificationService', () => {
             await expect(
                 service.getOneActiveMobileRecipient('verification-flint')
             ).resolves.toBeNull();
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the verifications expired before now minus the retention and returns the count', async () => {
+            const retention = Duration.fromObject({
+                milliseconds: 7776000000,
+            });
+            const threshold = new Date('2025-12-01T00:00:00.000Z');
+            helperDateService.createDuration.mockReturnValue(retention);
+            helperDateService.backward.mockReturnValue(threshold);
+            userVerificationRepository.deleteExpiredBefore.mockResolvedValue(8);
+
+            await expect(service.purgeExpired()).resolves.toBe(8);
+
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                milliseconds: 7776000000,
+            });
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                retention
+            );
+            expect(
+                userVerificationRepository.deleteExpiredBefore
+            ).toHaveBeenCalledWith(threshold);
         });
     });
 

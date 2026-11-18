@@ -6,6 +6,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
+import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
@@ -17,7 +18,8 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 export class UserProcessor extends QueueProcessorBase {
     constructor(
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
-        private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase
+        private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase,
+        private readonly userProcessPurgeExpiredUseCase: UserProcessPurgeExpiredUseCase
     ) {
         super();
     }
@@ -63,6 +65,8 @@ export class UserProcessor extends QueueProcessorBase {
                     data as IUserImportByAdminPayload
                 );
             }
+            case EnumUserProcess.purgeExpired:
+                return await this.userProcessPurgeExpiredUseCase.execute();
             default:
                 this.throwUnknownProcess(
                     'user.queue.error.unknownProcess',

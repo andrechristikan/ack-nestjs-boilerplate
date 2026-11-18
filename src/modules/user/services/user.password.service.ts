@@ -51,6 +51,7 @@ export class UserPasswordService {
     private readonly tokenLength: number;
     private readonly resendInMinutes: number;
     private readonly linkPattern: string;
+    private readonly retentionInMs: number;
 
     constructor(
         private readonly userForgotPasswordRepository: UserForgotPasswordRepository,
@@ -88,6 +89,9 @@ export class UserPasswordService {
         )!;
         this.linkPattern = this.configService.get<string>(
             'forgotPassword.linkPattern'
+        )!;
+        this.retentionInMs = this.configService.get<number>(
+            'forgotPassword.retentionInMs'
         )!;
     }
 
@@ -380,5 +384,16 @@ export class UserPasswordService {
             userId,
             updatedBy
         );
+    }
+
+    /** Deletes the reset rows that expired longer ago than forgotPassword.retentionInMs; returns the count. */
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.create();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.userForgotPasswordRepository.deleteExpiredBefore(threshold);
     }
 }

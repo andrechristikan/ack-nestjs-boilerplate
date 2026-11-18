@@ -8,6 +8,7 @@ export interface IConfigUser {
         maxSizeInBytes: number;
         filenameRandomLength: number;
     };
+    purgeExpiredCron: string;
     maxDataImport: number;
     maxDataExport: number;
     default: {
@@ -31,6 +32,7 @@ export default registerAs('user', (): IConfigUser => ({
         maxSizeInBytes: bytes('2mb') ?? 0,
         filenameRandomLength: 20,
     },
+    purgeExpiredCron: '0 3 * * *',
     maxDataImport: 50,
     maxDataExport: 500,
     default: {

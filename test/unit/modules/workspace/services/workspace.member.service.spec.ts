@@ -45,6 +45,7 @@ import { UserService } from '@modules/user/services/user.service';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import {
     buildUser,
     buildRequestContext,
@@ -58,6 +59,8 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
+    const workspaceService: MockProxy<WorkspaceService> =
+        mock<WorkspaceService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -121,6 +124,7 @@ describe('WorkspaceMemberService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
+                { provide: WorkspaceService, useValue: workspaceService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -405,7 +409,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
+            workspaceService.countOwnedInTx.mockResolvedValue(5);
 
             await expect(
                 service.transferOwnership(
@@ -426,7 +430,7 @@ describe('WorkspaceMemberService', () => {
                     ],
                 messagePath: 'workspace.error.capReached',
             });
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+            expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2'
             );
@@ -441,7 +445,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+            workspaceService.countOwnedInTx.mockResolvedValue(2);
 
             await expect(
                 service.transferOwnership(
@@ -465,7 +469,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+            workspaceService.countOwnedInTx.mockResolvedValue(2);
 
             await expect(
                 service.transferOwnership(
@@ -512,7 +516,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(4);
+            workspaceService.countOwnedInTx.mockResolvedValue(4);
 
             await expect(
                 service.transferOwnership(
@@ -529,7 +533,7 @@ describe('WorkspaceMemberService', () => {
                 workspaceMemberRepository.findOneByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
+            expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2'
             );
@@ -539,7 +543,7 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledBefore(
+            expect(workspaceService.countOwnedInTx).toHaveBeenCalledBefore(
                 workspaceMemberRepository.promoteToOwnerInTx
             );
             expect(
@@ -552,7 +556,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceService.countOwnedInTx.mockResolvedValue(0);
 
             await service.transferOwnership(
                 requestContext,
@@ -605,7 +609,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceService.countOwnedInTx.mockResolvedValue(0);
             workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
                 false
             );
@@ -639,7 +643,7 @@ describe('WorkspaceMemberService', () => {
                 target
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceService.countOwnedInTx.mockResolvedValue(0);
             workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
 
             await expect(
@@ -735,7 +739,7 @@ describe('WorkspaceMemberService', () => {
                 .mockReturnValueOnce(secondEntry)
                 .mockReturnValueOnce(thirdEntry);
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
+            workspaceService.countOwnedInTx.mockResolvedValue(0);
         });
 
         it('throws WorkspaceNotFoundException for a missing or deleted workspace', async () => {
@@ -847,7 +851,7 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceCapReachedException for a target at the cap', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
+            workspaceService.countOwnedInTx.mockResolvedValue(5);
 
             await expect(
                 service.transferOwnershipByAdmin(

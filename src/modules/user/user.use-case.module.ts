@@ -44,6 +44,7 @@ import { UserSendVerificationMobileNumberUseCase } from '@modules/user/use-cases
 import { UserVerifyMobileNumberUseCase } from '@modules/user/use-cases/user.verify-mobile-number.use-case';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
+import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
@@ -88,6 +89,7 @@ import { Module } from '@nestjs/common';
         UserVerifyMobileNumberUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
+        UserProcessPurgeExpiredUseCase,
     ],
     exports: [
         UserLoginWithSocialUseCase,
@@ -128,6 +130,7 @@ import { Module } from '@nestjs/common';
         UserVerifyMobileNumberUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
+        UserProcessPurgeExpiredUseCase,
     ],
     imports: [
         ActivityLogModule,

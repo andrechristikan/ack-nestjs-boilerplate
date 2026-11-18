@@ -7,6 +7,8 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     ActivityLogDefaultAvailableOrderBy,
@@ -22,6 +24,7 @@ import {
 describe('ActivityLogGetListCursorByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -55,6 +58,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             providers: [
                 ActivityLogGetListCursorByUserUseCase,
                 { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogUtil, useValue: activityLogUtil },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -75,6 +79,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             activityLogService.getListCursorByUser.mockResolvedValue(
                 cursorPage
             );
+            activityLogUtil.toMaskedList.mockReturnValue(cursorPage.data);
 
             const result = await useCase.execute(authContext, cursorQuery);
 
@@ -93,6 +98,37 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             expect(activityLogService.getListCursorByUser).toHaveBeenCalledWith(
                 'user-1',
                 params
+            );
+        });
+
+        it('maps every row of the page through toMaskedList with the reader id', async () => {
+            const own = buildActivityLog('log-1', 'user-1');
+            const other = buildActivityLog('log-2', 'admin-1');
+            const hidden = {
+                ...other,
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: null,
+            };
+            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
+            activityLogService.getListCursorByUser.mockResolvedValue({
+                ...cursorPage,
+                hasNext: true,
+                data: [own, other],
+            });
+            activityLogUtil.toMaskedList.mockReturnValue([own, hidden]);
+
+            const result = await useCase.execute(authContext, cursorQuery);
+
+            expect(result).toEqual({
+                ...cursorPage,
+                hasNext: true,
+                data: [own, hidden],
+            });
+            expect(activityLogUtil.toMaskedList).toHaveBeenCalledWith(
+                [own, other],
+                'user-1'
             );
         });
     });

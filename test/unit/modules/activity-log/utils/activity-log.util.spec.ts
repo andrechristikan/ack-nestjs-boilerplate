@@ -7,6 +7,7 @@ import { MessageService } from '@common/message/services/message.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import {
     buildApiKeyContext,
@@ -203,6 +204,66 @@ describe('ActivityLogUtil', () => {
                 userAgent: null,
                 geoLocation: null,
                 createdBy: 'user-1',
+            });
+        });
+    });
+
+    describe('toMaskedList', () => {
+        const geoLocation: GeoLocation = {
+            latitude: 1,
+            longitude: 2,
+            country: 'ID',
+            region: 'Jakarta',
+            city: 'Jakarta',
+        };
+
+        it('hides the request details and actorUserId of another actor entry', () => {
+            const row = {
+                ...buildActivityLog('log-1', 'admin-1'),
+                geoLocation,
+                metadata: {
+                    actorUserId: 'admin-1',
+                    targetUserId: 'user-1',
+                },
+            };
+
+            const [result] = util.toMaskedList([row], 'user-1');
+
+            expect(result).toEqual({
+                ...row,
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: null,
+                metadata: { targetUserId: 'user-1' },
+            });
+        });
+
+        it('returns an empty list for an empty page', () => {
+            expect(util.toMaskedList([], 'user-1')).toEqual([]);
+        });
+
+        it('returns the reader own entry unchanged', () => {
+            const row = {
+                ...buildActivityLog('log-1', 'user-1'),
+                metadata: { actorUserId: 'user-1' },
+            };
+
+            expect(util.toMaskedList([row], 'user-1')).toEqual([row]);
+        });
+
+        it('keeps null metadata null on another actor entry', () => {
+            const row = buildActivityLog('log-1', 'admin-1');
+
+            const [result] = util.toMaskedList([row], 'user-1');
+
+            expect(result).toEqual({
+                ...row,
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: null,
+                metadata: null,
             });
         });
     });

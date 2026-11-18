@@ -39,6 +39,7 @@
     "queue": {
         "deletePhoto": "Deleted previous user photo.",
         "importByAdmin": "Imported users by admin.",
+        "purgeExpired": "Purged expired identity rows.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "importFailed": "The user import job failed.",

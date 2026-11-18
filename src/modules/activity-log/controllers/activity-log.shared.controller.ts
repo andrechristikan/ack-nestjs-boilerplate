@@ -5,7 +5,7 @@ import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogMasked } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
 import { ActivityLogGetListCursorByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -52,7 +52,7 @@ export class ActivityLogSharedController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: ActivityLogSharedListRequestSchema })
         query: ActivityLogSharedListRequestDto
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLogMasked>> {
         return this.activityLogGetListCursorByUserUseCase.execute(
             authContext,
             query
@@ -77,7 +77,7 @@ export class ActivityLogSharedController {
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: ActivityLogSharedListRequestSchema })
         query: ActivityLogSharedListRequestDto
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLogMasked>> {
         return this.activityLogGetListCursorByWorkspaceUseCase.execute(
             authContext,
             workspaceContext,

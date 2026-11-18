@@ -108,6 +108,7 @@ describe('UserPasswordService', () => {
         'forgotPassword.expiresInMinutes': 15,
         'forgotPassword.tokenLength': 32,
         'forgotPassword.resendInMinutes': 5,
+        'forgotPassword.retentionInMs': 7776000000,
         'forgotPassword.linkPattern': '{frontendBaseUrl}/reset?token={token}',
     };
 
@@ -893,6 +894,33 @@ describe('UserPasswordService', () => {
             expect(
                 userForgotPasswordRepository.markUnusedUsedByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 'user-hollow');
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the reset rows expired before now minus the retention and returns the count', async () => {
+            const retention = Duration.fromObject({
+                milliseconds: 7776000000,
+            });
+            const threshold = new Date('2025-12-01T00:00:00.000Z');
+            helperDateService.createDuration.mockReturnValue(retention);
+            helperDateService.backward.mockReturnValue(threshold);
+            userForgotPasswordRepository.deleteExpiredBefore.mockResolvedValue(
+                2
+            );
+
+            await expect(service.purgeExpired()).resolves.toBe(2);
+
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                milliseconds: 7776000000,
+            });
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                retention
+            );
+            expect(
+                userForgotPasswordRepository.deleteExpiredBefore
+            ).toHaveBeenCalledWith(threshold);
         });
     });
 

@@ -2,6 +2,7 @@ import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { DeviceModule } from '@modules/device/device.module';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserQueueFactory } from '@modules/user/factories/user.queue.factory';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
@@ -62,6 +63,7 @@ import { Module } from '@nestjs/common';
         UserForgotPasswordAnalyticService,
         UserVerificationAnalyticService,
         UserMobileNumberAnalyticService,
+        UserQueue,
     ],
     exports: [
         UserService,

@@ -4,7 +4,11 @@ import type {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import type { ActivityLog, Prisma } from '@generated/prisma-client/client';
+import type {
+    ActivityLog,
+    Prisma,
+    UserAgent,
+} from '@generated/prisma-client/client';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -17,6 +21,10 @@ import { z } from 'zod';
 
 export interface IActivityLog extends ActivityLog {
     user: IUserRef;
+}
+
+export interface IActivityLogMasked extends Omit<IActivityLog, 'userAgent'> {
+    userAgent: UserAgent | null;
 }
 
 export type IActivityLogMetadata = Record<

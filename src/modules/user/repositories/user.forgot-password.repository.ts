@@ -107,4 +107,13 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
             data: { isUsed: true, updatedBy },
         });
     }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.forgotPassword.deleteMany({
+                where: { expiredAt: { lt: threshold } },
+            });
+
+        return count;
+    }
 }

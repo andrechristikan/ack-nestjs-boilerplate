@@ -29,4 +29,5 @@ export interface IUserForgotPasswordRepository {
         userId: string,
         updatedBy: string
     ): Promise<void>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

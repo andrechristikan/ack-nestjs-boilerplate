@@ -7,6 +7,7 @@ export interface IConfigVerification {
     tokenLength: number;
     linkPattern: string;
     resendInMinutes: number;
+    retentionInMs: number;
     reference: {
         prefix: string;
         length: number;
@@ -19,6 +20,7 @@ export default registerAs('verification', (): IConfigVerification => ({
     tokenLength: 100,
     linkPattern: '{frontendBaseUrl}/verify-email/{token}',
     resendInMinutes: ms('2m') / ms('1m'),
+    retentionInMs: ms('90d'),
     reference: {
         prefix: 'VER',
         length: 25,

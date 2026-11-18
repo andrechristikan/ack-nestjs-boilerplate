@@ -23,6 +23,15 @@ export interface IWorkspaceMemberRepository {
         workspaceId: string
     ): Promise<WorkspaceMember | null>;
     findReviewerUserIdsByWorkspace(workspaceId: string): Promise<string[]>;
+    findWorkspaceIdsByUser(
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]>;
+    findWorkspaceIdsByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]>;
     findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,

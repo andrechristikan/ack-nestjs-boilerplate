@@ -231,6 +231,7 @@ model Verification {
   @@index(fields: [userId, type, action, createdAt(sort: Desc)])
   @@index(fields: [mobileNumberId])
   @@index(fields: [type, createdAt])
+  @@index(fields: [expiredAt])
   @@map("Verifications")
 }
 
@@ -249,6 +250,7 @@ model PasswordHistory {
   @@index(fields: [userId, expiredAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [type, createdAt(sort: Desc)])
+  @@index(fields: [expiredAt])
   @@map("PasswordHistories")
 }
 
@@ -327,6 +329,8 @@ model Session {
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, isRevoked, expiredAt])
   @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
+  @@index(fields: [isRevoked, expiredAt])
+  @@index(fields: [expiredAt])
   @@index(fields: [createdAt(sort: Desc)])
   @@map("Sessions")
 }
@@ -461,6 +465,7 @@ model MfaChallenge {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [tokenHash])
+  @@index(fields: [expiredAt])
   @@map("MfaChallenges")
 }
 
@@ -565,6 +570,7 @@ model ForgotPassword {
   @@index(fields: [token])
   @@index(fields: [userId, createdAt(sort: Desc)])
   @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [expiredAt])
   @@map("ForgotPasswords")
 }
 

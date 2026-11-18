@@ -61,4 +61,13 @@ export class MfaChallengeRepository implements IMfaChallengeRepository {
 
         return count > 0;
     }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.mfaChallenge.deleteMany({
+                where: { expiredAt: { lt: threshold } },
+            });
+
+        return count;
+    }
 }

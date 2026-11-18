@@ -25,6 +25,7 @@ import { Duration } from 'luxon';
 @Injectable()
 export class MfaChallengeService {
     private readonly challengeTtlInMs: number;
+    private readonly retentionInMs: number;
     private readonly encryptionSecret: string;
 
     constructor(
@@ -37,6 +38,9 @@ export class MfaChallengeService {
     ) {
         this.challengeTtlInMs = this.configService.get<number>(
             'mfa.challengeTtlInMs'
+        )!;
+        this.retentionInMs = this.configService.get<number>(
+            'mfa.challengeRetentionInMs'
         )!;
         this.encryptionSecret = this.configService.get<string>(
             'app.encryptionSecret'
@@ -228,5 +232,16 @@ export class MfaChallengeService {
         if (!isClaimed) {
             throw new MfaChallengeInvalidException();
         }
+    }
+
+    /** Deletes the challenges that expired longer ago than mfa.challengeRetentionInMs; returns the count. */
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.create();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.mfaChallengeRepository.deleteExpiredBefore(threshold);
     }
 }

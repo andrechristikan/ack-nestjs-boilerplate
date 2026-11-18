@@ -88,6 +88,7 @@ describe('SessionService', () => {
         get: configGet as ConfigService['get'],
     });
     const idleTimeoutInMs = 604800000;
+    const retentionInMs = 7776000000;
     const idleDuration = Duration.fromObject({ milliseconds: idleTimeoutInMs });
     const now = new Date('2026-01-08T00:00:00.000Z');
     const idleSince = new Date('2026-01-01T00:00:00.000Z');
@@ -149,7 +150,13 @@ describe('SessionService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockReturnValue(idleTimeoutInMs);
+        configGet.mockImplementation(
+            key =>
+                ({
+                    'session.idleTimeoutInMs': idleTimeoutInMs,
+                    'session.retentionInMs': retentionInMs,
+                })[key]
+        );
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(idleSince);
         const module: TestingModule = await Test.createTestingModule({
@@ -297,6 +304,31 @@ describe('SessionService', () => {
             await expect(
                 service.isLoginActive('user-1', 'session-1', 'jti')
             ).rejects.toBe(failure);
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the sessions expired before now minus the retention and returns the count', async () => {
+            const retention = Duration.fromObject({
+                milliseconds: retentionInMs,
+            });
+            const threshold = new Date('2025-10-10T00:00:00.000Z');
+            helperDateService.createDuration.mockReturnValue(retention);
+            helperDateService.backward.mockReturnValue(threshold);
+            sessionRepository.deleteExpiredBefore.mockResolvedValue(4);
+
+            await expect(service.purgeExpired()).resolves.toBe(4);
+
+            expect(helperDateService.createDuration).toHaveBeenCalledWith({
+                milliseconds: retentionInMs,
+            });
+            expect(helperDateService.backward).toHaveBeenCalledWith(
+                now,
+                retention
+            );
+            expect(sessionRepository.deleteExpiredBefore).toHaveBeenCalledWith(
+                threshold
+            );
         });
     });
 

@@ -111,4 +111,13 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
     ): Promise<void> {
         await tx.passwordHistory.deleteMany({ where: { userId } });
     }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.passwordHistory.deleteMany({
+                where: { expiredAt: { lt: threshold } },
+            });
+
+        return count;
+    }
 }
