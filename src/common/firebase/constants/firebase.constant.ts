@@ -2,8 +2,10 @@
 export const FirebaseInvalidTokenCodes = [
     'messaging/invalid-registration-token',
     'messaging/registration-token-not-registered',
-    'messaging/mismatched-credential',
 ];
+
+/** @public */
+export const FirebaseCredentialErrorCodes = ['messaging/mismatched-credential'];
 
 /** @public */
 export const FirebaseRetryableTokenCodes = [

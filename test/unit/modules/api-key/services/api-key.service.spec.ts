@@ -426,27 +426,127 @@ describe('ApiKeyService', () => {
     describe('updateDatesByAdminInTx', () => {
         const startAt = new Date('2026-02-01T00:00:00.000Z');
         const endAt = new Date('2026-03-01T00:00:00.000Z');
+        const startAtDay = new Date('2026-02-01T00:00:00.000Z');
+        const endAtDay = new Date('2026-03-01T23:59:59.999Z');
 
-        it('throws ApiKeyStartAtNotFutureException when startAt is not in the future', async () => {
-            const pastStartAt = new Date('2025-01-01T00:00:00.000Z');
+        beforeEach(() => {
+            helperDateService.create.mockImplementation((date, options) => {
+                if (!date) {
+                    return now;
+                }
+                if (options?.dayOf === EnumHelperDateDayOf.start) {
+                    return startAtDay;
+                }
+                if (options?.dayOf === EnumHelperDateDayOf.end) {
+                    return endAtDay;
+                }
+                return date;
+            });
+        });
+
+        it('writes both rounded dates for a past startAt and a future endAt', async () => {
+            const yesterday = new Date('2026-01-14T10:00:00.000Z');
+            const nextYear = new Date('2027-01-15T10:00:00.000Z');
+            const yesterdayDay = new Date('2026-01-14T00:00:00.000Z');
+            const nextYearDay = new Date('2027-01-15T23:59:59.999Z');
+            helperDateService.create.mockImplementation((date, options) => {
+                if (!date) {
+                    return now;
+                }
+                if (options?.dayOf === EnumHelperDateDayOf.start) {
+                    return yesterdayDay;
+                }
+                return nextYearDay;
+            });
+            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
+            const updated: ApiKey = {
+                ...apiKey,
+                startAt: yesterdayDay,
+                endAt: nextYearDay,
+            };
+            apiKeyRepository.updateDatesInTx.mockResolvedValue(updated);
+
+            const result = await service.updateDatesByAdminInTx(
+                tx,
+                apiKey.id,
+                yesterday,
+                nextYear
+            );
+
+            expect(result).toBe(updated);
+            expect(apiKeyRepository.updateDatesInTx).toHaveBeenCalledWith(
+                tx,
+                apiKey.id,
+                yesterdayDay,
+                nextYearDay
+            );
+        });
+
+        it('throws ApiKeyEndAtNotFutureException when the rounded endAt is not after now', async () => {
+            const pastEndAtDay = new Date('2025-01-01T23:59:59.999Z');
+            helperDateService.create.mockImplementation((date, options) => {
+                if (!date) {
+                    return now;
+                }
+                if (options?.dayOf === EnumHelperDateDayOf.start) {
+                    return startAtDay;
+                }
+                return pastEndAtDay;
+            });
 
             await expect(
                 service.updateDatesByAdminInTx(
                     tx,
                     apiKey.id,
-                    pastStartAt,
-                    endAt
+                    startAt,
+                    new Date('2025-01-01T00:00:00.000Z')
                 )
             ).rejects.toMatchObject({
                 module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
+                statusCode: EnumApiKeyStatusCodeError.endAtNotFuture,
                 statusCodeKey:
                     EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.startAtNotFuture
+                        EnumApiKeyStatusCodeError.endAtNotFuture
                     ],
                 httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.startAtNotFuture',
+                messagePath: 'apiKey.error.endAtNotFuture',
             });
+            expect(apiKeyRepository.updateDatesInTx).not.toHaveBeenCalled();
+        });
+
+        it('writes both dates null when both inputs are null', async () => {
+            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
+            const updated: ApiKey = { ...apiKey, startAt: null, endAt: null };
+            apiKeyRepository.updateDatesInTx.mockResolvedValue(updated);
+
+            const result = await service.updateDatesByAdminInTx(
+                tx,
+                apiKey.id,
+                null,
+                null
+            );
+
+            expect(result).toBe(updated);
+            expect(apiKeyRepository.updateDatesInTx).toHaveBeenCalledWith(
+                tx,
+                apiKey.id,
+                null,
+                null
+            );
+        });
+
+        it('writes both dates null when exactly one input is null', async () => {
+            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
+            apiKeyRepository.updateDatesInTx.mockResolvedValue(apiKey);
+
+            await service.updateDatesByAdminInTx(tx, apiKey.id, startAt, null);
+
+            expect(apiKeyRepository.updateDatesInTx).toHaveBeenCalledWith(
+                tx,
+                apiKey.id,
+                null,
+                null
+            );
         });
 
         it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
@@ -487,21 +587,7 @@ describe('ApiKeyService', () => {
         });
 
         it('normalizes and updates the date window and adds the cache invalidation effect on the tx', async () => {
-            const startAtDay = new Date('2026-02-01T00:00:00.000Z');
-            const endAtDay = new Date('2026-03-01T23:59:59.999Z');
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
-            helperDateService.create.mockImplementation((date, options) => {
-                if (!date) {
-                    return now;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.start) {
-                    return startAtDay;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.end) {
-                    return endAtDay;
-                }
-                return date;
-            });
             const updated: ApiKey = {
                 ...apiKey,
                 startAt: startAtDay,

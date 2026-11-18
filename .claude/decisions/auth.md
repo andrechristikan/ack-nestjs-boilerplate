@@ -300,3 +300,13 @@ Rule: `session.md`, Session invalidation.
 
 - A grace window in which the old token still answers: it adds rotation state for a rare lost response, and the refresh stays simple at the cost of one more sign-in.
 - An idempotent refresh that returns the same new pair: the same added state for the same rare case.
+
+## Retention
+
+### Expired identity rows are purged by one daily job
+
+Rule: `queue.md`, Enqueuing; the TTL index: `repository.md`, Schema.
+
+- A TTL index created outside Prisma: it lives outside the schema file the no-migration design depends on.
+- A purge job per module: five queues and schedules for one statement each.
+- Delete on issue or on consume: a row nobody issues after stays for good.

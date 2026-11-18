@@ -4,6 +4,7 @@ import bytes from 'bytes';
 export interface IConfigTermPolicy {
     uploadContentPathPattern: string;
     contentPublicPathPattern: string;
+    contentKeyRandomLength: number;
     content: {
         maxSizeInBytes: number;
     };
@@ -16,6 +17,7 @@ export interface IConfigTermPolicy {
 export default registerAs('termPolicy', (): IConfigTermPolicy => ({
     uploadContentPathPattern: 'term-policies/{type}/v{version}',
     contentPublicPathPattern: 'term-policies/{type}/v{version}',
+    contentKeyRandomLength: 20,
     content: {
         maxSizeInBytes: bytes('10mb') ?? 0,
     },

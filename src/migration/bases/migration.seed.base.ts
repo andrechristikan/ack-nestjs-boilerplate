@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumMigrationType } from '@migration/enums/migration.enum';
 import type { IMigrationOptions } from '@migration/interfaces/migration.interface';
 import { Logger } from '@nestjs/common';
@@ -5,6 +6,10 @@ import { CommandRunner, Option } from 'nest-commander';
 
 export abstract class MigrationSeedBase extends CommandRunner {
     private readonly baseLogger: Logger = new Logger(MigrationSeedBase.name);
+
+    constructor(protected readonly cacheService: CacheService) {
+        super();
+    }
 
     async run(
         _passedParam: string[],
@@ -14,8 +19,10 @@ export abstract class MigrationSeedBase extends CommandRunner {
 
         if (options?.type === EnumMigrationType.remove) {
             await this.remove();
+            await this.cacheService.flush();
         } else if (options?.type === EnumMigrationType.seed) {
             await this.seed();
+            await this.cacheService.flush();
         } else {
             this.baseLogger.warn(
                 `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`

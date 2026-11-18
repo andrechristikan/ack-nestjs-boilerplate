@@ -6,7 +6,6 @@ import { MigrationApiKeyData } from '@migration/data/migration.api-key.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import type { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
-import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -29,13 +28,12 @@ export class MigrationApiKeySeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
-        private readonly apiKeyCache: ApiKeyCache,
-        private readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.apiKeys = MigrationApiKeyData[this.env];
@@ -103,15 +101,7 @@ export class MigrationApiKeySeed
         this.logger.log('Removing back Api Keys...');
 
         try {
-            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.client.apiKey.deleteMany({});
-
-            const keys = this.apiKeys.flatMap(apiKey => {
-                const key = this.apiKeyCredentialUtil.createKey(apiKey.key);
-
-                return this.apiKeyCache.buildApiKeyKeys(key);
-            });
-            await this.cacheService.invalidate(keys);
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Removing API keys failed');
         }

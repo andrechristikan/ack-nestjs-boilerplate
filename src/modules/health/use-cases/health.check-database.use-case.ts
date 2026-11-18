@@ -2,7 +2,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
 import { HealthService } from '@modules/health/services/health.service';
 import { HealthUtil } from '@modules/health/utils/health.util';
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
@@ -18,6 +18,17 @@ export class HealthCheckDatabaseUseCase implements IAppUseCase<
     async execute(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
         const result = await this.healthService.checkDatabase();
         const data = this.healthUtil.toResponse(result);
+
+        const isUp = this.healthService.isUp(result);
+        if (!isUp) {
+            return {
+                data,
+                metadata: {
+                    httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                    statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                },
+            };
+        }
 
         return { data };
     }

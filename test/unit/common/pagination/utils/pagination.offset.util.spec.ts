@@ -77,6 +77,26 @@ describe('PaginationOffsetUtil', () => {
             });
         });
 
+        it('caps totalPage at the page cap while count stays the real count', () => {
+            const result = util.page([{ id: '1' }], 2500, {
+                skip: 1900,
+                limit: 100,
+            });
+
+            expect(result).toEqual({
+                type: 'offset',
+                count: 2500,
+                perPage: 100,
+                page: 20,
+                totalPage: 20,
+                hasNext: false,
+                hasPrevious: true,
+                data: [{ id: '1' }],
+                previousPage: 19,
+            });
+            expect(result).not.toHaveProperty('nextPage');
+        });
+
         it('reports a single empty page with no next and no previous page', () => {
             const result = util.page([], 0, {
                 skip: 0,

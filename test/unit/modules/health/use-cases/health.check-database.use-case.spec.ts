@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -48,24 +49,48 @@ describe('HealthCheckDatabaseUseCase', () => {
     describe('execute', () => {
         it('wraps the database health check result in the response envelope', async () => {
             healthService.checkDatabase.mockResolvedValue(healthCheckResult);
+            healthService.isUp.mockReturnValue(true);
 
             const result = await useCase.execute();
 
             expect(result).toEqual(envelope);
             expect(healthService.checkDatabase).toHaveBeenCalledWith();
+            expect(healthService.isUp).toHaveBeenCalledWith(healthCheckResult);
         });
 
-        it('maps the result through HealthUtil', async () => {
-            const result: HealthCheckResult = {
-                ...healthCheckResult,
-                status: 'error',
-            };
-            const data = { ...envelope.data, status: EnumHealthStatus.error };
-            healthService.checkDatabase.mockResolvedValue(result);
-            healthUtil.toResponse.mockReturnValue(data);
+        it('returns the body with no metadata when the status is ok', async () => {
+            healthService.checkDatabase.mockResolvedValue(healthCheckResult);
+            healthService.isUp.mockReturnValue(true);
 
-            await expect(useCase.execute()).resolves.toEqual({ data });
-            expect(healthUtil.toResponse).toHaveBeenCalledWith(result);
+            const result = await useCase.execute();
+
+            expect(result).not.toHaveProperty('metadata');
         });
+
+        it.each(['error', 'shutting_down'] as const)(
+            'maps the %s result through HealthUtil and answers 503',
+            async status => {
+                const result: HealthCheckResult = {
+                    ...healthCheckResult,
+                    status,
+                };
+                const data = {
+                    ...envelope.data,
+                    status: EnumHealthStatus.error,
+                };
+                healthService.checkDatabase.mockResolvedValue(result);
+                healthService.isUp.mockReturnValue(false);
+                healthUtil.toResponse.mockReturnValue(data);
+
+                await expect(useCase.execute()).resolves.toEqual({
+                    data,
+                    metadata: {
+                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                    },
+                });
+                expect(healthUtil.toResponse).toHaveBeenCalledWith(result);
+            }
+        );
     });
 });

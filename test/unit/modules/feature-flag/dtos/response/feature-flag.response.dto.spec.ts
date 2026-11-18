@@ -13,6 +13,8 @@ describe('FeatureFlagResponseSchema', () => {
         key: 'loginWithGoogle',
         isEnable: true,
         targetUserIds: ['507f1f77bcf86cd799439013'],
+        rolloutPercent: 50,
+        description: 'Allows sign-in with Google',
         metadata: { newFeature: true },
     };
 
@@ -54,6 +56,19 @@ describe('FeatureFlagResponseSchema', () => {
                 ...row,
                 createdAt: createdAt.toISOString(),
             })
+        ).toThrow();
+    });
+
+    it('keeps rolloutPercent and description', () => {
+        const result = FeatureFlagResponseSchema.parse(row);
+
+        expect(result.rolloutPercent).toBe(50);
+        expect(result.description).toBe('Allows sign-in with Google');
+    });
+
+    it('rejects a rolloutPercent of 101', () => {
+        expect(() =>
+            FeatureFlagResponseSchema.parse({ ...row, rolloutPercent: 101 })
         ).toThrow();
     });
 

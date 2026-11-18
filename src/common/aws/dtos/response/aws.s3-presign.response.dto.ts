@@ -8,7 +8,8 @@ export const AwsS3PresignResponseSchema = z.object({
         example: faker.system.filePath(),
     }),
     mime: z.string().meta({
-        description: 'MIME type of the object',
+        description:
+            'MIME type the client sends, unchanged, as the Content-Type header of the PUT',
         example: 'image/jpeg',
     }),
     extension: z.string().meta({

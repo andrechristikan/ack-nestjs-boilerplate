@@ -22,6 +22,7 @@ export interface IOutboxRepository {
         rows: Prisma.OutboxCreateManyInput[]
     ): Promise<void>;
     updateEnqueued(ids: string[], enqueuedAt: Date): Promise<void>;
+    updateSwept(ids: string[], sweptAt: Date): Promise<void>;
     updateCompleted(
         id: string,
         attempts: number,

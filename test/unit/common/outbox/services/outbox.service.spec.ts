@@ -80,6 +80,7 @@ describe('OutboxService', () => {
         attempts: 0,
         lastError: null,
         enqueuedAt: null,
+        sweptAt: null,
         completedAt: null,
         failedAt: null,
         createdAt: new Date('2026-11-11T09:00:00.000Z'),
@@ -757,6 +758,7 @@ describe('OutboxService', () => {
             ...purgeRow,
             status: EnumOutboxStatus.enqueued,
             enqueuedAt: new Date('2026-11-11T08:00:00.000Z'),
+            sweptAt: null,
         };
 
         beforeEach(() => {
@@ -808,6 +810,44 @@ describe('OutboxService', () => {
                 ['outbox-1'],
                 now
             );
+        });
+
+        it('stamps every row both reads returned as swept with one timestamp before the first reconcile and the dispatch', async () => {
+            outboxRepository.findManyPendingBefore.mockResolvedValue([
+                purgeRow,
+            ]);
+            outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
+                { ...enqueuedRow, id: 'outbox-2', idempotencyKey: 'outbox-2' },
+            ]);
+            const calls: string[] = [];
+            outboxRepository.updateSwept.mockImplementation(async () => {
+                calls.push('updateSwept');
+            });
+            sessionQueue.getJob.mockImplementation(async () => {
+                calls.push('getJob');
+
+                return undefined;
+            });
+            sessionQueue.addBulk.mockImplementation(async () => {
+                calls.push('addBulk');
+
+                return [];
+            });
+
+            await service.sweep();
+
+            expect(outboxRepository.updateSwept).toHaveBeenCalledTimes(1);
+            expect(outboxRepository.updateSwept).toHaveBeenCalledWith(
+                ['outbox-1', 'outbox-2'],
+                now
+            );
+            expect(calls).toEqual(['updateSwept', 'getJob', 'addBulk']);
+        });
+
+        it('stamps nothing as swept when both reads return no row', async () => {
+            await service.sweep();
+
+            expect(outboxRepository.updateSwept).not.toHaveBeenCalled();
         });
 
         it('stamps an enqueued row completed with the attempts of its completed job', async () => {

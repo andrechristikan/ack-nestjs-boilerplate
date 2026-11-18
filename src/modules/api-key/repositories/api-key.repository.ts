@@ -117,8 +117,8 @@ export class ApiKeyRepository implements IApiKeyRepository {
     async updateDatesInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        startAt: Date,
-        endAt: Date
+        startAt: Date | null,
+        endAt: Date | null
     ): Promise<IApiKey | null> {
         const { count } = await tx.apiKey.updateMany({
             where: {

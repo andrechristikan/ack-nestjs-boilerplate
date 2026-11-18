@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
@@ -26,10 +27,11 @@ export class MigrationFeatureFlagSeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.featureFlags = MigrationFeatureFlagData[this.env];

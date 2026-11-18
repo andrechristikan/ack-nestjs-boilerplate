@@ -8,7 +8,7 @@ Each entry names a choice a rule in `.claude/rules/`, or a harness file, carries
 - [HTTP][ref-decisions-http]: routes and responses, response headers, files and import
 - [Configuration][ref-decisions-configuration]: environment keys, constants, feature flags, optional integrations, Sentry
 - [Deployment][ref-decisions-deployment]: release, compose and production
-- [Auth][ref-decisions-auth]: the ASVS reference, passwords, sign-up, social sign-in, re-authentication, verification, account deletion, MFA, attempts and locks, sessions
+- [Auth][ref-decisions-auth]: the ASVS reference, passwords, sign-up, social sign-in, re-authentication, verification, account deletion, MFA, attempts and locks, sessions, retention
 - [Authorization][ref-decisions-authorization]: roles and workspace ownership
 - [Harness][ref-decisions-harness]: decision records, review and agents, hooks and checks
 

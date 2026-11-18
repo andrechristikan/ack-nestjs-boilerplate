@@ -23,6 +23,10 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
     EnumActivityLogProcess,
@@ -373,6 +377,20 @@ describe('TermPolicyContentService', () => {
         });
     });
 
+    describe('deleteContentEffect', () => {
+        it('builds the low priority deleteContent effect carrying the keys', () => {
+            const effect = service.deleteContentEffect(['a/en-x.hbs']);
+
+            expect(effect).toEqual({
+                queue: EnumTermPolicyQueue.termPolicy,
+                name: EnumTermPolicyProcess.deleteContent,
+                data: { keys: ['a/en-x.hbs'] },
+                priority: EnumQueuePriority.low,
+                idempotencyKey: null,
+            });
+        });
+    });
+
     describe('updateContentByAdmin', () => {
         it('throws TermPolicyContentTypeInvalidException and writes nothing when the head is not a text template', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
@@ -613,6 +631,53 @@ describe('TermPolicyContentService', () => {
             expect(
                 termPolicyRepository.updateContentInTx
             ).not.toHaveBeenCalled();
+        });
+
+        it('adds a delete effect with the replaced key on the write tx', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
+            termPolicyRepository.updateContentInTx.mockResolvedValue(true);
+
+            await service.updateContentByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: 'term-policies/privacy/v1/en-2.hbs',
+                }
+            );
+
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                service.deleteContentEffect([existingContent.key])
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.updateContentInTx
+            );
+        });
+
+        it('adds no delete effect when the update sends the same key', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
+            termPolicyRepository.updateContentInTx.mockResolvedValue(true);
+
+            await service.updateContentByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: existingContent.key,
+                }
+            );
+
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
 
         it('adds the update-content entry from the draft on the same tx after the write', async () => {
@@ -1324,6 +1389,27 @@ describe('TermPolicyContentService', () => {
                     ],
                 messagePath: 'termPolicy.error.contentNotFound',
             });
+        });
+
+        it('adds a delete effect with the removed key on the write tx', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyRepository.removeContentInTx.mockResolvedValue(true);
+
+            await service.removeContentByAdmin(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                EnumMessageLanguage.en
+            );
+
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                service.deleteContentEffect([existingContent.key])
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.removeContentInTx
+            );
         });
 
         it('adds the remove-content entry from the draft on the same tx after the write', async () => {

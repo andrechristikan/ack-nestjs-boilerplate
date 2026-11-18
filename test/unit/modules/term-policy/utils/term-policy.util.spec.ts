@@ -34,6 +34,9 @@ describe('TermPolicyUtil', () => {
             if (key === 'termPolicy.content.maxSizeInBytes') {
                 return 4096;
             }
+            if (key === 'termPolicy.contentKeyRandomLength') {
+                return 20;
+            }
             return undefined;
         });
 
@@ -58,22 +61,6 @@ describe('TermPolicyUtil', () => {
 
         it('returns false above the configured maximum', () => {
             expect(util.isContentSizeAllowed(4097)).toBe(false);
-        });
-    });
-
-    describe('getPath', () => {
-        it('fills the upload content path with type and version', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/privacy/1'
-            );
-
-            const result = util.getPath(EnumTermPolicyType.privacy, 1);
-
-            expect(result).toBe('term-policies/privacy/1');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'term-policies/{type}/{version}',
-                { type: EnumTermPolicyType.privacy, version: '1' }
-            );
         });
     });
 
@@ -136,26 +123,14 @@ describe('TermPolicyUtil', () => {
     });
 
     describe('getContentKey', () => {
-        it('answers the versioned key of the type, version, and language', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/termsOfService/v1'
-            );
-
-            const result = util.getContentKey(
-                EnumTermPolicyType.termsOfService,
-                1,
-                EnumMessageLanguage.en,
-                { extension: EnumFileExtensionTemplate.hbs }
-            );
-
-            expect(result).toBe('term-policies/termsOfService/v1/en.hbs');
-        });
-
-        it('appends the language and extension to the filled path', () => {
+        beforeEach(() => {
             helperStringService.fillPattern.mockReturnValue(
                 'term-policies/privacy/1'
             );
+            helperStringService.random.mockReturnValue('abc123');
+        });
 
+        it('builds the key under the version path as language, random part, and extension', () => {
             const result = util.getContentKey(
                 EnumTermPolicyType.privacy,
                 1,
@@ -163,7 +138,31 @@ describe('TermPolicyUtil', () => {
                 { extension: EnumFileExtensionTemplate.hbs }
             );
 
-            expect(result).toBe('term-policies/privacy/1/en.hbs');
+            expect(result).toBe('term-policies/privacy/1/en-abc123.hbs');
+            expect(helperStringService.random).toHaveBeenCalledWith(20);
+        });
+
+        it('returns a different key on each call', () => {
+            helperStringService.random
+                .mockReturnValueOnce('first111')
+                .mockReturnValueOnce('second22');
+
+            const first = util.getContentKey(
+                EnumTermPolicyType.privacy,
+                1,
+                EnumMessageLanguage.en,
+                { extension: EnumFileExtensionTemplate.hbs }
+            );
+            const second = util.getContentKey(
+                EnumTermPolicyType.privacy,
+                1,
+                EnumMessageLanguage.en,
+                { extension: EnumFileExtensionTemplate.hbs }
+            );
+
+            expect(first).toBe('term-policies/privacy/1/en-first111.hbs');
+            expect(second).toBe('term-policies/privacy/1/en-second22.hbs');
+            expect(first).not.toBe(second);
         });
 
         it('strips a single leading slash from the filled path', () => {
@@ -178,14 +177,10 @@ describe('TermPolicyUtil', () => {
                 { extension: EnumFileExtensionTemplate.hbs }
             );
 
-            expect(result).toBe('term-policies/privacy/1/en.hbs');
+            expect(result).toBe('term-policies/privacy/1/en-abc123.hbs');
         });
 
         it('lowercases the extension', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/privacy/1'
-            );
-
             const result = util.getContentKey(
                 EnumTermPolicyType.privacy,
                 1,
@@ -193,7 +188,7 @@ describe('TermPolicyUtil', () => {
                 { extension: 'HBS' as EnumFileExtensionTemplate }
             );
 
-            expect(result).toBe('term-policies/privacy/1/en.hbs');
+            expect(result).toBe('term-policies/privacy/1/en-abc123.hbs');
         });
     });
 
@@ -259,6 +254,22 @@ describe('TermPolicyUtil', () => {
                 termPolicyVersion: 1,
                 timestamp,
             });
+        });
+    });
+
+    describe('getPath', () => {
+        it('fills the upload content path with type and version', () => {
+            helperStringService.fillPattern.mockReturnValue(
+                'term-policies/privacy/1'
+            );
+
+            const result = util['getPath'](EnumTermPolicyType.privacy, 1);
+
+            expect(result).toBe('term-policies/privacy/1');
+            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
+                'term-policies/{type}/{version}',
+                { type: EnumTermPolicyType.privacy, version: '1' }
+            );
         });
     });
 });

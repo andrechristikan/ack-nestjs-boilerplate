@@ -18,8 +18,8 @@ export class TermPolicyProcessDeleteContentUseCase implements IAppUseCase<
     async execute(
         data: ITermPolicyDeleteContentPayload
     ): Promise<ITermPolicyDeleteContentQueueResponse> {
-        const { path } = data;
-        await this.termPolicyService.deleteContentDir(path);
+        const { keys } = data;
+        await this.termPolicyService.deleteContentKeys(keys);
 
         const message = this.messageService.setMessage(
             'termPolicy.queue.deleteContent'
@@ -27,7 +27,7 @@ export class TermPolicyProcessDeleteContentUseCase implements IAppUseCase<
 
         return {
             message,
-            path,
+            keys,
         };
     }
 }

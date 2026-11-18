@@ -36,6 +36,8 @@ export interface IConfigAws {
         identityArn: string | null;
         region: string | null;
         endpoint: string | null;
+        maxAttempts: number;
+        timeoutInMs: number;
     };
 }
 
@@ -131,6 +133,8 @@ export default registerAs('aws', (): IConfigAws => {
                 process.env.AWS_SES_ENDPOINT === ''
                     ? null
                     : (process.env.AWS_SES_ENDPOINT ?? null),
+            maxAttempts: 1,
+            timeoutInMs: ms('30s'),
         },
     };
 });

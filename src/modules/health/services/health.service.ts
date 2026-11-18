@@ -86,6 +86,10 @@ export class HealthService {
         }
     }
 
+    isUp(result: HealthCheckResult): boolean {
+        return result.status === 'ok';
+    }
+
     async checkAws(): Promise<HealthCheckResult> {
         return this.check([
             () =>

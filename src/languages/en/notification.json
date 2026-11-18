@@ -122,6 +122,7 @@
             "publishTermPolicy": "Publish term policy email processed.",
             "error": {
                 "unknownProcess": "No {process} job handler exists.",
+                "sesNotInitialized": "Email not sent: AWS SES is not configured.",
                 "batchFailed": "Term policy email batch {batchId} failed for {failedCount} of {claimedCount} recipients.",
                 "deliveryUnknown": "Email batch {batchId} has {unknownCount} recipients with an unknown delivery outcome."
             },

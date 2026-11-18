@@ -15,6 +15,11 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import {
+    EnumTermPolicyProcess,
+    EnumTermPolicyQueue,
+} from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -27,6 +32,7 @@ import type {
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
+    ITermPolicyDeleteContentEffect,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -80,6 +86,16 @@ export class TermPolicyContentService {
         if (!isInPath) {
             throw new TermPolicyContentKeyInvalidException();
         }
+    }
+
+    deleteContentEffect(keys: string[]): ITermPolicyDeleteContentEffect {
+        return {
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.deleteContent,
+            data: { keys },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
     }
 
     async assertContentText(key: string): Promise<void> {
@@ -216,6 +232,13 @@ export class TermPolicyContentService {
                     );
                 if (!updated) {
                     throw new TermPolicyStatusInvalidException();
+                }
+
+                if (existingContent.key !== key) {
+                    const deleteEffect = this.deleteContentEffect([
+                        existingContent.key,
+                    ]);
+                    await this.outboxService.addInTx(tx, deleteEffect);
                 }
 
                 const timestamp = this.helperDateService.create();
@@ -368,6 +391,11 @@ export class TermPolicyContentService {
                 if (!removed) {
                     throw new TermPolicyStatusInvalidException();
                 }
+
+                const deleteEffect = this.deleteContentEffect([
+                    existingContent.key,
+                ]);
+                await this.outboxService.addInTx(tx, deleteEffect);
 
                 const timestamp = this.helperDateService.create();
                 const metadata = this.termPolicyUtil.mapActivityLogMetadata(

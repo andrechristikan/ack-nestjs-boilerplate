@@ -25,6 +25,7 @@ A side effect is an outbox effect (`effects.md`). A queue-class method serves a 
 
 - A recurring job (`expireStaleInvites`, `cleanupStaleTokens`) is scheduled from the queue class's own `onModuleInit`.
 - A sweep whose cutoff is now-relative (`expireStaleInvites`, `cleanupStaleTokens`) is live by design.
+- The `user` queue's daily `purgeExpired` job (`UserQueue`, `user.purgeExpiredCron`) is the one purge of the identity modules' expiring rows: its use case calls each owning service's `purgeExpired`. A new expiring identity model joins it; never a job of its own or a delete on issue or consume (`AuthSocialNonce` aside, `login.md`).
 
 ## Messages
 

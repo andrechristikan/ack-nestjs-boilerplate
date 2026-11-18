@@ -576,30 +576,41 @@ describe('FirebaseService', () => {
             });
         });
 
-        it('puts a mismatched-credential failure in failureTokens', async () => {
+        it('throws FirebaseCredentialMismatchException when a per-token error is a credential mismatch', async () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
                 firebaseDoubles,
                 messaging
             );
-            const tokens = ['other-project'];
+            const tokens = ['invalid', 'other-project', 'busy'];
             helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
-                failureCount: 1,
+                failureCount: 3,
                 responses: [
+                    {
+                        success: false,
+                        error: { code: 'messaging/invalid-registration-token' },
+                    },
                     {
                         success: false,
                         error: { code: 'messaging/mismatched-credential' },
                     },
+                    {
+                        success: false,
+                        error: { code: 'messaging/server-unavailable' },
+                    },
                 ],
             } as never);
 
-            const result = await initialized.sendMulticast(tokens, payload);
+            const rejection = initialized.sendMulticast(tokens, payload);
 
-            expect(result.failureTokens).toEqual(['other-project']);
-            expect(result.retryTokens).toEqual([]);
+            await expect(rejection).rejects.toMatchObject({
+                module: 'app',
+                message: 'Firebase credential does not match the project',
+                rawError: { code: 'messaging/mismatched-credential' },
+            });
         });
 
         it('puts a transient code and a code-less failure in retryTokens', async () => {

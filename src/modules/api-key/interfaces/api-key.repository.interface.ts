@@ -42,8 +42,8 @@ export interface IApiKeyRepository {
     updateDatesInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        startAt: Date,
-        endAt: Date
+        startAt: Date | null,
+        endAt: Date | null
     ): Promise<IApiKey | null>;
     updateHashInTx(
         tx: IDatabaseTransactionClient,

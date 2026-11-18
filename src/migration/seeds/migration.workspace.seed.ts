@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -38,12 +39,13 @@ export class MigrationWorkspaceSeed
     private readonly users: IMigrationUserData[] = [];
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.users = MigrationUserData[this.env];

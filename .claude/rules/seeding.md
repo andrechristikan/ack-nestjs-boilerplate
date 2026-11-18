@@ -36,14 +36,14 @@ src/migration/
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
 - A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplateService`). A seed injects no feature repository.
-- A seed may inject any module's util and any cache, and read any contract (`ApiKeyCredentialUtil`, `ApiKeyCache`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
+- A seed may inject any module's util and read any contract (`ApiKeyCredentialUtil`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and adds no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
 - What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, and this file.
 
 ## Term policies
 
-The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en.hbs` (`termPolicy.uploadContentPathPattern`, `TermPolicyUtil.getContentKey`).
+The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en-<random>.hbs` (`termPolicy.uploadContentPathPattern`, `TermPolicyUtil.getContentKey`).
 
 - When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
 - It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
@@ -55,7 +55,7 @@ The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publis
 
 ## Idempotency and reset
 
-`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright.
+`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright. `MigrationSeedBase` ends every run with `CacheService.flush()` after `seed()` or `remove()`; a seed invalidates no cache key itself.
 
 ## Off-limits
 

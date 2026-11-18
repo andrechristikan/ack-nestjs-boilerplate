@@ -335,6 +335,13 @@ describe('config factories', () => {
         it('holds the list page size as a config value', () => {
             expect(AwsConfig().s3.listMaxKeys).toBe(100);
         });
+
+        it('holds the SES client bounds as config literals', () => {
+            const config = AwsConfig();
+
+            expect(config.ses.maxAttempts).toBe(1);
+            expect(config.ses.timeoutInMs).toBe(30000);
+        });
     });
 
     describe('message', () => {

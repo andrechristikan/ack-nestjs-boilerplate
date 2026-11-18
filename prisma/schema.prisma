@@ -801,6 +801,7 @@ model Outbox {
   attempts       Int              @default(0)
   lastError      String?
   enqueuedAt     DateTime?
+  sweptAt        DateTime?
   completedAt    DateTime?
   failedAt       DateTime?
 
@@ -810,8 +811,8 @@ model Outbox {
   updatedBy String?  @db.ObjectId
 
   @@unique(fields: [queue, name, idempotencyKey])
-  @@index(fields: [status, createdAt])
-  @@index(fields: [status, enqueuedAt])
+  @@index(fields: [status, sweptAt, createdAt])
+  @@index(fields: [status, sweptAt, enqueuedAt])
   @@map("Outboxes")
 }
 

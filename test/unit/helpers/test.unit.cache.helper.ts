@@ -11,5 +11,6 @@ export interface IStubCacheClient {
         ...args: string[]
     ) => Promise<unknown>;
     unlink: (...keys: string[]) => Promise<number>;
+    flushdb: () => Promise<'OK'>;
     ping: () => Promise<string>;
 }

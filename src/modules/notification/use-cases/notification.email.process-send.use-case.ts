@@ -1,5 +1,6 @@
 import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
 import type { INotificationEmailSendQueueResponse } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
@@ -15,6 +16,7 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
     INotificationEmailSendQueueResponse
 > {
     constructor(
+        private readonly awsSESService: AwsSESService,
         private readonly notificationEmailDeliveryService: NotificationEmailDeliveryService,
         private readonly notificationUtil: NotificationUtil,
         private readonly outboxService: OutboxService,
@@ -33,6 +35,15 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
             completedSteps,
         }: INotificationEmailSendPayload
     ): Promise<INotificationEmailSendQueueResponse> {
+        const isInitialized = this.awsSESService.isInitialized();
+        if (!isInitialized) {
+            const message = this.messageService.setMessage(
+                'notification.queue.email.error.sesNotInitialized'
+            );
+
+            return { message, result: null };
+        }
+
         let result: SendTemplatedEmailCommandOutput | null = null;
         if (!completedSteps.includes(EnumNotificationStep.sendEmail)) {
             // Sequential by design: side effects whose order is part of the contract (processedAt before the SES call, the step recorded after its success, sentAt last)

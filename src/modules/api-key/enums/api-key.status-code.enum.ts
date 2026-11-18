@@ -8,4 +8,5 @@ export enum EnumApiKeyStatusCodeError {
     inactive = 50705,
     startAtNotFuture = 50706,
     guardMissing = 50707,
+    endAtNotFuture = 50708,
 }

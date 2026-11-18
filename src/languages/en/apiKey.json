@@ -11,6 +11,7 @@
         "inactive": "This API key is currently inactive.",
         "expired": "This API key has expired. Would you like to create a new one?",
         "startAtNotFuture": "The start date must be in the future.",
+        "endAtNotFuture": "The end date must be in the future.",
         "xApiKey": {
             "required": "Please provide your API key to continue.",
             "invalid": "Sorry, this API key appears to be invalid.",

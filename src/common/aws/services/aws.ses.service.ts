@@ -45,6 +45,8 @@ export class AwsSESService implements OnModuleInit {
     private readonly identityArn: string | null;
     private readonly region: string | null;
     private readonly endpoint: string | null;
+    private readonly maxAttempts: number;
+    private readonly timeoutInMs: number;
 
     private sesClient: SESClient;
 
@@ -67,6 +69,12 @@ export class AwsSESService implements OnModuleInit {
             'aws.ses.endpoint'
         );
         this.endpoint = endpoint ?? null;
+        this.maxAttempts = this.configService.get<number>(
+            'aws.ses.maxAttempts'
+        )!;
+        this.timeoutInMs = this.configService.get<number>(
+            'aws.ses.timeoutInMs'
+        )!;
     }
 
     onModuleInit(): void {
@@ -84,6 +92,10 @@ export class AwsSESService implements OnModuleInit {
                 secretAccessKey: this.secretAccessKey,
             },
             region: this.region,
+            maxAttempts: this.maxAttempts,
+            requestHandler: {
+                requestTimeout: this.timeoutInMs,
+            },
             ...(this.endpoint ? { endpoint: this.endpoint } : {}),
         });
     }

@@ -361,7 +361,7 @@ export class OutboxService implements OnApplicationBootstrap {
         });
     }
 
-    /** Dispatches the oldest rows pending longer than outbox.pendingAfterInMs and reconciles the oldest enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each; returns the count dispatched or stamped and never throws. */
+    /** Stamps the rows it reads as swept, then dispatches those pending longer than outbox.pendingAfterInMs and reconciles those enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each, the rows swept longest ago first and never-swept ones before them; returns the count dispatched or stamped and never throws. */
     async sweep(): Promise<number> {
         const now = this.helperDateService.create();
         const pendingAfter = this.helperDateService.createDuration({
@@ -390,6 +390,15 @@ export class OutboxService implements OnApplicationBootstrap {
                     this.sweepBatch
                 ),
             ]);
+
+            const sweptIds = [...pendingRows, ...enqueuedRows].map(
+                row => row.id
+            );
+            if (sweptIds.length > 0) {
+                // Sequential by design: side effects whose order is part of the contract (the swept stamp before the reconcile and the dispatch)
+                await this.outboxRepository.updateSwept(sweptIds, now);
+            }
+
             const results = await Promise.all(
                 enqueuedRows.map(row => this.reconcile(row))
             );

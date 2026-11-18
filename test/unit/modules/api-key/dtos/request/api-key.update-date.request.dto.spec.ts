@@ -28,6 +28,45 @@ describe('ApiKeyUpdateDateRequestSchema', () => {
         ).toThrow();
     });
 
+    it('parses both dates null', () => {
+        const result = ApiKeyUpdateDateRequestSchema.parse({
+            startAt: null,
+            endAt: null,
+        });
+
+        expect(result).toEqual({ startAt: null, endAt: null });
+    });
+
+    it('reports an issue at endAt when only startAt is null', () => {
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({
+            startAt: null,
+            endAt,
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+    });
+
+    it('reports an issue at endAt when only endAt is null', () => {
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({
+            startAt,
+            endAt: null,
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+    });
+
+    it('reports an issue at endAt when endAt is before startAt', () => {
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({
+            startAt: endAt,
+            endAt: startAt,
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+    });
+
     it('rejects a missing startAt', () => {
         expect(() => ApiKeyUpdateDateRequestSchema.parse({ endAt })).toThrow();
     });

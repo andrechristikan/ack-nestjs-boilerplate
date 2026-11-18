@@ -71,6 +71,20 @@ Rule: `pagination.md`.
 - Offset everywhere: a user-facing list would pay for a count and a deep skip.
 - Cursor everywhere: a back-office table needs page jumps and totals, over sets small enough to count.
 
+### Offset pagination caps its metadata at the page cap
+
+Rule: `pagination-kit.md`.
+
+- Removing the page cap for a `maxSkip` bound: a new config key for a window that search and filters already reach.
+
+### The email local part holds letters, digits, `-`, `_`, and `.`
+
+Rule: `dto.md`, Shape.
+
+- `+`: no large provider's primary address holds it, and a plus alias lets one mailbox open many accounts.
+- The full RFC 5322 character set: addresses stay plain.
+- Refusing `.`: it refuses most work addresses.
+
 ### The workspace id travels in the `x-workspace-id` header
 
 Rule: `guards.md`, Guards.

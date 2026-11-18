@@ -87,11 +87,19 @@ Rule: `cache.md`.
 - Cache-class read methods taking the loader too: it widens the exception to every cache class.
 - No callback at all: get, lease, load, and set are copied at about 55 call sites.
 
-### Health follows Redis
+### Health follows Redis, behind the system API key, and the database route answers 503 while a dependency is down
 
-Rule: `config.md`.
+Rule: `config.md`; the API key: `guards.md`, Decorator order.
 
 - An informational indicator: the API is not healthy without its cache.
+- An unauthenticated readiness route: every health route stays behind an API key.
+- 200 with the status in the body only: a monitor reads the status code.
+
+### A seed run empties the cache Redis
+
+Rule: `seeding.md`, Idempotency and reset.
+
+- Per-key invalidation in each seed: a cache a seed forgets stays stale, and the analytic keys cannot be named.
 
 ### The membership guards read the database on every request
 

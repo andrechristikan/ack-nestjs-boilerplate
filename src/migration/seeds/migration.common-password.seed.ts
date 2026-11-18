@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
@@ -24,11 +25,12 @@ export class MigrationCommonPasswordSeed
     private readonly seedBatchSize: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.seedTransactionTimeoutInMs = this.configService.get<number>(
             'database.seedTransactionTimeoutInMs'

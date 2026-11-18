@@ -51,6 +51,7 @@ describe('QueueProcessorBase', () => {
             attempts: 0,
             lastError: null,
             enqueuedAt: new Date('2026-11-11T00:00:00.000Z'),
+            sweptAt: null,
             completedAt: null,
             failedAt: null,
             createdAt: new Date('2026-11-11T00:00:00.000Z'),

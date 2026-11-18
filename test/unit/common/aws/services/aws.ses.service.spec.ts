@@ -27,6 +27,8 @@ describe('AwsSESService', () => {
         'aws.ses.identityArn': null,
         'aws.ses.region': 'us-east-1',
         'aws.ses.endpoint': null,
+        'aws.ses.maxAttempts': 1,
+        'aws.ses.timeoutInMs': 30000,
     };
 
     beforeEach(async () => {
@@ -86,6 +88,8 @@ describe('AwsSESService', () => {
                     secretAccessKey: 'ses-secret',
                 },
                 region: 'us-east-1',
+                maxAttempts: 1,
+                requestHandler: { requestTimeout: 30000 },
             });
         });
 

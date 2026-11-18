@@ -35,7 +35,6 @@ import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
-    ITermPolicyDeleteContentEffect,
     ITermPolicyPublishEffect,
     ITermPolicyPublishInput,
     ITermPolicyPublishPayload,
@@ -78,16 +77,6 @@ export class TermPolicyService {
         this.resendPublishPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.resendPublishPattern'
         )!;
-    }
-
-    private deleteContentEffect(path: string): ITermPolicyDeleteContentEffect {
-        return {
-            queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.deleteContent,
-            data: { path },
-            priority: EnumQueuePriority.low,
-            idempotencyKey: null,
-        };
     }
 
     private publishEffect(
@@ -292,8 +281,8 @@ export class TermPolicyService {
         }
     }
 
-    async deleteContentDir(path: string): Promise<void> {
-        await this.awsS3Service.deleteDir(path, {
+    async deleteContentKeys(keys: string[]): Promise<void> {
+        await this.awsS3Service.deleteItems(keys, {
             access: EnumAwsS3Accessibility.private,
         });
     }
@@ -314,10 +303,7 @@ export class TermPolicyService {
         }
 
         try {
-            const contentPath = this.termPolicyUtil.getPath(
-                termPolicy.type,
-                termPolicy.version
-            );
+            const contentKeys = termPolicy.contents.map(content => content.key);
             await this.outboxService.withTransaction(async tx => {
                 const isDeleted =
                     await this.termPolicyRepository.deleteDraftInTx(
@@ -328,8 +314,13 @@ export class TermPolicyService {
                     throw new TermPolicyStatusInvalidException();
                 }
 
-                const effect = this.deleteContentEffect(contentPath);
-                await this.outboxService.addInTx(tx, effect);
+                if (contentKeys.length > 0) {
+                    const effect =
+                        this.termPolicyContentService.deleteContentEffect(
+                            contentKeys
+                        );
+                    await this.outboxService.addInTx(tx, effect);
+                }
 
                 const timestamp = this.helperDateService.create();
                 const metadata = this.termPolicyUtil.mapActivityLogMetadata(

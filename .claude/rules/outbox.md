@@ -16,8 +16,9 @@ Effects, writing, and payloads: `effects.md`.
 - `dispatch` resolves each row's queue through `ModuleRef.get(getQueueToken(row.queue), { strict: false })`; the outbox injects no queue class of another module.
 - Dispatch never throws and never changes the response. A failed enqueue leaves the row `pending`; a Redis connection error warns once per `redis.warnWindowInMs`, any other error warns once, and nothing goes to Sentry.
 - The sweep runs every `outbox.sweepIntervalInMs` and once at boot:
-    - it re-dispatches up to `outbox.sweepBatch` rows `pending` longer than `outbox.pendingAfterInMs`, oldest first;
-    - it reads up to `outbox.sweepBatch` rows `enqueued` longer than `outbox.enqueuedAfterInMs`, oldest first, and reads each one's job by `idempotencyKey`: `completed` stamps the row `completed`, `failed` stamps it `failed` with the job's `failedReason`, any other state leaves it;
+    - it stamps `sweptAt` on every row its two reads return before it reconciles and dispatches; a row it cannot move keeps its state, with no attempt counter and no `failed` stamp;
+    - it re-dispatches up to `outbox.sweepBatch` rows `pending` longer than `outbox.pendingAfterInMs`, swept longest ago first (`sweptAt`, never-swept first), then oldest;
+    - it reads up to `outbox.sweepBatch` rows `enqueued` longer than `outbox.enqueuedAfterInMs`, swept longest ago first, then oldest, and reads each one's job by `idempotencyKey`: `completed` stamps the row `completed`, `failed` stamps it `failed` with the job's `failedReason`, any other state leaves it;
     - rows whose job is gone go out with the pending rows in one dispatch.
 
 ## Processing

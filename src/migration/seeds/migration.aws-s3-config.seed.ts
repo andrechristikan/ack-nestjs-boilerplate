@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
@@ -21,10 +22,11 @@ export class MigrationAwsS3ConfigSeed
     private readonly iamPrincipalArn: string | null;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly awsS3Service: AwsS3Service,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         const iamPrincipalArn = this.configService.get<string | null>(
             'aws.s3.iamPrincipalArn'

@@ -18,7 +18,10 @@ export class PaginationOffsetUtil {
     ): IPaginationOffsetReturn<TReturn> {
         const { skip, limit } = params;
         const currentPage = Math.floor(skip / limit) + 1;
-        const totalPage = Math.ceil(count / limit);
+        const totalPage = Math.min(
+            Math.ceil(count / limit),
+            PaginationDefaultMaxPage
+        );
         const hasNext = currentPage < totalPage;
         const hasPrevious = currentPage > 1;
         const nextPage = hasNext ? currentPage + 1 : null;

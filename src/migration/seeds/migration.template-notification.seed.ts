@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
@@ -21,10 +22,11 @@ export class MigrationTemplateEmailNotificationSeed
     );
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly notificationTemplateService: NotificationTemplateService,
         private readonly awsSESService: AwsSESService
     ) {
-        super();
+        super(cacheService);
     }
 
     async seed(): Promise<void> {

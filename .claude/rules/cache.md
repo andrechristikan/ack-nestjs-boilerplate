@@ -18,6 +18,7 @@ paths:
 - `readThrough(key, schema, ttlInMs, loader, options?)`: every value is plain JSON written with `PX`; a value passing `JSON.parse` and `schema.safeParse` is the hit; a missing entry, a schema failure (the key is deleted), or a non-connection error runs `loader()` and sets its result, a set error classed as above. A `null` result is not stored. The schema revives what JSON drops (`z.coerce.date()`).
 - `options.lease`, for a shared hot key (`ApiKeyCache`, `FeatureFlagCache`, `RoleCache`), holds no stale entry past a delete: the invalidate job removes the entry and its lease.
 - A write that changes or deletes a cached row invalidates through an effect: `effects.md`, Cache invalidation.
+- `CacheService.flush` runs `flushdb` on the cache client; `MigrationSeedBase` is its one caller.
 - `CacheModule.forRoot()` registers the `cache` queue with `CacheQueueFactory` (`queue.job.cacheBackoffDelayInMs`); `CacheProcessor` (`src/common/cache/processors/`), provided by `router.processor.module.ts`, awaits `CacheService.invalidate(data.keys)`, and a connection error retries the job; its messages are `cache.queue.*` in `src/languages/<lang>/cache.json`.
 - The session login entry and its purge: `session.md`, Session invalidation. `RoleCache`: `role.md`.
 

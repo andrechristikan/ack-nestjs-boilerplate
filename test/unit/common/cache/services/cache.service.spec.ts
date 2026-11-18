@@ -446,6 +446,32 @@ describe('CacheService', () => {
         });
     });
 
+    describe('flush', () => {
+        it('calls flushdb once on the cache connection', async () => {
+            redis.flushdb.mockResolvedValue('OK');
+
+            await service.flush();
+
+            expect(redis.flushdb).toHaveBeenCalledTimes(1);
+        });
+
+        it('throws RedisUnavailableException on a connection error', async () => {
+            redis.flushdb.mockRejectedValue(connectionError);
+
+            await expect(service.flush()).rejects.toMatchObject({
+                ...redisUnavailable,
+                rawError: connectionError,
+            });
+        });
+
+        it('records a warning and resolves on a non-connection error', async () => {
+            redis.flushdb.mockRejectedValue(new Error('READONLY'));
+
+            await expect(service.flush()).resolves.toBeUndefined();
+            expect(service['warnedAtByKey'].get('flushdb')).toBe(now.getTime());
+        });
+    });
+
     describe('invalidateEffect', () => {
         it('returns the high-priority cache invalidate effect carrying the keys and no business key', () => {
             const effect = service.invalidateEffect(['Entry:1', 'Lease:1']);

@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
@@ -42,6 +43,7 @@ export class MigrationTermPolicySeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
@@ -49,7 +51,7 @@ export class MigrationTermPolicySeed
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly helperDateService: HelperDateService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.termPolicies = MigrationTermPolicyData[this.env];

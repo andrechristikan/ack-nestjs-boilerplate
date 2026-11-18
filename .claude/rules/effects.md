@@ -38,4 +38,4 @@ Whoever builds a payload (an `<action>Effect` method, `NotificationService.notif
 ## Cache invalidation
 
 - Every read-through cache is cache-aside: a write that changes or deletes a cached row never sets its keys. It opens `OutboxService.withTransaction` over its `*InTx` write and adds `CacheService.invalidateEffect(keys)`, the `invalidate` job on the kit `cache` queue (priority high, no business key); the next read after the job misses and `readThrough` sets the key (`ApiKeyService`, `FeatureFlagService`). A create adds none.
-- `CacheService.invalidate` is called by `CacheProcessor`, a seed, and `SessionService.isLoginActive` and `deleteLogins` only.
+- `CacheService.invalidate` is called by `CacheProcessor` and `SessionService.isLoginActive` and `deleteLogins` only.

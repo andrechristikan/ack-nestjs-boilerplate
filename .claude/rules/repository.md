@@ -19,7 +19,10 @@ Who opens a transaction, guarded statements, and retries: `transaction.md`.
 
 - Prisma builder only; no `$queryRaw` / `$executeRaw` in a feature repository.
 - An update writes every field as given: `null-safety.md`, Update and create.
+- A read whose selective fact lives on a child model reads the child's ids through the child's index, then the parent by `id: { in }`; a `some` filter is never its only selective predicate.
 
 ## Schema
 
 Match the existing models: `id String @id @default(auto()) @map("_id") @db.ObjectId`; `createdAt createdBy` on every model; `updatedAt updatedBy` with `@updatedAt` on a model whose rows are updated, a one-time token marked on use included; `deletedAt deletedBy` on a soft-deletable model; a row only created and hard-deleted (a link, a nonce, a log or history row) carries `createdAt createdBy` alone; `@@map("<PluralPascalCase>")`; camelCase fields; relation scalars `String @db.ObjectId`; an embedded shape is a composite `type`; an enum is `Enum<Module><Concept>` with camelCase members, imported from `@generated/prisma-client/client`; every index for a query that exists, and none on a relation scalar no query filters on. The hand-back after a schema edit names the index the query needs. A persisted enum value or column rename changes the schema and every call site together.
+
+- A row the application stops reading once past its `expiredAt` is deleted by its owning repository's `deleteExpiredBefore(threshold)`, never through a TTL index, and its model carries `@@index([expiredAt])`; `AuthSocialNonce` is swept on issue (`login.md`).

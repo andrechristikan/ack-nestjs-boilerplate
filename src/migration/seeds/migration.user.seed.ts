@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -49,6 +50,7 @@ export class MigrationUserSeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
@@ -59,7 +61,7 @@ export class MigrationUserSeed
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly requestUtil: RequestUtil
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.users = MigrationUserData[this.env];

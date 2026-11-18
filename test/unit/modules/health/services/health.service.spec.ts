@@ -318,6 +318,21 @@ describe('HealthService', () => {
         });
     });
 
+    describe('isUp', () => {
+        it('returns true for a result whose status is ok', () => {
+            expect(service.isUp(healthCheckResult)).toBe(true);
+        });
+
+        it.each(['error', 'shutting_down'] as const)(
+            'returns false for a result whose status is %s',
+            status => {
+                expect(service.isUp({ ...healthCheckResult, status })).toBe(
+                    false
+                );
+            }
+        );
+    });
+
     describe('isHealthCheckResult', () => {
         it('returns false when the value is not an object', () => {
             expect(service['isHealthCheckResult']('not-an-object')).toBe(false);

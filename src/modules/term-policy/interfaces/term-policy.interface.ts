@@ -61,7 +61,7 @@ export interface ITermPolicyAcceptanceAnalytic {
 }
 
 export interface ITermPolicyDeleteContentPayload {
-    path: string;
+    keys: string[];
 }
 
 export interface ITermPolicyAcceptanceCreate {
@@ -151,7 +151,7 @@ export interface ITermPolicyRecipientClaim {
 }
 
 export interface ITermPolicyDeleteContentQueueResponse extends IQueueResponse {
-    path: string;
+    keys: string[];
 }
 
 export interface ITermPolicyPublishQueueResponse extends IQueueResponse {

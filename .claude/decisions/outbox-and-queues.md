@@ -58,7 +58,7 @@ Rule: `effects.md`, Effects.
 - No unique index: a raced duplicate row has no database guarantee.
 - A unique index on the key alone: the guarantee belongs to one queue and process, and keys of different queues may coincide.
 
-### The sweep recovers pending rows and reconciles stale enqueued ones with their job
+### The sweep recovers pending rows and reconciles stale enqueued ones with their job, swept longest ago first
 
 Rule: `outbox.md`, Dispatch.
 
@@ -66,6 +66,7 @@ Rule: `outbox.md`, Dispatch.
 - Retry on the next request: recovery latency would depend on traffic and every request would pay an extra query.
 - Dispatch a stale enqueued row again and shift `enqueuedAt`: a job that failed on every attempt runs again once BullMQ's retention drops it.
 - Leave a stale enqueued row: its outcome is lost from the history.
+- A dispatch-attempt counter with a `failed` stamp: the rotation already frees the head of the batch, and a row only a removed queue or a refused job option produces is not a normal case.
 
 ### Step state lives in the outbox row
 
@@ -80,6 +81,12 @@ Rule: `activity-entry.md`.
 - Rows staged in the CLS store and flushed by an interceptor: an entry would be staged in one place and written in another, and an error path would lose it.
 - The `ActivityLog` row inserted in the business transaction: the outbox row already commits with the write, and the job keeps the insert off the request path.
 
+### A user's activity log hides another actor's request details at read
+
+Rule: `activity-log.md`.
+
+- Storing no request log on the affected user's row: the admin's audit view of that row loses it.
+
 ### A date is stored and passed as ISO 8601 and formatted at render
 
 Rule: `code-style.md`, Dates.
@@ -87,6 +94,12 @@ Rule: `code-style.md`, Dates.
 - RFC 2822 strings in `Outbox.data` and `Notification.metadata`: a client reading the notification list would get a display string where every other stored value is ISO 8601.
 
 ## Notification jobs
+
+### A notification setting is one stored row per channel and type, created at registration
+
+Rule: `notification.md`, Recipient.
+
+- A stored override of a default: the materialised rows are the design.
 
 ### The notification processor resolves the recipient
 

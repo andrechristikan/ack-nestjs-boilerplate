@@ -1,4 +1,5 @@
 import {
+    FirebaseCredentialErrorCodes,
     FirebaseInvalidTokenCodes,
     FirebaseMaxSendPushBatchSize,
     FirebaseRetryableTokenCodes,
@@ -17,6 +18,7 @@ import * as firebaseAdmin from 'firebase-admin';
 import type { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
 import type { Notification } from 'firebase-admin/messaging';
+import { FirebaseCredentialMismatchException } from '@common/firebase/exceptions/firebase.credential-mismatch.exception';
 import { FirebaseInitializationFailedException } from '@common/firebase/exceptions/firebase.initialization-failed.exception';
 import { FirebasePrivateKeyInvalidException } from '@common/firebase/exceptions/firebase.private-key-invalid.exception';
 
@@ -58,6 +60,10 @@ export class FirebaseService implements OnModuleInit {
 
     private isInvalidTokenError(error: { code?: string } | null): boolean {
         return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
+    }
+
+    private isCredentialError(error: { code?: string } | null): boolean {
+        return FirebaseCredentialErrorCodes.includes(error?.code ?? '');
     }
 
     private isRetryableTokenError(error: { code?: string } | null): boolean {
@@ -217,6 +223,13 @@ export class FirebaseService implements OnModuleInit {
                         const error = (resp.error ?? null) as {
                             code?: string;
                         } | null;
+                        const isCredentialError = this.isCredentialError(error);
+                        if (isCredentialError) {
+                            throw new FirebaseCredentialMismatchException(
+                                error
+                            );
+                        }
+
                         const isInvalidToken = this.isInvalidTokenError(error);
                         const isRetryable = this.isRetryableTokenError(error);
                         if (isInvalidToken) {

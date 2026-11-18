@@ -435,5 +435,5 @@ export interface INotificationEmailSendQueueResponse extends IQueueResponse {
 }
 
 export interface INotificationEmailSendUnregisteredQueueResponse extends IQueueResponse {
-    result: SendTemplatedEmailCommandOutput;
+    result: SendTemplatedEmailCommandOutput | null;
 }

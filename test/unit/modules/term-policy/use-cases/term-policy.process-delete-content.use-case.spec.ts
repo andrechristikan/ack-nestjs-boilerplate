@@ -13,7 +13,7 @@ describe('TermPolicyProcessDeleteContentUseCase', () => {
         mock<TermPolicyService>();
 
     const payload: ITermPolicyDeleteContentPayload = {
-        path: 'term-policies/privacy/1',
+        keys: ['term-policies/privacy/1/en-a.hbs'],
     };
 
     let useCase: TermPolicyProcessDeleteContentUseCase;
@@ -35,21 +35,21 @@ describe('TermPolicyProcessDeleteContentUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the content directory to the term policy domain and reports the path', async () => {
+        it('hands the content keys to the term policy domain and reports the keys', async () => {
             const result = await useCase.execute(payload);
 
-            expect(termPolicyService.deleteContentDir).toHaveBeenCalledWith(
-                'term-policies/privacy/1'
-            );
+            expect(termPolicyService.deleteContentKeys).toHaveBeenCalledWith([
+                'term-policies/privacy/1/en-a.hbs',
+            ]);
             expect(result).toEqual({
                 message: 'termPolicy.queue.deleteContent',
-                path: 'term-policies/privacy/1',
+                keys: ['term-policies/privacy/1/en-a.hbs'],
             });
         });
 
         it('rethrows the domain failure so BullMQ retries the job', async () => {
             const failure = new Error('s3 down');
-            termPolicyService.deleteContentDir.mockRejectedValue(failure);
+            termPolicyService.deleteContentKeys.mockRejectedValue(failure);
 
             const rejection = useCase.execute(payload);
 

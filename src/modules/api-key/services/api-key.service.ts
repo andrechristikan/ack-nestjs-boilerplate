@@ -13,6 +13,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
+import { ApiKeyEndAtNotFutureException } from '@modules/api-key/exceptions/api-key.end-at-not-future.exception';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
@@ -247,21 +248,27 @@ export class ApiKeyService {
     async updateDatesByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        startAt: Date,
-        endAt: Date
+        startAt: Date | null,
+        endAt: Date | null
     ): Promise<IApiKey> {
-        this.validateStartAtIsFuture(startAt);
+        let newStartAt: Date | null = null;
+        let newEndAt: Date | null = null;
+        if (startAt !== null && endAt !== null) {
+            newStartAt = this.helperDateService.create(startAt, {
+                dayOf: EnumHelperDateDayOf.start,
+            });
+            newEndAt = this.helperDateService.create(endAt, {
+                dayOf: EnumHelperDateDayOf.end,
+            });
+            const now = this.helperDateService.create();
+            if (newEndAt <= now) {
+                throw new ApiKeyEndAtNotFutureException();
+            }
+        }
 
         // Sequential by design: gate before the work it guards
         const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
         const apiKey = this.getValidApiKey(found, true);
-
-        const newStartAt = this.helperDateService.create(startAt, {
-            dayOf: EnumHelperDateDayOf.start,
-        });
-        const newEndAt = this.helperDateService.create(endAt, {
-            dayOf: EnumHelperDateDayOf.end,
-        });
 
         const updated = await this.apiKeyRepository.updateDatesInTx(
             tx,

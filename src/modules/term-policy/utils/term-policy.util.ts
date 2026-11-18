@@ -17,6 +17,7 @@ export class TermPolicyUtil {
     private readonly uploadContentPathPattern: string;
     private readonly contentPublicPathPattern: string;
     private readonly contentMaxSizeInBytes: number;
+    private readonly contentKeyRandomLength: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -31,13 +32,12 @@ export class TermPolicyUtil {
         this.contentMaxSizeInBytes = this.configService.get<number>(
             'termPolicy.content.maxSizeInBytes'
         )!;
+        this.contentKeyRandomLength = this.configService.get<number>(
+            'termPolicy.contentKeyRandomLength'
+        )!;
     }
 
-    isContentSizeAllowed(size: number): boolean {
-        return size <= this.contentMaxSizeInBytes;
-    }
-
-    getPath(type: EnumTermPolicyType, version: number): string {
+    private getPath(type: EnumTermPolicyType, version: number): string {
         return this.helperStringService.fillPattern(
             this.uploadContentPathPattern,
             {
@@ -45,6 +45,10 @@ export class TermPolicyUtil {
                 version: version.toString(),
             }
         );
+    }
+
+    isContentSizeAllowed(size: number): boolean {
+        return size <= this.contentMaxSizeInBytes;
     }
 
     isContentKeyInPath(
@@ -58,7 +62,7 @@ export class TermPolicyUtil {
         return key.startsWith(prefix) && key.length > prefix.length;
     }
 
-    /** Builds the S3 key `{path}/{language}.{extension}` with the extension lowercased, dropping a leading slash. */
+    /** Builds the S3 key `{path}/{language}-{random}.{extension}` with the extension lowercased, dropping a leading slash. */
     getContentKey(
         type: EnumTermPolicyType,
         version: number,
@@ -67,7 +71,11 @@ export class TermPolicyUtil {
     ): string {
         const path: string = this.getPath(type, version);
 
-        let fullPath: string = `${path}/${language}.${extension.toLowerCase()}`;
+        const random: string = this.helperStringService.random(
+            this.contentKeyRandomLength
+        );
+
+        let fullPath: string = `${path}/${language}-${random}.${extension.toLowerCase()}`;
         if (fullPath.startsWith('/')) {
             fullPath = fullPath.replace('/', '');
         }

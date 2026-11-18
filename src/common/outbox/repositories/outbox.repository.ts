@@ -37,7 +37,10 @@ export class OutboxRepository implements IOutboxRepository {
                 status: EnumOutboxStatus.pending,
                 createdAt: { lt: createdBefore },
             },
-            orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
+            orderBy: [
+                { sweptAt: EnumPaginationOrderDirectionType.asc },
+                { createdAt: EnumPaginationOrderDirectionType.asc },
+            ],
             take,
         });
     }
@@ -51,7 +54,10 @@ export class OutboxRepository implements IOutboxRepository {
                 status: EnumOutboxStatus.enqueued,
                 enqueuedAt: { lt: enqueuedBefore },
             },
-            orderBy: { enqueuedAt: EnumPaginationOrderDirectionType.asc },
+            orderBy: [
+                { sweptAt: EnumPaginationOrderDirectionType.asc },
+                { enqueuedAt: EnumPaginationOrderDirectionType.asc },
+            ],
             take,
         });
     }
@@ -90,6 +96,13 @@ export class OutboxRepository implements IOutboxRepository {
                 status: EnumOutboxStatus.enqueued,
                 enqueuedAt,
             },
+        });
+    }
+
+    async updateSwept(ids: string[], sweptAt: Date): Promise<void> {
+        await this.databaseService.client.outbox.updateMany({
+            where: { id: { in: ids } },
+            data: { sweptAt },
         });
     }
 

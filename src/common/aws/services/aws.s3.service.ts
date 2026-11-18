@@ -1088,6 +1088,7 @@ export class AwsS3Service implements OnModuleInit {
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
+            signableHeaders: new Set(['content-type']),
         });
 
         return {

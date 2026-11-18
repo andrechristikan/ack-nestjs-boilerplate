@@ -1417,6 +1417,29 @@ describe('AwsS3Service', () => {
             expect(send).not.toHaveBeenCalled();
         });
 
+        it('signs the content-type header and passes expiresIn', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+
+            await service.presignPutItem(dto, {
+                access: EnumAwsS3Accessibility.public,
+                forceUpdate: true,
+                expiredInSeconds: 90,
+            });
+
+            expect(getSignedUrl).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.anything(),
+                {
+                    expiresIn: 90,
+                    signableHeaders: new Set(['content-type']),
+                }
+            );
+        });
+
         it('presigns when the head check reports the key missing', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,

@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -16,6 +17,7 @@ import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-
 describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
     const notificationEmailDeliveryService: MockProxy<NotificationEmailDeliveryService> =
         mock<NotificationEmailDeliveryService>();
+    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -41,6 +43,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
+        awsSESService.isInitialized.mockReturnValue(true);
         vi.mocked(configService.get).mockReturnValue('secret-key');
         stubCipherDecryption(helperEncryptionService);
         helperDateService.createFromIso.mockReturnValue(
@@ -61,6 +64,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
                 },
+                { provide: AwsSESService, useValue: awsSESService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 { provide: MessageService, useValue: messageService },
@@ -70,6 +74,20 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
     });
 
     describe('execute', () => {
+        it('returns the sesNotInitialized message and sends nothing while SES is not initialized', async () => {
+            awsSESService.isInitialized.mockReturnValue(false);
+
+            const result = await useCase.execute(data);
+
+            expect(result).toEqual({
+                message: 'notification.queue.email.error.sesNotInitialized',
+                result: null,
+            });
+            expect(
+                notificationEmailDeliveryService.send
+            ).not.toHaveBeenCalled();
+        });
+
         it('sends the invite template with the contract template data, decrypted against the reference, and stamps no delivery', async () => {
             notificationEmailDeliveryService.send.mockResolvedValue({
                 $metadata: {},

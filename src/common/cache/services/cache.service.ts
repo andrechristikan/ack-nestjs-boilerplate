@@ -186,6 +186,15 @@ export class CacheService {
         }
     }
 
+    /** Empties the cache connection's database; a connection error throws RedisUnavailableException, any other error logs one warn. */
+    async flush(): Promise<void> {
+        try {
+            await this.redis.flushdb();
+        } catch (error: unknown) {
+            this.handleError('flushdb', error, 'Cache flush failed');
+        }
+    }
+
     /** The outbox effect that deletes the keys through the cache queue. */
     invalidateEffect(keys: string[]): ICacheInvalidateEffect {
         return {
