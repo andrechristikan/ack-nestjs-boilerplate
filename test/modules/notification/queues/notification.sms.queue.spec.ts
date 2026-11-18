@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
-import type { INotificationSendSmsPayload } from '@modules/notification/interfaces/notification.interface';
+import type {
+    INotificationSendSmsPayload,
+    INotificationSendSmsVerificationPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
@@ -109,6 +112,41 @@ describe('NotificationSmsQueue', () => {
                     },
                 })
             );
+        });
+    });
+
+    describe('sendVerificationMobileNumber', () => {
+        const verificationPayload: INotificationSendSmsVerificationPayload = {
+            userId: 'user-id',
+            notificationId: 'notification-id',
+            phoneNumber: '+628123456789',
+            encryptedOtp: 'cipher-otp',
+            expiredInMinutes: 5,
+        };
+
+        it('sendVerificationMobileNumber enqueues with high priority and notification-scoped dedup', async () => {
+            await queue.sendVerificationMobileNumber(verificationPayload);
+
+            expect(notificationSmsQueue.add).toHaveBeenCalledWith(
+                EnumNotificationSmsProcess.verificationMobileNumber,
+                verificationPayload,
+                {
+                    priority: EnumQueuePriority.high,
+                    deduplication: {
+                        id: 'verificationMobileNumber-user-id-notification-id',
+                        ttl: 60_000,
+                    },
+                }
+            );
+        });
+
+        it('returns without add when phoneNumber is empty', async () => {
+            await queue.sendVerificationMobileNumber({
+                ...verificationPayload,
+                phoneNumber: '',
+            });
+
+            expect(notificationSmsQueue.add).not.toHaveBeenCalled();
         });
     });
 

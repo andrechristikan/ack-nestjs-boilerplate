@@ -16,6 +16,7 @@ import {
 import { NotificationAccountDomain } from '@modules/notification/domains/notification.account.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
 
@@ -25,6 +26,7 @@ describe('NotificationAccountDomain', () => {
     const helperStringService = mock<HelperStringService>();
     const databaseUtil = mock<DatabaseUtil>();
     const notificationEmailQueue = mock<NotificationEmailQueue>();
+    const notificationSmsQueue = mock<NotificationSmsQueue>();
     let domain: NotificationAccountDomain;
 
     const user: User = {
@@ -100,6 +102,10 @@ describe('NotificationAccountDomain', () => {
                 {
                     provide: NotificationEmailQueue,
                     useValue: notificationEmailQueue,
+                },
+                {
+                    provide: NotificationSmsQueue,
+                    useValue: notificationSmsQueue,
                 },
             ],
         }).compile();
@@ -469,6 +475,81 @@ describe('NotificationAccountDomain', () => {
             );
             expect(result).toMatchObject({
                 message: 'Mobile number verified notification processed',
+            });
+        });
+    });
+
+    describe('processVerificationMobileNumber', () => {
+        const data = {
+            mobileNumberId: 'mobile-id',
+            phoneNumber: '+15551234567',
+            encryptedOtp: 'cipher-otp',
+            expiredAt: '2024-02-01T00:00:00.000Z',
+            expiredInMinutes: 5,
+            reference: 'ref-1',
+        };
+
+        it('skips when the user is not active', async () => {
+            userDomain.getOneActive.mockResolvedValue(null);
+
+            const result = await domain.processVerificationMobileNumber(
+                'user-id',
+                data
+            );
+
+            expect(result).toEqual({
+                message:
+                    'User not found, skipping verification mobile number notification',
+            });
+            expect(notificationRepository.create).not.toHaveBeenCalled();
+            expect(
+                notificationSmsQueue.sendVerificationMobileNumber
+            ).not.toHaveBeenCalled();
+        });
+
+        it('processVerificationMobileNumber creates the notification before enqueuing the sms', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            databaseUtil.createId.mockReturnValue('notification-id');
+            helperStringService.censor.mockReturnValue('+1555****567');
+            notificationRepository.create.mockResolvedValue(notification);
+            notificationSmsQueue.sendVerificationMobileNumber.mockResolvedValue(
+                undefined
+            );
+
+            const result = await domain.processVerificationMobileNumber(
+                'user-id',
+                data
+            );
+
+            expect(helperStringService.censor).toHaveBeenCalledWith(
+                data.phoneNumber
+            );
+            expect(notificationRepository.create).toHaveBeenCalledWith(
+                EnumNotificationKind.verificationMobileNumber,
+                {
+                    id: 'notification-id',
+                    userId: user.id,
+                    metadata: {
+                        username: user.username,
+                        mobileNumber: '+1555****567',
+                    },
+                    createdBy: user.id,
+                }
+            );
+            expect(
+                notificationSmsQueue.sendVerificationMobileNumber
+            ).toHaveBeenCalledWith({
+                userId: user.id,
+                notificationId: 'notification-id',
+                phoneNumber: data.phoneNumber,
+                encryptedOtp: 'cipher-otp',
+                expiredInMinutes: 5,
+            });
+            expect(notificationRepository.create).toHaveBeenCalledBefore(
+                notificationSmsQueue.sendVerificationMobileNumber
+            );
+            expect(result).toMatchObject({
+                message: 'Verification mobile number notification processed',
             });
         });
     });

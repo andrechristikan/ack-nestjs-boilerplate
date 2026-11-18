@@ -13,6 +13,8 @@ import type {
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerificationEmailPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
+    INotificationVerificationMobileNumberPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
@@ -255,6 +257,45 @@ export class NotificationQueue {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
+                    ttl: this.dedupTtlInMs,
+                },
+            }
+        );
+    }
+
+    async sendVerificationMobileNumber(
+        userId: string,
+        {
+            mobileNumberId,
+            phoneNumber,
+            otp,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+        }: INotificationVerificationMobileNumberPayload
+    ): Promise<void> {
+        const encryptedOtp = this.encryptValue(otp, userId);
+        const payload: INotificationQueuePayload<INotificationVerificationMobileNumberEncryptedPayload> =
+            {
+                userId,
+                proceedBy: userId,
+                data: {
+                    mobileNumberId,
+                    phoneNumber,
+                    encryptedOtp,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                },
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verificationMobileNumber,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verificationMobileNumber}-${userId}-${reference}`,
                     ttl: this.dedupTtlInMs,
                 },
             }

@@ -4,12 +4,14 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type {
     INotificationEmailSendPayload,
     INotificationVerificationEmailEncryptedPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -22,7 +24,8 @@ export class NotificationAccountDomain {
         private readonly userDomain: UserDomain,
         private readonly helperStringService: HelperStringService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailQueue: NotificationEmailQueue
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationSmsQueue: NotificationSmsQueue
     ) {}
 
     async processWelcomeByAdmin(
@@ -229,6 +232,51 @@ export class NotificationAccountDomain {
         return {
             message: 'Verification email notification processed',
             results,
+        };
+    }
+
+    async processVerificationMobileNumber(
+        userId: string,
+        data: INotificationVerificationMobileNumberEncryptedPayload
+    ): Promise<IQueueResponse> {
+        const user = await this.userDomain.getOneActive(userId);
+
+        if (!user) {
+            return {
+                message:
+                    'User not found, skipping verification mobile number notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const censoredMobileNumber = this.helperStringService.censor(
+            data.phoneNumber
+        );
+
+        const notification = await this.notificationRepository.create(
+            EnumNotificationKind.verificationMobileNumber,
+            {
+                id: notificationId,
+                userId: user.id,
+                metadata: {
+                    username: user.username,
+                    mobileNumber: censoredMobileNumber,
+                },
+                createdBy: user.id,
+            }
+        );
+
+        // Sequential by design: the SMS processor requires the sms delivery row
+        await this.notificationSmsQueue.sendVerificationMobileNumber({
+            userId: user.id,
+            notificationId: notification.id,
+            phoneNumber: data.phoneNumber,
+            encryptedOtp: data.encryptedOtp,
+            expiredInMinutes: data.expiredInMinutes,
+        });
+
+        return {
+            message: 'Verification mobile number notification processed',
         };
     }
 

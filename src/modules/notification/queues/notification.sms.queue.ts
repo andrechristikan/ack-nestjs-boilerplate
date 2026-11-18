@@ -1,4 +1,8 @@
-import type { INotificationSendSmsPayload } from '@modules/notification/interfaces/notification.interface';
+import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationSendSmsPayload,
+    INotificationSendSmsVerificationPayload,
+} from '@modules/notification/interfaces/notification.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -49,5 +53,27 @@ export class NotificationSmsQueue {
                 ttl: this.dedupTtlInMs,
             },
         });
+    }
+
+    async sendVerificationMobileNumber(
+        payload: INotificationSendSmsVerificationPayload
+    ): Promise<void> {
+        const { userId, notificationId, phoneNumber } = payload;
+
+        if (!phoneNumber) {
+            return;
+        }
+
+        await this.notificationSmsQueue.add(
+            EnumNotificationSmsProcess.verificationMobileNumber,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationSmsProcess.verificationMobileNumber}-${userId}-${notificationId}`,
+                    ttl: this.dedupTtlInMs,
+                },
+            }
+        );
     }
 }

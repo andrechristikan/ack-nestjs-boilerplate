@@ -101,6 +101,22 @@ export interface INotificationVerifiedMobileNumberPayload extends INotificationV
     mobileNumber: string;
 }
 
+export interface INotificationVerificationMobileNumberPayload {
+    mobileNumberId: string;
+    phoneNumber: string;
+    otp: string;
+    expiredAt: string;
+    expiredInMinutes: number;
+    reference: string;
+}
+
+export interface INotificationVerificationMobileNumberEncryptedPayload extends Omit<
+    INotificationVerificationMobileNumberPayload,
+    'otp'
+> {
+    encryptedOtp: string;
+}
+
 export interface INotificationNewDeviceLoginPayload {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
@@ -240,4 +256,12 @@ export interface INotificationSendSmsPayload {
     notificationId: string;
     kind: EnumNotificationSmsProcess;
     phoneNumber: string;
+}
+
+export interface INotificationSendSmsVerificationPayload {
+    userId: string;
+    notificationId: string;
+    phoneNumber: string;
+    encryptedOtp: string;
+    expiredInMinutes: number;
 }

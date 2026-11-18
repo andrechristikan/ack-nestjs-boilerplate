@@ -205,6 +205,34 @@ describe('NotificationProcessorService', () => {
         });
     });
 
+    describe('processVerificationMobileNumber', () => {
+        it('forwards userId and data to the account domain', async () => {
+            const data = {
+                mobileNumberId: 'mobile-id',
+                phoneNumber: '+15551234567',
+                encryptedOtp: 'cipher-otp',
+                expiredAt: '2024-02-01T00:00:00.000Z',
+                expiredInMinutes: 5,
+                reference: 'ref-1',
+            };
+            notificationAccountDomain.processVerificationMobileNumber.mockResolvedValue(
+                response
+            );
+            const job = buildJob<INotificationQueuePayload<typeof data>>({
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                data,
+            });
+
+            const result = await service.processVerificationMobileNumber(job);
+
+            expect(
+                notificationAccountDomain.processVerificationMobileNumber
+            ).toHaveBeenCalledWith('user-id', data);
+            expect(result).toBe(response);
+        });
+    });
+
     describe('processTemporaryPasswordByAdmin', () => {
         it('forwards userId, proceedBy, and data to the security domain', async () => {
             const data = {
