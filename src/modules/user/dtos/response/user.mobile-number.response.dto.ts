@@ -27,6 +27,15 @@ export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
             'Country calling code of the mobile number, E.164 form with a leading +',
         example: '+62',
     }),
+    isVerified: z.boolean().meta({
+        description: 'Whether the mobile number has been verified',
+        example: true,
+    }),
+    verifiedAt: z.date().nullable().meta({
+        description:
+            'When the mobile number was verified, null when unverified',
+        example: faker.date.recent(),
+    }),
     country: CountryResponseSchema.meta({
         description: 'Country of the mobile number',
     }),

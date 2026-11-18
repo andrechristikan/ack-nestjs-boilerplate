@@ -247,7 +247,8 @@ describe('UserMobileNumberDomain', () => {
 
     describe('updateMobileNumber', () => {
         it('updates the mobile number, stages the event in order, keeping verification when number and phone code are unchanged', async () => {
-            const verified = { ...mobileNumber, isVerified: true };
+            const verifiedAt = new Date('2026-01-03T00:00:00.000Z');
+            const verified = { ...mobileNumber, isVerified: true, verifiedAt };
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 verified
             );
@@ -286,7 +287,8 @@ describe('UserMobileNumberDomain', () => {
                     countryId: country.id,
                     phoneCode: mobileNumber.phoneCode,
                 },
-                true
+                true,
+                verifiedAt
             );
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userUpdateMobileNumber,
@@ -325,7 +327,8 @@ describe('UserMobileNumberDomain', () => {
                     countryId: country.id,
                     phoneCode: mobileNumber.phoneCode,
                 },
-                false
+                false,
+                null
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,

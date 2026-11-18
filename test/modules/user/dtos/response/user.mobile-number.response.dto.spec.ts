@@ -23,6 +23,8 @@ describe('UserMobileNumberResponseSchema', () => {
         updatedBy: 'user-1',
         number: '81234567890',
         phoneCode: '+62',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-03T00:00:00.000Z'),
         country,
     };
 
@@ -40,5 +42,21 @@ describe('UserMobileNumberResponseSchema', () => {
         });
 
         expect(result).toEqual(row);
+    });
+
+    it('parses an unverified row with a null verifiedAt', () => {
+        const unverified = { ...row, isVerified: false, verifiedAt: null };
+
+        const result = UserMobileNumberResponseSchema.parse(unverified);
+
+        expect(result).toEqual(unverified);
+    });
+
+    it('rejects a row without isVerified', () => {
+        const { isVerified: _isVerified, ...rest } = row;
+
+        const result = UserMobileNumberResponseSchema.safeParse(rest);
+
+        expect(result.success).toBe(false);
     });
 });

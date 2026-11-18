@@ -31,4 +31,7 @@ export enum EnumUserStatusCodeError {
     importEmailExist = 51025,
     importUsernameExist = 51026,
     notAuthenticated = 51027,
+    mobileNumberAlreadyVerified = 51028,
+    mobileNumberOtpInvalid = 51029,
+    verificationMobileNumberResendLimitExceeded = 51030,
 }

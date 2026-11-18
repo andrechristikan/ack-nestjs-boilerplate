@@ -111,11 +111,15 @@ export class UserMobileNumberDomain {
             throw new UserMobileNumberInvalidException();
         }
 
-        const isVerified =
+        const isUnchanged =
             checkMobileNumberExist.number === number &&
-            checkMobileNumberExist.phoneCode === phoneCode
-                ? checkMobileNumberExist.isVerified
-                : false;
+            checkMobileNumberExist.phoneCode === phoneCode;
+        const isVerified = isUnchanged
+            ? checkMobileNumberExist.isVerified
+            : false;
+        const verifiedAt = isUnchanged
+            ? checkMobileNumberExist.verifiedAt
+            : null;
 
         try {
             const events = [
@@ -133,7 +137,8 @@ export class UserMobileNumberDomain {
                             countryId,
                             phoneCode,
                         },
-                        isVerified
+                        isVerified,
+                        verifiedAt
                     );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
 

@@ -14,6 +14,7 @@ export interface IUserMobileNumberRepository {
         number: string;
         phoneCode: string;
         isVerified: boolean;
+        verifiedAt: Date | null;
     } | null>;
     existsMobileNumber(
         userId: string,
@@ -29,7 +30,13 @@ export interface IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        isVerified: boolean
+        isVerified: boolean,
+        verifiedAt: Date | null
+    ): Promise<UserMobileNumber & { country: Country }>;
+    markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        verifiedAt: Date
     ): Promise<UserMobileNumber & { country: Country }>;
     deleteInTx(
         tx: IDatabaseTransactionClient,

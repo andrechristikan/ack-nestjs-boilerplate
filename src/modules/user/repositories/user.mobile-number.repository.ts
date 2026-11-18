@@ -20,6 +20,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         number: string;
         phoneCode: string;
         isVerified: boolean;
+        verifiedAt: Date | null;
     } | null> {
         return this.databaseService.client.userMobileNumber.findFirst({
             where: {
@@ -33,6 +34,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 number: true,
                 phoneCode: true,
                 isVerified: true,
+                verifiedAt: true,
             },
         });
     }
@@ -83,7 +85,8 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        isVerified: boolean
+        isVerified: boolean,
+        verifiedAt: Date | null
     ): Promise<UserMobileNumber & { country: Country }> {
         return tx.userMobileNumber.update({
             where: { id: mobileNumberId },
@@ -92,6 +95,24 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 number,
                 phoneCode,
                 isVerified,
+                verifiedAt,
+            },
+            include: {
+                country: true,
+            },
+        });
+    }
+
+    async markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        verifiedAt: Date
+    ): Promise<UserMobileNumber & { country: Country }> {
+        return tx.userMobileNumber.update({
+            where: { id: mobileNumberId },
+            data: {
+                isVerified: true,
+                verifiedAt,
             },
             include: {
                 country: true,
