@@ -1,25 +1,38 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Country } from '@generated/prisma-client/client';
+import { EnumVerificationType } from '@generated/prisma-client/client';
+import type { Country, Verification } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
+import { UserVerificationMobileNumberResendLimitExceededException } from '@modules/user/exceptions/user.verification-mobile-number-resend-limit-exceeded.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserMobileNumber,
+    IUserMobileNumberVerificationCreate,
+} from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
+import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { DateTime, Duration } from 'luxon';
 
 describe('UserMobileNumberDomain', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
@@ -30,6 +43,22 @@ describe('UserMobileNumberDomain', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
     const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userVerificationRepository: MockProxy<UserVerificationRepository> =
+        mock<UserVerificationRepository>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configGet = vi.fn<(key: string) => string | number | undefined>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
 
     let domain: UserMobileNumberDomain;
 
@@ -39,7 +68,7 @@ describe('UserMobileNumberDomain', () => {
         name: 'Marlin Coast',
         alpha2Code: 'ML',
         alpha3Code: 'MLD',
-        phoneCode: ['+1'],
+        phoneCode: ['+62'],
         continent: 'Atlantis',
         timezone: 'UTC',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -51,8 +80,8 @@ describe('UserMobileNumberDomain', () => {
         id: 'mobile-marlin',
         userId: 'user-marlin',
         countryId: country.id,
-        phoneCode: '+1',
-        number: '5551234',
+        phoneCode: '+62',
+        number: '8123456789',
         isVerified: false,
         verifiedAt: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -66,6 +95,42 @@ describe('UserMobileNumberDomain', () => {
         metadata: {},
         onError: false,
     };
+    const sendEvent: IActivityLogStagedEvent = {
+        action: EnumActivityLogAction.userSendVerificationMobileNumber,
+        metadata: {},
+        onError: false,
+    };
+    const configValues: Record<string, string | number> = {
+        'verification.reference.prefix': 'VRF',
+        'verification.reference.length': 8,
+        'verification.otpLength': 6,
+        'verification.expiredInMs': 5 * 60 * 1000,
+        'verification.resendInMs': 2 * 60 * 1000,
+    };
+    const now = new Date('2026-03-01T00:00:00.000Z');
+    const expiredAt = new Date('2026-03-01T00:05:00.000Z');
+    const expiredAtIso = '2026-03-01T00:05:00.000Z';
+    const verificationCreate: IUserMobileNumberVerificationCreate = {
+        otp: '123456',
+        hashedOtp: 'hashed',
+        reference: 'VRF-ABCDEFGH',
+        expiredAt,
+        expiredInMinutes: 5,
+    };
+    const latestVerification: Verification = {
+        id: 'verification-marlin',
+        userId: 'user-marlin',
+        mobileNumberId: 'mobile-marlin',
+        type: EnumVerificationType.mobileNumber,
+        to: '+628123456789',
+        token: 'hashed',
+        reference: 'VRF-OLDOLDOL',
+        isUsed: false,
+        verifiedAt: null,
+        expiredAt: new Date('2026-03-01T00:04:00.000Z'),
+        createdAt: new Date('2026-02-28T23:59:00.000Z'),
+        createdBy: 'user-marlin',
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -73,7 +138,29 @@ describe('UserMobileNumberDomain', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockImplementation(input =>
+            input.action ===
+            EnumActivityLogAction.userSendVerificationMobileNumber
+                ? sendEvent
+                : event
+        );
+        configGet.mockImplementation(key => configValues[key]);
+        helperDateService.create.mockReturnValue(now);
+        helperDateService.forward.mockImplementation((date, duration) =>
+            DateTime.fromJSDate(date).plus(duration).toJSDate()
+        );
+        helperDateService.diff.mockImplementation((dateOne, dateTwo) =>
+            DateTime.fromJSDate(dateOne).diff(DateTime.fromJSDate(dateTwo))
+        );
+        helperDateService.formatToIso.mockImplementation(date =>
+            date.toISOString()
+        );
+        helperNumberService.randomDigits.mockReturnValue('123456');
+        helperHashService.sha256Hash.mockReturnValue('hashed');
+        helperStringService.random.mockReturnValue('ABCDEFGH');
+        userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+            null
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -87,24 +174,106 @@ describe('UserMobileNumberDomain', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
+                {
+                    provide: UserVerificationRepository,
+                    useValue: userVerificationRepository,
+                },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: HelperDateService, useValue: helperDateService },
+                { provide: HelperHashService, useValue: helperHashService },
+                {
+                    provide: HelperNumberService,
+                    useValue: helperNumberService,
+                },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
+                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         domain = module.get(UserMobileNumberDomain);
     });
 
     describe('addMobileNumber', () => {
-        it('adds the mobile number and stages the activity log event', async () => {
+        it('rejects inside the cooldown before any write', async () => {
             countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
                 false
             );
-            userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                latestVerification
+            );
+
+            const call = domain.addMobileNumber('user-marlin', {
+                number: '8123456789',
+                countryId: country.id,
+                phoneCode: '+62',
+            });
+
+            await expect(call).rejects.toBeInstanceOf(
+                UserVerificationMobileNumberResendLimitExceededException
+            );
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.verificationMobileNumberResendLimitExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError
+                            .verificationMobileNumberResendLimitExceeded
+                    ],
+                messagePath:
+                    'user.error.verificationMobileNumberResendLimitExceeded',
+                messageProperties: { resendIn: 1 },
+            });
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).toHaveBeenCalledWith('user-marlin');
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(userMobileNumberRepository.addInTx).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).not.toHaveBeenCalled();
+        });
+
+        it('creates the number and its verification in one transaction, then enqueues', async () => {
+            countryDomain.getOne.mockResolvedValue(country);
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
+                false
+            );
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                {
+                    ...latestVerification,
+                    createdAt: new Date('2026-02-28T23:58:00.000Z'),
+                }
+            );
+            const callOrder: string[] = [];
+            userMobileNumberRepository.addInTx.mockImplementation(async () => {
+                callOrder.push('addInTx');
+                return mobileNumber;
+            });
+            userVerificationRepository.createMobileNumberInTx.mockImplementation(
+                async () => {
+                    callOrder.push('createMobileNumberInTx');
+                    return latestVerification;
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
+            notificationQueue.sendVerificationMobileNumber.mockImplementation(
+                async () => {
+                    callOrder.push('sendVerificationMobileNumber');
+                }
+            );
 
             const result = await domain.addMobileNumber('user-marlin', {
-                number: '5551234',
+                number: '8123456789',
                 countryId: country.id,
-                phoneCode: '+1',
+                phoneCode: '+62',
             });
 
             expect(result).toBe(mobileNumber);
@@ -112,17 +281,89 @@ describe('UserMobileNumberDomain', () => {
                 tx,
                 'user-marlin',
                 {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 }
             );
+            expect(
+                userVerificationRepository.createMobileNumberInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-marlin',
+                mobileNumber.id,
+                '+628123456789',
+                verificationCreate,
+                now
+            );
+            expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marlin'
+            );
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', {
+                mobileNumberId: mobileNumber.id,
+                phoneNumber: '+628123456789',
+                otp: '123456',
+                expiredInMinutes: 5,
+                expiredAt: expiredAtIso,
+                reference: 'VRF-ABCDEFGH',
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userAddMobileNumber,
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userSendVerificationMobileNumber,
+                userId: 'user-marlin',
+                createdBy: 'user-marlin',
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                event,
+                sendEvent,
+            ]);
+            expect(callOrder).toEqual([
+                'addInTx',
+                'createMobileNumberInTx',
+                'stagePrepared',
+                'sendVerificationMobileNumber',
+            ]);
+        });
+
+        it('surfaces AppUnknownException when enqueue fails, after commit', async () => {
+            countryDomain.getOne.mockResolvedValue(country);
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
+                false
+            );
+            userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
+            const error = new Error('queue down');
+            notificationQueue.sendVerificationMobileNumber.mockRejectedValue(
+                error
+            );
+
+            const call = domain.addMobileNumber('user-marlin', {
+                number: '8123456789',
+                countryId: country.id,
+                phoneCode: '+62',
+            });
+
+            await expect(call).rejects.toBeInstanceOf(AppUnknownException);
+            await expect(call).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                statusCodeKey:
+                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+                messagePath: 'http.serverError.internalServerError',
+                rawError: error,
+            });
             expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
+                sendEvent,
             ]);
         });
 
@@ -135,14 +376,14 @@ describe('UserMobileNumberDomain', () => {
 
             await expect(
                 domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
                     phoneCode: '+9',
                 })
             ).rejects.toThrow(UserMobileNumberInvalidException);
             await expect(
                 domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
                     phoneCode: '+9',
                 })
@@ -166,16 +407,16 @@ describe('UserMobileNumberDomain', () => {
 
             await expect(
                 domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 })
             ).rejects.toThrow(UserMobileNumberExistException);
             await expect(
                 domain.addMobileNumber('user-marlin', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 })
             ).rejects.toMatchObject({
                 module: 'user',
@@ -198,9 +439,9 @@ describe('UserMobileNumberDomain', () => {
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.addMobileNumber('user-marlin', {
-                number: '5551234',
+                number: '8123456789',
                 countryId: country.id,
-                phoneCode: '+1',
+                phoneCode: '+62',
             });
 
             await expect(call).rejects.toBeInstanceOf(
@@ -228,9 +469,9 @@ describe('UserMobileNumberDomain', () => {
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = domain.addMobileNumber('user-marlin', {
-                number: '5551234',
+                number: '8123456789',
                 countryId: country.id,
-                phoneCode: '+1',
+                phoneCode: '+62',
             });
 
             await expect(call).rejects.toBeInstanceOf(AppUnknownException);
@@ -297,41 +538,154 @@ describe('UserMobileNumberDomain', () => {
                 event,
             ]);
             expect(callOrder).toEqual(['updateInTx', 'stagePrepared']);
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).not.toHaveBeenCalled();
+            expect(
+                userVerificationRepository.expireActiveMobileNumberInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                userVerificationRepository.createMobileNumberInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).not.toHaveBeenCalled();
         });
 
-        it('resets verification when the number changes', async () => {
+        it('rejects a changed number inside the cooldown before any write', async () => {
+            userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
+                mobileNumber
+            );
+            countryDomain.getOne.mockResolvedValue(country);
+            userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
+                false
+            );
+            userUtil.checkMobileNumber.mockReturnValue(true);
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                latestVerification
+            );
+
+            const call = domain.updateMobileNumber(
+                'user-marlin',
+                mobileNumber.id,
+                {
+                    number: '8129999999',
+                    countryId: country.id,
+                    phoneCode: '+62',
+                }
+            );
+
+            await expect(call).rejects.toBeInstanceOf(
+                UserVerificationMobileNumberResendLimitExceededException
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).not.toHaveBeenCalled();
+        });
+
+        it('checks cooldown, resets verification, expires old codes and sends a new one when the number changes', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue({
                 ...mobileNumber,
                 isVerified: true,
+                verifiedAt: new Date('2026-01-03T00:00:00.000Z'),
             });
             countryDomain.getOne.mockResolvedValue(country);
             userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
                 false
             );
             userUtil.checkMobileNumber.mockReturnValue(true);
-            userMobileNumberRepository.updateInTx.mockResolvedValue(
-                mobileNumber
+            const changed = { ...mobileNumber, number: '8129999999' };
+            const callOrder: string[] = [];
+            userMobileNumberRepository.updateInTx.mockImplementation(
+                async () => {
+                    callOrder.push('updateInTx');
+                    return changed;
+                }
+            );
+            userVerificationRepository.expireActiveMobileNumberInTx.mockImplementation(
+                async () => {
+                    callOrder.push('expireActiveMobileNumberInTx');
+                }
+            );
+            userVerificationRepository.createMobileNumberInTx.mockImplementation(
+                async () => {
+                    callOrder.push('createMobileNumberInTx');
+                    return latestVerification;
+                }
+            );
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stagePrepared');
+            });
+            notificationQueue.sendVerificationMobileNumber.mockImplementation(
+                async () => {
+                    callOrder.push('sendVerificationMobileNumber');
+                }
             );
 
-            await domain.updateMobileNumber('user-marlin', mobileNumber.id, {
-                number: '5559999',
-                countryId: country.id,
-                phoneCode: mobileNumber.phoneCode,
-            });
+            const result = await domain.updateMobileNumber(
+                'user-marlin',
+                mobileNumber.id,
+                {
+                    number: '8129999999',
+                    countryId: country.id,
+                    phoneCode: '+62',
+                }
+            );
 
+            expect(result).toBe(changed);
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).toHaveBeenCalledWith('user-marlin');
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
                 mobileNumber.id,
                 {
-                    number: '5559999',
+                    number: '8129999999',
                     countryId: country.id,
-                    phoneCode: mobileNumber.phoneCode,
+                    phoneCode: '+62',
                 },
                 false,
                 null
             );
+            expect(
+                userVerificationRepository.expireActiveMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id, now);
+            expect(
+                userVerificationRepository.createMobileNumberInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-marlin',
+                mobileNumber.id,
+                '+628129999999',
+                verificationCreate,
+                now
+            );
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', {
+                mobileNumberId: mobileNumber.id,
+                phoneNumber: '+628129999999',
+                otp: '123456',
+                expiredInMinutes: 5,
+                expiredAt: expiredAtIso,
+                reference: 'VRF-ABCDEFGH',
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userSendVerificationMobileNumber,
+                userId: 'user-marlin',
+                createdBy: 'user-marlin',
+            });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
+                sendEvent,
+            ]);
+            expect(callOrder).toEqual([
+                'updateInTx',
+                'expireActiveMobileNumberInTx',
+                'createMobileNumberInTx',
+                'stagePrepared',
+                'sendVerificationMobileNumber',
             ]);
         });
 
@@ -343,16 +697,16 @@ describe('UserMobileNumberDomain', () => {
 
             await expect(
                 domain.updateMobileNumber('user-marlin', 'missing', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 })
             ).rejects.toThrow(UserMobileNumberNotFoundException);
             await expect(
                 domain.updateMobileNumber('user-marlin', 'missing', {
-                    number: '5551234',
+                    number: '8123456789',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 })
             ).rejects.toMatchObject({
                 module: 'user',
@@ -378,7 +732,7 @@ describe('UserMobileNumberDomain', () => {
                 domain.updateMobileNumber('user-marlin', mobileNumber.id, {
                     number: '5559999',
                     countryId: country.id,
-                    phoneCode: '+1',
+                    phoneCode: '+62',
                 });
 
             await expect(call()).rejects.toThrow(
@@ -498,11 +852,16 @@ describe('UserMobileNumberDomain', () => {
     });
 
     describe('deleteMobileNumber', () => {
-        it('deletes the mobile number and stages the activity log event in order', async () => {
+        it('expires active codes and deletes the mobile number in one transaction, then stages the event', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 mobileNumber
             );
             const callOrder: string[] = [];
+            userVerificationRepository.expireActiveMobileNumberInTx.mockImplementation(
+                async () => {
+                    callOrder.push('expireActiveMobileNumberInTx');
+                }
+            );
             userMobileNumberRepository.deleteInTx.mockImplementation(
                 async () => {
                     callOrder.push('deleteInTx');
@@ -533,7 +892,14 @@ describe('UserMobileNumberDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
             ]);
-            expect(callOrder).toEqual(['deleteInTx', 'stagePrepared']);
+            expect(
+                userVerificationRepository.expireActiveMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id, now);
+            expect(callOrder).toEqual([
+                'expireActiveMobileNumberInTx',
+                'deleteInTx',
+                'stagePrepared',
+            ]);
         });
 
         it('throws UserMobileNumberNotFoundException when the mobile number does not exist', async () => {
@@ -605,6 +971,99 @@ describe('UserMobileNumberDomain', () => {
                     EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
                 messagePath: 'http.serverError.internalServerError',
                 rawError: error,
+            });
+        });
+    });
+
+    describe('assertMobileVerificationCooldown', () => {
+        it('passes when the user has no mobile verification yet', async () => {
+            await expect(
+                domain['assertMobileVerificationCooldown']('user-marlin')
+            ).resolves.toBeUndefined();
+            expect(
+                userVerificationRepository.findOneLatestMobileNumberByUser
+            ).toHaveBeenCalledWith('user-marlin');
+        });
+
+        it('passes once the resend window has elapsed', async () => {
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                {
+                    ...latestVerification,
+                    createdAt: new Date('2026-02-28T23:58:00.000Z'),
+                }
+            );
+
+            await expect(
+                domain['assertMobileVerificationCooldown']('user-marlin')
+            ).resolves.toBeUndefined();
+        });
+
+        it('throws with the remaining minutes rounded up inside the resend window', async () => {
+            userVerificationRepository.findOneLatestMobileNumberByUser.mockResolvedValue(
+                {
+                    ...latestVerification,
+                    createdAt: new Date('2026-02-28T23:58:30.000Z'),
+                }
+            );
+
+            const call =
+                domain['assertMobileVerificationCooldown']('user-marlin');
+
+            await expect(call).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.verificationMobileNumberResendLimitExceeded,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError
+                            .verificationMobileNumberResendLimitExceeded
+                    ],
+                messagePath:
+                    'user.error.verificationMobileNumberResendLimitExceeded',
+                messageProperties: { resendIn: 1 },
+            });
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                new Date('2026-02-28T23:58:30.000Z'),
+                Duration.fromMillis(2 * 60 * 1000)
+            );
+        });
+    });
+
+    describe('createMobileVerification', () => {
+        it('builds a hashed otp, a prefixed reference and the expiry from config', () => {
+            const result = domain['createMobileVerification']();
+
+            expect(result).toEqual(verificationCreate);
+            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
+            expect(helperStringService.random).toHaveBeenCalledWith(8);
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                now,
+                Duration.fromMillis(5 * 60 * 1000)
+            );
+        });
+    });
+
+    describe('enqueueMobileVerification', () => {
+        it('sends the plain otp and the full phone number to the notification queue', async () => {
+            await domain['enqueueMobileVerification'](
+                'user-marlin',
+                mobileNumber,
+                verificationCreate
+            );
+
+            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
+                expiredAt
+            );
+            expect(
+                notificationQueue.sendVerificationMobileNumber
+            ).toHaveBeenCalledWith('user-marlin', {
+                mobileNumberId: mobileNumber.id,
+                phoneNumber: '+628123456789',
+                otp: '123456',
+                expiredAt: expiredAtIso,
+                expiredInMinutes: 5,
+                reference: 'VRF-ABCDEFGH',
             });
         });
     });

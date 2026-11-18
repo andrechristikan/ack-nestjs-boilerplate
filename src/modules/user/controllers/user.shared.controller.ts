@@ -259,7 +259,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
