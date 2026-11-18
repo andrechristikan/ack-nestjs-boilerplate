@@ -52,7 +52,6 @@ export class MigrationTemplateEmailNotificationSeed
             welcomeByAdminEmail,
             emailVerifiedEmail,
             forgotPasswordEmail,
-            mobileNumberVerifiedEmail,
             tempPasswordEmail,
             verificationEmail,
             welcomeEmail,
@@ -70,7 +69,6 @@ export class MigrationTemplateEmailNotificationSeed
             this.notificationTemplateAccountDomain.emailGetWelcomeByAdmin(),
             this.notificationTemplateAccountDomain.emailGetVerifiedEmail(),
             this.notificationTemplateSecurityDomain.emailGetForgotPassword(),
-            this.notificationTemplateAccountDomain.emailGetVerifiedMobileNumber(),
             this.notificationTemplateSecurityDomain.emailGetTemporaryPasswordByAdmin(),
             this.notificationTemplateAccountDomain.emailGetVerificationEmail(),
             this.notificationTemplateAccountDomain.emailGetWelcome(),
@@ -128,15 +126,6 @@ export class MigrationTemplateEmailNotificationSeed
             const forgotPasswordEmailImport =
                 this.notificationTemplateSecurityDomain.emailImportForgotPassword();
             promises.push(forgotPasswordEmailImport);
-        }
-
-        if (!mobileNumberVerifiedEmail) {
-            this.logger.log(
-                'Mobile Number Verified Email template missing, importing...'
-            );
-            const mobileNumberVerifiedEmailImport =
-                this.notificationTemplateAccountDomain.emailImportVerifiedMobileNumber();
-            promises.push(mobileNumberVerifiedEmailImport);
         }
 
         if (!tempPasswordEmail) {
@@ -260,7 +249,6 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationTemplateAccountDomain.emailDeleteWelcomeByAdmin(),
                 this.notificationTemplateAccountDomain.emailDeleteVerifiedEmail(),
                 this.notificationTemplateSecurityDomain.emailDeleteForgotPassword(),
-                this.notificationTemplateAccountDomain.emailDeleteVerifiedMobileNumber(),
                 this.notificationTemplateSecurityDomain.emailDeleteTemporaryPasswordByAdmin(),
                 this.notificationTemplateAccountDomain.emailDeleteVerificationEmail(),
                 this.notificationTemplateAccountDomain.emailDeleteWelcome(),

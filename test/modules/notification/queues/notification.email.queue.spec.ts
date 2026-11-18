@@ -43,7 +43,6 @@ describe('NotificationEmailQueue', () => {
             const values: Record<string, unknown> = {
                 'notification.dedupTtlInMs': 60_000,
                 'verification.expiredInMs': 900_000,
-                'verification.resendInMs': 120_000,
                 'forgotPassword.resendInMs': 300_000,
                 'app.encryptionSecretKey': 'secret-key',
             };
@@ -257,31 +256,6 @@ describe('NotificationEmailQueue', () => {
                         ttl: 300_000,
                     },
                     priority: EnumQueuePriority.high,
-                }
-            );
-        });
-    });
-
-    describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job deduplicated by the verification resend TTL, low priority', async () => {
-            const data = {
-                mobileNumber: '+15551234567',
-                reference: 'ref-1',
-                resendInMinutes: 5,
-            };
-
-            await queue.sendVerifiedMobileNumber(send, data);
-
-            expect(emailQueue.add).toHaveBeenCalledWith(
-                EnumNotificationProcess.verifiedMobileNumber,
-                { send, data },
-                {
-                    jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${send.userId}`,
-                    deduplication: {
-                        id: `${EnumNotificationProcess.verifiedMobileNumber}-${send.userId}`,
-                        ttl: 120_000,
-                    },
-                    priority: EnumQueuePriority.low,
                 }
             );
         });

@@ -55,19 +55,19 @@ export const NotificationKindContract: Record<
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
+    [EnumNotificationKind.verificationMobileNumber]: {
+        type: EnumNotificationType.userActivity,
+        priority: EnumNotificationPriority.high,
+        title: 'notification.notify.verificationMobileNumber.title',
+        body: 'notification.notify.verificationMobileNumber.body',
+        pendingChannels: [EnumNotificationChannel.sms],
+        deliveredChannels: [EnumNotificationChannel.silent],
+    },
     [EnumNotificationKind.verifiedEmail]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
         title: 'notification.notify.verifiedEmail.title',
         body: 'notification.notify.verifiedEmail.body',
-        pendingChannels: [EnumNotificationChannel.email],
-        deliveredChannels: [EnumNotificationChannel.silent],
-    },
-    [EnumNotificationKind.verifiedMobileNumber]: {
-        type: EnumNotificationType.userActivity,
-        priority: EnumNotificationPriority.normal,
-        title: 'notification.notify.verifiedMobileNumber.title',
-        body: 'notification.notify.verifiedMobileNumber.body',
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
@@ -120,6 +120,7 @@ export const NotificationKindContract: Record<
         pendingChannels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
+            EnumNotificationChannel.sms,
         ],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
@@ -131,6 +132,7 @@ export const NotificationKindContract: Record<
         pendingChannels: [
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
+            EnumNotificationChannel.sms,
         ],
         deliveredChannels: [EnumNotificationChannel.silent],
     },

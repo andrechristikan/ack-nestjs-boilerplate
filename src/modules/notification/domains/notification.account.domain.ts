@@ -4,12 +4,13 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type {
     INotificationEmailSendPayload,
     INotificationVerificationEmailEncryptedPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -22,7 +23,8 @@ export class NotificationAccountDomain {
         private readonly userDomain: UserDomain,
         private readonly helperStringService: HelperStringService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailQueue: NotificationEmailQueue
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationSmsQueue: NotificationSmsQueue
     ) {}
 
     async processWelcomeByAdmin(
@@ -232,53 +234,50 @@ export class NotificationAccountDomain {
         };
     }
 
-    async processVerifiedMobileNumber(
+    async processVerificationMobileNumber(
         userId: string,
-        data: INotificationVerifiedMobileNumberPayload
+        data: INotificationVerificationMobileNumberEncryptedPayload
     ): Promise<IQueueResponse> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message:
-                    'User not found, skipping verified mobile number notification',
+                    'User not found, skipping verification mobile number notification',
             };
         }
 
         const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-        };
-
         const censoredMobileNumber = this.helperStringService.censor(
-            data.mobileNumber
+            data.phoneNumber
         );
 
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.verifiedMobileNumber,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: {
-                        username: user.username,
-                        mobileNumber: censoredMobileNumber,
-                    },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendVerifiedMobileNumber(
-                emailPayload,
-                data
-            ),
-        ]);
+        const notification = await this.notificationRepository.create(
+            EnumNotificationKind.verificationMobileNumber,
+            {
+                id: notificationId,
+                userId: user.id,
+                metadata: {
+                    username: user.username,
+                    mobileNumber: censoredMobileNumber,
+                },
+                createdBy: user.id,
+            }
+        );
+
+        // Sequential by design: the SMS processor requires the sms delivery row
+        await this.notificationSmsQueue.sendVerificationMobileNumber({
+            userId: user.id,
+            notificationId: notification.id,
+            phoneNumber: data.phoneNumber,
+            encryptedOtp: data.encryptedOtp,
+            expiredInMinutes: data.expiredInMinutes,
+            mobileNumberId: data.mobileNumberId,
+            reference: data.reference,
+        });
 
         return {
-            message: 'Mobile number verified notification processed',
-            results,
+            message: 'Verification mobile number notification processed',
         };
     }
 }

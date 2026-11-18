@@ -71,6 +71,7 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 |---------|----------|--------------------------|
 | `email` | Via AWS SES (queued) | Never set. The email channel domains send through SES and do not touch the delivery record |
 | `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` before the send, `sentAt` after it |
+| `sms` | Via AWS SNS (queued) | Set by the SMS channel domain: `processedAt` before the send, `sentAt` after the first successful recipient |
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
@@ -83,7 +84,7 @@ A notification can target multiple channels simultaneously. Which channels an ev
 
 `NotificationRepository` reads that entry and creates the delivery rows from it.
 
-> **`inApp` and `silent` are considered immediately "delivered"**: they sit in `deliveredChannels`, so their `processedAt` and `sentAt` are both stamped at creation time in the repository and no separate queue job is needed for them. `email` and `push` sit in `pendingChannels` and go through the async queue.
+> **`inApp` and `silent` are considered immediately "delivered"**: they sit in `deliveredChannels`, so their `processedAt` and `sentAt` are both stamped at creation time in the repository and no separate queue job is needed for them. `email`, `push`, and `sms` sit in `pendingChannels` and go through the async queue.
 
 ## Queue Architecture
 
@@ -277,17 +278,17 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 | Field | Description |
 |-------|-------------|
-| `processedAt` | When the processor started handling the delivery. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
-| `sentAt` | When the message was handed to FCM. Same coverage as `processedAt` |
+| `processedAt` | When the processor started handling the delivery. Written for `push` and `sms`, pre-filled for `silent` / `inApp`, never written for `email` |
+| `sentAt` | When the message was handed to FCM or SNS. Written for `push` and `sms`, pre-filled for `silent` / `inApp`, never written for `email` |
 | `failureTokens` | FCM tokens that were invalid (push channel only) |
 
 ### Immediate channels (`silent`, `inApp`)
 
 `silent` and `inApp` deliveries have `processedAt` and `sentAt` both pre-filled with the current timestamp **at notification creation time** inside `NotificationRepository`. No queue job is dispatched for them.
 
-### Async channels (`email`, `push`)
+### Async channels (`email`, `push`, `sms`)
 
-`email` and `push` deliveries are created with no timestamps and go through the queue.
+`email`, `push`, and `sms` deliveries are created with no timestamps and go through their respective queues.
 
 **Only the push channel writes them back.** The email channel domains send through SES and never read or update the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. A null `sentAt` on an `email` row says nothing about delivery.
 
@@ -313,6 +314,8 @@ sequenceDiagram
 Both skips return a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
 The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy; a field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
+
+The SMS lifecycle is: job dequeued, `processedAt` updated for the `sms` delivery row, SNS sends the message, then `sentAt` is updated. If the delivery row is missing, the job skips SNS. If SNS or delivery persistence fails, the error propagates so BullMQ can retry. There is one SMS delivery row per notification; when multiple verified phone numbers produce multiple jobs, the first successful recipient marks that shared SMS channel row as sent.
 
 ## User Notification Settings
 
@@ -363,3 +366,7 @@ Special thanks to [ak2g][ref-contributor-ak2g] for contributing to the Notificat
 [ref-doc-environment]: environment.md
 
 [ref-contributor-ak2g]: https://github.com/ak2g
+
+## SMS security alerts
+
+`NotificationSecurityDomain` fans out SMS security-alert jobs alongside the email and push notifications for `resetTwoFactorByAdmin` and `newDeviceLogin`. It loads the active user through `UserProfileDomain.getProfile`; a missing profile is an error and stops the workflow. The SMS queue sends through AWS SNS, with one recipient per job. Each verified mobile number receives its own deduplicated job; users without a verified mobile number do not create an SMS job. The SNS provider uses the configured credentials, region, and optional sender ID. An unconfigured provider or a missing recipient results in no send. Provider errors propagate to BullMQ for retries. If SNS accepts a message and the job fails before completing, a retry can send it again.

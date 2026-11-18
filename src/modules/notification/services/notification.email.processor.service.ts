@@ -9,7 +9,6 @@ import type {
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInviteUnregisteredEncryptedPayload,
@@ -142,19 +141,6 @@ export class NotificationEmailProcessorService {
         >
     ): Promise<IQueueResponse> {
         return this.notificationEmailSecurityDomain.processForgotPassword(
-            job.data.send,
-            job.data.data!
-        );
-    }
-
-    async processVerifiedMobileNumber(
-        job: Job<
-            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
-            IQueueResponse,
-            EnumNotificationProcess
-        >
-    ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processVerifiedMobileNumber(
             job.data.send,
             job.data.data!
         );

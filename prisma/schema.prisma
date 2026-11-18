@@ -837,6 +837,7 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userSendVerificationMobileNumber
   userSignedUp
   userResetPassword
   userRevokeSession
@@ -943,6 +944,7 @@ enum EnumNotificationType {
 enum EnumNotificationChannel {
   push
   email
+  sms
   inApp
   silent
 }

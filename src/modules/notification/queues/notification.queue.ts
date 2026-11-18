@@ -13,8 +13,9 @@ import type {
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerificationEmailPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
+    INotificationVerificationMobileNumberPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeByAdminPayload,
     INotificationWorkspaceInviteEncryptedPayload,
@@ -261,6 +262,45 @@ export class NotificationQueue {
         );
     }
 
+    async sendVerificationMobileNumber(
+        userId: string,
+        {
+            mobileNumberId,
+            phoneNumber,
+            otp,
+            expiredAt,
+            expiredInMinutes,
+            reference,
+        }: INotificationVerificationMobileNumberPayload
+    ): Promise<void> {
+        const encryptedOtp = this.encryptValue(otp, userId);
+        const payload: INotificationQueuePayload<INotificationVerificationMobileNumberEncryptedPayload> =
+            {
+                userId,
+                proceedBy: userId,
+                data: {
+                    mobileNumberId,
+                    phoneNumber,
+                    encryptedOtp,
+                    expiredAt,
+                    expiredInMinutes,
+                    reference,
+                },
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verificationMobileNumber,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.verificationMobileNumber}-${userId}-${reference}`,
+                    ttl: this.dedupTtlInMs,
+                },
+            }
+        );
+    }
+
     async sendForgotPassword(
         userId: string,
         {
@@ -380,30 +420,6 @@ export class NotificationQueue {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
-                    ttl: this.dedupTtlInMs,
-                },
-            }
-        );
-    }
-
-    async sendVerifiedMobileNumber(
-        userId: string,
-        verifiedMobile: INotificationVerifiedMobileNumberPayload
-    ): Promise<void> {
-        const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberPayload> =
-            {
-                userId,
-                data: verifiedMobile,
-                proceedBy: userId,
-            };
-
-        await this.notificationQueue.add(
-            EnumNotificationProcess.verifiedMobileNumber,
-            payload,
-            {
-                priority: EnumQueuePriority.medium,
-                deduplication: {
-                    id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
                     ttl: this.dedupTtlInMs,
                 },
             }

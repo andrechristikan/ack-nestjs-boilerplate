@@ -102,6 +102,11 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userSendVerificationMobileNumber]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userReachMaxPasswordAttempt]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,

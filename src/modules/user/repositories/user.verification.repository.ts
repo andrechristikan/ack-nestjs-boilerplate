@@ -8,6 +8,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import type {
+    IUserMobileNumberVerificationCreate,
     IUserOnboardingVerification,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -136,6 +137,115 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                     createdAt,
                 },
             });
+        });
+    }
+
+    async findOneLatestMobileNumberByUser(
+        userId: string
+    ): Promise<Verification | null> {
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                type: EnumVerificationType.mobileNumber,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async findOneActiveMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async markUsedActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date
+    ): Promise<boolean> {
+        const { count } = await tx.verification.updateMany({
+            where: {
+                id,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: verifiedAt,
+                },
+            },
+            data: {
+                isUsed: true,
+                verifiedAt,
+            },
+        });
+
+        return count === 1;
+    }
+
+    async expireActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        expiredAt: Date
+    ): Promise<void> {
+        await tx.verification.updateMany({
+            where: {
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: expiredAt,
+                },
+            },
+            data: {
+                expiredAt,
+            },
+        });
+    }
+
+    async createMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string,
+        to: string,
+        {
+            hashedOtp,
+            reference,
+            expiredAt,
+        }: Pick<
+            IUserMobileNumberVerificationCreate,
+            'hashedOtp' | 'reference' | 'expiredAt'
+        >,
+        createdAt: Date
+    ): Promise<Verification> {
+        return tx.verification.create({
+            data: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                to,
+                token: hashedOtp,
+                reference,
+                expiredAt,
+                createdBy: userId,
+                createdAt,
+            },
         });
     }
 }

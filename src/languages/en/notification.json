@@ -25,9 +25,9 @@
             "title": "Email Verified",
             "body": "Hi {username}, your email address has been verified successfully."
         },
-        "verifiedMobileNumber": {
-            "title": "Mobile Number Verified",
-            "body": "Hi {username}, your mobile number {mobileNumber} has been verified successfully."
+        "verificationMobileNumber": {
+            "title": "Verify your mobile number",
+            "body": "A verification code was sent to {mobileNumber}."
         },
         "changePassword": {
             "title": "Password Changed",
@@ -77,6 +77,11 @@
             "title": "Workspace Join Request Rejected",
             "body": "Hi {username}, your request to join the workspace {workspaceName} has been rejected. Reason: {rejectReasonLabel}."
         }
+    },
+    "sms": {
+        "verificationMobileNumber": "Your verification code is {otp}. It expires in {expiredInMinutes} minutes. Do not share it.",
+        "resetTwoFactorByAdmin": "Security alert: an administrator reset two-factor authentication on your account. If you did not expect this, contact support.",
+        "newDeviceLogin": "Security alert: a new device signed in to your account. If this was not you, change your password now."
     },
     "rejectReason": {
         "notAFit": "Not a good fit",

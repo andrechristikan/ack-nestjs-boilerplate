@@ -101,6 +101,14 @@ export interface IUserVerificationMobileNumberCreate {
     hashedToken: string;
 }
 
+export interface IUserMobileNumberVerificationCreate {
+    otp: string;
+    hashedOtp: string;
+    reference: string;
+    expiredAt: Date;
+    expiredInMinutes: number;
+}
+
 export type IUserVerificationCreate =
     IUserVerificationEmailCreate | IUserVerificationMobileNumberCreate;
 

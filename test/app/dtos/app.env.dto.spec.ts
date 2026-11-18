@@ -417,6 +417,26 @@ describe('AppEnvSchema', () => {
             expect(result.success).toBe(true);
         });
 
+        it('accepts the SNS keys as optional', () => {
+            const absent = AppEnvSchema.safeParse(validEnv);
+            const present = AppEnvSchema.safeParse({
+                ...validEnv,
+                AWS_SNS_IAM_CREDENTIAL_KEY: 'sns-key',
+                AWS_SNS_IAM_CREDENTIAL_SECRET: 'sns-secret',
+                AWS_SNS_REGION: 'us-east-1',
+                AWS_SNS_SENDER_ID: 'ACK',
+            });
+
+            expect(absent.success).toBe(true);
+            expect(present.success).toBe(true);
+            expect(present.data).toMatchObject({
+                AWS_SNS_IAM_CREDENTIAL_KEY: 'sns-key',
+                AWS_SNS_IAM_CREDENTIAL_SECRET: 'sns-secret',
+                AWS_SNS_REGION: 'us-east-1',
+                AWS_SNS_SENDER_ID: 'ACK',
+            });
+        });
+
         it('raises no credential issue when neither AWS credential is set', () => {
             const result = AppEnvSchema.safeParse(validEnv);
 

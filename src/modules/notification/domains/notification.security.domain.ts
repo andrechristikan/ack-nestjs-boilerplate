@@ -13,7 +13,10 @@ import type {
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
+import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { Injectable } from '@nestjs/common';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -23,12 +26,14 @@ export class NotificationSecurityDomain {
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly userDomain: UserDomain,
+        private readonly userProfileDomain: UserProfileDomain,
         private readonly deviceDomain: DeviceDomain,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly notificationPushQueue: NotificationPushQueue
+        private readonly notificationPushQueue: NotificationPushQueue,
+        private readonly notificationSmsQueue: NotificationSmsQueue
     ) {}
 
     async processTemporaryPasswordByAdmin(
@@ -237,16 +242,9 @@ export class NotificationSecurityDomain {
         proceedBy: string
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
+            this.userProfileDomain.getProfile(userId),
             this.deviceDomain.getOwnershipsWithNotificationToken(userId),
         ]);
-
-        if (!user) {
-            return {
-                message:
-                    'User not found, skipping reset two factor by admin notification',
-            };
-        }
 
         const notificationId = this.databaseUtil.createId();
         const emailPayload: INotificationEmailSendPayload = {
@@ -268,6 +266,18 @@ export class NotificationSecurityDomain {
             ),
             this.notificationEmailQueue.sendResetTwoFactorByAdmin(emailPayload),
         ];
+
+        for (const mobile of user.mobileNumbers.filter(
+            mobileNumber => mobileNumber.isVerified
+        )) {
+            const smsSent = this.notificationSmsQueue.sendSecurityAlert({
+                userId: user.id,
+                notificationId,
+                kind: EnumNotificationSmsProcess.resetTwoFactorByAdmin,
+                phoneNumber: `${mobile.phoneCode}${mobile.number}`,
+            });
+            promises.push(smsSent);
+        }
 
         if (devices.length > 0) {
             const pushPayload: INotificationSendPushPayload = {
@@ -299,16 +309,9 @@ export class NotificationSecurityDomain {
         data: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userDomain.getOneActive(userId),
+            this.userProfileDomain.getProfile(userId),
             this.deviceDomain.getOwnershipsWithNotificationToken(userId),
         ]);
-
-        if (!user) {
-            return {
-                message:
-                    'User not found, skipping new device login notification',
-            };
-        }
 
         const notificationId = this.databaseUtil.createId();
         const emailPayload: INotificationEmailSendPayload = {
@@ -345,6 +348,18 @@ export class NotificationSecurityDomain {
             ),
             this.notificationEmailQueue.sendNewDeviceLogin(emailPayload, data),
         ];
+
+        for (const mobile of user.mobileNumbers.filter(
+            mobileNumber => mobileNumber.isVerified
+        )) {
+            const smsSent = this.notificationSmsQueue.sendSecurityAlert({
+                userId: user.id,
+                notificationId,
+                kind: EnumNotificationSmsProcess.newDeviceLogin,
+                phoneNumber: `${mobile.phoneCode}${mobile.number}`,
+            });
+            promises.push(smsSent);
+        }
 
         if (devices.length > 0) {
             const pushPayload: INotificationSendPushPayload = {

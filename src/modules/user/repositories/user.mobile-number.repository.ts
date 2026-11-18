@@ -5,6 +5,7 @@ import type {
     UserMobileNumber,
 } from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -20,6 +21,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         number: string;
         phoneCode: string;
         isVerified: boolean;
+        verifiedAt: Date | null;
     } | null> {
         return this.databaseService.client.userMobileNumber.findFirst({
             where: {
@@ -33,6 +35,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 number: true,
                 phoneCode: true,
                 isVerified: true,
+                verifiedAt: true,
             },
         });
     }
@@ -83,7 +86,8 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        isVerified: boolean
+        isVerified: boolean,
+        verifiedAt: Date | null
     ): Promise<UserMobileNumber & { country: Country }> {
         return tx.userMobileNumber.update({
             where: { id: mobileNumberId },
@@ -92,7 +96,39 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 number,
                 phoneCode,
                 isVerified,
+                verifiedAt,
             },
+            include: {
+                country: true,
+            },
+        });
+    }
+
+    async markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        number: string,
+        phoneCode: string,
+        verifiedAt: Date
+    ): Promise<IUserMobileNumber | null> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: {
+                id: mobileNumberId,
+                number,
+                phoneCode,
+                isVerified: false,
+            },
+            data: {
+                isVerified: true,
+                verifiedAt,
+            },
+        });
+        if (count !== 1) {
+            return null;
+        }
+
+        return tx.userMobileNumber.findUnique({
+            where: { id: mobileNumberId },
             include: {
                 country: true,
             },

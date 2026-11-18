@@ -1,5 +1,6 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { UserVerifyMobileNumberRequestDto } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { Injectable } from '@nestjs/common';
@@ -49,6 +50,31 @@ export class UserMobileNumberHttpService {
             await this.userMobileNumberDomain.deleteMobileNumber(
                 userId,
                 mobileNumberId
+            );
+
+        return { data: mobileNumber };
+    }
+
+    async resendMobileNumberVerification(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<void> {
+        await this.userMobileNumberDomain.resendMobileNumberVerification(
+            userId,
+            mobileNumberId
+        );
+    }
+
+    async verifyMobileNumber(
+        userId: string,
+        mobileNumberId: string,
+        { otp }: UserVerifyMobileNumberRequestDto
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
+        const mobileNumber =
+            await this.userMobileNumberDomain.verifyMobileNumber(
+                userId,
+                mobileNumberId,
+                otp
             );
 
         return { data: mobileNumber };

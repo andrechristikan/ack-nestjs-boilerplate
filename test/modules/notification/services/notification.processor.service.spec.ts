@@ -180,14 +180,17 @@ describe('NotificationProcessorService', () => {
         });
     });
 
-    describe('processVerifiedMobileNumber', () => {
+    describe('processVerificationMobileNumber', () => {
         it('forwards userId and data to the account domain', async () => {
             const data = {
+                mobileNumberId: 'mobile-id',
+                phoneNumber: '+15551234567',
+                encryptedOtp: 'cipher-otp',
+                expiredAt: '2024-02-01T00:00:00.000Z',
+                expiredInMinutes: 5,
                 reference: 'ref-1',
-                resendInMinutes: 5,
-                mobileNumber: '+15551234567',
             };
-            notificationAccountDomain.processVerifiedMobileNumber.mockResolvedValue(
+            notificationAccountDomain.processVerificationMobileNumber.mockResolvedValue(
                 response
             );
             const job = buildJob<INotificationQueuePayload<typeof data>>({
@@ -196,10 +199,10 @@ describe('NotificationProcessorService', () => {
                 data,
             });
 
-            const result = await service.processVerifiedMobileNumber(job);
+            const result = await service.processVerificationMobileNumber(job);
 
             expect(
-                notificationAccountDomain.processVerifiedMobileNumber
+                notificationAccountDomain.processVerificationMobileNumber
             ).toHaveBeenCalledWith('user-id', data);
             expect(result).toBe(response);
         });

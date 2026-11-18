@@ -7,8 +7,8 @@ import type {
     INotificationQueuePayload,
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -72,18 +72,18 @@ export class NotificationProcessor extends QueueProcessorBase {
                         EnumNotificationProcess
                     >
                 );
-            case EnumNotificationProcess.forgotPassword:
-                return await this.notificationProcessorService.processForgotPassword(
+            case EnumNotificationProcess.verificationMobileNumber:
+                return await this.notificationProcessorService.processVerificationMobileNumber(
                     job as Job<
-                        INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
+                        INotificationQueuePayload<INotificationVerificationMobileNumberEncryptedPayload>,
                         IQueueResponse,
                         EnumNotificationProcess
                     >
                 );
-            case EnumNotificationProcess.verifiedMobileNumber:
-                return await this.notificationProcessorService.processVerifiedMobileNumber(
+            case EnumNotificationProcess.forgotPassword:
+                return await this.notificationProcessorService.processForgotPassword(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
+                        INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
                         IQueueResponse,
                         EnumNotificationProcess
                     >
@@ -123,7 +123,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.resetTwoFactorByAdmin:
                 return await this.notificationProcessorService.processResetTwoFactorByAdmin(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload,
                         IQueueResponse,
                         EnumNotificationProcess
                     >

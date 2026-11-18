@@ -18,7 +18,7 @@ describe('CountryDomain', () => {
         name: 'Indonesia',
         alpha2Code: 'ID',
         alpha3Code: 'IDN',
-        phoneCode: ['62'],
+        phoneCode: ['+62'],
         continent: 'Asia',
         timezone: 'Asia/Jakarta',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { CountryPhoneCodeRegex } from '@modules/country/constants/country.constant';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
 /**
@@ -29,11 +30,12 @@ export const CountryRequestSchema = CountryResponseSchema.pick({
             })
             .transform(value => value.toUpperCase()),
         phoneCode: z
-            .array(z.string().max(4))
+            .array(z.string().regex(CountryPhoneCodeRegex))
             .min(1)
             .meta({
-                description: 'Country phone code',
-                example: [faker.helpers.arrayElement(['62', '65'])],
+                description:
+                    'Country phone codes in E.164 form, with a leading +',
+                example: [faker.helpers.arrayElement(['+62', '+65'])],
             }),
     })
     .strict();

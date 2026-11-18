@@ -3,6 +3,7 @@ import type {
     Country,
     UserMobileNumber,
 } from '@generated/prisma-client/client';
+import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 
 export interface IUserMobileNumberRepository {
@@ -14,6 +15,7 @@ export interface IUserMobileNumberRepository {
         number: string;
         phoneCode: string;
         isVerified: boolean;
+        verifiedAt: Date | null;
     } | null>;
     existsMobileNumber(
         userId: string,
@@ -29,8 +31,16 @@ export interface IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        isVerified: boolean
+        isVerified: boolean,
+        verifiedAt: Date | null
     ): Promise<UserMobileNumber & { country: Country }>;
+    markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        number: string,
+        phoneCode: string,
+        verifiedAt: Date
+    ): Promise<IUserMobileNumber | null>;
     deleteInTx(
         tx: IDatabaseTransactionClient,
         mobileNumberId: string

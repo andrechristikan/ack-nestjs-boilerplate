@@ -8,8 +8,8 @@ import type {
     INotificationQueuePayload,
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
+    INotificationVerificationMobileNumberEncryptedPayload,
     INotificationVerifiedEmailPayload,
-    INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -93,14 +93,14 @@ export class NotificationProcessorService {
         );
     }
 
-    async processVerifiedMobileNumber({
+    async processVerificationMobileNumber({
         data: { userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
+        INotificationQueuePayload<INotificationVerificationMobileNumberEncryptedPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerifiedMobileNumber(
+        return this.notificationAccountDomain.processVerificationMobileNumber(
             userId,
             data!
         );

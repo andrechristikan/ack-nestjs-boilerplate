@@ -19,6 +19,7 @@ import type {
     INotificationNewDeviceLoginPayload,
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
+    INotificationVerificationMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
     INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -280,6 +281,50 @@ describe('NotificationQueue', () => {
         });
     });
 
+    describe('sendVerificationMobileNumber', () => {
+        it('sendVerificationMobileNumber encrypts the otp and enqueues verificationMobileNumber', async () => {
+            const payload: INotificationVerificationMobileNumberPayload = {
+                mobileNumberId: 'mobile-id',
+                phoneNumber: '+15551234567',
+                otp: '123456',
+                expiredAt: '2024-02-01T00:00:00.000Z',
+                expiredInMinutes: 5,
+                reference: 'ref-1',
+            };
+
+            await queue.sendVerificationMobileNumber('user-id', payload);
+
+            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+                '123456',
+                'secret-key',
+                'notification.payload',
+                'user-id'
+            );
+            expect(notificationQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.verificationMobileNumber,
+                {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    data: {
+                        mobileNumberId: 'mobile-id',
+                        phoneNumber: '+15551234567',
+                        encryptedOtp: 'cipher(123456)',
+                        expiredAt: payload.expiredAt,
+                        expiredInMinutes: 5,
+                        reference: 'ref-1',
+                    },
+                },
+                {
+                    priority: EnumQueuePriority.high,
+                    deduplication: {
+                        id: 'verificationMobileNumber-user-id-ref-1',
+                        ttl: 60_000,
+                    },
+                }
+            );
+        });
+    });
+
     describe('sendForgotPassword', () => {
         it('encrypts the link and enqueues the forgotPassword job, medium priority', async () => {
             const payload: INotificationForgotPasswordPayload = {
@@ -408,34 +453,6 @@ describe('NotificationQueue', () => {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
-                        ttl: 60_000,
-                    },
-                }
-            );
-        });
-    });
-
-    describe('sendVerifiedMobileNumber', () => {
-        it('enqueues the verifiedMobileNumber job, medium priority', async () => {
-            const verifiedMobile = {
-                reference: 'ref-1',
-                resendInMinutes: 5,
-                mobileNumber: '+15551234567',
-            };
-
-            await queue.sendVerifiedMobileNumber('user-id', verifiedMobile);
-
-            expect(notificationQueue.add).toHaveBeenCalledWith(
-                EnumNotificationProcess.verifiedMobileNumber,
-                {
-                    userId: 'user-id',
-                    data: verifiedMobile,
-                    proceedBy: 'user-id',
-                },
-                {
-                    priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: `${EnumNotificationProcess.verifiedMobileNumber}-user-id`,
                         ttl: 60_000,
                     },
                 }

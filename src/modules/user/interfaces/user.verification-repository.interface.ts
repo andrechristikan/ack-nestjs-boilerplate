@@ -1,6 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { Verification } from '@generated/prisma-client/client';
 import type {
+    IUserMobileNumberVerificationCreate,
     IUserOnboardingVerification,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -35,6 +36,38 @@ export interface IUserVerificationRepository {
         userId: string,
         userEmail: string,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
+        createdAt: Date
+    ): Promise<Verification>;
+    findOneLatestMobileNumberByUser(
+        userId: string
+    ): Promise<Verification | null>;
+    findOneActiveMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null>;
+    markUsedActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date
+    ): Promise<boolean>;
+    expireActiveMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string,
+        expiredAt: Date
+    ): Promise<void>;
+    createMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string,
+        to: string,
+        {
+            hashedOtp,
+            reference,
+            expiredAt,
+        }: Pick<
+            IUserMobileNumberVerificationCreate,
+            'hashedOtp' | 'reference' | 'expiredAt'
+        >,
         createdAt: Date
     ): Promise<Verification>;
 }

@@ -40,6 +40,15 @@ export interface IConfigAws {
         };
         region: string | null;
     };
+    sns: {
+        iam: {
+            key: string | null;
+            secret: string | null;
+        };
+        region: string | null;
+        senderId: string | null;
+        maxAttempts: number;
+    };
 }
 
 export default registerAs('aws', (): IConfigAws => ({
@@ -96,5 +105,14 @@ export default registerAs('aws', (): IConfigAws => ({
             arn: process.env.AWS_SES_IAM_ARN ?? null,
         },
         region: process.env.AWS_SES_REGION ?? null,
+    },
+    sns: {
+        iam: {
+            key: process.env.AWS_SNS_IAM_CREDENTIAL_KEY ?? null,
+            secret: process.env.AWS_SNS_IAM_CREDENTIAL_SECRET ?? null,
+        },
+        region: process.env.AWS_SNS_REGION ?? null,
+        senderId: process.env.AWS_SNS_SENDER_ID ?? null,
+        maxAttempts: 1,
     },
 }));

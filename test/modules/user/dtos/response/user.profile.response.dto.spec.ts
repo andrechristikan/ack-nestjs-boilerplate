@@ -50,7 +50,7 @@ describe('UserProfileResponseSchema', () => {
         name: 'Indonesia',
         alpha2Code: 'ID',
         alpha3Code: 'IDN',
-        phoneCode: ['62'],
+        phoneCode: ['+62'],
         continent: 'Asia',
         timezone: 'Asia/Jakarta',
     };
@@ -62,7 +62,9 @@ describe('UserProfileResponseSchema', () => {
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
         updatedBy: 'user-1',
         number: '81234567890',
-        phoneCode: '62',
+        phoneCode: '+62',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-03T00:00:00.000Z'),
         country,
     };
 

@@ -1,3 +1,4 @@
+import type { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumNotificationChannel,
@@ -95,9 +96,20 @@ export interface INotificationForgotPasswordEncryptedPayload extends INotificati
     resendInMinutes: number;
 }
 
-export interface INotificationVerifiedMobileNumberPayload extends INotificationVerifiedEmailPayload {
-    resendInMinutes: number;
-    mobileNumber: string;
+export interface INotificationVerificationMobileNumberPayload {
+    mobileNumberId: string;
+    phoneNumber: string;
+    otp: string;
+    expiredAt: string;
+    expiredInMinutes: number;
+    reference: string;
+}
+
+export interface INotificationVerificationMobileNumberEncryptedPayload extends Omit<
+    INotificationVerificationMobileNumberPayload,
+    'otp'
+> {
+    encryptedOtp: string;
 }
 
 export interface INotificationNewDeviceLoginPayload {
@@ -232,4 +244,21 @@ export interface INotificationEmailSendUnregisteredPayload {
 export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
     send: INotificationEmailSendUnregisteredPayload;
     data?: T;
+}
+
+export interface INotificationSendSmsPayload {
+    userId: string;
+    notificationId: string;
+    kind: EnumNotificationSmsProcess;
+    phoneNumber: string;
+}
+
+export interface INotificationSendSmsVerificationPayload {
+    userId: string;
+    notificationId: string;
+    mobileNumberId: string;
+    phoneNumber: string;
+    encryptedOtp: string;
+    expiredInMinutes: number;
+    reference: string;
 }

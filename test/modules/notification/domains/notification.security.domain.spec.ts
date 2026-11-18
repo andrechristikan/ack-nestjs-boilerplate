@@ -24,8 +24,13 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type { INotificationNewDeviceLoginPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
+import type { IUserProfile } from '@modules/user/interfaces/user.interface';
+import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
 
 describe('NotificationSecurityDomain', () => {
     const notificationRepository = mock<NotificationRepository>();
@@ -36,6 +41,8 @@ describe('NotificationSecurityDomain', () => {
     const databaseUtil = mock<DatabaseUtil>();
     const notificationEmailQueue = mock<NotificationEmailQueue>();
     const notificationPushQueue = mock<NotificationPushQueue>();
+    const notificationSmsQueue = mock<NotificationSmsQueue>();
+    const userProfileDomain = mock<UserProfileDomain>();
     let domain: NotificationSecurityDomain;
 
     const user: User = {
@@ -76,6 +83,26 @@ describe('NotificationSecurityDomain', () => {
         deletedAt: null,
         deletedBy: null,
     };
+
+    const userProfile = {
+        ...user,
+        mobileNumbers: [
+            {
+                id: 'mobile-id',
+                userId: user.id,
+                countryId: 'country-id',
+                phoneCode: '+39',
+                number: '3331234567',
+                isVerified: true,
+                verifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+                country: {} as IUserProfile['country'],
+            },
+        ],
+    } as IUserProfile;
 
     const deviceOwnership: IDeviceOwnershipWithDevice = {
         id: 'ownership-id',
@@ -135,6 +162,7 @@ describe('NotificationSecurityDomain', () => {
                     useValue: notificationRepository,
                 },
                 { provide: UserDomain, useValue: userDomain },
+                { provide: UserProfileDomain, useValue: userProfileDomain },
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -149,6 +177,10 @@ describe('NotificationSecurityDomain', () => {
                 {
                     provide: NotificationPushQueue,
                     useValue: notificationPushQueue,
+                },
+                {
+                    provide: NotificationSmsQueue,
+                    useValue: notificationSmsQueue,
                 },
             ],
         }).compile();
@@ -427,25 +459,21 @@ describe('NotificationSecurityDomain', () => {
     });
 
     describe('processResetTwoFactorByAdmin', () => {
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
+        it('fails when the user profile does not exist', async () => {
+            userProfileDomain.getProfile.mockRejectedValue(
+                new UserNotFoundException()
+            );
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
                 []
             );
 
-            const result = await domain.processResetTwoFactorByAdmin(
-                'user-id',
-                'admin-id'
-            );
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping reset two factor by admin notification',
-            });
+            await expect(
+                domain.processResetTwoFactorByAdmin('user-id', 'admin-id')
+            ).rejects.toThrow(UserNotFoundException);
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userProfileDomain.getProfile.mockResolvedValue(userProfile);
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
                 []
             );
@@ -462,7 +490,7 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('enqueues email and push when a device has a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userProfileDomain.getProfile.mockResolvedValue(userProfile);
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
                 deviceOwnership,
             ]);
@@ -496,6 +524,14 @@ describe('NotificationSecurityDomain', () => {
                 notificationTokens: ['push-token'],
                 username: user.username,
             });
+            expect(notificationSmsQueue.sendSecurityAlert).toHaveBeenCalledWith(
+                {
+                    userId: user.id,
+                    notificationId: 'notification-id',
+                    kind: EnumNotificationSmsProcess.resetTwoFactorByAdmin,
+                    phoneNumber: '+393331234567',
+                }
+            );
             expect(result).toMatchObject({
                 message: 'Reset two factor by admin notification processed',
             });
@@ -528,8 +564,10 @@ describe('NotificationSecurityDomain', () => {
             requestLog,
         };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
+        it('fails when the user profile does not exist', async () => {
+            userProfileDomain.getProfile.mockRejectedValue(
+                new UserNotFoundException()
+            );
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
                 []
             );
@@ -537,16 +575,13 @@ describe('NotificationSecurityDomain', () => {
             requestContextService.resolveCity.mockReturnValue('SF');
             helperDateService.createFromIso.mockReturnValue(new Date());
 
-            const result = await domain.processNewDeviceLogin('user-id', data);
-
-            expect(result).toEqual({
-                message:
-                    'User not found, skipping new device login notification',
-            });
+            await expect(
+                domain.processNewDeviceLogin('user-id', data)
+            ).rejects.toThrow(UserNotFoundException);
         });
 
         it('does not enqueue a push when there is no device with a token', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userProfileDomain.getProfile.mockResolvedValue(userProfile);
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
                 []
             );
@@ -566,7 +601,7 @@ describe('NotificationSecurityDomain', () => {
         });
 
         it('resolves device and city, writes the notification, and enqueues email and push', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userProfileDomain.getProfile.mockResolvedValue(userProfile);
             deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([
                 deviceOwnership,
             ]);
@@ -631,9 +666,42 @@ describe('NotificationSecurityDomain', () => {
                 },
                 data
             );
+            expect(notificationSmsQueue.sendSecurityAlert).toHaveBeenCalledWith(
+                {
+                    userId: user.id,
+                    notificationId: 'notification-id',
+                    kind: EnumNotificationSmsProcess.newDeviceLogin,
+                    phoneNumber: '+393331234567',
+                }
+            );
             expect(result).toMatchObject({
                 message: 'New device login notification processed',
             });
+        });
+
+        it('does not enqueue SMS when the user has no verified mobile number', async () => {
+            userProfileDomain.getProfile.mockResolvedValue({
+                ...userProfile,
+                mobileNumbers: [],
+            });
+            deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue(
+                []
+            );
+            requestContextService.resolveDevice.mockReturnValue('Chrome');
+            requestContextService.resolveCity.mockReturnValue('SF');
+            helperDateService.createFromIso.mockImplementation(
+                (iso: string) => new Date(iso)
+            );
+            notificationRepository.create.mockResolvedValue(notification);
+            notificationEmailQueue.sendNewDeviceLogin.mockResolvedValue(
+                undefined
+            );
+
+            await domain.processNewDeviceLogin('user-id', data);
+
+            expect(
+                notificationSmsQueue.sendSecurityAlert
+            ).not.toHaveBeenCalled();
         });
     });
 });
