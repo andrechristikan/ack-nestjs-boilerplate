@@ -11,6 +11,7 @@ export enum EnumNotificationProcess {
     verifiedEmail = 'verifiedEmail',
     verifiedMobileNumber = 'verifiedMobileNumber',
     verificationEmail = 'verificationEmail',
+    verificationMobileNumber = 'verificationMobileNumber',
     forgotPassword = 'forgotPassword',
     resetPassword = 'resetPassword',
     newDeviceLogin = 'newDeviceLogin',
@@ -42,12 +43,13 @@ export enum EnumNotificationPushProcess {
 }
 
 /**
- * Job names on the notification sms queue, one per security alert kind.
+ * Job names on the notification sms queue, one per kind sent by sms: security alerts and mobile number verification.
  * @public
  */
 export enum EnumNotificationSmsProcess {
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     newDeviceLogin = 'newDeviceLogin',
+    verificationMobileNumber = 'verificationMobileNumber',
 }
 
 /**
@@ -59,6 +61,7 @@ export enum EnumNotificationKind {
     welcomeSocial = 'welcomeSocial',
     welcomeByAdmin = 'welcomeByAdmin',
     verificationEmail = 'verificationEmail',
+    verificationMobileNumber = 'verificationMobileNumber',
     verifiedEmail = 'verifiedEmail',
     verifiedMobileNumber = 'verifiedMobileNumber',
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',

@@ -837,6 +837,8 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userSendVerificationMobileNumber
+  userVerifiedMobileNumber
   userSignedUp
   userResetPassword
   userRevokeSession

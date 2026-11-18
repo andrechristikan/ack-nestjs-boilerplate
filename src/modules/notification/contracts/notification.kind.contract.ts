@@ -55,6 +55,14 @@ export const NotificationKindContract: Record<
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
+    [EnumNotificationKind.verificationMobileNumber]: {
+        type: EnumNotificationType.userActivity,
+        priority: EnumNotificationPriority.high,
+        title: 'notification.notify.verificationMobileNumber.title',
+        body: 'notification.notify.verificationMobileNumber.body',
+        pendingChannels: [EnumNotificationChannel.sms],
+        deliveredChannels: [EnumNotificationChannel.silent],
+    },
     [EnumNotificationKind.verifiedEmail]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,

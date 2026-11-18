@@ -112,10 +112,11 @@ describe('NotificationSmsQueue', () => {
         });
     });
 
-    it('supports only the approved security SMS kinds', () => {
+    it('supports only the approved SMS kinds', () => {
         expect(Object.values(EnumNotificationSmsProcess)).toEqual([
             EnumNotificationSmsProcess.resetTwoFactorByAdmin,
             EnumNotificationSmsProcess.newDeviceLogin,
+            EnumNotificationSmsProcess.verificationMobileNumber,
         ]);
     });
 });
