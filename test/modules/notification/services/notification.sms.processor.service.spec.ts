@@ -82,6 +82,8 @@ describe('NotificationSmsProcessorService', () => {
             phoneNumber: '+628123456789',
             encryptedOtp: 'cipher',
             expiredInMinutes: 5,
+            mobileNumberId: 'mobile-id',
+            reference: 'ref-1',
         };
         const verificationJob = {
             attemptsMade: 0,

@@ -197,6 +197,50 @@ describe('UserMobileNumberDomain', () => {
         domain = module.get(UserMobileNumberDomain);
     });
 
+    describe('isActiveVerification', () => {
+        it('returns false when the queued code has expired or been used', async () => {
+            userVerificationRepository.findOneActiveMobileNumber.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                domain.isActiveVerification(
+                    'user-marlin',
+                    'mobile-marlin',
+                    'VRF-PREVIOUS'
+                )
+            ).resolves.toBe(false);
+        });
+
+        it('returns false when a resend replaced the queued code', async () => {
+            userVerificationRepository.findOneActiveMobileNumber.mockResolvedValue(
+                { ...latestVerification, reference: 'VRF-NEW' }
+            );
+
+            await expect(
+                domain.isActiveVerification(
+                    'user-marlin',
+                    'mobile-marlin',
+                    'VRF-PREVIOUS'
+                )
+            ).resolves.toBe(false);
+        });
+
+        it('accepts the current active code', async () => {
+            userVerificationRepository.findOneActiveMobileNumber.mockResolvedValue(
+                latestVerification
+            );
+
+            await expect(
+                domain.isActiveVerification(
+                    'user-marlin',
+                    'mobile-marlin',
+                    'VRF-PREVIOUS'
+                )
+            ).resolves.toBe(true);
+        });
+    });
+
     describe('addMobileNumber', () => {
         it('rejects inside the cooldown before any write', async () => {
             countryDomain.getOne.mockResolvedValue(country);

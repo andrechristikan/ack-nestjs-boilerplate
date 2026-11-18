@@ -6,6 +6,7 @@ import { NotificationPayloadEncryptionPurpose } from '@modules/notification/cons
 import { NotificationSmsAccountDomain } from '@modules/notification/domains/notification.sms.account.domain';
 import type { INotificationSendSmsVerificationPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +15,7 @@ describe('NotificationSmsAccountDomain', () => {
     const sns = mock<AwsSNSService>();
     const messages = mock<MessageService>();
     const notificationRepository = mock<NotificationRepository>();
+    const userMobileNumberDomain = mock<UserMobileNumberDomain>();
     const configService = mock<ConfigService>();
     const helperEncryptionService = mock<HelperEncryptionService>();
     const payload: INotificationSendSmsVerificationPayload = {
@@ -22,6 +24,8 @@ describe('NotificationSmsAccountDomain', () => {
         phoneNumber: '+111',
         encryptedOtp: 'cipher',
         expiredInMinutes: 5,
+        mobileNumberId: 'mobile-id',
+        reference: 'current-reference',
     };
     let domain: NotificationSmsAccountDomain;
 
@@ -39,6 +43,7 @@ describe('NotificationSmsAccountDomain', () => {
             body: 'b',
         });
         notificationRepository.updateSentAt.mockResolvedValue(undefined);
+        userMobileNumberDomain.isActiveVerification.mockResolvedValue(true);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationSmsAccountDomain,
@@ -53,12 +58,40 @@ describe('NotificationSmsAccountDomain', () => {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
                 },
+                {
+                    provide: UserMobileNumberDomain,
+                    useValue: userMobileNumberDomain,
+                },
             ],
         }).compile();
         domain = module.get(NotificationSmsAccountDomain);
     });
 
     describe('processVerificationMobileNumber', () => {
+        it('skips a code replaced by a newer verification', async () => {
+            userMobileNumberDomain.isActiveVerification.mockResolvedValue(
+                false
+            );
+
+            const result =
+                await domain.processVerificationMobileNumber(payload);
+
+            expect(result.message).toContain('skipped');
+            expect(sns.sendSms).not.toHaveBeenCalled();
+        });
+
+        it('skips a code whose verification is no longer active', async () => {
+            userMobileNumberDomain.isActiveVerification.mockResolvedValue(
+                false
+            );
+
+            const result =
+                await domain.processVerificationMobileNumber(payload);
+
+            expect(result.message).toContain('skipped');
+            expect(sns.sendSms).not.toHaveBeenCalled();
+        });
+
         it('skips when SNS is not initialized', async () => {
             sns.isInitialized.mockReturnValue(false);
 

@@ -122,6 +122,8 @@ describe('NotificationSmsQueue', () => {
             phoneNumber: '+628123456789',
             encryptedOtp: 'cipher-otp',
             expiredInMinutes: 5,
+            mobileNumberId: 'mobile-id',
+            reference: 'ref-1',
         };
 
         it('sendVerificationMobileNumber enqueues with high priority and notification-scoped dedup', async () => {

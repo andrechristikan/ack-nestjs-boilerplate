@@ -6,6 +6,7 @@ import { NotificationPayloadEncryptionPurpose } from '@modules/notification/cons
 import { EnumNotificationSmsProcess } from '@modules/notification/enums/notification.enum';
 import type { INotificationSendSmsVerificationPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -20,7 +21,8 @@ export class NotificationSmsAccountDomain {
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly messageService: MessageService,
-        private readonly notificationRepository: NotificationRepository
+        private readonly notificationRepository: NotificationRepository,
+        private readonly userMobileNumberDomain: UserMobileNumberDomain
     ) {
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
@@ -37,10 +39,22 @@ export class NotificationSmsAccountDomain {
         phoneNumber,
         encryptedOtp,
         expiredInMinutes,
+        mobileNumberId,
+        reference,
     }: INotificationSendSmsVerificationPayload): Promise<IQueueResponse> {
         const initialized = this.awsSNSService.isInitialized();
         if (!initialized || !phoneNumber) {
             return { message: 'SMS notification skipped' };
+        }
+
+        const isActiveVerification =
+            await this.userMobileNumberDomain.isActiveVerification(
+                userId,
+                mobileNumberId,
+                reference
+            );
+        if (!isActiveVerification) {
+            return { message: 'Inactive SMS verification skipped' };
         }
 
         // Sequential by design: the row must be marked processing before the send, and sent only after it succeeds.

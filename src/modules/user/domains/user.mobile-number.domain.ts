@@ -139,6 +139,20 @@ export class UserMobileNumberDomain {
         });
     }
 
+    async isActiveVerification(
+        userId: string,
+        mobileNumberId: string,
+        reference: string
+    ): Promise<boolean> {
+        const activeVerification =
+            await this.userVerificationRepository.findOneActiveMobileNumber(
+                userId,
+                mobileNumberId
+            );
+
+        return activeVerification?.reference === reference;
+    }
+
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput

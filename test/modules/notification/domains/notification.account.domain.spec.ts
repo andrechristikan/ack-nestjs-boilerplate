@@ -475,6 +475,8 @@ describe('NotificationAccountDomain', () => {
                 phoneNumber: data.phoneNumber,
                 encryptedOtp: 'cipher-otp',
                 expiredInMinutes: 5,
+                mobileNumberId: data.mobileNumberId,
+                reference: data.reference,
             });
             expect(notificationRepository.create).toHaveBeenCalledBefore(
                 notificationSmsQueue.sendVerificationMobileNumber
