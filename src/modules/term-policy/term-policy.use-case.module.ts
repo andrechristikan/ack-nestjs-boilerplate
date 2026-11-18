@@ -15,7 +15,6 @@ import { TermPolicyDeleteByAdminUseCase } from '@modules/term-policy/use-cases/t
 import { TermPolicyPublishByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.publish-by-admin.use-case';
 import { TermPolicyResendEmailByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.resend-email-by-admin.use-case';
 import { TermPolicyProcessDeleteContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-delete-content.use-case';
-import { TermPolicyProcessCopyContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-copy-content.use-case';
 import { TermPolicyProcessPublishUseCase } from '@modules/term-policy/use-cases/term-policy.process-publish.use-case';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -38,7 +37,6 @@ import { Module } from '@nestjs/common';
         TermPolicyPublishByAdminUseCase,
         TermPolicyResendEmailByAdminUseCase,
         TermPolicyProcessDeleteContentUseCase,
-        TermPolicyProcessCopyContentUseCase,
         TermPolicyProcessPublishUseCase,
     ],
     exports: [
@@ -57,7 +55,6 @@ import { Module } from '@nestjs/common';
         TermPolicyPublishByAdminUseCase,
         TermPolicyResendEmailByAdminUseCase,
         TermPolicyProcessDeleteContentUseCase,
-        TermPolicyProcessCopyContentUseCase,
         TermPolicyProcessPublishUseCase,
     ],
     imports: [ActivityLogModule, NotificationModule, UserModule],

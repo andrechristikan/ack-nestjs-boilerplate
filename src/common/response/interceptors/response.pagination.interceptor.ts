@@ -74,7 +74,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         }
 
         const results = await Promise.all(
-            items.map(item => schema['~standard'].validate(item))
+            items.map(async item => schema['~standard'].validate(item))
         );
 
         const serialized: T[] = [];

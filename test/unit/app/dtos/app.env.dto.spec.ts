@@ -989,6 +989,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
+                APP_HTTP_TRUSTED_PROXIES: 'loopback',
                 REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
                 DATABASE_DEBUG_ENABLED: 'true',
             });
@@ -1005,6 +1006,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
+                APP_HTTP_TRUSTED_PROXIES: 'loopback',
                 REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
                 DATABASE_DEBUG_ENABLED: 'false',
             });
@@ -1028,6 +1030,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
+                APP_HTTP_TRUSTED_PROXIES: 'loopback',
                 REQUEST_CORS_ALLOWED_ORIGINS: '*',
             });
 
@@ -1043,6 +1046,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.production,
+                APP_HTTP_TRUSTED_PROXIES: 'loopback',
                 REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com, *',
             });
 
@@ -1060,6 +1064,7 @@ describe('AppEnvSchema', () => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
                     APP_ENV: EnumAppEnvironment.production,
+                    APP_HTTP_TRUSTED_PROXIES: 'loopback',
                     REQUEST_CORS_ALLOWED_ORIGINS: origin,
                 });
 
@@ -1072,6 +1077,49 @@ describe('AppEnvSchema', () => {
                 ...validEnv,
                 APP_ENV: EnumAppEnvironment.local,
                 REQUEST_CORS_ALLOWED_ORIGINS: '*',
+            });
+
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe('trusted proxy refinement', () => {
+        it('rejects an empty APP_HTTP_TRUSTED_PROXIES in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
+                APP_HTTP_TRUSTED_PROXIES: '',
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.error?.issues).toHaveLength(1);
+            expect(result.error?.issues[0]).toMatchObject({
+                path: ['APP_HTTP_TRUSTED_PROXIES'],
+                message: 'Must be set in production',
+            });
+        });
+
+        it('parses APP_HTTP_TRUSTED_PROXIES loopback in production', () => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: EnumAppEnvironment.production,
+                REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
+                APP_HTTP_TRUSTED_PROXIES: 'loopback',
+            });
+
+            expect(result.success).toBe(true);
+        });
+
+        it.each([
+            EnumAppEnvironment.local,
+            EnumAppEnvironment.development,
+            EnumAppEnvironment.staging,
+        ])('parses an empty APP_HTTP_TRUSTED_PROXIES in %s', appEnv => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                APP_ENV: appEnv,
+                APP_HTTP_TRUSTED_PROXIES: '',
             });
 
             expect(result.success).toBe(true);
@@ -1188,6 +1236,7 @@ describe('AppEnvSchema', () => {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
                     APP_ENV: EnumAppEnvironment.production,
+                    APP_HTTP_TRUSTED_PROXIES: 'loopback',
                     REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com',
                     MFA_PASSKEY_RP_ID: rpId,
                     MFA_PASSKEY_ORIGINS: origins,

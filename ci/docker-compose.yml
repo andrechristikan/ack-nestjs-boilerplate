@@ -1,5 +1,6 @@
-# Run from the repository root: docker compose --env-file .env.docker -f ci/docker-compose.yml up -d
-# The DOCKER_* variables are read from .env.docker. The eight credentials are required: with one empty, every command stops and names it.
+# Run from the repository root: docker compose --env-file .env.docker -f ci/docker-compose.yml --profile deps up -d
+# A release runs migrate and the application itself, so a release-managed instance starts deps alone. Without CI, add --profile apis to start migrate and apis; --profile vault starts Vault.
+# The DOCKER_* variables are read from .env.docker. The ten required keys (the eight credentials, DOCKER_APIS_UID, and DOCKER_APIS_GID) stop every command and name the one that is empty.
 name: ack-nestjs-boilerplate
 
 services:
@@ -7,6 +8,8 @@ services:
         build:
             context: ..
             dockerfile: ci/dockerfile
+        profiles: ['apis']
+        user: '${DOCKER_APIS_UID:?set DOCKER_APIS_UID in the compose variable file to the id of the host account that owns the root env file}:${DOCKER_APIS_GID:?set DOCKER_APIS_GID in the compose variable file to the group id of the host account that owns the root env file}'
         volumes:
             - type: bind
               source: ../.env
@@ -16,13 +19,29 @@ services:
                   create_host_path: false
         ports:
             - '127.0.0.1:3000:3000'
+        read_only: true
+        tmpfs:
+            - /tmp
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
         restart: unless-stopped
         networks:
             - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.0'
+                    memory: 1G
         depends_on:
+            migrate:
+                condition: service_completed_successfully
             mongo:
                 condition: service_healthy
-            redis:
+            redis-queue:
+                condition: service_healthy
+            redis-cache:
                 condition: service_healthy
             jwks-server:
                 condition: service_healthy
@@ -41,8 +60,38 @@ services:
             retries: 3
             start_period: 30s
 
+    migrate:
+        build:
+            context: ..
+            dockerfile: ci/dockerfile
+            target: migrate
+        profiles: ['apis']
+        user: '${DOCKER_APIS_UID:?set DOCKER_APIS_UID in the compose variable file to the id of the host account that owns the root env file}:${DOCKER_APIS_GID:?set DOCKER_APIS_GID in the compose variable file to the group id of the host account that owns the root env file}'
+        volumes:
+            - type: bind
+              source: ../.env
+              target: /app/.env
+              read_only: true
+              bind:
+                  create_host_path: false
+        restart: 'no'
+        networks:
+            - app-network
+        depends_on:
+            mongo:
+                condition: service_healthy
+
     jwks-server:
+        profiles: ['deps']
         image: nginx:1.30.5-alpine
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETGID
+            - SETUID
         restart: unless-stopped
         volumes:
             - type: bind
@@ -85,6 +134,7 @@ services:
             start_period: 10s
 
     mongo:
+        profiles: ['deps']
         image: mongo:9.0.2
         environment:
             HOME: /tmp
@@ -114,6 +164,11 @@ services:
         restart: unless-stopped
         networks:
             - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.0'
+                    memory: 1G
         healthcheck:
             test:
                 [
@@ -125,7 +180,8 @@ services:
             retries: 10
             start_period: 40s
 
-    redis:
+    redis-queue:
+        profiles: ['deps']
         image: redis:8.8.3-alpine
         environment:
             REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
@@ -134,15 +190,24 @@ services:
             [
                 'sh',
                 '-c',
-                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes --maxmemory-policy noeviction',
             ]
         volumes:
             - type: volume
-              source: redis_data
+              source: redis_queue_data
               target: /data
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
         restart: unless-stopped
         networks:
             - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 256M
         healthcheck:
             test:
                 [
@@ -153,23 +218,62 @@ services:
             timeout: 10s
             retries: 5
 
-    redis-bullboard:
+    redis-cache:
+        profiles: ['deps']
+        image: redis:8.8.3-alpine
+        environment:
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
+        user: redis
+        command:
+            [
+                'sh',
+                '-c',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no',
+            ]
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
+        restart: unless-stopped
+        networks:
+            - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 384M
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'if [ -n "$$REDIS_PASSWORD" ]; then export REDISCLI_AUTH="$$REDIS_PASSWORD"; fi; redis-cli ping | grep -q PONG',
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 5
+
+    bullboard:
+        profiles: ['deps']
         image: venatum/bull-board:3.4.15
         environment:
-            REDIS_HOST: redis
+            REDIS_HOST: redis-queue
             REDIS_PORT: '6379'
             REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
             BULL_PREFIX: Queue
-            REDIS_DB: '1'
+            REDIS_DB: '0'
             USER_LOGIN: ${DOCKER_BULLBOARD_USERNAME:?set DOCKER_BULLBOARD_USERNAME in .env.docker}
             USER_PASSWORD: ${DOCKER_BULLBOARD_PASSWORD:?set DOCKER_BULLBOARD_PASSWORD in .env.docker}
         ports:
             - '127.0.0.1:3010:3000'
+        security_opt:
+            - no-new-privileges:true
+        cap_drop:
+            - ALL
         restart: unless-stopped
         networks:
             - app-network
         depends_on:
-            redis:
+            redis-queue:
                 condition: service_healthy
         healthcheck:
             test:
@@ -262,9 +366,10 @@ services:
 
 networks:
     app-network:
+        name: app-network
     vault-network:
 
 volumes:
     mongo_data:
-    redis_data:
+    redis_queue_data:
     vault_data:

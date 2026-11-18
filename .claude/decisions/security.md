@@ -321,6 +321,21 @@ Rule: `docker.md`, Production.
 - Forcing Vault: every user of the boilerplate would have to run it.
 - A log shipper in the compose file: the platform that runs the containers collects stdout.
 
+### The deployed environments seed their users with a random password printed once
+
+Rule: `seeding.md`, Anatomy.
+
+- No seeded account: a fresh deployment has no admin to sign in with.
+- A password read from environment keys with a forced first change: the credential still sits in the host's env file, and the seed gains a secret-bearing path.
+- The literal passwords: the repository publishes them, so every deployment shares a known admin credential.
+
+### Workflows deploy through GitHub environments and OIDC
+
+Rule: `workflows.md`.
+
+- Repository secrets with a per-environment prefix: every dispatch reaches every environment's secrets, and no approval gate exists.
+- Stored AWS access keys: they outlive the job that uses them.
+
 ### A release carries a CycloneDX SBOM
 
 Rule: `layering.md`, The run surface is a call site.

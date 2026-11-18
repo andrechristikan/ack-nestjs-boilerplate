@@ -293,6 +293,13 @@ const codeStyleRules = {
     ...namingConventionRules,
 };
 
+const typedLintRules = {
+    '@typescript-eslint/no-floating-promises': 'error',
+    '@typescript-eslint/no-misused-promises': 'error',
+    '@typescript-eslint/await-thenable': 'error',
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
+};
+
 // Enhanced code quality rules
 const codeQualityRules = {
     '@typescript-eslint/prefer-nullish-coalescing': [
@@ -598,6 +605,7 @@ export default [
         rules: {
             ...rules,
             ...codeQualityRules,
+            ...typedLintRules,
             ...securityRules,
             ...importOrderRules,
             ...codeStyleRules,
@@ -696,6 +704,7 @@ export default [
         },
         rules: {
             ...rules,
+            ...typedLintRules,
         },
     },
     {
@@ -719,6 +728,7 @@ export default [
         },
         rules: {
             ...rules,
+            ...typedLintRules,
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/promise-function-async': [
                 'error',

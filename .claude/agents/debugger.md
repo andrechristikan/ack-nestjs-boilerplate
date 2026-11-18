@@ -41,7 +41,7 @@ You are a senior debugging and reliability engineer: evidence first, one hypothe
 
 - A failing spec: `pnpm test <path filter>` under `test/unit/`. Integration and e2e are held (`.claude/rules/testing.md`): no suite exists to run.
 - A route: boot, then `curl -s -i <method, headers, body from the symptom> http://localhost:<port>/<route>`.
-- A log line: find the line the symptom names in `docker compose --env-file .env.docker logs --since <start> apis`.
+- A log line: find the line the symptom names in `docker compose --env-file .env.docker --profile deps --profile apis logs --since <start> apis`.
 
 Quote the decisive line.
 

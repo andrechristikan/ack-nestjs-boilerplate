@@ -38,6 +38,12 @@ Rule: `layering.md`, Dependency order.
 - Rules text alone for the layer matrix: carve-outs are written one by one instead of following from a declared order.
 - The dependency order in a separate data file: the feature names only move to another file.
 
+### The typed lint rules are the four promise and exhaustiveness rules
+
+Rule: `eslint.md`, Typed rules.
+
+- `recommendedTypeChecked`: its `no-unsafe-*` family reports on every third-party boundary.
+
 ### Each module owns its request context, passed per parameter
 
 Rule: `security.md`, Request store.
@@ -216,6 +222,13 @@ Rule: `notification.md`, Fan-out and send.
 
 ## Cache and Redis
 
+### The cache and BullMQ run on separate Redis instances
+
+Rule: `docker.md`, Local.
+
+- One instance with `noeviction`: the cache has no memory bound and takes the queues down with it.
+- One instance with `allkeys-lru`: an evicted key corrupts a queue.
+
 ### Cache invalidation is a job
 
 Rule: `effects.md`, Cache invalidation.
@@ -296,6 +309,13 @@ Rule: `notification.md`, Term-policy publish.
 - A separate resend process use case (`TermPolicyProcessResendPublishUseCase`): the paging loop reads `UserService`, which sits above term-policy, so it cannot move down into a term-policy service and would be duplicated.
 - The process passed to `execute`: the use case would take a job name as an argument for its message alone.
 
+### A term-policy publish copies its content before its transaction
+
+Rule: `role.md`.
+
+- A `publishing` status moved to `published` by the copy job: a new enum value and transition, and a row that stays in it when the job fails on every attempt.
+- The copy as a job after the row turns `published`: a failed job leaves every user gated behind a document whose links answer 404.
+
 ### Admin import is a job, export is not
 
 Rule: `login.md`.
@@ -304,6 +324,20 @@ Rule: `login.md`.
 - Asynchronous export: the response is the file.
 
 ## Infrastructure
+
+### The repository ships one release workflow, to one EC2 instance through SSM
+
+Rule: `workflows.md`.
+
+- An SSH workflow: a stored private key and registry password, and an open SSH port.
+- An ECS workflow or task-definition example: every container runs on one instance, and an orchestrator is the deployment's.
+
+### A release applies the schema with `prisma db push` before it replaces the application
+
+Rule: `workflows.md`; `docker.md`, Production.
+
+- A manual push by the owner: a release that needs an index ships without it.
+- `--accept-data-loss`: a destructive change needs a person.
 
 ### Compose variables live in `.env.docker`
 
@@ -419,6 +453,14 @@ Rule: `pagination.md`.
 - A caller-chosen `TArgsWhere`: the util builds only the search `OR`, so the argument named a type it never produced and needed a cast.
 
 ## Tests
+
+### The pre-commit hook lints, type-checks, and runs the related specs; CI is the gate
+
+Rule: `testing.md`, Layout and runs.
+
+- The full gate on every commit: it is slow enough that agents were told to skip it.
+- lint-staged alone: a type error or a red spec surfaces only after the push.
+- A `pre-push` hook: a second copy of what CI runs.
 
 ### A caller spec names an exception by `module` and `statusCode`
 

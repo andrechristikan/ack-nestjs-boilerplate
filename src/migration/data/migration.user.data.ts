@@ -22,25 +22,28 @@ const UserData: IMigrationUserData[] = [
         role: 'admin',
         password: 'aaAA@123',
     },
+    {
+        id: null,
+        country: 'ID',
+        email: 'user@mail.com',
+        username: 'user',
+        name: 'User',
+        role: 'user',
+        password: 'aaAA@123',
+    },
 ];
+
+const MigrationUserDeployedData: IMigrationUserData[] = UserData.map(user => ({
+    ...user,
+    password: null,
+}));
 
 export const MigrationUserData: Record<
     EnumAppEnvironment,
     IMigrationUserData[]
 > = {
-    [EnumAppEnvironment.local]: [
-        ...UserData,
-        {
-            id: null,
-            country: 'ID',
-            email: 'user@mail.com',
-            username: 'user',
-            name: 'User',
-            role: 'user',
-            password: 'aaAA@123',
-        },
-    ],
-    [EnumAppEnvironment.development]: UserData,
-    [EnumAppEnvironment.staging]: UserData,
-    [EnumAppEnvironment.production]: UserData,
+    [EnumAppEnvironment.local]: UserData,
+    [EnumAppEnvironment.development]: MigrationUserDeployedData,
+    [EnumAppEnvironment.staging]: MigrationUserDeployedData,
+    [EnumAppEnvironment.production]: MigrationUserDeployedData,
 };

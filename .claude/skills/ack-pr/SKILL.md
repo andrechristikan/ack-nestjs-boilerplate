@@ -26,11 +26,7 @@ This skill fetches from `origin` and moves a local compare ref; every other skil
 
 The argument carries the mode. Ask for a missing piece (the base branch, the PR number, the tag or range, the comment thread) with `AskUserQuestion`. A commit message is not a mode: propose the subject in the session.
 
-## 2. Full suite (`create` only)
-
-Run `pnpm test` and read its `Tests` line. A red suite stops the mode with the failing line.
-
-## 3. Resolve the compare refs
+## 2. Resolve the compare refs
 
 Follow `references/refs.md`: fetch, point a local `ack-pr/*` ref at the fetched tip, count the commits ahead, and read the diff.
 
@@ -38,7 +34,7 @@ Follow `references/refs.md`: fetch, point a local `ack-pr/*` ref at the fetched 
 - The dispatch names the local ref, never `origin/*` alone.
 - `description` and `create` diff with no second ref, so uncommitted and staged work is included. `version` diffs the resolved range.
 
-## 4. Dispatch `writer`
+## 3. Dispatch `writer`
 
 ```
 Agent: writer
@@ -59,11 +55,11 @@ Report: the file path, and every open question the diff could not settle (hand-b
   not a document section).
 ```
 
-## 5. Read the document against the diff
+## 4. Read the document against the diff
 
 Before any `gh` command, read the document once against the diff at `Compare`. A claim the diff does not support goes back to `writer` in one repair dispatch.
 
-## 6. GitHub, in the session
+## 5. GitHub, in the session
 
 - `create`, `comment`, and an edit to an existing PR: show the owner the exact command; it runs on their word (`references/gh.md`).
 - `description` on a branch with an open PR ends with `gh pr edit` (`references/gh.md`, Update an existing description). With none, it ends at the document.
@@ -73,12 +69,12 @@ Before any `gh` command, read the document once against the diff at `Compare`. A
 
 - The session writes no file; `writer` writes the document under `.scratch/pr/`.
 - No merge, no `gh` write without the owner's word, no review verdict on the owner's behalf.
-- Git runs the fetch and the local `ack-pr/*` refs of step 3 and the push of step 6, nothing else.
+- Git runs the fetch and the local `ack-pr/*` refs of step 2 and the push of step 5, nothing else.
 
 ## Hand back
 
 - The mode, the local compare refs, and the document path.
-- Each claim step 5 sent back and how it now reads.
+- Each claim step 4 sent back and how it now reads.
 - The `gh` commands run, with their output (URL, comment id).
 - Every open question `writer` could not settle from the diff.
 

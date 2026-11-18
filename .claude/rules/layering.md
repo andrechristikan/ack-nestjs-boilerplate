@@ -38,7 +38,7 @@ Lower and higher come from `imports:`: a module is lower than every module whose
 - The kit, the `src/common/` modules `common.module.ts` composes, sits below every feature; anyone injects it.
 - Lint enforces the layer matrix only (`eslint.config.mjs`, `ts/boundaries`): a new edge adds an import, and `reviewer` checks the module files against this list.
 
-`src/common/` and `src/app/` import no module code or type outside `common.module.ts` and `app.module.ts`; other code imports anything. Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface, its `pnpm deadcode` warning no finding. YAGNI rejects a base, token, knob, branch, or stub; the one stub is a provider adapter whose provider is not chosen, a no-op that logs and returns (`NotificationSmsDeliveryService`).
+`src/common/` and `src/app/` import no module code or type outside `common.module.ts` and `app.module.ts`; other code imports anything. Promote only a module-agnostic concept with three callers or more; an exported, complete member of a used family is kit surface and carries `/** @public */`, which `pnpm deadcode` skips. YAGNI rejects a base, token, knob, branch, or stub; the one stub is a provider adapter whose provider is not chosen, a no-op that logs and returns (`NotificationSmsDeliveryService`).
 
 ## The run surface is a call site
 

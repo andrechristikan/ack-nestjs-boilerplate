@@ -45,7 +45,7 @@ env_cmd=$(printf '%s' "$cmd" | sed -E 's/--env-file(-if-exists)?(=|[[:space:]]+)
 env_file="(^|[[:space:]'\"\`=:(<>{,/])\.env(\.(harness|docker))?([[:space:]'\"\`);&|<>,}*?]|$)"
 dotenv_cli="${at_command_start}((npx|pnpm[[:space:]]+(exec|dlx))[[:space:]]+)?dotenvx?${word_end}"
 if printf '%s' "$env_cmd" | grep -qE "${env_file}|${dotenv_cli}"; then
-    decide deny "The root .env, .env.harness, and .env.docker are the owner's and no agent reads them; .env.example and other .env.* files stay readable. Diagnose a boot failure from the container env (docker compose --env-file <the docker env file> exec -T <service> printenv, never printing a secret value) or the apis log (the same command with logs apis); hand the fix to the owner."
+    decide deny "The root .env, .env.harness, and .env.docker are the owner's and no agent reads them; .env.example and other .env.* files stay readable. Diagnose a boot failure from the container env (docker compose --env-file <the docker env file> --profile deps --profile apis exec -T <service> printenv, never printing a secret value) or the apis log (the same command with logs apis); hand the fix to the owner."
 fi
 
 # keys/ (JWT private keys, encryption-secret.env, the Mongo keyfile) and generated/vault/ (init.json: the Vault root
@@ -77,7 +77,7 @@ fi
 
 compose_down_volumes="${at_command_start}((docker[[:space:]]+compose|docker-compose)([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+)down([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+(-[A-Za-z]*v[A-Za-z]*|--volumes(=[^[:space:];&|)]*)?)${word_end}"
 if printf '%s' "$cmd" | grep -qE "$compose_down_volumes"; then
-    decide ask "docker compose down with -v or --volumes deletes the named volumes mongo_data and redis_data (the MongoDB data, the Redis cache and queue data), and vault_data (Vault's storage) in ci/docker-compose.yml; plain down keeps them."
+    decide ask "docker compose down with -v or --volumes deletes the named volumes mongo_data and redis_queue_data (the MongoDB data, the BullMQ queue data), and vault_data (Vault's storage) in ci/docker-compose.yml; plain down keeps them."
 fi
 
 exit 0

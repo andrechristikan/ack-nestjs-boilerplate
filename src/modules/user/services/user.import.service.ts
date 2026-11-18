@@ -63,10 +63,11 @@ export class UserImportService {
     async getUsernameChecks(
         usernames: string[]
     ): Promise<IUserImportUsernameChecks> {
-        const [existingUsers, badWords] = await Promise.all([
-            this.userRepository.findByUsernames(usernames),
-            usernames.map(username => this.userUtil.hasBadWord(username)),
-        ]);
+        const badWords = usernames.map(username =>
+            this.userUtil.hasBadWord(username)
+        );
+        const existingUsers =
+            await this.userRepository.findByUsernames(usernames);
 
         return {
             existing: existingUsers.map(user => user.username),

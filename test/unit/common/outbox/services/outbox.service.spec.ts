@@ -240,16 +240,12 @@ describe('OutboxService', () => {
     });
 
     describe('addManyInTx', () => {
-        const copyEffect: IOutboxEffect = {
+        const publishEffect: IOutboxEffect = {
             queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.copyContent,
-            data: {
-                termPolicyId: 'term-policy-1',
-                contents: [],
-                destination: 'term-policy/published',
-            },
-            priority: EnumQueuePriority.high,
-            idempotencyKey: 'copyContent:term-policy-1',
+            name: EnumTermPolicyProcess.publish,
+            data: { termPolicyId: 'term-policy-1' },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey: 'publish:term-policy-1',
         };
 
         it('inserts pending rows with generated ids, a null key stored as the row id, and returns the ids', async () => {
@@ -289,8 +285,8 @@ describe('OutboxService', () => {
                     ...purgeRow,
                     id: 'outbox-existing',
                     queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
                 },
             ]);
 
@@ -299,7 +295,7 @@ describe('OutboxService', () => {
                     (openedTx: IDatabaseTransactionClient) => Promise<string[]>
                 >()
                 .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [copyEffect, purgeEffect])
+                    service.addManyInTx(openedTx, [publishEffect, purgeEffect])
                 );
 
             const ids = await service.withTransaction(callback);
@@ -310,8 +306,8 @@ describe('OutboxService', () => {
             ).toHaveBeenCalledWith(tx, [
                 {
                     queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
                 },
             ]);
             expect(outboxRepository.createManyInTx).toHaveBeenCalledTimes(1);
@@ -333,8 +329,8 @@ describe('OutboxService', () => {
                     ...purgeRow,
                     id: 'outbox-existing',
                     queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
                 },
             ]);
 
@@ -343,7 +339,7 @@ describe('OutboxService', () => {
                     (openedTx: IDatabaseTransactionClient) => Promise<string[]>
                 >()
                 .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [copyEffect])
+                    service.addManyInTx(openedTx, [publishEffect])
                 );
 
             const ids = await service.withTransaction(callback);
@@ -358,7 +354,7 @@ describe('OutboxService', () => {
                 name: EnumTermPolicyProcess.deleteContent,
                 data: { path: 'term-policy/draft' },
                 priority: EnumQueuePriority.high,
-                idempotencyKey: 'copyContent:term-policy-1',
+                idempotencyKey: 'publish:term-policy-1',
             };
             databaseUtil.createId.mockReturnValue('outbox-2');
             outboxRepository.findManyByIdempotencyKeysInTx.mockResolvedValue([
@@ -366,8 +362,8 @@ describe('OutboxService', () => {
                     ...purgeRow,
                     id: 'outbox-existing',
                     queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
                 },
             ]);
 
@@ -376,7 +372,7 @@ describe('OutboxService', () => {
                     (openedTx: IDatabaseTransactionClient) => Promise<string[]>
                 >()
                 .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [copyEffect, deleteEffect])
+                    service.addManyInTx(openedTx, [publishEffect, deleteEffect])
                 );
 
             const ids = await service.withTransaction(callback);
@@ -387,20 +383,20 @@ describe('OutboxService', () => {
             ).toHaveBeenCalledWith(tx, [
                 {
                     queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
                 },
                 {
                     queue: EnumTermPolicyQueue.termPolicy,
                     name: EnumTermPolicyProcess.deleteContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    idempotencyKey: 'publish:term-policy-1',
                 },
             ]);
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({
                     id: 'outbox-2',
                     name: EnumTermPolicyProcess.deleteContent,
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    idempotencyKey: 'publish:term-policy-1',
                 }),
             ]);
         });
@@ -416,7 +412,10 @@ describe('OutboxService', () => {
                     (openedTx: IDatabaseTransactionClient) => Promise<string[]>
                 >()
                 .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [copyEffect, copyEffect])
+                    service.addManyInTx(openedTx, [
+                        publishEffect,
+                        publishEffect,
+                    ])
                 );
 
             const ids = await service.withTransaction(callback);
@@ -425,7 +424,7 @@ describe('OutboxService', () => {
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({
                     id: 'outbox-1',
-                    idempotencyKey: 'copyContent:term-policy-1',
+                    idempotencyKey: 'publish:term-policy-1',
                 }),
             ]);
         });

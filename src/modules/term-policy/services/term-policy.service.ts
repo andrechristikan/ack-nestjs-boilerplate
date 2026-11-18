@@ -3,7 +3,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
-import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type {
@@ -15,8 +14,6 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { MessageService } from '@common/message/services/message.service';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -37,8 +34,6 @@ import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/requ
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
-    ITermPolicyCopyContentEffect,
-    ITermPolicyCopyContentPayload,
     ITermPolicyCreate,
     ITermPolicyDeleteContentEffect,
     ITermPolicyPublishEffect,
@@ -61,7 +56,6 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class TermPolicyService {
-    private readonly copyContentPattern: string;
     private readonly publishPattern: string;
     private readonly resendPublishPattern: string;
 
@@ -69,7 +63,6 @@ export class TermPolicyService {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly messageService: MessageService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperStringService: HelperStringService,
@@ -79,9 +72,6 @@ export class TermPolicyService {
         private readonly activityLogService: ActivityLogService,
         private readonly termPolicyContentService: TermPolicyContentService
     ) {
-        this.copyContentPattern = this.configService.get<string>(
-            'termPolicy.idempotencyKey.copyContentPattern'
-        )!;
         this.publishPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.publishPattern'
         )!;
@@ -97,26 +87,6 @@ export class TermPolicyService {
             data: { path },
             priority: EnumQueuePriority.low,
             idempotencyKey: null,
-        };
-    }
-
-    private copyContentEffect(
-        payload: ITermPolicyCopyContentPayload
-    ): ITermPolicyCopyContentEffect {
-        const idempotencyKey = this.helperStringService.fillPattern(
-            this.copyContentPattern,
-            {
-                process: EnumTermPolicyProcess.copyContent,
-                termPolicyId: payload.termPolicyId,
-            }
-        );
-
-        return {
-            queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.copyContent,
-            data: payload,
-            priority: EnumQueuePriority.high,
-            idempotencyKey,
         };
     }
 
@@ -439,6 +409,11 @@ export class TermPolicyService {
                 }
             );
 
+            // Sequential by design: write must not run if an earlier step throws
+            await this.awsS3Service.copyItems(contents, destination, {
+                access: EnumAwsS3Accessibility.public,
+            });
+
             const published =
                 await this.outboxService.withTransaction<TermPolicy>(
                     async tx => {
@@ -476,11 +451,6 @@ export class TermPolicyService {
                             throw new TermPolicyStatusInvalidException();
                         }
 
-                        const copyEffect = this.copyContentEffect({
-                            termPolicyId,
-                            contents,
-                            destination,
-                        });
                         const recipientCutoffAt =
                             this.helperDateService.formatToIso(
                                 row.publishedAt!
@@ -495,10 +465,7 @@ export class TermPolicyService {
                             },
                             authContext.userId
                         );
-                        await this.outboxService.addManyInTx(tx, [
-                            copyEffect,
-                            publishEffect,
-                        ]);
+                        await this.outboxService.addInTx(tx, publishEffect);
 
                         const metadata =
                             this.termPolicyUtil.mapActivityLogMetadata(
@@ -533,30 +500,6 @@ export class TermPolicyService {
             }
 
             throw new AppUnknownException(err);
-        }
-    }
-
-    async copyContent({
-        termPolicyId,
-        contents,
-        destination,
-    }: ITermPolicyCopyContentPayload): Promise<void> {
-        const message = this.messageService.setMessage(
-            'termPolicy.queue.error.copyContent',
-            { properties: { termPolicyId } }
-        );
-
-        let copied: IAwsS3[];
-        try {
-            copied = await this.awsS3Service.copyItems(contents, destination, {
-                access: EnumAwsS3Accessibility.public,
-            });
-        } catch (err: unknown) {
-            throw new QueueException(message, true, err);
-        }
-
-        if (copied.length !== contents.length) {
-            throw new QueueException(message, true);
         }
     }
 

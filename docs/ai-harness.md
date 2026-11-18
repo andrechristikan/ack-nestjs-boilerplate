@@ -195,8 +195,8 @@ A build that was interrupted resumes from the first ticket that is not done.
 | Server | Reads | Key in `.env.harness` |
 | --- | --- | --- |
 | `mongodb` | the MongoDB replica set, in read-only mode | `MCP_MONGODB_URL` |
-| `redis-cache` | Redis `db:0`, the cache | `MCP_REDIS_CACHE_URL` |
-| `redis-queue` | Redis `db:1`, the BullMQ queues | `MCP_REDIS_QUEUE_URL` |
+| `redis-cache` | the `redis-cache` instance, `db:0`, the cache | `MCP_REDIS_CACHE_URL` |
+| `redis-queue` | the `redis-queue` instance, `db:0`, the BullMQ queues | `MCP_REDIS_QUEUE_URL` |
 
 - No URL is written in a tracked file, and none reaches the session.
 - Each value is the URL the host reaches the container at: the same as `DATABASE_URL`, `REDIS_CACHE_URL`, and `REDIS_QUEUE_URL` for a local setup.

@@ -26,7 +26,7 @@
         "generate": "pnpm db:generate && pnpm generate:package",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",
         "deadcode": "knip",
-        "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
+        "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress",
         "typecheck": "tsc --noEmit",
         "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput -p tsconfig.build.json",
         "build": "nest build application --config nest-cli.json && pnpm typecheck",
@@ -37,6 +37,7 @@
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
         "test": "TZ=UTC vitest run --project unit",
+        "test:related": "TZ=UTC NODE_ENV=test vitest related --run --project unit",
         "test:cov": "TZ=UTC vitest run --project unit --coverage",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",
@@ -170,8 +171,9 @@
     "lint-staged": {
         "**/*.ts": [
             "prettier --write",
-            "eslint",
-            "stop-only --file"
+            "eslint --max-warnings 0",
+            "stop-only --file",
+            "pnpm test:related"
         ],
         "*.{json,yml,yaml}": [
             "prettier --write"

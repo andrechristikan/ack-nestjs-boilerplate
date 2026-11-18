@@ -9,16 +9,16 @@
     "ignoreExportsUsedInFile": true,
     "ignoreFiles": [],
     "rules": {
-        "files": "warn",
-        "dependencies": "warn",
-        "devDependencies": "warn",
-        "exports": "warn",
-        "nsExports": "warn",
-        "types": "warn",
-        "nsTypes": "warn",
-        "enumMembers": "warn",
-        "namespaceMembers": "warn",
-        "catalog": "warn"
+        "files": "error",
+        "dependencies": "error",
+        "devDependencies": "error",
+        "exports": "error",
+        "nsExports": "error",
+        "types": "error",
+        "nsTypes": "error",
+        "enumMembers": "error",
+        "namespaceMembers": "error",
+        "catalog": "error"
     },
     "ignoreDependencies": [
         "pino-pretty",

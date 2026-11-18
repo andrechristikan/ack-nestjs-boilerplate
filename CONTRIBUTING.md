@@ -215,9 +215,9 @@ The Checklist and the gates:
 - Tick only the rows that apply.
 - Tests go under How Has This Been Tested?.
 - The Husky pre-commit hook runs `lint-staged`, typecheck, deadcode, spell, and the unit tests locally.
-- The Linter workflow runs `pnpm lint` on pull requests, and its trigger branches are listed in `.github/workflows/linter.yml`.
-- The unit test workflow runs on manual dispatch only.
-- `test-integration.yml` and `test-e2e.yml` run on manual dispatch and call `pnpm test:integration` and `pnpm test:e2e`, which `package.json` does not define, so they fail.
+- The CI workflow (`.github/workflows/ci.yml`) runs lint, deadcode, spell, typecheck, and the build on pull requests to the branches it lists.
+- Once those pass, CI calls `test-unit.yml` (the unit suite with coverage) and `test-integration.yml`, which passes while `test/integration/` holds no spec.
+- `test-e2e.yml` runs on manual dispatch and calls `pnpm test:e2e`, which `package.json` does not define, so it fails.
 
 **PR will be rejected if:**
 

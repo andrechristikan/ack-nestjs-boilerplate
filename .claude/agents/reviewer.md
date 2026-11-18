@@ -60,7 +60,7 @@ The dispatch's pin is the requirement. Read the diff against it: the root cause 
 
 ## Checks
 
-At `task`: `pnpm typecheck` (exit code and first `error TS` line, or none), `pnpm lint`, `pnpm deadcode`, `pnpm spell`. `deadcode` and `spell` can exit 0 with findings, so read them. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`.
+At `task`: `pnpm typecheck` (exit code and first `error TS` line, or none), `pnpm lint`, `pnpm deadcode`, `pnpm spell`. Each exits 1 on a finding. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`.
 
 ## Findings and hand back
 

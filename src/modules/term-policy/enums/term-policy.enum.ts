@@ -6,6 +6,5 @@ export enum EnumTermPolicyQueue {
 /** @public */
 export enum EnumTermPolicyProcess {
     deleteContent = 'deleteContent',
-    copyContent = 'copyContent',
     publish = 'publish',
 }

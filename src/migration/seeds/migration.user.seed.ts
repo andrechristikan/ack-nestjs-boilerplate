@@ -140,8 +140,14 @@ export class MigrationUserSeed
                 geoLocation: null,
             };
 
-            const createPasswords = this.users.map(user =>
-                this.authPasswordUtil.createPassword(user.password)
+            const plainPasswords = this.users.map(user => {
+                if (user.password !== null) {
+                    return user.password;
+                }
+                return this.authPasswordUtil.createPasswordRandom();
+            });
+            const createPasswords = plainPasswords.map(plainPassword =>
+                this.authPasswordUtil.createPassword(plainPassword)
             );
             const passwords = await Promise.all(createPasswords);
             const rows = this.users.map((user, index) => {
@@ -186,6 +192,8 @@ export class MigrationUserSeed
                     )!.id,
                     roleId: roles.find(role => role.name === user.role)!.id,
                     password,
+                    generatedPassword:
+                        user.password === null ? plainPasswords[index]! : null,
                     verification,
                     activityLogs: [
                         createdActivity,
@@ -349,6 +357,18 @@ export class MigrationUserSeed
                 },
                 { timeout: this.seedTransactionTimeoutInMs }
             );
+
+            const printed = rows.filter(
+                row => row.isNew && row.generatedPassword !== null
+            );
+            if (printed.length > 0) {
+                process.stdout.write('Generated user passwords, shown once:\n');
+                for (const row of printed) {
+                    process.stdout.write(
+                        `${row.email} ${row.generatedPassword}\n`
+                    );
+                }
+            }
         } catch (error: unknown) {
             throw new AppUnknownException(error, 'Seeding users failed');
         }

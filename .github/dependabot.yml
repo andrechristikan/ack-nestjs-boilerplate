@@ -3,7 +3,7 @@ updates:
     - package-ecosystem: 'github-actions'
       directory: '/'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: tuesday
           time: '00:00'
       open-pull-requests-limit: 3
@@ -22,7 +22,7 @@ updates:
       directory: '/ci'
       target-branch: 'development'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: tuesday
           time: '00:00'
       open-pull-requests-limit: 3
@@ -39,7 +39,7 @@ updates:
       directory: '/ci'
       target-branch: 'development'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: tuesday
           time: '00:00'
       open-pull-requests-limit: 3
@@ -55,7 +55,7 @@ updates:
     - package-ecosystem: 'npm'
       directory: '/'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: monday
           time: '00:00'
       open-pull-requests-limit: 3

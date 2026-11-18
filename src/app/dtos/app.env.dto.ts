@@ -159,6 +159,17 @@ export const AppEnvSchema = z
             });
         }
 
+        if (
+            env.APP_ENV === EnumAppEnvironment.production &&
+            env.APP_HTTP_TRUSTED_PROXIES === null
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['APP_HTTP_TRUSTED_PROXIES'],
+                message: 'Must be set in production',
+            });
+        }
+
         const passkeyOrigins = env.MFA_PASSKEY_ORIGINS.split(',')
             .map(origin => origin.trim())
             .filter(origin => origin !== '');

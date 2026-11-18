@@ -15,6 +15,8 @@ VAULT_ADDR_INTERNAL="${VAULT_ADDR_INTERNAL:-http://127.0.0.1:8200}"
 
 # Temp file first, swap in on success: a failed fetch never truncates the
 # existing env file. Temp cleaned on any exit.
+# umask 077 makes the temp file, and so the env file, mode 600.
+umask 077
 TMP="$OUT.tmp"
 trap 'rm -f "$TMP"' EXIT
 

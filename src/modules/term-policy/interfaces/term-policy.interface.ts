@@ -64,12 +64,6 @@ export interface ITermPolicyDeleteContentPayload {
     path: string;
 }
 
-export interface ITermPolicyCopyContentPayload {
-    termPolicyId: string;
-    contents: ITermPolicyContent[];
-    destination: string;
-}
-
 export interface ITermPolicyAcceptanceCreate {
     userId: string;
     types: EnumTermPolicyType[];
@@ -98,12 +92,6 @@ export interface ITermPolicyDeleteContentEffect extends IOutboxEffect {
     queue: EnumTermPolicyQueue.termPolicy;
     name: EnumTermPolicyProcess.deleteContent;
     data: ITermPolicyDeleteContentPayload;
-}
-
-export interface ITermPolicyCopyContentEffect extends IOutboxEffect {
-    queue: EnumTermPolicyQueue.termPolicy;
-    name: EnumTermPolicyProcess.copyContent;
-    data: ITermPolicyCopyContentPayload;
 }
 
 export interface ITermPolicyPublishPayload {
@@ -160,10 +148,6 @@ export interface ITermPolicyRecipientBatch {
 export interface ITermPolicyRecipientClaim {
     claimNonce: string;
     userIds: string[];
-}
-
-export interface ITermPolicyCopyContentQueueResponse extends IQueueResponse {
-    destination: string;
 }
 
 export interface ITermPolicyDeleteContentQueueResponse extends IQueueResponse {

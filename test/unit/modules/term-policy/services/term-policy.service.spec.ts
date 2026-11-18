@@ -30,8 +30,6 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { MessageService } from '@common/message/services/message.service';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -77,7 +75,6 @@ describe('TermPolicyService', () => {
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
-    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperArrayService: MockProxy<HelperArrayService> =
         mock<HelperArrayService>();
@@ -185,7 +182,6 @@ describe('TermPolicyService', () => {
         termPolicyUtil.toContents.mockReturnValue([contentEn]);
         termPolicyUtil.isContentSizeAllowed.mockReturnValue(true);
         termPolicyUtil.isContentKeyInPath.mockReturnValue(true);
-        messageService.setMessage.mockImplementation((path: string) => path);
         helperDateService.create.mockReturnValue(timestamp);
         termPolicyUtil.mapActivityLogMetadata.mockReturnValue(activityMetadata);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
@@ -206,7 +202,6 @@ describe('TermPolicyService', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: MessageService, useValue: messageService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: OutboxService, useValue: outboxService },
@@ -1340,18 +1335,7 @@ describe('TermPolicyService', () => {
                 ).toHaveBeenCalled();
             });
 
-            it('adds the content copy row and the publish row on one publish tx after the guards, and dispatches once', async () => {
-                const copyContentEffect: IOutboxEffect = {
-                    queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.copyContent,
-                    data: {
-                        termPolicyId: 'term-policy-1',
-                        contents: [contentEn],
-                        destination: 'public/term-policies/privacy/1',
-                    },
-                    priority: EnumQueuePriority.high,
-                    idempotencyKey: 'copyContent-term-policy-1',
-                };
+            it('adds the publish row on one publish tx after the guards, and dispatches once', async () => {
                 const publishEffect: ITermPolicyPublishEffect = {
                     queue: EnumTermPolicyQueue.termPolicy,
                     name: EnumTermPolicyProcess.publish,
@@ -1368,9 +1352,9 @@ describe('TermPolicyService', () => {
                     priority: EnumQueuePriority.medium,
                     idempotencyKey: 'publish-term-policy-1',
                 };
-                helperStringService.fillPattern
-                    .mockReturnValueOnce('copyContent-term-policy-1')
-                    .mockReturnValueOnce('publish-term-policy-1');
+                helperStringService.fillPattern.mockReturnValueOnce(
+                    'publish-term-policy-1'
+                );
                 helperDateService.formatToIso.mockReturnValue(
                     '2026-01-01T00:00:00.000Z'
                 );
@@ -1383,35 +1367,29 @@ describe('TermPolicyService', () => {
                 );
 
                 expect(configGet).toHaveBeenCalledWith(
-                    'termPolicy.idempotencyKey.copyContentPattern'
-                );
-                expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                    '{process}-{termPolicyId}',
-                    {
-                        process: EnumTermPolicyProcess.copyContent,
-                        termPolicyId: 'term-policy-1',
-                    }
-                );
-                expect(helperDateService.formatToIso).toHaveBeenCalledWith(
-                    timestamp
-                );
-                expect(configGet).toHaveBeenCalledWith(
                     'termPolicy.idempotencyKey.publishPattern'
                 );
-                expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                    2,
+                expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                     '{process}-{termPolicyId}',
                     {
                         process: EnumTermPolicyProcess.publish,
                         termPolicyId: 'term-policy-1',
                     }
                 );
+                expect(helperDateService.formatToIso).toHaveBeenCalledWith(
+                    timestamp
+                );
                 expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-                expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                    copyContentEffect,
-                    publishEffect,
-                ]);
-                expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
+                expect(outboxService.addInTx).toHaveBeenCalledWith(
+                    tx,
+                    publishEffect
+                );
+                expect(outboxService.addInTx).toHaveBeenCalledWith(
+                    tx,
+                    entryEffect
+                );
+                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+                expect(outboxService.addInTx).toHaveBeenCalledAfter(
                     termPolicyRepository.existsNewerPublishedInTx
                 );
             });
@@ -1429,7 +1407,7 @@ describe('TermPolicyService', () => {
                         'term-policy-1'
                     )
                 ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
-                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+                expect(outboxService.addInTx).not.toHaveBeenCalled();
             });
 
             it('publishes the public keys, archives the earlier published versions, and returns the row', async () => {
@@ -1461,7 +1439,7 @@ describe('TermPolicyService', () => {
                 ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
             });
 
-            it('calls no S3 copy while publishing', async () => {
+            it('copies the draft contents to the public destination before it opens the transaction', async () => {
                 await service.publishByAdmin(
                     requestContext,
                     apiKeyContext,
@@ -1469,8 +1447,36 @@ describe('TermPolicyService', () => {
                     'term-policy-1'
                 );
 
-                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-                expect(awsS3Service.copyItem).not.toHaveBeenCalled();
+                expect(awsS3Service.copyItems).toHaveBeenCalledWith(
+                    [contentEn],
+                    'public/term-policies/privacy/1',
+                    { access: EnumAwsS3Accessibility.public }
+                );
+                expect(awsS3Service.copyItems).toHaveBeenCalledBefore(
+                    outboxService.withTransaction
+                );
+            });
+
+            it('opens no transaction and adds no effect when the copy rejects', async () => {
+                const copyError = new Error('copy failed');
+                awsS3Service.copyItems.mockRejectedValue(copyError);
+
+                await expect(
+                    service.publishByAdmin(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        'term-policy-1'
+                    )
+                ).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    module: 'app',
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    rawError: copyError,
+                });
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(outboxService.addInTx).not.toHaveBeenCalled();
+                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             });
         });
 
@@ -1776,62 +1782,6 @@ describe('TermPolicyService', () => {
                 }
             );
             expect(effect).toEqual(resendEffect);
-        });
-    });
-
-    describe('copyContent', () => {
-        it('copies every private content to the public destination', async () => {
-            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
-
-            await service.copyContent({
-                termPolicyId: 'term-policy-1',
-                contents: [contentEn],
-                destination: 'public/term-policies/privacy/1',
-            });
-
-            expect(awsS3Service.copyItems).toHaveBeenCalledWith(
-                [contentEn],
-                'public/term-policies/privacy/1',
-                { access: EnumAwsS3Accessibility.public }
-            );
-        });
-
-        it('throws a fatal QueueException carrying the S3 rejection as rawError', async () => {
-            const copyError = new Error('copy failed');
-            awsS3Service.copyItems.mockRejectedValue(copyError);
-
-            await expect(
-                service.copyContent({
-                    termPolicyId: 'term-policy-1',
-                    contents: [contentEn],
-                    destination: 'public/term-policies/privacy/1',
-                })
-            ).rejects.toMatchObject({
-                constructor: QueueException,
-                message: 'termPolicy.queue.error.copyContent',
-                isFatal: true,
-                rawError: copyError,
-            });
-        });
-
-        it('throws a fatal QueueException when S3 is not configured and no content was copied', async () => {
-            awsS3Service.copyItems.mockResolvedValue([]);
-
-            await expect(
-                service.copyContent({
-                    termPolicyId: 'term-policy-1',
-                    contents: [contentEn],
-                    destination: 'public/term-policies/privacy/1',
-                })
-            ).rejects.toMatchObject({
-                constructor: QueueException,
-                message: 'termPolicy.queue.error.copyContent',
-                isFatal: true,
-            });
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'termPolicy.queue.error.copyContent',
-                { properties: { termPolicyId: 'term-policy-1' } }
-            );
         });
     });
 

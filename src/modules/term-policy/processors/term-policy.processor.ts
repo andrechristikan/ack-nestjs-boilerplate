@@ -1,11 +1,9 @@
 import { EnumTermPolicyProcess } from '@modules/term-policy/enums/term-policy.enum';
 import type {
     ITermPolicyBulkQueuePayload,
-    ITermPolicyCopyContentPayload,
     ITermPolicyDeleteContentPayload,
     ITermPolicyPublishPayload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyProcessCopyContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-copy-content.use-case';
 import { TermPolicyProcessDeleteContentUseCase } from '@modules/term-policy/use-cases/term-policy.process-delete-content.use-case';
 import { TermPolicyProcessPublishUseCase } from '@modules/term-policy/use-cases/term-policy.process-publish.use-case';
 import { Job } from 'bullmq';
@@ -18,7 +16,6 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 export class TermPolicyProcessor extends QueueProcessorBase {
     constructor(
         private readonly termPolicyProcessDeleteContentUseCase: TermPolicyProcessDeleteContentUseCase,
-        private readonly termPolicyProcessCopyContentUseCase: TermPolicyProcessCopyContentUseCase,
         private readonly termPolicyProcessPublishUseCase: TermPolicyProcessPublishUseCase
     ) {
         super();
@@ -32,10 +29,6 @@ export class TermPolicyProcessor extends QueueProcessorBase {
             case EnumTermPolicyProcess.deleteContent:
                 return await this.termPolicyProcessDeleteContentUseCase.execute(
                     data as ITermPolicyDeleteContentPayload
-                );
-            case EnumTermPolicyProcess.copyContent:
-                return await this.termPolicyProcessCopyContentUseCase.execute(
-                    data as ITermPolicyCopyContentPayload
                 );
             case EnumTermPolicyProcess.publish:
                 return await this.termPolicyProcessPublishUseCase.execute(

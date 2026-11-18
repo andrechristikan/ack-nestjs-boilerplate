@@ -445,12 +445,10 @@ export class UserService {
     }
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {
-        const [isUsernamePatternInvalid, hasBadWord, isExist] =
-            await Promise.all([
-                this.userUtil.isUsernamePatternInvalid(username),
-                this.userUtil.hasBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]);
+        const isUsernamePatternInvalid =
+            this.userUtil.isUsernamePatternInvalid(username);
+        const hasBadWord = this.userUtil.hasBadWord(username);
+        const isExist = await this.userRepository.existsByUsername(username);
 
         return {
             badWord: hasBadWord,
@@ -460,10 +458,8 @@ export class UserService {
     }
 
     async checkEmail(email: string): Promise<IUserCheckEmail> {
-        const [hasBadWord, isExist] = await Promise.all([
-            this.userUtil.hasBadWord(email),
-            this.userRepository.existsByEmail(email),
-        ]);
+        const hasBadWord = this.userUtil.hasBadWord(email);
+        const isExist = await this.userRepository.existsByEmail(email);
 
         return {
             badWord: hasBadWord,

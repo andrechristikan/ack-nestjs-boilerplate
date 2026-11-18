@@ -494,8 +494,8 @@ class SecretGenerator {
 
     /**
      * Upserts the given variables into `.env`, creating it from `.env.example`
-     * when absent with every `<placeholder>` value written empty, and sets it to mode 0644 so a non-root container user can
-     * read it. Variables not named are left as they are.
+     * when absent with every `<placeholder>` value written empty, and keeps it at mode 600: it holds the private keys and
+     * encryption roots, so only its owner reads it. Variables not named are left as they are.
      */
     upsertEnv(updates: { key: string; value: string }[]): void {
         const envPath = path.join(process.cwd(), '.env');
@@ -507,7 +507,8 @@ class SecretGenerator {
                     envPath,
                     fs
                         .readFileSync(envExamplePath, 'utf8')
-                        .replace(/^([A-Z0-9_]+)=<[^>\n]*>$/gm, '$1=')
+                        .replace(/^([A-Z0-9_]+)=<[^>\n]*>$/gm, '$1='),
+                    { mode: 0o600 }
                 );
                 console.log('📄 .env file created from .env.example');
             } else {
@@ -531,10 +532,9 @@ class SecretGenerator {
 
         fs.writeFileSync(envPath, envLines.join('\n'));
 
-        // 0644: the production container runs as a non-root user whose uid differs from the host owner, and reads .env
-        // through a bind mount.
+        // The production container runs as the host owner of the file (DOCKER_APIS_UID), so 600 suffices.
         try {
-            fs.chmodSync(envPath, 0o644);
+            fs.chmodSync(envPath, 0o600);
         } catch {
             console.warn(`Could not set permissions for ${envPath}`);
         }

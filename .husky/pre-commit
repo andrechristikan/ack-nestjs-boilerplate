@@ -1,5 +1,2 @@
 pnpm lint:staged
 pnpm typecheck
-pnpm deadcode
-pnpm spell
-NODE_ENV=test pnpm test

@@ -15,7 +15,7 @@ export interface IMigrationUserData {
     username: Lowercase<string>;
     name: string;
     role: string;
-    password: string;
+    password: string | null;
 }
 
 export interface IMigrationRoleData {

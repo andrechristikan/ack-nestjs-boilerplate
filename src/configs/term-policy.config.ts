@@ -8,7 +8,6 @@ export interface IConfigTermPolicy {
         maxSizeInBytes: number;
     };
     idempotencyKey: {
-        copyContentPattern: string;
         publishPattern: string;
         resendPublishPattern: string;
     };
@@ -21,7 +20,6 @@ export default registerAs('termPolicy', (): IConfigTermPolicy => ({
         maxSizeInBytes: bytes('10mb') ?? 0,
     },
     idempotencyKey: {
-        copyContentPattern: '{process}-{termPolicyId}',
         publishPattern: '{process}-{termPolicyId}',
         resendPublishPattern: '{process}-{termPolicyId}-{resendNonce}',
     },

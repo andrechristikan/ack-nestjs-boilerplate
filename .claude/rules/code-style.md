@@ -11,8 +11,9 @@ paths:
 
 A lint rule that cannot hold everywhere is the owner's to remove, for every file.
 
-- `pnpm spell` always exits 0 (`|| true`). Read its output.
-- `pnpm deadcode` is knip: unused files, exports, types, enum members, and dependencies warn and exit 0; unlisted dependencies, unresolved imports, unlisted binaries, and duplicate exports exit 1.
+- `pnpm spell` exits 1 on a misspelling.
+- `pnpm deadcode` is knip, every rule at `error`: an unused file, export, type, enum member, or dependency exits 1.
+- The four typed rules of `eslint.md` hold at `error`: a floating or misused promise, an `await` on a value that is no promise, and a `switch` over an enum or union that misses a member.
 
 ## Imports
 

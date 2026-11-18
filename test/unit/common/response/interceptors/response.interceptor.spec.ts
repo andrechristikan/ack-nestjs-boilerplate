@@ -96,10 +96,9 @@ describe('ResponseInterceptor', () => {
         it('falls back to the response status and default message path when the handler returns no data', async () => {
             callHandler.handle.mockReturnValue(of(Promise.resolve(undefined)));
 
-            const emitted = await firstValueFrom(
+            const result = await firstValueFrom(
                 interceptor.intercept(context, callHandler)
             );
-            const result = await emitted;
 
             expect(result).toEqual({
                 statusCode: 200,
@@ -120,10 +119,9 @@ describe('ResponseInterceptor', () => {
                 of(Promise.resolve(responseData))
             );
 
-            const emitted = await firstValueFrom(
+            const result = await firstValueFrom(
                 interceptor.intercept(context, callHandler)
             );
-            const result = await emitted;
 
             expect(result.data).toBeUndefined();
         });
@@ -154,10 +152,9 @@ describe('ResponseInterceptor', () => {
                 of(Promise.resolve(responseData))
             );
 
-            const emitted = await firstValueFrom(
+            const result = await firstValueFrom(
                 interceptor.intercept(context, callHandler)
             );
-            const result = await emitted;
 
             expect(result).toEqual({
                 statusCode: 20001,

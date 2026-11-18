@@ -34,7 +34,9 @@ services:
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         depends_on:
-            redis:
+            redis-queue:
+                condition: service_healthy
+            redis-cache:
                 condition: service_healthy
             mongo:
                 condition: service_healthy
@@ -62,6 +64,7 @@ services:
                     memory: 4G
 
     jwks-server:
+        profiles: ['deps']
         image: nginx:alpine
         hostname: jwks-server
         ports:
@@ -106,9 +109,10 @@ services:
             retries: 3
             start_period: 10s
 
-    redis:
+    redis-queue:
+        profiles: ['deps']
         image: redis:latest
-        hostname: redis
+        hostname: redis-queue
         environment:
             REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
         user: redis
@@ -116,13 +120,13 @@ services:
             [
                 'sh',
                 '-c',
-                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes --maxmemory-policy noeviction',
             ]
         ports:
             - '6379:6379'
         volumes:
             - type: volume
-              source: redis_data
+              source: redis_queue_data
               target: /data
         networks:
             - app-network
@@ -141,23 +145,56 @@ services:
             timeout: 30s
             retries: 5
 
-    redis-bullboard:
+    redis-cache:
+        profiles: ['deps']
+        image: redis:latest
+        hostname: redis-cache
+        environment:
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+        user: redis
+        command:
+            [
+                'sh',
+                '-c',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no',
+            ]
+        ports:
+            - '6380:6379'
+        networks:
+            - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 384M
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'if [ -n "$$REDIS_PASSWORD" ]; then export REDISCLI_AUTH="$$REDIS_PASSWORD"; fi; redis-cli ping | grep -q PONG',
+                ]
+            interval: 10s
+            timeout: 30s
+            retries: 5
+
+    bullboard:
+        profiles: ['deps']
         image: venatum/bull-board:latest
-        hostname: redis-bullboard
+        hostname: bullboard
         ports:
             - 3010:3000
         networks:
             - app-network
         environment:
-            - REDIS_HOST=redis
+            - REDIS_HOST=redis-queue
             - REDIS_PORT=6379
             - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD:-}
             - BULL_PREFIX=Queue
             - USER_LOGIN=${DOCKER_BULLBOARD_USERNAME:-admin}
             - USER_PASSWORD=${DOCKER_BULLBOARD_PASSWORD:-admin123}
-            - REDIS_DB=1
+            - REDIS_DB=0
         depends_on:
-            redis:
+            redis-queue:
                 condition: service_healthy
         healthcheck:
             test:
@@ -175,6 +212,7 @@ services:
                     memory: 128M
 
     mongo:
+        profiles: ['deps']
         image: mongo:latest
         hostname: mongo
         ports:
@@ -226,7 +264,7 @@ services:
 
 volumes:
     mongo_data:
-    redis_data:
+    redis_queue_data:
 
 networks:
     app-network:
