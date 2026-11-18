@@ -128,31 +128,37 @@ Rule: `login.md`.
 
 - Keeping the hash on the soft-deleted row: nothing reads it, and it outlives the account.
 
+### Self-delete is refused while the user owns a workspace with other members
+
+Rule: `login.md`.
+
+- An automatic transfer to another member: the owner chooses the new owner.
+
 ## MFA factors and challenges
 
 ### The challenge is a row, one type for every purpose
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - The challenge as Redis state read with `GETDEL`: a Redis read error turns into `MfaChallengeInvalidException`, the wrong answer.
 - A model per purpose: the token, the expiry, and the claim would be the same statements five times.
 
 ### MFA stays opt-in
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
-- Mandatory MFA: a product decision the boilerplate leaves to the product built on it.
+- Mandatory MFA, which ASVS 6.3.3 asks for: a product decision the boilerplate leaves to the product built on it, an accepted difference from the standard.
 
 ### TOTP stays on SHA-1 with window 1
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
-- SHA-256: Google Authenticator on Android and Microsoft Authenticator compute SHA-1 regardless, so setup fails silently.
+- SHA-256, where ASVS lists SHA-1 as legacy: Google Authenticator on Android and Microsoft Authenticator compute SHA-1 regardless, so setup fails silently.
 - `window` 0: a code typed at the end of its step fails on network delay, against RFC 6238's guidance.
 
 ### Biometric sign-in is a WebAuthn passkey through `@simplewebauthn/server`
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - A hand-made device key pair on `DeviceOwnership`: a private protocol every client would implement, without WebAuthn's origin binding.
 - Biometric and passkey as separate factors: Face ID, a fingerprint, and a security key reach the server as the same WebAuthn assertion.
@@ -160,31 +166,31 @@ Rule: `session.md`, MFA.
 
 ### SMS is no MFA factor
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - An SMS code on a verified number: a text message is open to SIM swap and interception, and no provider is chosen.
 
 ### Several factors enrolled, one picked per challenge
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - Exactly one active factor: adding a passkey would turn TOTP off, and a lost device would leave only the backup codes.
 
 ### One attempt budget across every MFA method
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - A budget per method: switching method would hand an attacker a fresh set of tries.
 
 ### Backup codes follow the first and last factor
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - Backup codes for TOTP only: a passkey-only user who loses the device has no recovery.
 
 ### An admin MFA reset removes every factor without forced enrolment
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - `requiredSetup` and enrolment at the next login: MFA is optional for everyone else, and a reset serves a user who lost the device.
 
@@ -206,7 +212,7 @@ Rule: `login.md`.
 
 ### The passkey relying party is required environment config
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - An optional integration: a passkey has no third party whose credentials may be unset; the values are the deployment's own domain.
 - Deriving it from `FRONTEND_BASE_URL` and `REQUEST_CORS_ALLOWED_ORIGINS`: the relying-party id is a bare domain, and a mobile app's origin is in neither key.
@@ -222,14 +228,14 @@ Rule: `login.md`.
 
 ### An attempt counter counts failures only
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - Count first, the reset folded into the flow's transaction: a correct password followed by a failing business step raises the counter and can reach a lockout.
 - Count first, the reset as a write outside the flow's transaction: a second write per flow breaks the one transaction per flow.
 
 ### A spent attempt budget is a temporary lock with an email
 
-Rule: `session.md`, MFA.
+Rule: `mfa.md`.
 
 - Deactivating the account: a stranger switches the account off and signs its owner out.
 - A temporary `inactive` status with a delayed reactivation job: it mixes with an admin's deactivation, needs a job that can fail, and still revokes the owner's sessions.
@@ -287,3 +293,10 @@ Rule: `session.md`, Session invalidation.
 
 - A stamp on every request: one write per request.
 - A stamp at login and device refresh only: the device list shows the last login as "last active".
+
+### A refresh retried with the old token is reuse
+
+Rule: `session.md`, Session invalidation.
+
+- A grace window in which the old token still answers: it adds rotation state for a rare lost response, and the refresh stays simple at the cost of one more sign-in.
+- An idempotent refresh that returns the same new pair: the same added state for the same rare case.

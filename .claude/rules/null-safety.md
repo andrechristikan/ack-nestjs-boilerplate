@@ -1,6 +1,6 @@
 # Strict null types
 
-`tsconfig.json` runs `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess`; in `src/`, the undefined selectors of `no-restricted-syntax` in `eslint.config.mjs` reject a literal `undefined` as a return, a `??` fallback, a ternary branch, or an arrow body. Two rules carry the weight:
+`tsconfig.json` runs `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess`. Two rules carry the weight:
 
 1. `undefined` is legal only at the input boundary: request DTO body and query DTO. Every layer deeper speaks `null`.
 2. Never write `field?: Type | null`: a caller cannot tell whether omitting the field and passing `null` mean the same thing. Pick one.
@@ -22,14 +22,13 @@
 
 ## The controller and the boundary
 
-Pass the whole request DTO into the use case. Normalize `undefined → null` only when a service or use-case method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`. A service or use-case signature accepting `bio?: string` pushes the ambiguity one layer deeper.
+Pass the whole request DTO into the use case. Normalize `undefined → null` only when a service or use-case method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`.
 
 ## Update and create
 
 An update is a full replace; no field has an unchanged state.
 
 - The update request DTO requires every editable field; a nullable column takes `null` to clear it.
-- `I<Module>Update` declares `field: Type` for a required column and `field: Type | null` for a nullable one.
 - The repository writes the values as given, `data: { name, description }` (`src/modules/workspace/repositories/workspace.repository.ts`), with no conditional spread on an update field.
 - A create shape (`I<Module>Create`) stores `null` as given.
 - A conditional spread, `...(x !== null && { x })`, fills a Prisma `where` filter (`...(cursor !== null && { id: { gt: cursor } })`) and an internal write whose input is genuinely optional.

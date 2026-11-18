@@ -11,7 +11,6 @@ A use case holds the business logic of one user- or job-facing action: it assemb
 ## Shape
 
 - The class `implements IAppUseCase<[<execute params>], <result>>` (`src/app/interfaces/app.use-case.interface.ts`); `execute` is `async`, its parameter types and result match the type arguments.
-- Called by one or more entry points of its own feature (controllers, processors; `http.md`, `queue.md`, Processors).
 - A private method holds only this action's sequencing; a piece holding one module's statements is a service method.
 - On HTTP, it translates the request DTO into service calls and the result into the envelope (`dto.md`); a method with no data returns `{}` or `{ metadata }`.
 - On a job, it translates the payload into service calls and returns `IQueueResponse`.
@@ -30,7 +29,7 @@ A use case holds the business logic of one user- or job-facing action: it assemb
 - One cross-module transaction per flow, opened in `execute` or a private method of the same use case; each service joins as `*InTx(tx, ...)` (`transaction.md`, Transactions).
 - A sequence two or more use cases share whose subject is the highest participating module's entity is one service method in that module (`service.md`, Shared transactions); each use case calls it and sequences only the calls of higher modules around it.
 - When that subject belongs to a lower module, each use case opens its own transaction and sequences each module's `*InTx` call (`UserCreateByAdminUseCase`, `UserProcessImportByAdminUseCase`).
-- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments, or each sequencing the `*InTx` calls for a lower subject, copy nothing. A use case repeats calls; it never rewrites a body.
+- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments, or each sequencing the `*InTx` calls for a lower subject, copy nothing.
 
 ## Branches
 

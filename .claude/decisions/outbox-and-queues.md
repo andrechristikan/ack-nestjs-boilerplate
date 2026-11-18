@@ -78,6 +78,13 @@ Rule: `notification.md`, Fan-out and send.
 Rule: `activity-entry.md`.
 
 - Rows staged in the CLS store and flushed by an interceptor: an entry would be staged in one place and written in another, and an error path would lose it.
+- The `ActivityLog` row inserted in the business transaction: the outbox row already commits with the write, and the job keeps the insert off the request path.
+
+### A date is stored and passed as ISO 8601 and formatted at render
+
+Rule: `code-style.md`, Dates.
+
+- RFC 2822 strings in `Outbox.data` and `Notification.metadata`: a client reading the notification list would get a display string where every other stored value is ISO 8601.
 
 ## Notification jobs
 
@@ -109,14 +116,20 @@ Rule: `role.md`.
 - A `publishing` status moved to `published` by the copy job: a new enum value and transition, and a row that stays in it when the job fails on every attempt.
 - The copy as a job after the row turns `published`: a failed job leaves every user gated behind a document whose links answer 404.
 
+### An email body is a seeded SES template
+
+Rule: `notification.md`, Fan-out and send.
+
+- Rendering in the application and sending raw mail: the job payload would carry a rendered body, where a template keeps it to template data.
+
+### The term-policy broadcast is delivered at most once per recipient
+
+Rule: `notification.md`, Term-policy publish.
+
+- At-least-once, releasing the claim on an unknown SES outcome: a duplicate legal notice to every user costs more than one missed mail, which a resend covers.
+
 ### The term-policy module owns `TermPolicyRecipient`, the fan-out, and the `publish` job
 
 Rule: `notification.md`, Term-policy publish.
 
 - The recipient statements, the fan-out, and the publish jobs in the notification module: term-policy sits above notification in the dependency order, so the lower module would hold the higher module's data and flow.
-
-### A date is stored and passed as ISO 8601 and formatted at render
-
-Rule: `code-style.md`, Dates.
-
-- RFC 2822 strings in `Outbox.data` and `Notification.metadata`: a client reading the notification list would get a display string where every other stored value is ISO 8601.

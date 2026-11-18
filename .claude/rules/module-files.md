@@ -13,7 +13,6 @@ Roles and the dependency order: `layering.md`.
 - A global module carries `@Global()` and a no-argument `forRoot()` with no `global` key; only `src/common/common.module.ts` imports it, once, as `<Module>.forRoot()`.
 - A feature `<Module>Module` is global only when a guard, strategy, interceptor, or decorator injects its classes: `ApiKeyModule`, `AuthModule`, `FeatureFlagModule`, `PolicyModule`, `RoleModule`, `SessionModule`, `TermPolicyModule`. A use-case module is never global.
 - Every kit module `common.module.ts` composes is global but `LoggerModule`, which exports nothing. `AwsModule` and `FirebaseModule` sit outside it, imported where used.
-- `@Global()` removes the import, never the rank (`cross-module.md`).
 - Third-party root modules keep their own option (`ConfigModule` `isGlobal`, `ClsModule` `global`).
 
 ## Module files
@@ -23,6 +22,5 @@ Roles and the dependency order: `layering.md`.
 - `src/router/http/router.http.<scope>.module.ts` declares the scope's controllers and imports each `<Module>UseCaseModule` whose use cases they inject, plus the `<Module>Module` of every non-`@Global()` feature whose guard they carry (`src/router/http/router.http.user.module.ts`).
 - `src/router/processor/router.processor.module.ts` lists every processor in `providers` and imports each `<Module>UseCaseModule` whose use cases they inject.
 - In `@Module({ imports: [...] })`, every `<Module>UseCaseModule` comes first, then one blank line, then every other module (`<Module>Module`, kit modules, `forRootAsync(...)` calls); a file with one group carries none.
-- Each `<module>.module.ts` registers its own queues, once however many modules import it; the queue kit registers none, the cache kit only `cache`, the outbox kit only `outbox` (`queue.md`, Where things live).
 
 Only files with something to provide exist. A `@Module({})`, or a global module's `forRoot()` after `module` with its `@Module({})` empty, lists `controllers` (`[]` in both), `providers`, `exports`, `imports`, in that order. `forRoot()` runs once, in a root module: `src/app/app.module.ts`, `src/common/common.module.ts`, `src/router/router.module.ts`. `tsc` and Vitest pass a broken `imports:`; boot to verify wiring (a cycle raises `ReferenceError`, a missing provider `UnknownDependenciesException`).

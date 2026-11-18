@@ -30,6 +30,6 @@ A sequential `await` whose dependency is visible in the code carries no comment:
 - a fan-out over an unbounded collection: bounded chunks in turn, each concurrent; the size is a config key (`config.md`);
 - an argon2id compare over several hashes, stopping at the first match. Independent argon2id hashes are no such case: they run under `Promise.all`.
 
-A method carries at most one `// Sequential by design: <case>` line, above its first ordered `await`, naming every case the method has (`gate before the work it guards; write after the gate`); the later `await`s of the same method, a loop body included, carry none. A second marker in one method is a defect.
+A method carries at most one `// Sequential by design: <case>` line, above its first ordered `await`, naming every case the method has (`gate before the work it guards; write after the gate`); the later `await`s of the same method, a loop body included, carry none.
 
 `.catch()` belongs only to the `.catch(bootstrapFailed)` in `src/main.ts` and `src/migration.ts` and to a promise never awaited.

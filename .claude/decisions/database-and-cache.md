@@ -28,6 +28,12 @@ Rule: `repository.md`, Schema.
 
 - An index kept for the seed's hard delete: the seed runs rarely and scans once, while the index costs a write on every login, refresh, and device touch.
 
+### A feature repository uses the Prisma builder only
+
+Rule: `repository.md`, Queries.
+
+- A raw query or pipeline in a feature repository: its result leaves the generated types and the select constants, so no type checks it.
+
 ## Cache and Redis
 
 ### The cache and BullMQ run on separate Redis instances

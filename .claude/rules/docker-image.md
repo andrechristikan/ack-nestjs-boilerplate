@@ -8,11 +8,11 @@ paths:
 
 # Docker images
 
-The compose files and services: `docker.md`.
+The compose files and services: `docker.md`, `docker-production.md`.
 
 ## Mongo
 
-- One `ci/mongo/entrypoint.sh` serves both compose files and runs a single-node replica set, which transactions need; on a fresh volume it runs `rs.initiate` with member host `MONGO_REPLICA_SET_HOST`: `host.docker.internal:${DOCKER_MONGO_PORT:-27017}` locally, the variable publishing the host port, so host and containers share one URI, and `mongo:27017` in production.
+- One `ci/mongo/entrypoint.sh` serves both compose files and runs a single-node replica set; on a fresh volume it runs `rs.initiate` with member host `MONGO_REPLICA_SET_HOST`: `host.docker.internal:${DOCKER_MONGO_PORT:-27017}` locally, the variable publishing the host port, so host and containers share one URI, and `mongo:27017` in production.
 - The keyfile is `keys/mongo-keyfile`, mode 400, gitignored; both compose files bind it at `/etc/mongo/keyfile`. The `mongo` service sets `HOME: /tmp`, so root-run `mongosh` keeps history out of the volume.
 
 ## Every image

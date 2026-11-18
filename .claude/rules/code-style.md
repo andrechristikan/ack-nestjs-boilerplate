@@ -13,7 +13,6 @@ A lint rule that cannot hold everywhere is the owner's to remove, for every file
 
 - `pnpm spell` exits 1 on a misspelling.
 - `pnpm deadcode` is knip, every rule at `error`: an unused file, export, type, enum member, or dependency exits 1.
-- The four typed rules of `eslint.md` hold at `error`: a floating or misused promise, an `await` on a value that is no promise, and a `switch` over an enum or union that misses a member.
 
 ## Imports
 
@@ -48,7 +47,7 @@ Contexts run in the `http.md` order.
 
 ## Types and comments
 
-Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`, the kit adapter over Prisma's callback-taking `$transaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough`, the kit read-through over the cache client (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
+Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough` (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
 No signature declares `asserts x is T` or `asserts x`. An assert that narrows a nullable input returns the narrowed value, `(value: T | null): T`, and the caller uses the return; a plain assert returns `void`.
 

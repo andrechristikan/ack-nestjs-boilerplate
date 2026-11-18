@@ -38,10 +38,9 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 
 - Turn the request into a check before writing: a failing spec for new behaviour or a bug, specs green before and after a refactor.
 - Done means the checks ran and their decisive output is quoted.
-- A generated file is no check: `generated/swagger.json`, rewritten at every boot (`http.md`), gets no count, diff, or acceptance line in a spec, a ticket, a dispatch, or a review.
+- A generated file is no check: `generated/swagger.json` gets no count, diff, or acceptance line in a spec, a ticket, a dispatch, or a review.
 
 ## Enforcement
 
 - `bash .claude/hooks/rules.sh` prints this rule for every path, so a dispatch's `Rules to read:`, pasted from that output, carries it.
 - `reviewer` reports a breach as a finding at `task` and `review`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.
-- The `Stop` hook runs `pnpm typecheck` and the unit suite after any `src/` or `test/` change.

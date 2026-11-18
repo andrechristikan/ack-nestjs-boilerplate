@@ -26,7 +26,7 @@ The class shape, status codes, and `messagePath`: `exception-class.md`. The filt
 
 ## Who throws
 
-- A service throws the typed exception of the subject that failed, never a Nest `BadRequestException` / `NotFoundException`; another module's exception is correct when that module owns the entity (`cross-module.md`).
+- A service throws the typed exception of the subject that failed, never a Nest `BadRequestException` / `NotFoundException`.
 - A guard, a `*Protected` decorator, and a param decorator throw what `guards.md` states.
 - A controller catches no `AppBaseException` (the filter chain maps it). What a use case originates: `use-case.md`, Shape.
 - A service throws a `QueueException` or its module's subclass for a job failure no subject's exception names (`NotificationEmailDeliveryService.assertSettled`). `isFatal` (default `false`) decides only the Sentry report; when it reports and how retries run: `queue.md`, Processors.

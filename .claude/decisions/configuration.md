@@ -51,6 +51,18 @@ Rule: `config.md`, Files.
 - A static `import '@instrument'` above the application imports: in ESM the whole static graph loads before the instrument module runs, so the instrumented libraries are loaded unpatched.
 - One bootstrap file per entry: two files would repeat the failure handler.
 
+### An optional integration left unset boots as a no-op
+
+Rule: `config.md`, Files.
+
+- Failing the boot when S3, SES, or Firebase is unset: a project built from the boilerplate could not start without accounts it may never use.
+
+### Feature flags are seeded, with keys the code names
+
+Rule: `feature-flag.md`, Restrictions.
+
+- Admin create and delete of flags: every key is an enum member the code reads, so a flag created at runtime gates nothing and a deleted one leaves its guard with no row to read.
+
 ### `DATABASE_DEBUG_ENABLED` is refused in production
 
 Rule: `config.md`.

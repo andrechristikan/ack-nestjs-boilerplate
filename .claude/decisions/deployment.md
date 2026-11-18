@@ -11,7 +11,7 @@ Rule: `workflows.md`.
 
 ### A release applies the schema with `prisma db push` before it replaces the application
 
-Rule: `workflows.md`; `docker.md`, Production.
+Rule: `workflows.md`; `docker-production.md`.
 
 - A manual push by the owner: a release that needs an index ships without it.
 - `--accept-data-loss`: a destructive change needs a person.
@@ -31,6 +31,24 @@ Rule: `layering.md`, The run surface is a call site.
 
 ## Compose and production
 
+### `jwks-server` runs on `nginx:alpine`
+
+Rule: `docker.md`, Local.
+
+- `nginx:latest`: it lacks the `wget` the healthcheck runs.
+
+### The local `apis` container runs with a 2 GB heap under a `4G` limit
+
+Rule: `docker.md`, Local.
+
+- A 1 GB heap: `tsc` runs out of it beside the SWC watcher.
+
+### The production image starts `node` with an exec-form `CMD`
+
+Rule: `docker-production.md`.
+
+- A shell-form `CMD` or a package script as the start: with the exec form `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck.
+
 ### Compose variables live in `.env.docker`
 
 Rule: `docker.md`, Credentials and variables.
@@ -44,7 +62,7 @@ Rule: `docker.md`, Credentials and variables.
 
 ### Vault ships in the production compose file only
 
-Rule: `docker.md`, Local and Production.
+Rule: `docker.md`, Local; `docker-production.md`.
 
 - Vault in the local stack: a local run reads its env file directly, and a local Vault holds only example values.
 - Seeding a path from `.env.example`: a deployed Vault would serve placeholder values as secrets.
@@ -54,7 +72,7 @@ Rule: `docker.md`, Local and Production.
 
 ### The production application binds to loopback and TLS ends in front of it
 
-Rule: `docker.md`, Production.
+Rule: `docker-production.md`.
 
 - A bind-address variable: the compose file serves one host with a proxy in front, and a public deployment adds its own layer.
 - A Caddy service in the compose file: the boilerplate knows neither the domain nor the certificate.
@@ -67,7 +85,7 @@ Rule: `docker.md`, Credentials and variables.
 
 ### Connections inside the compose network stay unencrypted
 
-Rule: `docker.md`, Production.
+Rule: `docker-production.md`.
 
 - An internal certificate authority for MongoDB, Redis, and the JWKS server: the traffic never leaves the bridge network of one host.
 
@@ -79,7 +97,7 @@ Rule: `security.md`, Cryptography.
 
 ### Short-lived service credentials, a secret manager, and log shipping belong to the deployment
 
-Rule: `docker.md`, Production.
+Rule: `docker-production.md`.
 
 - Forcing Vault: every user of the boilerplate would have to run it.
 - A log shipper in the compose file: the platform that runs the containers collects stdout.
@@ -100,6 +118,6 @@ Rule: `docker.md`, Local.
 
 ### Vault keeps its unseal key, root token, and AppRole credentials on the host disk
 
-Rule: `docker.md`, Production.
+Rule: `docker-production.md`.
 
 - KMS auto-unseal: every container runs on one instance only the operator reaches, and securing that host belongs to the deployment.

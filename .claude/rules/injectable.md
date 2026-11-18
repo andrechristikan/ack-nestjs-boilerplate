@@ -13,16 +13,16 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 ## Constructors and fields
 
-- Every constructor parameter is a parameter property, never plain, never `public`; `QueueWorkerBase` alone takes plain parameters, because BullMQ's `Worker` holds public `name` and `opts` and `@nestjs/bullmq` constructs it positionally. `QueueProcessorBase` alone takes property injection, `@Inject(<Class>) protected readonly <field>: <Class>` for its four kit services, so a processor's constructor holds only its use cases.
+- Every constructor parameter is a parameter property, never plain, never `public`; `QueueWorkerBase` alone takes plain parameters, because BullMQ's `Worker` holds public `name` and `opts` and `@nestjs/bullmq` constructs it positionally. `QueueProcessorBase` alone takes property injection, `@Inject(<Class>) protected readonly <field>: <Class>` for its four kit services.
 - In an exception (`*.exception.ts`), each is bare `readonly` (`constructor(readonly period: number)`, `readonly rawError: unknown = null`).
-- Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue` and `cacheService` on a `QueueBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies). A bare `readonly` parameter appears only in an exception.
+- Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue` and `cacheService` on a `QueueBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies).
 - Values forwarded to `super(...)` come first, in `super`'s order, then the injected collaborators.
 - A field assigned in the constructor is `private readonly`; one another class reads is a `readonly` field, never a parameter property (`DatabaseService.client`).
 - The one mutable field is a third-party client an `onModuleInit` adapter creates: `AwsS3Service.s3Client`, `AwsSESService.sesClient`, `FirebaseService.app`, `FirebaseService.messaging`; and the static `QueueWorkerBase.connection`, which `QueueWorkerFactory` sets.
 
 ## Logger
 
-- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, a `warn` that carries a caught error, and a line that carries fields are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`, `this.logger.warn({ statusCode }, 'context')`; the reverse drops the stack and the object), the rest message-first.
+- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, a `warn` that carries a caught error, and a line that carries fields are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`, `this.logger.warn({ statusCode }, 'context')`), the rest message-first.
 
 ## Config
 

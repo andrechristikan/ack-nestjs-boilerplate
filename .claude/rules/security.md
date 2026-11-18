@@ -22,7 +22,7 @@ paths:
 
 # Security
 
-MFA and sessions: `session.md`. Sign-in: `login.md`. Authorization: `role.md`. The activity log: `activity-entry.md`.
+MFA: `mfa.md`. Sessions: `session.md`. Sign-in: `login.md`. Authorization: `role.md`. The activity log: `activity-entry.md`.
 
 ## Credentials
 

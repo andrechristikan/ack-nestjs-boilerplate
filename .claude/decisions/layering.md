@@ -91,6 +91,12 @@ Rule: `injectable.md`, NestJS idiomatic.
 - Global `fetch`: no injectable seam to double in a spec, and no client-wide timeout or redirect policy.
 - `axios` or `@nestjs/axios`: each adds axios as a dependency where the NestJS client runs on native `fetch` with none.
 
+### A seed writes through `DatabaseService`
+
+Rule: `seeding.md`, Outside the layering.
+
+- Seeds calling the feature services: a service write takes a request context and adds outbox effects, which a seed command neither has nor wants.
+
 ## Naming
 
 ### A Lua script or a raw query sits in the method that runs it

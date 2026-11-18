@@ -19,7 +19,6 @@ Effects, writing, and payloads: `effects.md`.
     - it re-dispatches up to `outbox.sweepBatch` rows `pending` longer than `outbox.pendingAfterInMs`, oldest first;
     - it reads up to `outbox.sweepBatch` rows `enqueued` longer than `outbox.enqueuedAfterInMs`, oldest first, and reads each one's job by `idempotencyKey`: `completed` stamps the row `completed`, `failed` stamps it `failed` with the job's `failedReason`, any other state leaves it;
     - rows whose job is gone go out with the pending rows in one dispatch.
-- `EnumOutboxStatus` is `pending`, `enqueued`, `completed`, `failed`.
 
 ## Processing
 

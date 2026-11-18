@@ -13,3 +13,15 @@ Rule: `role.md`.
 Rule: `transaction.md`, Queries.
 
 - Refusing a block or deactivation while the user owns a workspace with members: an abusive account could not be stopped until its holder cooperated.
+
+### A workspace has exactly one owner
+
+Rule: `transaction.md`, Queries.
+
+- Several owners, or a promotion to owner by a role update: one owner gives a transfer, a self-delete, and a block a single row to check.
+
+### `blocked` is final
+
+Rule: `login.md`.
+
+- An admin unblock, or any admin edit on a blocked account: `inactive` is the reversible state, and `blocked` stays the permanent ban for abuse.

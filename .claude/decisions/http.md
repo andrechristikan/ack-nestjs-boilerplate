@@ -40,6 +40,43 @@ Rule: `code-style.md`, Literal strings.
 
 - A length quantifier inside the regex (`{32,128}`): a too-short or too-long value answers a format error instead of a length error, the OpenAPI document loses `minLength` and `maxLength`, and a reader no longer finds every length bound in one shape outside the regex, schema and plain code alike.
 
+### A DTO is a zod schema and its inferred type
+
+Rule: `dto.md`.
+
+- DTO classes with class-validator, class-transformer, and `@nestjs/swagger` property decorators: the runtime check, the static type, the response strip, and the OpenAPI shape would be parallel declarations that drift, where one schema yields all four.
+
+### A route is an action path under a scope prefix
+
+Rule: `http.md`, Route path shape.
+
+- REST resource routes with the scope decided by guards (`PATCH /users/:id`): an action segment keeps several writes on one resource apart, and a scope prefix lets one router module mount one guard family.
+
+### An update is a full replace
+
+Rule: `null-safety.md`, Update and create.
+
+- PATCH semantics (optional fields, an omitted field left unchanged): a partial update needs a third "unchanged" state beside a value and `null`, the omit-or-null ambiguity the null rules remove.
+
+### A service throws a typed exception class with a module status code
+
+Rule: `exceptions.md`, Who throws.
+
+- Nest's built-in `HttpException` family with a message string: it carries an HTTP status and a string only, where a class per failure gives a client a stable `module` and `statusCode` pair and one i18n path.
+
+### Admin lists are offset, every other list is cursor with no count
+
+Rule: `pagination.md`.
+
+- Offset everywhere: a user-facing list would pay for a count and a deep skip.
+- Cursor everywhere: a back-office table needs page jumps and totals, over sets small enough to count.
+
+### The workspace id travels in the `x-workspace-id` header
+
+Rule: `guards.md`, Guards.
+
+- A `:workspaceId` route param: every workspace-scoped path would carry the id, where a header lets a client switch its active workspace without rewriting a path.
+
 ## Response headers
 
 ### A content security policy on every response, with its own policy on the docs path
@@ -57,6 +94,12 @@ Rule: `config.md`.
 - Allowed everywhere: the standard requires an allowlist for sensitive responses.
 
 ## Files and import
+
+### The browser uploads straight to S3 through a presigned URL
+
+Rule: `file.md`, S3 presign.
+
+- A multipart upload through the API, then a server-side put: the bytes would cross the API, holding its memory and request time for every upload.
 
 ### Admin import is a job, export is not
 

@@ -9,7 +9,7 @@ A use case stays inside its feature: `<Module>UseCaseModule` exports it to `src/
 | its exported service | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
 | its exported util | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
 | its cache or repository | no | no; ask the owning service |
-| its use case, controller, or processor | no | no; those are leaves the router consumes |
+| its use case, controller, or processor | no | no |
 | its enums, interfaces, constants, schemas | yes, compile-time only | yes, compile-time only |
 | its exceptions | yes, when the failed subject is its entity | yes, when the failed subject is its entity |
 | its Prisma model through your own `DatabaseService` | no | no |
@@ -22,17 +22,17 @@ A repository reaches another module's util only when the owner is `@Global()`. A
 
 ## A repository owns its model
 
-A repository issues statements against the model it owns and satellite models with no repository of their own (`NotificationRepository` owns `Notification` and `NotificationDelivery`). Ownership is per class: `UserForgotPasswordRepository` does not write `User`, and a `*.analytic.repository.ts` reads a model its module's write repository owns and writes nothing (`layering.md`). A nested write counts as a statement against the related model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one writer, `ActivityLogRepository`.
+A repository issues statements against the model it owns and satellite models with no repository of their own (`NotificationRepository` owns `Notification` and `NotificationDelivery`). Ownership is per class: `UserForgotPasswordRepository` does not write `User`. A nested write counts as a statement against the related model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one writer, `ActivityLogRepository`.
 
-A repository does not inject or call another repository. Who opens a transaction spanning repositories or modules, and how the others join: `transaction.md`, Transactions. A method the owning service lacks is added there, even three lines long.
+Who opens a transaction spanning repositories or modules, and how the others join: `transaction.md`, Transactions. A method the owning service lacks is added there, even three lines long.
 
 ## A repository stays inside its feature
 
-`<Module>Module` provides its repositories and never exports them. Data another module needs goes through the owning service, which holds that feature's invariants. `src/migration/` sits outside this file (`seeding.md`).
+`<Module>Module` provides its repositories and never exports them. `src/migration/` sits outside this file (`seeding.md`).
 
 ## Composition follows the dependency order
 
-Use cases compose features; services share downward. Only `src/router/` imports a `<Module>UseCaseModule` (`module-files.md`, Module files). A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden. When a service needs a higher module, the ways out:
+Use cases compose features; services share downward. A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden. When a service needs a higher module, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
 2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
