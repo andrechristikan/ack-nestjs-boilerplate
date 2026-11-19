@@ -14,7 +14,6 @@ import {
     AnalyticDevicesPerUserSnapshotDataSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
-    AnalyticSessionDeviceRatioCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
@@ -45,10 +44,6 @@ describe('AnalyticDeviceService', () => {
     const analyticDeviceRepository: MockProxy<AnalyticDeviceRepository> =
         mock<AnalyticDeviceRepository>();
 
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-    const startToken = '2026-01-01T00:00:00.000Z';
-    const endToken = '2026-02-01T00:00:00.000Z';
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
     const before: Date = new Date('2026-01-30T00:00:00.000Z');
     const buckets = [{ key: 'a', count: 7 }];
@@ -137,28 +132,6 @@ describe('AnalyticDeviceService', () => {
         });
     });
 
-    describe('devicesRegistration', () => {
-        it('wraps the registration count read through the dashboard cache', async () => {
-            analyticDeviceRepository.countRegistrations.mockResolvedValue(6);
-
-            const result = await service.devicesRegistration(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 6 });
-            expect(
-                analyticDeviceRepository.countRegistrations
-            ).toHaveBeenCalledWith(startDate, endDate);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesRegistration}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
     describe('devicesPlatform', () => {
         it('wraps the platform groups as buckets', async () => {
             analyticDeviceRepository.groupPlatform.mockResolvedValue(buckets);
@@ -175,65 +148,6 @@ describe('AnalyticDeviceService', () => {
                 dashboardTtlInMs,
                 expect.any(Function)
             );
-        });
-    });
-
-    describe('devicesInfoRefresh', () => {
-        it('wraps the refresh count read through the dashboard cache', async () => {
-            analyticDeviceRepository.countInfoRefresh.mockResolvedValue(9);
-
-            const result = await service.devicesInfoRefresh(startDate, endDate);
-
-            expect(result).toEqual({ count: 9 });
-            expect(
-                analyticDeviceRepository.countInfoRefresh
-            ).toHaveBeenCalledWith(startDate, endDate);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesInfoRefresh}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('devicesSessionRatio', () => {
-        it('divides sessions by devices from one repository call', async () => {
-            analyticDeviceRepository.findSessionRatioCounts.mockResolvedValue({
-                sessions: 6,
-                devices: 4,
-            });
-
-            const result = await service.devicesSessionRatio();
-
-            expect(result).toEqual({ sessions: 6, devices: 4, ratio: 1.5 });
-            expect(
-                analyticDeviceRepository.findSessionRatioCounts
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticDeviceRepository.findSessionRatioCounts
-            ).toHaveBeenCalledWith(now, before);
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(idleTimeoutInMs)
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesSessionRatio}:_:_`,
-                AnalyticSessionDeviceRatioCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-
-        it('answers a zero ratio when no device exists', async () => {
-            analyticDeviceRepository.findSessionRatioCounts.mockResolvedValue({
-                sessions: 3,
-                devices: 0,
-            });
-
-            const result = await service.devicesSessionRatio();
-
-            expect(result).toEqual({ sessions: 3, devices: 0, ratio: 0 });
         });
     });
 

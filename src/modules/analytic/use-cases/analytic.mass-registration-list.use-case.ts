@@ -30,9 +30,6 @@ export class AnalyticMassRegistrationListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.massRegistrationList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticFraudService.massRegistrationList(params);
     }
 }

@@ -97,33 +97,6 @@ describe('AnalyticDateService', () => {
         });
     });
 
-    describe('resolveWindow', () => {
-        const defaultInMs = 600000;
-
-        it('returns the default when no window is requested', () => {
-            expect(service.resolveWindow(null, defaultInMs)).toBe(defaultInMs);
-        });
-
-        it('returns the requested window when it is within the maximum', () => {
-            expect(service.resolveWindow(maxWindowInMs, defaultInMs)).toBe(
-                maxWindowInMs
-            );
-        });
-
-        it('throws AnalyticInvalidDateRangeException when the requested window exceeds the maximum', () => {
-            try {
-                service.resolveWindow(maxWindowInMs + 1, defaultInMs);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toMatchObject({
-                    module: 'analytic',
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
-        });
-    });
-
     describe('optionalRange', () => {
         it('returns null dates when neither date is present', () => {
             expect(service.optionalRange(null, null)).toEqual({

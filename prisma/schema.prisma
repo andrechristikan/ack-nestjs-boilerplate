@@ -623,6 +623,7 @@ model NotificationDelivery {
   notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id])
 
   @@unique(fields: [notificationId, channel])
+  @@index(fields: [createdAt, channel])
   @@map("NotificationDeliveries")
 }
 
@@ -1207,11 +1208,12 @@ enum EnumOutboxStatus {
 enum EnumAnalyticSnapshotSignal {
   impossibleTravel
   deviceProliferation
-  loginTime
   sharedFingerprint
   riskScore
   concurrentSessions
   devicesPerUser
+  workspaceMembership
+  mfaAdoption
 }
 
 type MfaChallengeDevice {

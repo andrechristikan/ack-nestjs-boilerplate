@@ -15,7 +15,6 @@ export class AnalyticCache {
     private readonly fraudSummaryKeyPattern: string;
     readonly dashboardTtlInMs: number;
     readonly anomalySummaryTtlInMs: number;
-    readonly fraudSummaryTtlInMs: number;
     readonly liveSummaryTtlInMs: number;
 
     constructor(
@@ -42,9 +41,6 @@ export class AnalyticCache {
         )!;
         this.anomalySummaryTtlInMs = this.configService.get<number>(
             'analytic.cache.anomalySummaryTtlInMs'
-        )!;
-        this.fraudSummaryTtlInMs = this.configService.get<number>(
-            'analytic.cache.fraudSummaryTtlInMs'
         )!;
         this.liveSummaryTtlInMs = this.configService.get<number>(
             'analytic.cache.liveSummaryTtlInMs'

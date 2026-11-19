@@ -12,8 +12,6 @@ import {
     AnalyticDeviceProliferationSnapshotMetaSchema,
     AnalyticImpossibleTravelSnapshotDataSchema,
     AnalyticImpossibleTravelSnapshotMetaSchema,
-    AnalyticLoginTimeAnomalySnapshotDataSchema,
-    AnalyticSnapshotNullMetaSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import type {
@@ -23,11 +21,9 @@ import type {
     IAnalyticAnomalyImpossibleTravelSummary,
     IAnalyticAnomalyImpossibleTravelSummaryMetadata,
     IAnalyticAnomalyLoginSpikeIpSummary,
-    IAnalyticAnomalySummary,
     IAnalyticDeviceProliferation,
     IAnalyticImpossibleTravel,
     IAnalyticLoginSpikeIp,
-    IAnalyticLoginTimeAnomaly,
     IAnalyticNearLockout,
     IAnalyticSnapshotResult,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -49,12 +45,8 @@ export class AnalyticAnomalyService {
     private readonly impossibleTravelMaxDeltaInMs: number;
     private readonly loginSpikeIpMinUniqueAccounts: number;
     private readonly loginSpikeIpWindowInMs: number;
-    private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
-    private readonly loginTimeAnomalyHistoryLimit: number;
-    private readonly minSample: number;
     private readonly lookbackInMs: number;
     private readonly deviceProliferationZScoreThreshold: number;
-    private readonly timezone: string;
 
     constructor(
         private readonly analyticCache: AnalyticCache,
@@ -79,16 +71,6 @@ export class AnalyticAnomalyService {
         this.loginSpikeIpWindowInMs = this.configService.get<number>(
             'analytic.anomaly.loginSpikeIp.windowInMs'
         )!;
-        this.loginTimeAnomalyHistoricalFrequencyPercent =
-            this.configService.get<number>(
-                'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent'
-            )!;
-        this.loginTimeAnomalyHistoryLimit = this.configService.get<number>(
-            'analytic.anomaly.loginTimeAnomaly.historyLimit'
-        )!;
-        this.minSample = this.configService.get<number>(
-            'analytic.anomaly.minSample'
-        )!;
         this.lookbackInMs = this.configService.get<number>(
             'analytic.anomaly.lookbackInMs'
         )!;
@@ -96,7 +78,6 @@ export class AnalyticAnomalyService {
             this.configService.get<number>(
                 'analytic.anomaly.deviceProliferation.zScoreThreshold'
             )!;
-        this.timezone = this.configService.get<string>('app.timezone')!;
     }
 
     private async getNearLockoutMinAttempt(): Promise<number> {
@@ -160,29 +141,6 @@ export class AnalyticAnomalyService {
             },
             windowStart: null,
             windowEnd: null,
-        };
-    }
-
-    async computeLoginTimeAnomalies(): Promise<
-        IAnalyticSnapshotResult<IAnalyticLoginTimeAnomaly, null>
-    > {
-        const range = this.analyticDateUtil.windowRange(this.lookbackInMs);
-        const items = await this.analyticAnomalyRepository.findLoginTimeAnomaly(
-            range,
-            {
-                minSample: this.minSample,
-                historyLimit: this.loginTimeAnomalyHistoryLimit,
-                historicalFrequencyPercent:
-                    this.loginTimeAnomalyHistoricalFrequencyPercent,
-                timezone: this.timezone,
-            }
-        );
-
-        return {
-            items,
-            metadata: null,
-            windowStart: range.startDate,
-            windowEnd: range.endDate,
         };
     }
 
@@ -335,27 +293,6 @@ export class AnalyticAnomalyService {
             params,
             null,
             AnalyticDeviceProliferationSnapshotDataSchema
-        );
-    }
-
-    async loginTimeSummary(): Promise<IAnalyticAnomalySummary> {
-        const { count, windowStart, windowEnd, computedAt } =
-            await this.analyticSnapshotService.getSummary(
-                EnumAnalyticSnapshotSignal.loginTime,
-                AnalyticSnapshotNullMetaSchema
-            );
-
-        return { count, windowStart, windowEnd, computedAt };
-    }
-
-    async loginTimeList(
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
-        return this.analyticSnapshotService.getListOffset(
-            EnumAnalyticSnapshotSignal.loginTime,
-            params,
-            null,
-            AnalyticLoginTimeAnomalySnapshotDataSchema
         );
     }
 }

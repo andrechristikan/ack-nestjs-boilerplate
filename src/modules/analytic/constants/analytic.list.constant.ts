@@ -1,26 +1,20 @@
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOrderByPresets } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type {
-    IAnalyticProjectCount,
-    IAnalyticWorkspaceCount,
-} from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import type {
     IAnalyticLoginSpikeIp,
     IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 import type {
     IAnalyticAccountTakeover,
-    IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
     IAnalyticMassRegistration,
-    IAnalyticRefreshSpike,
     IAnalyticSessionAfterAdmin,
 } from '@modules/analytic/interfaces/analytic.fraud.interface';
 import {
     EnumAnalyticAccountTakeoverOrderBy,
-    EnumAnalyticBackupCodeNewDeviceOrderBy,
     EnumAnalyticCountOrderBy,
     EnumAnalyticCredentialStuffingOrderBy,
     EnumAnalyticForgotPasswordAbuseOrderBy,
@@ -30,7 +24,6 @@ import {
     EnumAnalyticNearLockoutOrderBy,
     EnumAnalyticSessionAfterAdminOrderBy,
     EnumAnalyticSnapshotOrderBy,
-    EnumAnalyticUserCountOrderBy,
 } from '@modules/analytic/enums/analytic.enum';
 
 /** @public */
@@ -108,19 +101,6 @@ export const AnalyticSessionAfterAdminOrderBy = {
 >;
 
 /** @public */
-export const AnalyticBackupCodeNewDeviceOrderBy = {
-    [EnumAnalyticBackupCodeNewDeviceOrderBy.latest]: [
-        { regeneratedAt: EnumPaginationOrderDirectionType.desc },
-    ],
-    [EnumAnalyticBackupCodeNewDeviceOrderBy.userId]: [
-        { userId: EnumPaginationOrderDirectionType.asc },
-    ],
-} as const satisfies IPaginationOrderByPresets<
-    keyof IAnalyticBackupCodeNewDevice,
-    EnumAnalyticBackupCodeNewDeviceOrderBy
->;
-
-/** @public */
 export const AnalyticKeyCountOrderBy = {
     [EnumAnalyticKeyCountOrderBy.mostCount]: [
         { count: EnumPaginationOrderDirectionType.desc },
@@ -147,25 +127,12 @@ export const AnalyticForgotPasswordAbuseOrderBy = {
 >;
 
 /** @public */
-export const AnalyticUserCountOrderBy = {
-    [EnumAnalyticUserCountOrderBy.mostCount]: [
-        { count: EnumPaginationOrderDirectionType.desc },
-    ],
-    [EnumAnalyticUserCountOrderBy.userId]: [
-        { userId: EnumPaginationOrderDirectionType.asc },
-    ],
-} as const satisfies IPaginationOrderByPresets<
-    keyof IAnalyticRefreshSpike,
-    EnumAnalyticUserCountOrderBy
->;
-
-/** @public */
 export const AnalyticCountOrderBy = {
     [EnumAnalyticCountOrderBy.mostCount]: [
         { count: EnumPaginationOrderDirectionType.desc },
     ],
 } as const satisfies IPaginationOrderByPresets<
-    keyof IAnalyticWorkspaceCount & keyof IAnalyticProjectCount,
+    keyof IAnalyticWorkspaceCount,
     EnumAnalyticCountOrderBy
 >;
 

@@ -69,21 +69,6 @@ export interface IAnalyticForgotPasswordAbuse {
     tokenCount: number;
 }
 
-export interface IAnalyticRefreshSpike {
-    userId: string;
-    count: number;
-}
-
-export interface IAnalyticBackupCodeNewDevice {
-    userId: string;
-    regeneratedAt: Date;
-}
-
-export interface IAnalyticApiKeyBurst {
-    userId: string;
-    count: number;
-}
-
 export interface IAnalyticRiskScoreOptions {
     now: Date;
     nearLockoutMinAttempt: number;

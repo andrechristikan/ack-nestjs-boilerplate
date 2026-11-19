@@ -11,7 +11,6 @@ import {
 import type { Prisma } from '@generated/prisma-client/client';
 import {
     AnalyticAccountTakeoverPipelineSchema,
-    AnalyticBackupCodeNewDevicePipelineSchema,
     AnalyticCredentialStuffingActions,
     AnalyticCredentialStuffingPipelineSchema,
     AnalyticForgotPasswordAbusePipelineSchema,
@@ -21,7 +20,6 @@ import {
     AnalyticRiskScorePipelineSchema,
     AnalyticSessionAfterAdminPipelineSchema,
     AnalyticSharedFingerprintPipelineSchema,
-    AnalyticUserCountPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import {
     EnumAnalyticFraudBand,
@@ -30,15 +28,12 @@ import {
 import type { IAnalyticFraudRepository } from '@modules/analytic/interfaces/analytic.fraud-repository.interface';
 import type {
     IAnalyticAccountTakeover,
-    IAnalyticApiKeyBurst,
-    IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticDateRange,
     IAnalyticForgotPasswordAbuse,
     IAnalyticFraudRiskScore,
     IAnalyticMassRegistration,
     IAnalyticPasswordResetEnumeration,
-    IAnalyticRefreshSpike,
     IAnalyticRiskScoreOptions,
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
@@ -219,31 +214,6 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         ];
     }
 
-    private backupCodeNewDeviceStages(
-        range: IAnalyticDateRange,
-        newDeviceAfterInMs: number
-    ): Prisma.InputJsonValue[] {
-        const start = this.analyticPipelineUtil.toDate(range.startDate);
-        const end = this.analyticPipelineUtil.toDate(range.endDate);
-
-        return [
-            {
-                $match: {
-                    action: EnumActivityLogAction.userRegenerateMfaBackupCodes,
-                    createdAt: { $gte: start, $lt: end },
-                },
-            },
-            this.newDeviceLookupStage(newDeviceAfterInMs),
-            { $match: { hit: { $ne: [] } } },
-            {
-                $project: {
-                    userId: 1,
-                    regeneratedAt: { $dateToString: { date: '$createdAt' } },
-                },
-            },
-        ];
-    }
-
     private sharedFingerprintStages(
         minUsersPerFingerprint: number
     ): Prisma.InputJsonValue[] {
@@ -337,27 +307,6 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
             { $group: { _id: '$userId', tokenCount: { $sum: 1 } } },
             { $match: { tokenCount: { $gte: minUnusedTokens } } },
             { $project: { userId: '$_id', tokenCount: 1 } },
-        ];
-    }
-
-    private userCountStages(
-        actions: EnumActivityLogAction[],
-        range: IAnalyticDateRange,
-        minCount: number
-    ): Prisma.InputJsonValue[] {
-        const start = this.analyticPipelineUtil.toDate(range.startDate);
-        const end = this.analyticPipelineUtil.toDate(range.endDate);
-
-        return [
-            {
-                $match: {
-                    action: { $in: actions },
-                    createdAt: { $gte: start, $lt: end },
-                },
-            },
-            { $group: { _id: '$userId', count: { $sum: 1 } } },
-            { $match: { count: { $gte: minCount } } },
-            { $project: { userId: '$_id', count: 1 } },
         ];
     }
 
@@ -545,57 +494,6 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         );
     }
 
-    async countBackupCodeNewDevice(
-        range: IAnalyticDateRange,
-        newDeviceAfterInMs: number
-    ): Promise<number> {
-        const stages = this.backupCodeNewDeviceStages(
-            range,
-            newDeviceAfterInMs
-        );
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [...stages, { $count: 'n' }],
-            });
-        const parsed = AnalyticFraudCountPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data[0]?.n ?? 0;
-    }
-
-    async findBackupCodeNewDeviceOffset(
-        range: IAnalyticDateRange,
-        newDeviceAfterInMs: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
-        const stages = this.backupCodeNewDeviceStages(
-            range,
-            newDeviceAfterInMs
-        );
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [
-                    ...stages,
-                    this.analyticPipelineUtil.pageStage(params, '_id'),
-                ],
-            });
-        const parsed =
-            AnalyticBackupCodeNewDevicePipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        const [row] = parsed.data;
-
-        return this.paginationOffsetUtil.page(
-            row?.data ?? [],
-            row?.total[0]?.n ?? 0,
-            params
-        );
-    }
-
     async findSharedFingerprints(
         minUsersPerFingerprint: number
     ): Promise<IAnalyticSharedFingerprint[]> {
@@ -736,108 +634,6 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
             });
         const parsed =
             AnalyticForgotPasswordAbusePipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        const [row] = parsed.data;
-
-        return this.paginationOffsetUtil.page(
-            row?.data ?? [],
-            row?.total[0]?.n ?? 0,
-            params
-        );
-    }
-
-    async countRefreshSpike(
-        range: IAnalyticDateRange,
-        minCount: number
-    ): Promise<number> {
-        const rows = await this.databaseService.client.activityLog.groupBy({
-            by: ['userId'],
-            where: {
-                action: EnumActivityLogAction.userRefreshToken,
-                createdAt: { gte: range.startDate, lt: range.endDate },
-            },
-            having: { userId: { _count: { gte: minCount } } },
-        });
-
-        return rows.length;
-    }
-
-    async findRefreshSpikeOffset(
-        range: IAnalyticDateRange,
-        minCount: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
-        const stages = this.userCountStages(
-            [EnumActivityLogAction.userRefreshToken],
-            range,
-            minCount
-        );
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [
-                    ...stages,
-                    this.analyticPipelineUtil.pageStage(params, '_id'),
-                ],
-            });
-        const parsed = AnalyticUserCountPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        const [row] = parsed.data;
-
-        return this.paginationOffsetUtil.page(
-            row?.data ?? [],
-            row?.total[0]?.n ?? 0,
-            params
-        );
-    }
-
-    async countApiKeyBurst(
-        range: IAnalyticDateRange,
-        minCount: number
-    ): Promise<number> {
-        const rows = await this.databaseService.client.activityLog.groupBy({
-            by: ['userId'],
-            where: {
-                action: {
-                    in: [
-                        EnumActivityLogAction.adminApiKeyCreate,
-                        EnumActivityLogAction.adminApiKeyReset,
-                    ],
-                },
-                createdAt: { gte: range.startDate, lt: range.endDate },
-            },
-            having: { userId: { _count: { gte: minCount } } },
-        });
-
-        return rows.length;
-    }
-
-    async findApiKeyBurstOffset(
-        range: IAnalyticDateRange,
-        minCount: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
-        const stages = this.userCountStages(
-            [
-                EnumActivityLogAction.adminApiKeyCreate,
-                EnumActivityLogAction.adminApiKeyReset,
-            ],
-            range,
-            minCount
-        );
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [
-                    ...stages,
-                    this.analyticPipelineUtil.pageStage(params, '_id'),
-                ],
-            });
-        const parsed = AnalyticUserCountPipelineSchema.safeParse(result);
         if (!parsed.success) {
             throw new AppUnknownException(parsed.error);
         }

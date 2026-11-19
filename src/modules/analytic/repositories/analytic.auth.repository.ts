@@ -17,7 +17,6 @@ import type {
     IAnalyticCountBucket,
     IAnalyticGroupCount,
     IAnalyticMfaAdoptionCount,
-    IAnalyticMfaAttemptSnapshot,
     IAnalyticUsedGroupCount,
     IAnalyticVerificationGroupCount,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -89,30 +88,6 @@ export class AnalyticAuthRepository implements IAnalyticAuthRepository {
             action: row.action,
             count: row._count._all,
         }));
-    }
-
-    async groupLoginSource(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticCountBucket[]> {
-        const rows = await this.databaseService.client.user.groupBy({
-            by: ['lastLoginFrom'],
-            where: {
-                deletedAt: null,
-                lastLoginFrom: { not: null },
-                ...(startDate &&
-                    endDate && {
-                        lastLoginAt: { gte: startDate, lt: endDate },
-                    }),
-            },
-            _count: { _all: true },
-        });
-
-        return rows.flatMap(row =>
-            row.lastLoginFrom === null
-                ? []
-                : [{ key: row.lastLoginFrom, count: row._count._all }]
-        );
     }
 
     async findConcurrentSessions(
@@ -414,18 +389,5 @@ export class AnalyticAuthRepository implements IAnalyticAuthRepository {
         const [row] = parsed.data;
 
         return { enabled: row?.enabled ?? 0, total: row?.total ?? 0 };
-    }
-
-    async findMfaAttempt(): Promise<IAnalyticMfaAttemptSnapshot> {
-        const result = await this.databaseService.client.mfa.aggregate({
-            where: { attempt: { gt: 0 } },
-            _count: { _all: true },
-            _sum: { attempt: true },
-        });
-
-        return {
-            usersWithAttempts: result._count._all,
-            totalAttempts: result._sum.attempt ?? 0,
-        };
     }
 }

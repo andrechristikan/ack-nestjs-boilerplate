@@ -12,10 +12,9 @@ import {
     AnalyticWorkspaceMembershipPipelineSchema,
     AnalyticWorkspaceSummaryPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
-import { EnumAnalyticGroupKey } from '@modules/analytic/enums/analytic.enum';
 import type {
-    IAnalyticCountBucket,
     IAnalyticRoleCount,
+    IAnalyticSnapshotItemInput,
     IAnalyticStatusCount,
     IAnalyticWorkspaceCount,
     IAnalyticWorkspaceSummary,
@@ -32,9 +31,7 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
         private readonly analyticPipelineUtil: AnalyticPipelineUtil
     ) {}
 
-    private liveWorkspacePageStages(
-        params: IPaginationQueryOffsetParams
-    ): Prisma.InputJsonValue[] {
+    private liveWorkspaceStages(): Prisma.InputJsonValue[] {
         return [
             {
                 $lookup: {
@@ -49,7 +46,6 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
                 },
             },
             { $match: { workspace: { $ne: [] } } },
-            this.analyticPipelineUtil.pageStage(params, '_id'),
         ];
     }
 
@@ -74,21 +70,6 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
                 createdAt: { gte: startDate, lt: endDate },
             },
         });
-    }
-
-    async groupVisibility(): Promise<IAnalyticCountBucket[]> {
-        const rows = await this.databaseService.client.workspace.groupBy({
-            by: ['isPublic'],
-            where: { deletedAt: null },
-            _count: { _all: true },
-        });
-
-        return rows.map(row => ({
-            key: row.isPublic
-                ? EnumAnalyticGroupKey.public
-                : EnumAnalyticGroupKey.private,
-            count: row._count._all,
-        }));
     }
 
     async groupInviteFunnel(
@@ -132,15 +113,15 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
         }));
     }
 
-    async groupMembership(
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const pageStages = this.liveWorkspacePageStages(params);
+    async findMembership(): Promise<
+        IAnalyticSnapshotItemInput<IAnalyticWorkspaceCount>[]
+    > {
+        const liveStages = this.liveWorkspaceStages();
         const result =
             await this.databaseService.client.workspaceMember.aggregateRaw({
                 pipeline: [
                     { $group: { _id: '$workspaceId', count: { $sum: 1 } } },
-                    ...pageStages,
+                    ...liveStages,
                 ],
             });
         const parsed =
@@ -149,17 +130,12 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
             throw new AppUnknownException(parsed.error);
         }
 
-        const [row] = parsed.data;
-        const data = (row?.data ?? []).map(item => ({
-            workspaceId: item._id,
-            count: item.count,
+        return parsed.data.map(row => ({
+            key: row._id,
+            value: row.count,
+            occurredAt: null,
+            data: { workspaceId: row._id, count: row.count },
         }));
-
-        return this.paginationOffsetUtil.page(
-            data,
-            row?.total[0]?.n ?? 0,
-            params
-        );
     }
 
     async groupActivityVolume(
@@ -170,7 +146,7 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const start = this.analyticPipelineUtil.toDate(startDate);
         const end = this.analyticPipelineUtil.toDate(endDate);
-        const pageStages = this.liveWorkspacePageStages(params);
+        const liveStages = this.liveWorkspaceStages();
         const result =
             await this.databaseService.client.activityLog.aggregateRaw({
                 pipeline: [
@@ -182,7 +158,8 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
                         },
                     },
                     { $group: { _id: '$workspaceId', count: { $sum: 1 } } },
-                    ...pageStages,
+                    ...liveStages,
+                    this.analyticPipelineUtil.pageStage(params, '_id'),
                 ],
             });
         const parsed =
@@ -212,27 +189,6 @@ export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository
         });
 
         return rows.map(row => ({ role: row.role, count: row._count._all }));
-    }
-
-    async countActivity(
-        workspaceId: string,
-        startDate: Date | null,
-        endDate: Date | null,
-        excludedActions: EnumActivityLogAction[]
-    ): Promise<number> {
-        const result = await this.databaseService.client.activityLog.aggregate({
-            where: {
-                workspaceId,
-                action: { notIn: excludedActions },
-                ...(startDate !== null &&
-                    endDate !== null && {
-                        createdAt: { gte: startDate, lt: endDate },
-                    }),
-            },
-            _count: { _all: true },
-        });
-
-        return result._count._all;
     }
 
     async findSummary(

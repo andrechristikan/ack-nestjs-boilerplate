@@ -74,20 +74,7 @@ export interface IAnalyticDeviceProliferationResult {
     rows: IAnalyticDeviceProliferation[];
 }
 
-export type IAnalyticLoginTimeAnomaly = {
-    userId: string;
-    lastHour: number;
-    historicalFrequencyPercent: number;
-};
-
 export interface IAnalyticImpossibleTravelThresholds {
     minDistanceKm: number;
     maxDeltaInMs: number;
-}
-
-export interface IAnalyticLoginTimeAnomalyThresholds {
-    minSample: number;
-    historyLimit: number;
-    historicalFrequencyPercent: number;
-    timezone: string;
 }

@@ -98,6 +98,12 @@ Rule: `analytic.md`, On request or generated.
 - Reading the snapshot for the configured window and computing any other window on request: the expensive path stays reachable and two code paths are kept.
 - A client `windowMs` on an on-request signal: the signal runs on request because its index bounds it to the configured window, and a wider one is a scan.
 
+### An analytic endpoint answers a question an operator acts on
+
+Rule: `analytic.md`.
+
+- One endpoint per activity-log action: each is one indexed count under another name, and the surface grows with the action enum while no reader acts on the number.
+
 ### A list sorts by a named preset the backend defines
 
 Rule: `pagination.md`.

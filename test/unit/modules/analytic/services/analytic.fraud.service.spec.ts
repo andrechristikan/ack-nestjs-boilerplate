@@ -25,7 +25,6 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { AnalyticFraudRepository } from '@modules/analytic/repositories/analytic.fraud.repository';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import {
@@ -38,15 +37,11 @@ import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('AnalyticFraudService', () => {
-    const fraudSummaryTtlInMs = 900000;
     const liveSummaryTtlInMs = 60000;
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
-        fraudSummaryTtlInMs,
         liveSummaryTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateService: MockProxy<AnalyticDateService> =
-        mock<AnalyticDateService>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const analyticFraudUtil: MockProxy<AnalyticFraudUtil> =
@@ -99,12 +94,6 @@ describe('AnalyticFraudService', () => {
         'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs': 3600000,
         'analytic.fraud.forgotPasswordTokenAbuse.windowInMs': 86400000,
         'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens': 2,
-        'analytic.fraud.refreshSpike.windowInMs': 86400000,
-        'analytic.fraud.refreshSpike.minCount': 2,
-        'analytic.fraud.backupCodeNewDevice.windowInMs': 86400000,
-        'analytic.fraud.backupCodeNewDevice.newDeviceAfterInMs': 7200000,
-        'analytic.fraud.apiKeyBurst.windowInMs': 86400000,
-        'analytic.fraud.apiKeyBurst.minCount': 2,
         'analytic.fraud.bands.monitorMax': 10,
         'analytic.fraud.bands.reviewMax': 30,
         'analytic.fraud.bands.elevateMax': 50,
@@ -133,9 +122,6 @@ describe('AnalyticFraudService', () => {
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        analyticDateService.resolveWindow.mockImplementation(
-            (windowMs, defaultInMs) => windowMs ?? defaultInMs
-        );
         analyticDateUtil.windowToken.mockReturnValue('window-token');
         analyticDateUtil.windowRange.mockReturnValue({
             startDate,
@@ -149,10 +135,6 @@ describe('AnalyticFraudService', () => {
                 AnalyticFraudService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                {
-                    provide: AnalyticDateService,
-                    useValue: analyticDateService,
-                },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticFraudUtil, useValue: analyticFraudUtil },
                 { provide: ConfigService, useValue: configService },
@@ -357,74 +339,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('backupCodeNewDeviceSummary', () => {
-        it('reads through with the backup-code-new-device key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
-            cacheService.readThrough.mockResolvedValue(cached);
-
-            const result = await service.backupCodeNewDeviceSummary();
-
-            expect(result).toEqual(cached);
-            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
-                EnumAnalyticFraudSignal.backupCodeNewDevice,
-                '86400000'
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'backup-code-new-device:86400000',
-                AnalyticFraudSummaryCacheSchema,
-                liveSummaryTtlInMs,
-                expect.any(Function)
-            );
-        });
-
-        it('counts once with the configured window on a cache miss and answers a null computedAt', async () => {
-            analyticFraudRepository.countBackupCodeNewDevice.mockResolvedValue(
-                3
-            );
-
-            const result = await service.backupCodeNewDeviceSummary();
-
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
-            expect(
-                analyticFraudRepository.countBackupCodeNewDevice
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.countBackupCodeNewDevice
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 7200000);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
-        });
-    });
-
-    describe('backupCodeNewDeviceList', () => {
-        it('returns the repository page for the configured window unchanged', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudRepository.findBackupCodeNewDeviceOffset.mockResolvedValue(
-                page
-            );
-
-            const result = await service.backupCodeNewDeviceList(pagination);
-
-            expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
-            expect(
-                analyticFraudRepository.findBackupCodeNewDeviceOffset
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.findBackupCodeNewDeviceOffset
-            ).toHaveBeenCalledWith(
-                { startDate, endDate: now },
-                7200000,
-                pagination
-            );
-        });
-    });
-
     describe('massRegistrationSummary', () => {
-        it('reads through with the mass-registration key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
+        it('reads through with the mass-registration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...onRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.massRegistrationSummary(null);
+            const result = await service.massRegistrationSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -434,21 +354,16 @@ describe('AnalyticFraudService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 'mass-registration:86400000',
                 AnalyticFraudSummaryCacheSchema,
-                fraudSummaryTtlInMs,
+                liveSummaryTtlInMs,
                 expect.any(Function)
             );
         });
 
-        it('counts once with the resolved window and the minimum on a cache miss', async () => {
+        it('counts once with the configured window and the minimum on a cache miss', async () => {
             analyticFraudRepository.countMassRegistration.mockResolvedValue(3);
 
-            const result = await service.massRegistrationSummary(3600000);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            const result = await service.massRegistrationSummary();
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countMassRegistration
             ).toHaveBeenCalledTimes(1);
@@ -460,23 +375,16 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('massRegistrationList', () => {
-        it('returns the repository page for the resolved window unchanged', async () => {
+        it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findMassRegistrationOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.massRegistrationList(
-                3600000,
-                pagination
-            );
+            const result = await service.massRegistrationList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findMassRegistrationOffset
             ).toHaveBeenCalledTimes(1);
@@ -484,27 +392,14 @@ describe('AnalyticFraudService', () => {
                 analyticFraudRepository.findMassRegistrationOffset
             ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
         });
-
-        it('resolves a null window to the configured default', async () => {
-            analyticFraudRepository.findMassRegistrationOffset.mockResolvedValue(
-                offsetPage
-            );
-
-            await service.massRegistrationList(null, pagination);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                null,
-                86400000
-            );
-        });
     });
 
     describe('passwordResetEnumerationSummary', () => {
-        it('reads through with the password-reset-enumeration key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
+        it('reads through with the password-reset-enumeration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...onRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.passwordResetEnumerationSummary(null);
+            const result = await service.passwordResetEnumerationSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -514,24 +409,18 @@ describe('AnalyticFraudService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 'password-reset-enumeration:86400000',
                 AnalyticFraudSummaryCacheSchema,
-                fraudSummaryTtlInMs,
+                liveSummaryTtlInMs,
                 expect.any(Function)
             );
         });
 
-        it('counts once with the resolved window and the minimum on a cache miss', async () => {
+        it('counts once with the configured window and the minimum on a cache miss', async () => {
             analyticFraudRepository.countPasswordResetEnumeration.mockResolvedValue(
                 3
             );
 
-            const result =
-                await service.passwordResetEnumerationSummary(3600000);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            const result = await service.passwordResetEnumerationSummary();
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countPasswordResetEnumeration
             ).toHaveBeenCalledTimes(1);
@@ -543,42 +432,23 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('passwordResetEnumerationList', () => {
-        it('returns the repository page for the resolved window unchanged', async () => {
+        it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findPasswordResetEnumerationOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.passwordResetEnumerationList(
-                3600000,
-                pagination
-            );
+            const result =
+                await service.passwordResetEnumerationList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findPasswordResetEnumerationOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findPasswordResetEnumerationOffset
             ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
-        });
-
-        it('resolves a null window to the configured default', async () => {
-            analyticFraudRepository.findPasswordResetEnumerationOffset.mockResolvedValue(
-                offsetPage
-            );
-
-            await service.passwordResetEnumerationList(null, pagination);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                null,
-                86400000
-            );
         });
     });
 
@@ -720,11 +590,11 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('forgotPasswordTokenAbuseSummary', () => {
-        it('reads through with the forgot-password-token-abuse key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
+        it('reads through with the forgot-password-token-abuse key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...onRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.forgotPasswordTokenAbuseSummary(null);
+            const result = await service.forgotPasswordTokenAbuseSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -734,24 +604,18 @@ describe('AnalyticFraudService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 'forgot-password-token-abuse:86400000',
                 AnalyticFraudSummaryCacheSchema,
-                fraudSummaryTtlInMs,
+                liveSummaryTtlInMs,
                 expect.any(Function)
             );
         });
 
-        it('counts once with the resolved window and the minimum on a cache miss', async () => {
+        it('counts once with the configured window and the minimum on a cache miss', async () => {
             analyticFraudRepository.countForgotPasswordAbuse.mockResolvedValue(
                 3
             );
 
-            const result =
-                await service.forgotPasswordTokenAbuseSummary(3600000);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            const result = await service.forgotPasswordTokenAbuseSummary();
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countForgotPasswordAbuse
             ).toHaveBeenCalledTimes(1);
@@ -763,196 +627,23 @@ describe('AnalyticFraudService', () => {
     });
 
     describe('forgotPasswordTokenAbuseList', () => {
-        it('returns the repository page for the resolved window unchanged', async () => {
+        it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findForgotPasswordAbuseOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.forgotPasswordTokenAbuseList(
-                3600000,
-                pagination
-            );
+            const result =
+                await service.forgotPasswordTokenAbuseList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
+            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findForgotPasswordAbuseOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findForgotPasswordAbuseOffset
             ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
-        });
-
-        it('resolves a null window to the configured default', async () => {
-            analyticFraudRepository.findForgotPasswordAbuseOffset.mockResolvedValue(
-                offsetPage
-            );
-
-            await service.forgotPasswordTokenAbuseList(null, pagination);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                null,
-                86400000
-            );
-        });
-    });
-
-    describe('refreshSpikeSummary', () => {
-        it('reads through with the refresh-spike key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
-            cacheService.readThrough.mockResolvedValue(cached);
-
-            const result = await service.refreshSpikeSummary(null);
-
-            expect(result).toEqual(cached);
-            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
-                EnumAnalyticFraudSignal.refreshSpike,
-                '86400000'
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'refresh-spike:86400000',
-                AnalyticFraudSummaryCacheSchema,
-                fraudSummaryTtlInMs,
-                expect.any(Function)
-            );
-        });
-
-        it('counts once with the resolved window and the minimum on a cache miss', async () => {
-            analyticFraudRepository.countRefreshSpike.mockResolvedValue(3);
-
-            const result = await service.refreshSpikeSummary(3600000);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
-            expect(
-                analyticFraudRepository.countRefreshSpike
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.countRefreshSpike
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
-        });
-    });
-
-    describe('refreshSpikeList', () => {
-        it('returns the repository page for the resolved window unchanged', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudRepository.findRefreshSpikeOffset.mockResolvedValue(
-                page
-            );
-
-            const result = await service.refreshSpikeList(3600000, pagination);
-
-            expect(result).toBe(page);
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
-            expect(
-                analyticFraudRepository.findRefreshSpikeOffset
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.findRefreshSpikeOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
-        });
-
-        it('resolves a null window to the configured default', async () => {
-            analyticFraudRepository.findRefreshSpikeOffset.mockResolvedValue(
-                offsetPage
-            );
-
-            await service.refreshSpikeList(null, pagination);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                null,
-                86400000
-            );
-        });
-    });
-
-    describe('apiKeyBurstSummary', () => {
-        it('reads through with the api-key-burst key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
-            cacheService.readThrough.mockResolvedValue(cached);
-
-            const result = await service.apiKeyBurstSummary(null);
-
-            expect(result).toEqual(cached);
-            expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
-                EnumAnalyticFraudSignal.apiKeyBurst,
-                '86400000'
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'api-key-burst:86400000',
-                AnalyticFraudSummaryCacheSchema,
-                fraudSummaryTtlInMs,
-                expect.any(Function)
-            );
-        });
-
-        it('counts once with the resolved window and the minimum on a cache miss', async () => {
-            analyticFraudRepository.countApiKeyBurst.mockResolvedValue(3);
-
-            const result = await service.apiKeyBurstSummary(3600000);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
-            expect(
-                analyticFraudRepository.countApiKeyBurst
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.countApiKeyBurst
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
-        });
-    });
-
-    describe('apiKeyBurstList', () => {
-        it('returns the repository page for the resolved window unchanged', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudRepository.findApiKeyBurstOffset.mockResolvedValue(
-                page
-            );
-
-            const result = await service.apiKeyBurstList(3600000, pagination);
-
-            expect(result).toBe(page);
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                3600000,
-                86400000
-            );
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
-            expect(
-                analyticFraudRepository.findApiKeyBurstOffset
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticFraudRepository.findApiKeyBurstOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
-        });
-
-        it('resolves a null window to the configured default', async () => {
-            analyticFraudRepository.findApiKeyBurstOffset.mockResolvedValue(
-                offsetPage
-            );
-
-            await service.apiKeyBurstList(null, pagination);
-
-            expect(analyticDateService.resolveWindow).toHaveBeenCalledWith(
-                null,
-                86400000
-            );
         });
     });
 

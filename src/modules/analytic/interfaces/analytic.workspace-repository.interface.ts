@@ -2,8 +2,8 @@ import type { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
-    IAnalyticCountBucket,
     IAnalyticRoleCount,
+    IAnalyticSnapshotItemInput,
     IAnalyticStatusCount,
     IAnalyticWorkspaceCount,
     IAnalyticWorkspaceSummary,
@@ -11,7 +11,6 @@ import type {
 
 export interface IAnalyticWorkspaceRepository {
     countCreated(startDate: Date, endDate: Date): Promise<number>;
-    groupVisibility(): Promise<IAnalyticCountBucket[]>;
     groupInviteFunnel(
         startDate: Date,
         endDate: Date,
@@ -22,9 +21,9 @@ export interface IAnalyticWorkspaceRepository {
         endDate: Date,
         workspaceId: string | null
     ): Promise<IAnalyticStatusCount[]>;
-    groupMembership(
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>>;
+    findMembership(): Promise<
+        IAnalyticSnapshotItemInput<IAnalyticWorkspaceCount>[]
+    >;
     groupActivityVolume(
         startDate: Date,
         endDate: Date,
@@ -32,12 +31,6 @@ export interface IAnalyticWorkspaceRepository {
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>>;
     groupMemberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]>;
-    countActivity(
-        workspaceId: string,
-        startDate: Date | null,
-        endDate: Date | null,
-        excludedActions: EnumActivityLogAction[]
-    ): Promise<number>;
     findSummary(
         workspaceId: string,
         startDate: Date | null,

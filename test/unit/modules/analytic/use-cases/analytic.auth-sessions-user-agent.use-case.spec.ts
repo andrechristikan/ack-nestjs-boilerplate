@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
+import { EnumAnalyticStatusCodeError } from '@modules/analytic/enums/analytic.status-code.enum';
 import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthSessionsUserAgentUseCase } from '@modules/analytic/use-cases/analytic.auth-sessions-user-agent.use-case';
@@ -68,9 +69,10 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
 
             const promise = useCase.execute({ startDate, endDate });
 
-            await expect(promise).rejects.toBeInstanceOf(
-                AnalyticInvalidDateRangeException
-            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'analytic',
+                statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+            });
             expect(
                 analyticAuthService.authSessionsUserAgent
             ).not.toHaveBeenCalled();

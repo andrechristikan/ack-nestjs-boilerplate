@@ -1,9 +1,5 @@
-import { AnalyticWorkspacesMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspaces-membership-list.request.dto';
-import type { AnalyticWorkspacesMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-membership-list.request.dto';
 import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
 import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
-import { AnalyticProjectsMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
-import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
 import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
@@ -16,18 +12,12 @@ import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos
 import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
 import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
 import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
-import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
-import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
 import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
 import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
 import { AnalyticSnapshotListRequestSchema } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
 import type { AnalyticSnapshotListRequestDto } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
 import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
 import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
-import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
-import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
-import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
-import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
 import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
 import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
 import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
@@ -35,15 +25,12 @@ import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/r
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import type {
     IAnalyticAccountTakeover,
+    IAnalyticActiveUsers,
     IAnalyticAnomalyDeviceProliferationSummary,
     IAnalyticAnomalyFailedLoginSpikeSummary,
     IAnalyticAnomalyImpossibleTravelSummary,
     IAnalyticAnomalyLoginSpikeIpSummary,
-    IAnalyticAnomalySummary,
     IAnalyticApiKeyActiveExpired,
-    IAnalyticApiKeyBurst,
-    IAnalyticApiKeyLifecycle,
-    IAnalyticBackupCodeNewDevice,
     IAnalyticBlockedUsers,
     IAnalyticBucketsResult,
     IAnalyticCredentialStuffing,
@@ -57,25 +44,19 @@ import type {
     IAnalyticImpossibleTravel,
     IAnalyticLockoutMetrics,
     IAnalyticLoginSpikeIp,
-    IAnalyticLoginTimeAnomaly,
     IAnalyticMassRegistration,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
     IAnalyticMfaAdoption,
-    IAnalyticMfaAttemptSnapshot,
-    IAnalyticMobileChurn,
     IAnalyticNearLockout,
+    IAnalyticNotificationDeliveryResult,
     IAnalyticPasswordResetEnumeration,
-    IAnalyticProjectCount,
     IAnalyticProjectCreation,
-    IAnalyticRefreshSpike,
     IAnalyticSessionAfterAdmin,
-    IAnalyticSessionDeviceRatio,
     IAnalyticSharedFingerprint,
     IAnalyticSnapshotBucketsResult,
     IAnalyticStatusCountList,
     IAnalyticTermPolicyAcceptanceRate,
-    IAnalyticTermPolicyTimeToAccept,
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -84,8 +65,8 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import { AnalyticActiveUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.active-users.response.dto';
 import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-active-expired.response.dto';
-import { AnalyticApiKeyLifecycleResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-lifecycle.response.dto';
 import { AnalyticBlockedUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.blocked-users.response.dto';
 import { AnalyticBucketsResponseSchema } from '@modules/analytic/dtos/response/analytic.buckets.response.dto';
 import { AnalyticSnapshotBucketsResponseSchema } from '@modules/analytic/dtos/response/analytic.snapshot-buckets.response.dto';
@@ -93,15 +74,11 @@ import { AnalyticForgotPasswordConversionResponseSchema } from '@modules/analyti
 import { AnalyticLockoutResponseSchema } from '@modules/analytic/dtos/response/analytic.lockout.response.dto';
 import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
 import { AnalyticMetricRateResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-rate.response.dto';
-import { AnalyticMobileChurnResponseSchema } from '@modules/analytic/dtos/response/analytic.mobile-churn.response.dto';
-import { AnalyticProjectCountResponseSchema } from '@modules/analytic/dtos/response/analytic.project-count.response.dto';
+import { AnalyticNotificationDeliveryResponseSchema } from '@modules/analytic/dtos/response/analytic.notification-delivery.response.dto';
 import { AnalyticProjectCreationResponseSchema } from '@modules/analytic/dtos/response/analytic.project-creation.response.dto';
-import { AnalyticSessionDeviceRatioResponseSchema } from '@modules/analytic/dtos/response/analytic.session-device-ratio.response.dto';
 import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
 import { AnalyticTermPolicyAcceptanceRateResponseSchema } from '@modules/analytic/dtos/response/analytic.term-policy-acceptance-rate.response.dto';
-import { AnalyticTermPolicyTimeToAcceptResponseSchema } from '@modules/analytic/dtos/response/analytic.term-policy-time-to-accept.response.dto';
 import { AnalyticMfaAdoptionResponseSchema } from '@modules/analytic/dtos/response/analytic.mfa-adoption.response.dto';
-import { AnalyticMfaAttemptResponseSchema } from '@modules/analytic/dtos/response/analytic.mfa-attempt.response.dto';
 import { AnalyticVerificationFunnelResponseSchema } from '@modules/analytic/dtos/response/analytic.verification-funnel.response.dto';
 import { AnalyticWorkspaceCountResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-count.response.dto';
 import {
@@ -132,78 +109,52 @@ import { AnalyticAnomalyLoginSpikeIpSummaryResponseSchema } from '@modules/analy
 import { AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-failed-login-spike-summary.response.dto';
 import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-device-proliferation-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
-import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import {
     AnalyticFraudRiskScoreResponseSchema,
     AnalyticFraudRiskScoreUserResponseSchema,
 } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
 import { AnalyticAccountTakeoverResponseSchema } from '@modules/analytic/dtos/response/analytic.account-takeover.response.dto';
-import { AnalyticBackupCodeNewDeviceResponseSchema } from '@modules/analytic/dtos/response/analytic.backup-code-new-device.response.dto';
 import { AnalyticCredentialStuffingResponseSchema } from '@modules/analytic/dtos/response/analytic.credential-stuffing.response.dto';
 import { AnalyticForgotPasswordAbuseResponseSchema } from '@modules/analytic/dtos/response/analytic.forgot-password-abuse.response.dto';
 import { AnalyticKeyCountResponseSchema } from '@modules/analytic/dtos/response/analytic.key-count.response.dto';
 import { AnalyticSessionAfterAdminResponseSchema } from '@modules/analytic/dtos/response/analytic.session-after-admin.response.dto';
 import { AnalyticSharedFingerprintResponseSchema } from '@modules/analytic/dtos/response/analytic.shared-fingerprint.response.dto';
-import { AnalyticUserCountResponseSchema } from '@modules/analytic/dtos/response/analytic.user-count.response.dto';
-import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 import { AnalyticDeviceProliferationResponseSchema } from '@modules/analytic/dtos/response/analytic.device-proliferation.response.dto';
 import { AnalyticImpossibleTravelResponseSchema } from '@modules/analytic/dtos/response/analytic.impossible-travel.response.dto';
 import { AnalyticLoginSpikeIpResponseSchema } from '@modules/analytic/dtos/response/analytic.login-spike-ip.response.dto';
-import { AnalyticLoginTimeAnomalyResponseSchema } from '@modules/analytic/dtos/response/analytic.login-time-anomaly.response.dto';
 import { AnalyticNearLockoutResponseSchema } from '@modules/analytic/dtos/response/analytic.near-lockout.response.dto';
 import { AnalyticUsersRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.users-registrations.use-case';
 import { AnalyticUsersChurnUseCase } from '@modules/analytic/use-cases/analytic.users-churn.use-case';
 import { AnalyticUsersBlockedUseCase } from '@modules/analytic/use-cases/analytic.users-blocked.use-case';
 import { AnalyticUsersSignUpWithUseCase } from '@modules/analytic/use-cases/analytic.users-sign-up-with.use-case';
-import { AnalyticUsersSignUpFromUseCase } from '@modules/analytic/use-cases/analytic.users-sign-up-from.use-case';
 import { AnalyticUsersEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.users-email-verification.use-case';
-import { AnalyticUsersMobileVerificationUseCase } from '@modules/analytic/use-cases/analytic.users-mobile-verification.use-case';
 import { AnalyticUsersStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-status-distribution.use-case';
 import { AnalyticUsersCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-country-distribution.use-case';
+import { AnalyticUsersActiveUseCase } from '@modules/analytic/use-cases/analytic.users-active.use-case';
 import { AnalyticUsersRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-role-distribution.use-case';
-import { AnalyticUsersSelfDeleteUseCase } from '@modules/analytic/use-cases/analytic.users-self-delete.use-case';
-import { AnalyticUsersClaimUsernameUseCase } from '@modules/analytic/use-cases/analytic.users-claim-username.use-case';
-import { AnalyticUsersMobileChurnUseCase } from '@modules/analytic/use-cases/analytic.users-mobile-churn.use-case';
 import { AnalyticAuthLoginFrequencyUseCase } from '@modules/analytic/use-cases/analytic.auth-login-frequency.use-case';
 import { AnalyticAuthLoginMethodUseCase } from '@modules/analytic/use-cases/analytic.auth-login-method.use-case';
-import { AnalyticAuthLoginSourceUseCase } from '@modules/analytic/use-cases/analytic.auth-login-source.use-case';
 import { AnalyticAuthLockoutUseCase } from '@modules/analytic/use-cases/analytic.auth-lockout.use-case';
-import { AnalyticAuthSessionRevokeUseCase } from '@modules/analytic/use-cases/analytic.auth-session-revoke.use-case';
 import { AnalyticAuthConcurrentSessionsUseCase } from '@modules/analytic/use-cases/analytic.auth-concurrent-sessions.use-case';
 import { AnalyticAuthSessionsGeoUseCase } from '@modules/analytic/use-cases/analytic.auth-sessions-geo.use-case';
 import { AnalyticAuthSessionsUserAgentUseCase } from '@modules/analytic/use-cases/analytic.auth-sessions-user-agent.use-case';
-import { AnalyticAuthRefreshTokenVolumeUseCase } from '@modules/analytic/use-cases/analytic.auth-refresh-token-volume.use-case';
-import { AnalyticAuthLogoutRateUseCase } from '@modules/analytic/use-cases/analytic.auth-logout-rate.use-case';
 import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cases/analytic.auth-verification-funnel.use-case';
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
-import { AnalyticAuthAdminForcePasswordUseCase } from '@modules/analytic/use-cases/analytic.auth-admin-force-password.use-case';
 import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
-import { AnalyticAuthMfaAdminResetUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-admin-reset.use-case';
-import { AnalyticAuthMfaVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-verify-success.use-case';
-import { AnalyticAuthBackupCodeRegenerationUseCase } from '@modules/analytic/use-cases/analytic.auth-backup-code-regeneration.use-case';
-import { AnalyticAuthMfaAttemptUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-attempt.use-case';
-import { AnalyticDevicesRegistrationUseCase } from '@modules/analytic/use-cases/analytic.devices-registration.use-case';
 import { AnalyticDevicesPlatformUseCase } from '@modules/analytic/use-cases/analytic.devices-platform.use-case';
 import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
-import { AnalyticDevicesInfoRefreshUseCase } from '@modules/analytic/use-cases/analytic.devices-info-refresh.use-case';
-import { AnalyticDevicesSessionRatioUseCase } from '@modules/analytic/use-cases/analytic.devices-session-ratio.use-case';
 import { AnalyticDevicesPerUserUseCase } from '@modules/analytic/use-cases/analytic.devices-per-user.use-case';
 import { AnalyticDevicesInactivityUseCase } from '@modules/analytic/use-cases/analytic.devices-inactivity.use-case';
-import { AnalyticApiKeysLifecycleUseCase } from '@modules/analytic/use-cases/analytic.api-keys-lifecycle.use-case';
 import { AnalyticApiKeysActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-keys-active-expired.use-case';
-import { AnalyticApiKeysTypeMixUseCase } from '@modules/analytic/use-cases/analytic.api-keys-type-mix.use-case';
 import { AnalyticTermPoliciesAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policies-acceptance-rate.use-case';
-import { AnalyticTermPoliciesTimeToAcceptUseCase } from '@modules/analytic/use-cases/analytic.term-policies-time-to-accept.use-case';
 import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/analytic.workspaces-creation.use-case';
-import { AnalyticWorkspacesVisibilityUseCase } from '@modules/analytic/use-cases/analytic.workspaces-visibility.use-case';
 import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
 import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
 import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
 import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
 import { AnalyticProjectsCreationUseCase } from '@modules/analytic/use-cases/analytic.projects-creation.use-case';
-import { AnalyticProjectsMembershipListUseCase } from '@modules/analytic/use-cases/analytic.projects-membership-list.use-case';
+import { AnalyticNotificationsDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notifications-delivery.use-case';
 import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
 import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
@@ -218,12 +169,6 @@ import { AnalyticSessionAfterAdminSummaryUseCase } from '@modules/analytic/use-c
 import { AnalyticSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-list.use-case';
 import { AnalyticForgotPasswordTokenAbuseSummaryUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-summary.use-case';
 import { AnalyticForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-list.use-case';
-import { AnalyticRefreshSpikeSummaryUseCase } from '@modules/analytic/use-cases/analytic.refresh-spike-summary.use-case';
-import { AnalyticRefreshSpikeListUseCase } from '@modules/analytic/use-cases/analytic.refresh-spike-list.use-case';
-import { AnalyticBackupCodeNewDeviceSummaryUseCase } from '@modules/analytic/use-cases/analytic.backup-code-new-device-summary.use-case';
-import { AnalyticBackupCodeNewDeviceListUseCase } from '@modules/analytic/use-cases/analytic.backup-code-new-device-list.use-case';
-import { AnalyticApiKeyBurstSummaryUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-summary.use-case';
-import { AnalyticApiKeyBurstListUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-list.use-case';
 import { AnalyticRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.risk-score.use-case';
 import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
 import { AnalyticImpossibleTravelSummaryUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-summary.use-case';
@@ -234,8 +179,6 @@ import { AnalyticFailedLoginSpikeSummaryUseCase } from '@modules/analytic/use-ca
 import { AnalyticFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-list.use-case';
 import { AnalyticDeviceProliferationSummaryUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-summary.use-case';
 import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-list.use-case';
-import { AnalyticLoginTimeSummaryUseCase } from '@modules/analytic/use-cases/analytic.login-time-summary.use-case';
-import { AnalyticLoginTimeListUseCase } from '@modules/analytic/use-cases/analytic.login-time-list.use-case';
 
 @ApiTags('modules.admin.analytic')
 @Controller({
@@ -248,54 +191,34 @@ export class AnalyticAdminController {
         private readonly analyticUsersChurnUseCase: AnalyticUsersChurnUseCase,
         private readonly analyticUsersBlockedUseCase: AnalyticUsersBlockedUseCase,
         private readonly analyticUsersSignUpWithUseCase: AnalyticUsersSignUpWithUseCase,
-        private readonly analyticUsersSignUpFromUseCase: AnalyticUsersSignUpFromUseCase,
         private readonly analyticUsersEmailVerificationUseCase: AnalyticUsersEmailVerificationUseCase,
-        private readonly analyticUsersMobileVerificationUseCase: AnalyticUsersMobileVerificationUseCase,
         private readonly analyticUsersStatusDistributionUseCase: AnalyticUsersStatusDistributionUseCase,
         private readonly analyticUsersCountryDistributionUseCase: AnalyticUsersCountryDistributionUseCase,
         private readonly analyticUsersRoleDistributionUseCase: AnalyticUsersRoleDistributionUseCase,
-        private readonly analyticUsersSelfDeleteUseCase: AnalyticUsersSelfDeleteUseCase,
-        private readonly analyticUsersClaimUsernameUseCase: AnalyticUsersClaimUsernameUseCase,
-        private readonly analyticUsersMobileChurnUseCase: AnalyticUsersMobileChurnUseCase,
+        private readonly analyticUsersActiveUseCase: AnalyticUsersActiveUseCase,
         private readonly analyticAuthLoginFrequencyUseCase: AnalyticAuthLoginFrequencyUseCase,
         private readonly analyticAuthLoginMethodUseCase: AnalyticAuthLoginMethodUseCase,
-        private readonly analyticAuthLoginSourceUseCase: AnalyticAuthLoginSourceUseCase,
         private readonly analyticAuthLockoutUseCase: AnalyticAuthLockoutUseCase,
-        private readonly analyticAuthSessionRevokeUseCase: AnalyticAuthSessionRevokeUseCase,
         private readonly analyticAuthConcurrentSessionsUseCase: AnalyticAuthConcurrentSessionsUseCase,
         private readonly analyticAuthSessionsGeoUseCase: AnalyticAuthSessionsGeoUseCase,
         private readonly analyticAuthSessionsUserAgentUseCase: AnalyticAuthSessionsUserAgentUseCase,
-        private readonly analyticAuthRefreshTokenVolumeUseCase: AnalyticAuthRefreshTokenVolumeUseCase,
-        private readonly analyticAuthLogoutRateUseCase: AnalyticAuthLogoutRateUseCase,
         private readonly analyticAuthVerificationFunnelUseCase: AnalyticAuthVerificationFunnelUseCase,
         private readonly analyticAuthPasswordChangeUseCase: AnalyticAuthPasswordChangeUseCase,
         private readonly analyticAuthForgotPasswordConversionUseCase: AnalyticAuthForgotPasswordConversionUseCase,
-        private readonly analyticAuthAdminForcePasswordUseCase: AnalyticAuthAdminForcePasswordUseCase,
         private readonly analyticAuthMfaAdoptionUseCase: AnalyticAuthMfaAdoptionUseCase,
-        private readonly analyticAuthMfaAdminResetUseCase: AnalyticAuthMfaAdminResetUseCase,
-        private readonly analyticAuthMfaVerifySuccessUseCase: AnalyticAuthMfaVerifySuccessUseCase,
-        private readonly analyticAuthBackupCodeRegenerationUseCase: AnalyticAuthBackupCodeRegenerationUseCase,
-        private readonly analyticAuthMfaAttemptUseCase: AnalyticAuthMfaAttemptUseCase,
-        private readonly analyticDevicesRegistrationUseCase: AnalyticDevicesRegistrationUseCase,
         private readonly analyticDevicesPlatformUseCase: AnalyticDevicesPlatformUseCase,
         private readonly analyticDevicesPushTokenUseCase: AnalyticDevicesPushTokenUseCase,
-        private readonly analyticDevicesInfoRefreshUseCase: AnalyticDevicesInfoRefreshUseCase,
-        private readonly analyticDevicesSessionRatioUseCase: AnalyticDevicesSessionRatioUseCase,
         private readonly analyticDevicesPerUserUseCase: AnalyticDevicesPerUserUseCase,
         private readonly analyticDevicesInactivityUseCase: AnalyticDevicesInactivityUseCase,
-        private readonly analyticApiKeysLifecycleUseCase: AnalyticApiKeysLifecycleUseCase,
         private readonly analyticApiKeysActiveExpiredUseCase: AnalyticApiKeysActiveExpiredUseCase,
-        private readonly analyticApiKeysTypeMixUseCase: AnalyticApiKeysTypeMixUseCase,
         private readonly analyticTermPoliciesAcceptanceRateUseCase: AnalyticTermPoliciesAcceptanceRateUseCase,
-        private readonly analyticTermPoliciesTimeToAcceptUseCase: AnalyticTermPoliciesTimeToAcceptUseCase,
         private readonly analyticWorkspacesCreationUseCase: AnalyticWorkspacesCreationUseCase,
-        private readonly analyticWorkspacesVisibilityUseCase: AnalyticWorkspacesVisibilityUseCase,
         private readonly analyticWorkspacesInviteFunnelUseCase: AnalyticWorkspacesInviteFunnelUseCase,
         private readonly analyticWorkspacesJoinOutcomesUseCase: AnalyticWorkspacesJoinOutcomesUseCase,
         private readonly analyticWorkspacesMembershipListUseCase: AnalyticWorkspacesMembershipListUseCase,
         private readonly analyticWorkspacesActivityVolumeListUseCase: AnalyticWorkspacesActivityVolumeListUseCase,
         private readonly analyticProjectsCreationUseCase: AnalyticProjectsCreationUseCase,
-        private readonly analyticProjectsMembershipListUseCase: AnalyticProjectsMembershipListUseCase,
+        private readonly analyticNotificationsDeliveryUseCase: AnalyticNotificationsDeliveryUseCase,
         private readonly analyticCredentialStuffingSummaryUseCase: AnalyticCredentialStuffingSummaryUseCase,
         private readonly analyticCredentialStuffingListUseCase: AnalyticCredentialStuffingListUseCase,
         private readonly analyticAccountTakeoverSummaryUseCase: AnalyticAccountTakeoverSummaryUseCase,
@@ -310,12 +233,6 @@ export class AnalyticAdminController {
         private readonly analyticSessionAfterAdminListUseCase: AnalyticSessionAfterAdminListUseCase,
         private readonly analyticForgotPasswordTokenAbuseSummaryUseCase: AnalyticForgotPasswordTokenAbuseSummaryUseCase,
         private readonly analyticForgotPasswordTokenAbuseListUseCase: AnalyticForgotPasswordTokenAbuseListUseCase,
-        private readonly analyticRefreshSpikeSummaryUseCase: AnalyticRefreshSpikeSummaryUseCase,
-        private readonly analyticRefreshSpikeListUseCase: AnalyticRefreshSpikeListUseCase,
-        private readonly analyticBackupCodeNewDeviceSummaryUseCase: AnalyticBackupCodeNewDeviceSummaryUseCase,
-        private readonly analyticBackupCodeNewDeviceListUseCase: AnalyticBackupCodeNewDeviceListUseCase,
-        private readonly analyticApiKeyBurstSummaryUseCase: AnalyticApiKeyBurstSummaryUseCase,
-        private readonly analyticApiKeyBurstListUseCase: AnalyticApiKeyBurstListUseCase,
         private readonly analyticRiskScoreUseCase: AnalyticRiskScoreUseCase,
         private readonly analyticRiskScoreListUseCase: AnalyticRiskScoreListUseCase,
         private readonly analyticImpossibleTravelSummaryUseCase: AnalyticImpossibleTravelSummaryUseCase,
@@ -325,9 +242,7 @@ export class AnalyticAdminController {
         private readonly analyticFailedLoginSpikeSummaryUseCase: AnalyticFailedLoginSpikeSummaryUseCase,
         private readonly analyticFailedLoginSpikeListUseCase: AnalyticFailedLoginSpikeListUseCase,
         private readonly analyticDeviceProliferationSummaryUseCase: AnalyticDeviceProliferationSummaryUseCase,
-        private readonly analyticDeviceProliferationListUseCase: AnalyticDeviceProliferationListUseCase,
-        private readonly analyticLoginTimeSummaryUseCase: AnalyticLoginTimeSummaryUseCase,
-        private readonly analyticLoginTimeListUseCase: AnalyticLoginTimeListUseCase
+        private readonly analyticDeviceProliferationListUseCase: AnalyticDeviceProliferationListUseCase
     ) {}
 
     @Doc({ summary: 'admin get user registration count by date range' })
@@ -418,28 +333,6 @@ export class AnalyticAdminController {
         return this.analyticUsersSignUpWithUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get user sign up source distribution' })
-    @Response('analytic.usersSignUpFrom', {
-        schema: AnalyticBucketsResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/users/sign-up-from')
-    async usersSignUpFrom(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticUsersSignUpFromUseCase.execute(query);
-    }
-
     @Doc({ summary: 'admin get user email verification rate' })
     @Response('analytic.usersEmailVerification', {
         schema: AnalyticMetricRateResponseSchema,
@@ -460,28 +353,6 @@ export class AnalyticAdminController {
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         return this.analyticUsersEmailVerificationUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get user mobile verification rate' })
-    @Response('analytic.usersMobileVerification', {
-        schema: AnalyticMetricRateResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/users/mobile-verification')
-    async usersMobileVerification(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticUsersMobileVerificationUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get user status distribution' })
@@ -547,9 +418,13 @@ export class AnalyticAdminController {
         return this.analyticUsersRoleDistributionUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get user self delete count by date range' })
-    @Response('analytic.usersSelfDelete', {
-        schema: AnalyticMetricCountResponseSchema,
+    @Doc({
+        summary: 'admin get daily, weekly, and monthly active users',
+        description:
+            'Counts live users whose last sign-in or token refresh falls within the last day, 7 days, and 30 days.',
+    })
+    @Response('analytic.usersActive', {
+        schema: AnalyticActiveUsersResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -561,56 +436,9 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/self-delete')
-    async usersSelfDelete(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticUsersSelfDeleteUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get username claim count by date range' })
-    @Response('analytic.usersClaimUsername', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/users/claim-username')
-    async usersClaimUsername(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticUsersClaimUsernameUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get user mobile number churn by date range' })
-    @Response('analytic.usersMobileChurn', {
-        schema: AnalyticMobileChurnResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/users/mobile-churn')
-    async usersMobileChurn(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMobileChurn>> {
-        return this.analyticUsersMobileChurnUseCase.execute(query);
+    @Get('/users/active')
+    async usersActive(): Promise<IResponseReturn<IAnalyticActiveUsers>> {
+        return this.analyticUsersActiveUseCase.execute();
     }
 
     @Doc({ summary: 'admin get login frequency by date range' })
@@ -657,28 +485,6 @@ export class AnalyticAdminController {
         return this.analyticAuthLoginMethodUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get login source distribution' })
-    @Response('analytic.authLoginSource', {
-        schema: AnalyticBucketsResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/login-source')
-    async authLoginSource(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticAuthLoginSourceUseCase.execute(query);
-    }
-
     @Doc({ summary: 'admin get account lockout metrics by date range' })
     @Response('analytic.authLockout', {
         schema: AnalyticLockoutResponseSchema,
@@ -699,28 +505,6 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticLockoutMetrics>> {
         return this.analyticAuthLockoutUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get session revoke count by date range' })
-    @Response('analytic.authSessionRevoke', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/session-revoke')
-    async authSessionRevoke(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthSessionRevokeUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get concurrent session distribution' })
@@ -786,50 +570,6 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticAuthSessionsUserAgentUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get refresh token volume by date range' })
-    @Response('analytic.authRefreshTokenVolume', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/refresh-token-volume')
-    async authRefreshTokenVolume(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthRefreshTokenVolumeUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get logout count by date range' })
-    @Response('analytic.authLogoutRate', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/logout-rate')
-    async authLogoutRate(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthLogoutRateUseCase.execute(query);
     }
 
     @Doc({
@@ -901,30 +641,6 @@ export class AnalyticAdminController {
         return this.analyticAuthForgotPasswordConversionUseCase.execute(query);
     }
 
-    @Doc({
-        summary: 'admin get admin forced password change count by date range',
-    })
-    @Response('analytic.authAdminForcePassword', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/admin-force-password')
-    async authAdminForcePassword(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthAdminForcePasswordUseCase.execute(query);
-    }
-
     @Doc({ summary: 'admin get two factor adoption snapshot' })
     @Response('analytic.authMfaAdoption', {
         schema: AnalyticMfaAdoptionResponseSchema,
@@ -942,115 +658,6 @@ export class AnalyticAdminController {
     @Get('/auth/mfa-adoption')
     async authMfaAdoption(): Promise<IResponseReturn<IAnalyticMfaAdoption>> {
         return this.analyticAuthMfaAdoptionUseCase.execute();
-    }
-
-    @Doc({ summary: 'admin get admin two factor reset count by date range' })
-    @Response('analytic.authMfaAdminReset', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/mfa-admin-reset')
-    async authMfaAdminReset(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthMfaAdminResetUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get two factor verify success count by date range' })
-    @Response('analytic.authMfaVerifySuccess', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/mfa-verify-success')
-    async authMfaVerifySuccess(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthMfaVerifySuccessUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get backup code regeneration count by date range' })
-    @Response('analytic.authBackupCodeRegeneration', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/backup-code-regeneration')
-    async authBackupCodeRegeneration(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticAuthBackupCodeRegenerationUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get two factor attempt snapshot' })
-    @Response('analytic.authMfaAttempt', {
-        schema: AnalyticMfaAttemptResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/auth/mfa-attempt')
-    async authMfaAttempt(): Promise<
-        IResponseReturn<IAnalyticMfaAttemptSnapshot>
-    > {
-        return this.analyticAuthMfaAttemptUseCase.execute();
-    }
-
-    @Doc({ summary: 'admin get device registration count by date range' })
-    @Response('analytic.devicesRegistration', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/devices/registration')
-    async devicesRegistration(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDevicesRegistrationUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get device platform distribution' })
@@ -1089,49 +696,6 @@ export class AnalyticAdminController {
     @Get('/devices/push-token')
     async devicesPushToken(): Promise<IResponseReturn<IAnalyticMetricRate>> {
         return this.analyticDevicesPushTokenUseCase.execute();
-    }
-
-    @Doc({ summary: 'admin get device info refresh count by date range' })
-    @Response('analytic.devicesInfoRefresh', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/devices/info-refresh')
-    async devicesInfoRefresh(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDevicesInfoRefreshUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get session to device ratio' })
-    @Response('analytic.devicesSessionRatio', {
-        schema: AnalyticSessionDeviceRatioResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/devices/session-ratio')
-    async devicesSessionRatio(): Promise<
-        IResponseReturn<IAnalyticSessionDeviceRatio>
-    > {
-        return this.analyticDevicesSessionRatioUseCase.execute();
     }
 
     @Doc({ summary: 'admin get device per user distribution' })
@@ -1174,28 +738,6 @@ export class AnalyticAdminController {
         return this.analyticDevicesInactivityUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get api key lifecycle counts by date range' })
-    @Response('analytic.apiKeysLifecycle', {
-        schema: AnalyticApiKeyLifecycleResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/api-keys/lifecycle')
-    async apiKeysLifecycle(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticApiKeyLifecycle>> {
-        return this.analyticApiKeysLifecycleUseCase.execute(query);
-    }
-
     @Doc({ summary: 'admin get active and expired api key counts' })
     @Response('analytic.apiKeysActiveExpired', {
         schema: AnalyticApiKeyActiveExpiredResponseSchema,
@@ -1215,25 +757,6 @@ export class AnalyticAdminController {
         IResponseReturn<IAnalyticApiKeyActiveExpired>
     > {
         return this.analyticApiKeysActiveExpiredUseCase.execute();
-    }
-
-    @Doc({ summary: 'admin get api key type distribution' })
-    @Response('analytic.apiKeysTypeMix', {
-        schema: AnalyticBucketsResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/api-keys/type-mix')
-    async apiKeysTypeMix(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticApiKeysTypeMixUseCase.execute();
     }
 
     @Doc({ summary: 'admin get term policy acceptance rate' })
@@ -1258,28 +781,6 @@ export class AnalyticAdminController {
         return this.analyticTermPoliciesAcceptanceRateUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get term policy time to accept' })
-    @Response('analytic.termPoliciesTimeToAccept', {
-        schema: AnalyticTermPolicyTimeToAcceptResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/term-policies/time-to-accept')
-    async termPoliciesTimeToAccept(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
-        return this.analyticTermPoliciesTimeToAcceptUseCase.execute(query);
-    }
-
     @Doc({ summary: 'admin get workspace creation count by date range' })
     @Response('analytic.workspacesCreation', {
         schema: AnalyticMetricCountResponseSchema,
@@ -1300,27 +801,6 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticWorkspacesCreationUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get workspace visibility distribution' })
-    @Response('analytic.workspacesVisibility', {
-        schema: AnalyticBucketsResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/workspaces/visibility')
-    async workspacesVisibility(): Promise<
-        IResponseReturn<IAnalyticBucketsResult>
-    > {
-        return this.analyticWorkspacesVisibilityUseCase.execute();
     }
 
     @Doc({ summary: 'admin get workspace invite funnel by date range' })
@@ -1369,7 +849,8 @@ export class AnalyticAdminController {
 
     @Doc({
         summary: 'admin get member counts per workspace',
-        description: 'orderBy presets: mostCount (count descending, default).',
+        description:
+            'orderBy presets: highestValue (member count descending, default), key (workspace id ascending).',
     })
     @ResponsePagination('analytic.workspacesMembershipList', {
         schema: AnalyticWorkspaceCountResponseSchema,
@@ -1386,8 +867,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/workspaces/membership/list')
     async workspacesMembershipList(
-        @Query({ schema: AnalyticWorkspacesMembershipListRequestSchema })
-        query: AnalyticWorkspacesMembershipListRequestDto
+        @Query({ schema: AnalyticSnapshotListRequestSchema })
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return this.analyticWorkspacesMembershipListUseCase.execute(query);
     }
@@ -1440,11 +921,12 @@ export class AnalyticAdminController {
     }
 
     @Doc({
-        summary: 'admin get member counts per project',
-        description: 'orderBy presets: mostCount (count descending, default).',
+        summary: 'admin get notification delivery counts per channel',
+        description:
+            'Counts delivery rows created in the date range per channel. Sent means sentAt is set; failed means processedAt is set and sentAt is null; pending means both are null. A delivery being sent or retried counts as failed until sentAt lands, because the email and sms flows stamp processedAt before the send.',
     })
-    @ResponsePagination('analytic.projectsMembershipList', {
-        schema: AnalyticProjectCountResponseSchema,
+    @Response('analytic.notificationsDelivery', {
+        schema: AnalyticNotificationDeliveryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1456,12 +938,12 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/projects/membership/list')
-    async projectsMembershipList(
-        @Query({ schema: AnalyticProjectsMembershipListRequestSchema })
-        query: AnalyticProjectsMembershipListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        return this.analyticProjectsMembershipListUseCase.execute(query);
+    @Get('/notifications/delivery')
+    async notificationsDelivery(
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
+    ): Promise<IResponseReturn<IAnalyticNotificationDeliveryResult>> {
+        return this.analyticNotificationsDeliveryUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get credential stuffing fraud summary' })
@@ -1571,11 +1053,8 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/mass-registration')
-    async massRegistration(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticMassRegistrationSummaryUseCase.execute(query);
+    async massRegistration(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+        return this.analyticMassRegistrationSummaryUseCase.execute();
     }
 
     @Doc({
@@ -1619,13 +1098,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/password-reset-enumeration')
-    async passwordResetEnumeration(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticPasswordResetEnumerationSummaryUseCase.execute(
-            query
-        );
+    async passwordResetEnumeration(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticPasswordResetEnumerationSummaryUseCase.execute();
     }
 
     @Doc({
@@ -1759,13 +1235,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/forgot-password-token-abuse')
-    async forgotPasswordTokenAbuse(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticForgotPasswordTokenAbuseSummaryUseCase.execute(
-            query
-        );
+    async forgotPasswordTokenAbuse(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticForgotPasswordTokenAbuseSummaryUseCase.execute();
     }
 
     @Doc({
@@ -1792,149 +1265,6 @@ export class AnalyticAdminController {
         query: AnalyticForgotPasswordAbuseListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         return this.analyticForgotPasswordTokenAbuseListUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get refresh token spike fraud summary' })
-    @Response('analytic.fraudRefreshSpike', {
-        schema: AnalyticFraudSummaryResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/refresh-spike')
-    async refreshSpike(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticRefreshSpikeSummaryUseCase.execute(query);
-    }
-
-    @Doc({
-        summary: 'admin get all refresh token spike fraud detections',
-        description:
-            'orderBy presets: mostCount (count descending, default), userId (userId ascending).',
-    })
-    @ResponsePagination('analytic.fraudRefreshSpikeList', {
-        schema: AnalyticUserCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/refresh-spike/list')
-    async refreshSpikeList(
-        @Query({ schema: AnalyticRefreshSpikeListRequestSchema })
-        query: AnalyticRefreshSpikeListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
-        return this.analyticRefreshSpikeListUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get backup code on new device fraud summary' })
-    @Response('analytic.fraudBackupCodeNewDevice', {
-        schema: AnalyticFraudSummaryResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/backup-code-new-device')
-    async backupCodeNewDevice(): Promise<
-        IResponseReturn<IAnalyticFraudSummary>
-    > {
-        return this.analyticBackupCodeNewDeviceSummaryUseCase.execute();
-    }
-
-    @Doc({
-        summary: 'admin get all backup code on new device fraud detections',
-        description:
-            'orderBy presets: latest (regeneratedAt descending, default), userId (userId ascending).',
-    })
-    @ResponsePagination('analytic.fraudBackupCodeNewDeviceList', {
-        schema: AnalyticBackupCodeNewDeviceResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/backup-code-new-device/list')
-    async backupCodeNewDeviceList(
-        @Query({ schema: AnalyticBackupCodeNewDeviceListRequestSchema })
-        query: AnalyticBackupCodeNewDeviceListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
-        return this.analyticBackupCodeNewDeviceListUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get api key burst fraud summary' })
-    @Response('analytic.fraudApiKeyBurst', {
-        schema: AnalyticFraudSummaryResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/api-key-burst')
-    async apiKeyBurst(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticApiKeyBurstSummaryUseCase.execute(query);
-    }
-
-    @Doc({
-        summary: 'admin get all api key burst fraud detections',
-        description:
-            'orderBy presets: mostCount (count descending, default), userId (userId ascending).',
-    })
-    @ResponsePagination('analytic.fraudApiKeyBurstList', {
-        schema: AnalyticUserCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/fraud/api-key-burst/list')
-    async apiKeyBurstList(
-        @Query({ schema: AnalyticApiKeyBurstListRequestSchema })
-        query: AnalyticApiKeyBurstListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
-        return this.analyticApiKeyBurstListUseCase.execute(query);
     }
 
     @Doc({
@@ -2171,50 +1501,5 @@ export class AnalyticAdminController {
         query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         return this.analyticDeviceProliferationListUseCase.execute(query);
-    }
-
-    @Doc({ summary: 'admin get login time anomaly summary' })
-    @Response('analytic.anomalyLoginTime', {
-        schema: AnalyticAnomalySummaryResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/anomaly/login-time')
-    async loginTime(): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticLoginTimeSummaryUseCase.execute();
-    }
-
-    @Doc({
-        summary: 'admin get all login time anomaly detections',
-        description:
-            'orderBy presets: highestValue (historicalFrequencyPercent descending, default), key (userId ascending).',
-    })
-    @ResponsePagination('analytic.anomalyLoginTimeList', {
-        schema: AnalyticLoginTimeAnomalyResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.analytic,
-        action: [EnumPolicyAction.read],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/anomaly/login-time/list')
-    async loginTimeList(
-        @Query({ schema: AnalyticSnapshotListRequestSchema })
-        query: AnalyticSnapshotListRequestDto
-    ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
-        return this.analyticLoginTimeListUseCase.execute(query);
     }
 }

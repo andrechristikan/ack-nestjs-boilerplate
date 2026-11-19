@@ -1,15 +1,9 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticTermPolicyAcceptanceRateCacheSchema,
-    AnalyticTermPolicyTimeToAcceptCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticTermPolicyAcceptanceRateCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
-import type {
-    IAnalyticTermPolicyAcceptanceRate,
-    IAnalyticTermPolicyTimeToAccept,
-} from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticTermPolicyAcceptanceRate } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticTermPolicyRepository } from '@modules/analytic/repositories/analytic.term-policy.repository';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
@@ -63,32 +57,6 @@ export class AnalyticTermPolicyService {
                 );
 
                 return { acceptances, users, published, rate };
-            }
-        );
-    }
-
-    async termPoliciesTimeToAccept(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticTermPolicyTimeToAccept> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.termPoliciesTimeToAccept,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticTermPolicyTimeToAcceptCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const { count, averageMs } =
-                    await this.analyticTermPolicyRepository.findTimeToAccept(
-                        startDate,
-                        endDate
-                    );
-
-                return { count, averageMs: averageMs ?? 0 };
             }
         );
     }

@@ -1,22 +1,24 @@
 import { CacheService } from '@common/cache/services/cache.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
+    AnalyticActiveUsersCacheSchema,
     AnalyticBlockedUsersCacheSchema,
     AnalyticBucketsResultCacheSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
-    AnalyticMobileChurnCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticUserRepository } from '@modules/analytic/repositories/analytic.user.repository';
 import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AnalyticUserService', () => {
     const dashboardTtlInMs = 1800000;
@@ -28,6 +30,8 @@ describe('AnalyticUserService', () => {
         mock<AnalyticDateUtil>();
     const helperNumberService: MockProxy<HelperNumberService> =
         mock<HelperNumberService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const analyticUserRepository: MockProxy<AnalyticUserRepository> =
         mock<AnalyticUserRepository>();
 
@@ -37,11 +41,26 @@ describe('AnalyticUserService', () => {
     const endToken = '2026-02-01T00:00:00.000Z';
     const buckets = [{ key: 'a', count: 7 }];
 
+    const dailyInMs = 86400000;
+    const weeklyInMs = 604800000;
+    const monthlyInMs = 2592000000;
+    const now: Date = new Date('2026-11-19T10:00:00.000Z');
+
+    let configService: MockProxy<ConfigService>;
     let service: AnalyticUserService;
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        configService = buildConfigService({
+            'analytic.user.active.dailyInMs': dailyInMs,
+            'analytic.user.active.weeklyInMs': weeklyInMs,
+            'analytic.user.active.monthlyInMs': monthlyInMs,
+        });
+        helperDateService.create.mockReturnValue(now);
+        helperDateService.backward.mockImplementation(
+            (date, duration) => new Date(date.getTime() - duration.toMillis())
+        );
         analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
             date ? date.toISOString() : '_'
         );
@@ -55,6 +74,8 @@ describe('AnalyticUserService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticUserService,
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
@@ -67,6 +88,39 @@ describe('AnalyticUserService', () => {
         }).compile();
 
         service = module.get(AnalyticUserService);
+    });
+
+    describe('usersActive', () => {
+        it('reads the three windows back from now through the dashboard cache', async () => {
+            analyticUserRepository.findActiveCounts.mockResolvedValue({
+                daily: 2,
+                weekly: 5,
+                monthly: 9,
+            });
+
+            const result = await service.usersActive();
+
+            expect(result).toEqual({
+                daily: 2,
+                weekly: 5,
+                monthly: 9,
+                windowEnd: now,
+                computedAt: null,
+            });
+            expect(
+                analyticUserRepository.findActiveCounts
+            ).toHaveBeenCalledWith(
+                new Date('2026-11-18T10:00:00.000Z'),
+                new Date('2026-11-12T10:00:00.000Z'),
+                new Date('2026-10-20T10:00:00.000Z')
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersActive}:_:_`,
+                AnalyticActiveUsersCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
     });
 
     describe('usersRegistrations', () => {
@@ -154,26 +208,6 @@ describe('AnalyticUserService', () => {
         });
     });
 
-    describe('usersSignUpFrom', () => {
-        it('wraps the sign-up-from groups as buckets', async () => {
-            analyticUserRepository.groupSignUpFrom.mockResolvedValue(buckets);
-
-            const result = await service.usersSignUpFrom(startDate, endDate);
-
-            expect(result).toEqual({ buckets });
-            expect(analyticUserRepository.groupSignUpFrom).toHaveBeenCalledWith(
-                startDate,
-                endDate
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.usersSignUpFrom}:${startToken}:${endToken}`,
-                AnalyticBucketsResultCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
     describe('usersEmailVerification', () => {
         it('answers verified 3 of total 4 from two group rows', async () => {
             analyticUserRepository.groupEmailVerification.mockResolvedValue([
@@ -209,30 +243,6 @@ describe('AnalyticUserService', () => {
             const result = await service.usersEmailVerification(null, null);
 
             expect(result).toEqual({ count: 0, total: 2, rate: 0 });
-        });
-    });
-
-    describe('usersMobileVerification', () => {
-        it('answers verified 1 of total 5 from two group rows', async () => {
-            analyticUserRepository.groupMobileVerification.mockResolvedValue([
-                { isVerified: false, count: 4 },
-                { isVerified: true, count: 1 },
-            ]);
-            helperNumberService.percent.mockReturnValue(20);
-
-            const result = await service.usersMobileVerification(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 1, total: 5, rate: 20 });
-            expect(helperNumberService.percent).toHaveBeenCalledWith(1, 5);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.usersMobileVerification}:${startToken}:${endToken}`,
-                AnalyticMetricRateCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
         });
     });
 
@@ -278,88 +288,6 @@ describe('AnalyticUserService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.usersRole}:_:_`,
                 AnalyticBucketsResultCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('usersSelfDelete', () => {
-        it('counts self-delete activity in the range', async () => {
-            analyticUserRepository.countActivityByActions.mockResolvedValue(3);
-
-            const result = await service.usersSelfDelete(startDate, endDate);
-
-            expect(result).toEqual({ count: 3 });
-            expect(
-                analyticUserRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userDeleteSelf],
-                startDate,
-                endDate
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.usersSelfDelete}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('usersClaimUsername', () => {
-        it('counts username-claim activity in the range', async () => {
-            analyticUserRepository.countActivityByActions.mockResolvedValue(2);
-
-            const result = await service.usersClaimUsername(startDate, endDate);
-
-            expect(result).toEqual({ count: 2 });
-            expect(
-                analyticUserRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userClaimUsername],
-                startDate,
-                endDate
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.usersClaimUsername}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('usersMobileChurn', () => {
-        it('maps one grouped read to added, updated, and deleted', async () => {
-            analyticUserRepository.groupActivityByAction.mockResolvedValue([
-                {
-                    action: EnumActivityLogAction.userUpdateMobileNumber,
-                    count: 2,
-                },
-                { action: EnumActivityLogAction.userAddMobileNumber, count: 1 },
-            ]);
-
-            const result = await service.usersMobileChurn(startDate, endDate);
-
-            expect(result).toEqual({ added: 1, updated: 2, deleted: 0 });
-            expect(
-                analyticUserRepository.groupActivityByAction
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticUserRepository.groupActivityByAction
-            ).toHaveBeenCalledWith(
-                [
-                    EnumActivityLogAction.userAddMobileNumber,
-                    EnumActivityLogAction.userUpdateMobileNumber,
-                    EnumActivityLogAction.userDeleteMobileNumber,
-                ],
-                startDate,
-                endDate
-            );
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.usersMobileChurn}:${startToken}:${endToken}`,
-                AnalyticMobileChurnCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );

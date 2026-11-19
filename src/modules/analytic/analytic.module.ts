@@ -24,6 +24,8 @@ import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/anal
 import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticProjectRepository } from '@modules/analytic/repositories/analytic.project.repository';
 import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
+import { AnalyticNotificationRepository } from '@modules/analytic/repositories/analytic.notification.repository';
+import { AnalyticNotificationService } from '@modules/analytic/services/analytic.notification.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
@@ -52,6 +54,7 @@ import { Module } from '@nestjs/common';
         AnalyticTermPolicyRepository,
         AnalyticWorkspaceRepository,
         AnalyticProjectRepository,
+        AnalyticNotificationRepository,
         AnalyticSnapshotService,
         AnalyticAuthService,
         AnalyticUserService,
@@ -60,6 +63,7 @@ import { Module } from '@nestjs/common';
         AnalyticTermPolicyService,
         AnalyticWorkspaceService,
         AnalyticProjectService,
+        AnalyticNotificationService,
         AnalyticQueue,
     ],
     exports: [
@@ -75,6 +79,7 @@ import { Module } from '@nestjs/common';
         AnalyticTermPolicyService,
         AnalyticWorkspaceService,
         AnalyticProjectService,
+        AnalyticNotificationService,
     ],
     imports: [
         MfaModule,

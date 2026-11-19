@@ -3,7 +3,6 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { AnalyticFraudRepository } from '@modules/analytic/repositories/analytic.fraud.repository';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import {
     AnalyticFraudCredentialStuffingSummaryCacheSchema,
@@ -19,8 +18,6 @@ import {
 } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticAccountTakeover,
-    IAnalyticApiKeyBurst,
-    IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
     IAnalyticFraudCredentialStuffingSummary,
@@ -29,7 +26,6 @@ import type {
     IAnalyticFraudSummary,
     IAnalyticMassRegistration,
     IAnalyticPasswordResetEnumeration,
-    IAnalyticRefreshSpike,
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
     IAnalyticSnapshotResult,
@@ -59,12 +55,6 @@ export class AnalyticFraudService {
     private readonly sessionAfterAdminRevokeInMs: number;
     private readonly forgotPasswordTokenAbuseWindowInMs: number;
     private readonly forgotPasswordTokenAbuseMinUnusedTokens: number;
-    private readonly refreshSpikeWindowInMs: number;
-    private readonly refreshSpikeMinCount: number;
-    private readonly backupCodeNewDeviceWindowInMs: number;
-    private readonly newDeviceAfterInMs: number;
-    private readonly apiKeyBurstWindowInMs: number;
-    private readonly apiKeyBurstMinCount: number;
     private readonly riskScoreLookbackInMs: number;
     private readonly impossibleTravelMinDistanceKm: number;
     private readonly impossibleTravelMaxDeltaInMs: number;
@@ -83,7 +73,6 @@ export class AnalyticFraudService {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticFraudUtil: AnalyticFraudUtil,
         private readonly configService: ConfigService,
@@ -131,24 +120,6 @@ export class AnalyticFraudService {
             this.configService.get<number>(
                 'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens'
             )!;
-        this.refreshSpikeWindowInMs = this.configService.get<number>(
-            'analytic.fraud.refreshSpike.windowInMs'
-        )!;
-        this.refreshSpikeMinCount = this.configService.get<number>(
-            'analytic.fraud.refreshSpike.minCount'
-        )!;
-        this.backupCodeNewDeviceWindowInMs = this.configService.get<number>(
-            'analytic.fraud.backupCodeNewDevice.windowInMs'
-        )!;
-        this.newDeviceAfterInMs = this.configService.get<number>(
-            'analytic.fraud.backupCodeNewDevice.newDeviceAfterInMs'
-        )!;
-        this.apiKeyBurstWindowInMs = this.configService.get<number>(
-            'analytic.fraud.apiKeyBurst.windowInMs'
-        )!;
-        this.apiKeyBurstMinCount = this.configService.get<number>(
-            'analytic.fraud.apiKeyBurst.minCount'
-        )!;
         this.riskScoreLookbackInMs = this.configService.get<number>(
             'analytic.fraud.riskScore.lookbackInMs'
         )!;
@@ -295,24 +266,20 @@ export class AnalyticFraudService {
         );
     }
 
-    async massRegistrationSummary(
-        windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.massRegistrationWindowInMs
-        );
+    async massRegistrationSummary(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.massRegistration,
-            String(window)
+            String(this.massRegistrationWindowInMs)
         );
 
         return this.cacheService.readThrough(
             key,
             AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.fraudSummaryTtlInMs,
+            this.analyticCache.liveSummaryTtlInMs,
             async () => {
-                const range = this.analyticDateUtil.windowRange(window);
+                const range = this.analyticDateUtil.windowRange(
+                    this.massRegistrationWindowInMs
+                );
                 const count =
                     await this.analyticFraudRepository.countMassRegistration(
                         range,
@@ -330,14 +297,11 @@ export class AnalyticFraudService {
     }
 
     async massRegistrationList(
-        windowMs: number | null,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
+        const range = this.analyticDateUtil.windowRange(
             this.massRegistrationWindowInMs
         );
-        const range = this.analyticDateUtil.windowRange(window);
 
         return this.analyticFraudRepository.findMassRegistrationOffset(
             range,
@@ -346,24 +310,20 @@ export class AnalyticFraudService {
         );
     }
 
-    async passwordResetEnumerationSummary(
-        windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.passwordResetEnumerationWindowInMs
-        );
+    async passwordResetEnumerationSummary(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.passwordResetEnumeration,
-            String(window)
+            String(this.passwordResetEnumerationWindowInMs)
         );
 
         return this.cacheService.readThrough(
             key,
             AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.fraudSummaryTtlInMs,
+            this.analyticCache.liveSummaryTtlInMs,
             async () => {
-                const range = this.analyticDateUtil.windowRange(window);
+                const range = this.analyticDateUtil.windowRange(
+                    this.passwordResetEnumerationWindowInMs
+                );
                 const count =
                     await this.analyticFraudRepository.countPasswordResetEnumeration(
                         range,
@@ -381,14 +341,11 @@ export class AnalyticFraudService {
     }
 
     async passwordResetEnumerationList(
-        windowMs: number | null,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
+        const range = this.analyticDateUtil.windowRange(
             this.passwordResetEnumerationWindowInMs
         );
-        const range = this.analyticDateUtil.windowRange(window);
 
         return this.analyticFraudRepository.findPasswordResetEnumerationOffset(
             range,
@@ -482,24 +439,20 @@ export class AnalyticFraudService {
         );
     }
 
-    async forgotPasswordTokenAbuseSummary(
-        windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.forgotPasswordTokenAbuseWindowInMs
-        );
+    async forgotPasswordTokenAbuseSummary(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
-            String(window)
+            String(this.forgotPasswordTokenAbuseWindowInMs)
         );
 
         return this.cacheService.readThrough(
             key,
             AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.fraudSummaryTtlInMs,
+            this.analyticCache.liveSummaryTtlInMs,
             async () => {
-                const range = this.analyticDateUtil.windowRange(window);
+                const range = this.analyticDateUtil.windowRange(
+                    this.forgotPasswordTokenAbuseWindowInMs
+                );
                 const count =
                     await this.analyticFraudRepository.countForgotPasswordAbuse(
                         range,
@@ -517,164 +470,15 @@ export class AnalyticFraudService {
     }
 
     async forgotPasswordTokenAbuseList(
-        windowMs: number | null,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
+        const range = this.analyticDateUtil.windowRange(
             this.forgotPasswordTokenAbuseWindowInMs
         );
-        const range = this.analyticDateUtil.windowRange(window);
 
         return this.analyticFraudRepository.findForgotPasswordAbuseOffset(
             range,
             this.forgotPasswordTokenAbuseMinUnusedTokens,
-            params
-        );
-    }
-
-    async refreshSpikeSummary(
-        windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.refreshSpikeWindowInMs
-        );
-        const key = this.analyticCache.buildFraudSummaryKey(
-            EnumAnalyticFraudSignal.refreshSpike,
-            String(window)
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.fraudSummaryTtlInMs,
-            async () => {
-                const range = this.analyticDateUtil.windowRange(window);
-                const count =
-                    await this.analyticFraudRepository.countRefreshSpike(
-                        range,
-                        this.refreshSpikeMinCount
-                    );
-
-                return {
-                    count,
-                    windowStart: range.startDate,
-                    windowEnd: range.endDate,
-                    computedAt: null,
-                };
-            }
-        );
-    }
-
-    async refreshSpikeList(
-        windowMs: number | null,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.refreshSpikeWindowInMs
-        );
-        const range = this.analyticDateUtil.windowRange(window);
-
-        return this.analyticFraudRepository.findRefreshSpikeOffset(
-            range,
-            this.refreshSpikeMinCount,
-            params
-        );
-    }
-
-    async backupCodeNewDeviceSummary(): Promise<IAnalyticFraudSummary> {
-        const key = this.analyticCache.buildFraudSummaryKey(
-            EnumAnalyticFraudSignal.backupCodeNewDevice,
-            String(this.backupCodeNewDeviceWindowInMs)
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.liveSummaryTtlInMs,
-            async () => {
-                const range = this.analyticDateUtil.windowRange(
-                    this.backupCodeNewDeviceWindowInMs
-                );
-                const count =
-                    await this.analyticFraudRepository.countBackupCodeNewDevice(
-                        range,
-                        this.newDeviceAfterInMs
-                    );
-
-                return {
-                    count,
-                    windowStart: range.startDate,
-                    windowEnd: range.endDate,
-                    computedAt: null,
-                };
-            }
-        );
-    }
-
-    async backupCodeNewDeviceList(
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
-        const range = this.analyticDateUtil.windowRange(
-            this.backupCodeNewDeviceWindowInMs
-        );
-
-        return this.analyticFraudRepository.findBackupCodeNewDeviceOffset(
-            range,
-            this.newDeviceAfterInMs,
-            params
-        );
-    }
-
-    async apiKeyBurstSummary(
-        windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.apiKeyBurstWindowInMs
-        );
-        const key = this.analyticCache.buildFraudSummaryKey(
-            EnumAnalyticFraudSignal.apiKeyBurst,
-            String(window)
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticFraudSummaryCacheSchema,
-            this.analyticCache.fraudSummaryTtlInMs,
-            async () => {
-                const range = this.analyticDateUtil.windowRange(window);
-                const count =
-                    await this.analyticFraudRepository.countApiKeyBurst(
-                        range,
-                        this.apiKeyBurstMinCount
-                    );
-
-                return {
-                    count,
-                    windowStart: range.startDate,
-                    windowEnd: range.endDate,
-                    computedAt: null,
-                };
-            }
-        );
-    }
-
-    async apiKeyBurstList(
-        windowMs: number | null,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
-        const window = this.analyticDateService.resolveWindow(
-            windowMs,
-            this.apiKeyBurstWindowInMs
-        );
-        const range = this.analyticDateUtil.windowRange(window);
-
-        return this.analyticFraudRepository.findApiKeyBurstOffset(
-            range,
-            this.apiKeyBurstMinCount,
             params
         );
     }

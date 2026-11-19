@@ -6,8 +6,6 @@ import type {
     IAnalyticImpossibleTravel,
     IAnalyticImpossibleTravelThresholds,
     IAnalyticLoginSpikeIp,
-    IAnalyticLoginTimeAnomaly,
-    IAnalyticLoginTimeAnomalyThresholds,
     IAnalyticNearLockout,
     IAnalyticSnapshotItemInput,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -20,10 +18,6 @@ export interface IAnalyticAnomalyRepository {
     findDeviceProliferation(
         zScoreThreshold: number
     ): Promise<IAnalyticDeviceProliferationResult>;
-    findLoginTimeAnomaly(
-        range: IAnalyticDateRange,
-        thresholds: IAnalyticLoginTimeAnomalyThresholds
-    ): Promise<IAnalyticSnapshotItemInput<IAnalyticLoginTimeAnomaly>[]>;
     countLoginSpikeIp(
         range: IAnalyticDateRange,
         minUniqueAccounts: number

@@ -2,14 +2,14 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
-import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticWorkspacesMembershipListUseCase', () => {
     const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
@@ -78,8 +78,8 @@ describe('AnalyticWorkspacesMembershipListUseCase', () => {
                 expect.anything(),
 
                 {
-                    orderBy: AnalyticCountOrderBy,
-                    defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
+                    orderBy: AnalyticSnapshotOrderBy,
+                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
                 }
             );
             expect(

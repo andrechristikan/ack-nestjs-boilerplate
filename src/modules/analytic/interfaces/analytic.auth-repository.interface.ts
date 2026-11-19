@@ -7,7 +7,6 @@ import type {
     IAnalyticCountBucket,
     IAnalyticGroupCount,
     IAnalyticMfaAdoptionCount,
-    IAnalyticMfaAttemptSnapshot,
     IAnalyticUsedGroupCount,
     IAnalyticVerificationGroupCount,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -23,10 +22,6 @@ export interface IAnalyticAuthRepository {
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]>;
-    groupLoginSource(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticCountBucket[]>;
     findConcurrentSessions(
         now: Date,
         idleSince: Date
@@ -57,5 +52,4 @@ export interface IAnalyticAuthRepository {
         endDate: Date
     ): Promise<IAnalyticUsedGroupCount[]>;
     findMfaAdoption(): Promise<IAnalyticMfaAdoptionCount>;
-    findMfaAttempt(): Promise<IAnalyticMfaAttemptSnapshot>;
 }

@@ -21,8 +21,6 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const windowMs: number = 3600000;
-
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
@@ -64,7 +62,7 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands the pagination alone to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [{ userId: 'user-1', tokenCount: 4 }],
@@ -74,7 +72,6 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
             );
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -82,7 +79,7 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.forgotPasswordTokenAbuseList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
@@ -91,22 +88,6 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
                         EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens,
                 }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudService.forgotPasswordTokenAbuseList.mockResolvedValue(
-                page
-            );
-
-            await useCase.execute({
-                page: 1,
-                perPage: 20,
-            });
-
-            expect(
-                analyticFraudService.forgotPasswordTokenAbuseList
-            ).toHaveBeenCalledWith(null, pagination);
         });
     });
 });

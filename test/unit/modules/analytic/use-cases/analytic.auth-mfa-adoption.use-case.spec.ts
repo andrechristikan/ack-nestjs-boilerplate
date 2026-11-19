@@ -33,12 +33,13 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
                 enabled: 3,
                 total: 9,
                 rate: 0.33,
+                computedAt: null,
             });
 
             const result = await useCase.execute();
 
             expect(result).toEqual({
-                data: { enabled: 3, total: 9, rate: 0.33 },
+                data: { enabled: 3, total: 9, rate: 0.33, computedAt: null },
             });
             expect(analyticAuthService.authMfaAdoption).toHaveBeenCalledWith();
         });

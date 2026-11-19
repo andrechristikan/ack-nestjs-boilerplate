@@ -1,32 +1,19 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import {
     AnalyticCountRanges,
     AnalyticDevicePerUserPipelineSchema,
-    AnalyticDeviceSessionRatioPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticDeviceRepository } from '@modules/analytic/interfaces/analytic.device-repository.interface';
 import type {
     IAnalyticCountBucket,
     IAnalyticDevicePushTokenCount,
-    IAnalyticSessionDeviceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticDeviceRepository implements IAnalyticDeviceRepository {
-    constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly analyticPipelineUtil: AnalyticPipelineUtil
-    ) {}
-
-    async countRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.databaseService.client.device.count({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-        });
-    }
+    constructor(private readonly databaseService: DatabaseService) {}
 
     async groupPlatform(): Promise<IAnalyticCountBucket[]> {
         const rows = await this.databaseService.client.device.groupBy({
@@ -48,58 +35,6 @@ export class AnalyticDeviceRepository implements IAnalyticDeviceRepository {
             total: result._count._all,
             withToken: result._count.notificationToken,
         };
-    }
-
-    async countInfoRefresh(startDate: Date, endDate: Date): Promise<number> {
-        return this.databaseService.client.activityLog.count({
-            where: {
-                action: EnumActivityLogAction.userDeviceRefresh,
-                createdAt: { gte: startDate, lt: endDate },
-            },
-        });
-    }
-
-    async findSessionRatioCounts(
-        now: Date,
-        idleSince: Date
-    ): Promise<IAnalyticSessionDeviceCount> {
-        const nowDate = this.analyticPipelineUtil.toDate(now);
-        const idleSinceDate = this.analyticPipelineUtil.toDate(idleSince);
-        const result = await this.databaseService.client.session.aggregateRaw({
-            pipeline: [
-                {
-                    $match: {
-                        isRevoked: false,
-                        expiredAt: { $gt: nowDate },
-                        lastActiveAt: { $gte: idleSinceDate },
-                    },
-                },
-                { $count: 'sessions' },
-                {
-                    $unionWith: {
-                        coll: 'DeviceOwnerships',
-                        pipeline: [
-                            { $match: { isRevoked: false } },
-                            { $count: 'devices' },
-                        ],
-                    },
-                },
-                {
-                    $group: {
-                        _id: null,
-                        sessions: { $sum: '$sessions' },
-                        devices: { $sum: '$devices' },
-                    },
-                },
-            ],
-        });
-        const parsed =
-            AnalyticDeviceSessionRatioPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data[0] ?? { sessions: 0, devices: 0 };
     }
 
     async groupPerUser(): Promise<IAnalyticCountBucket[]> {

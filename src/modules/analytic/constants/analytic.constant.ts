@@ -1,19 +1,23 @@
 import { z } from 'zod';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOffsetReturn } from '@common/pagination/interfaces/pagination.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumNotificationChannel,
+} from '@generated/prisma-client/client';
 import {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
 import type {
+    IAnalyticActiveUsers,
+    IAnalyticActiveUsersCount,
     IAnalyticAnomalyDeviceProliferationSummaryMetadata,
     IAnalyticAnomalyFailedLoginSpikeSummary,
     IAnalyticAnomalyImpossibleTravelSummaryMetadata,
     IAnalyticAnomalyLoginSpikeIpSummary,
     IAnalyticAnomalySummary,
     IAnalyticApiKeyActiveExpired,
-    IAnalyticApiKeyLifecycle,
     IAnalyticBlockedUsers,
     IAnalyticBucketsResult,
     IAnalyticChurnCount,
@@ -26,21 +30,16 @@ import type {
     IAnalyticFraudSummary,
     IAnalyticImpossibleTravel,
     IAnalyticLockoutMetrics,
-    IAnalyticLoginTimeAnomaly,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
-    IAnalyticMfaAdoption,
-    IAnalyticMfaAttemptSnapshot,
-    IAnalyticMobileChurn,
-    IAnalyticProjectCount,
+    IAnalyticMfaAdoptionCount,
+    IAnalyticNotificationDelivery,
+    IAnalyticNotificationDeliveryResult,
     IAnalyticProjectCreation,
-    IAnalyticSessionDeviceRatio,
     IAnalyticSharedFingerprint,
     IAnalyticStatusCount,
     IAnalyticTermPolicyAcceptanceCount,
     IAnalyticTermPolicyAcceptanceRate,
-    IAnalyticTermPolicyTimeToAccept,
-    IAnalyticTermPolicyTimeToAcceptAverage,
     IAnalyticVerificationFunnel,
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
@@ -100,13 +99,6 @@ export const AnalyticDeviceProliferationSnapshotMetaSchema = z.object({
 }) satisfies z.ZodType<IAnalyticAnomalyDeviceProliferationSummaryMetadata>;
 
 /** @public */
-export const AnalyticLoginTimeAnomalySnapshotDataSchema = z.object({
-    userId: z.string(),
-    lastHour: z.number(),
-    historicalFrequencyPercent: z.number(),
-}) satisfies z.ZodType<IAnalyticLoginTimeAnomaly>;
-
-/** @public */
 export const AnalyticCacheEmptyToken = '_';
 
 /** @public */
@@ -128,6 +120,15 @@ export const AnalyticMetricRateCacheSchema = z.object({
     total: z.number(),
     rate: z.number(),
 }) satisfies z.ZodType<IAnalyticMetricRate>;
+
+/** @public */
+export const AnalyticActiveUsersCacheSchema = z.object({
+    daily: z.number(),
+    weekly: z.number(),
+    monthly: z.number(),
+    windowEnd: z.coerce.date(),
+    computedAt: z.coerce.date().nullable(),
+}) satisfies z.ZodType<IAnalyticActiveUsers>;
 
 /** @public */
 export const AnalyticBlockedUsersCacheSchema = z.object({
@@ -160,17 +161,10 @@ export const AnalyticForgotPasswordConversionCacheSchema = z.object({
 }) satisfies z.ZodType<IAnalyticForgotPasswordConversion>;
 
 /** @public */
-export const AnalyticMfaAdoptionCacheSchema = z.object({
+export const AnalyticMfaAdoptionSnapshotMetaSchema = z.object({
     enabled: z.number(),
     total: z.number(),
-    rate: z.number(),
-}) satisfies z.ZodType<IAnalyticMfaAdoption>;
-
-/** @public */
-export const AnalyticMfaAttemptSnapshotCacheSchema = z.object({
-    usersWithAttempts: z.number(),
-    totalAttempts: z.number(),
-}) satisfies z.ZodType<IAnalyticMfaAttemptSnapshot>;
+}) satisfies z.ZodType<IAnalyticMfaAdoptionCount>;
 
 /** @public */
 export const AnalyticVerificationFunnelCacheSchema = z.object({
@@ -185,28 +179,6 @@ export const AnalyticVerificationFunnelsCacheSchema = z.object({
     email: AnalyticVerificationFunnelCacheSchema,
     mobile: AnalyticVerificationFunnelCacheSchema,
 }) satisfies z.ZodType<IAnalyticVerificationFunnels>;
-
-/** @public */
-export const AnalyticMobileChurnCacheSchema = z.object({
-    added: z.number(),
-    updated: z.number(),
-    deleted: z.number(),
-}) satisfies z.ZodType<IAnalyticMobileChurn>;
-
-/** @public */
-export const AnalyticSessionDeviceRatioCacheSchema = z.object({
-    sessions: z.number(),
-    devices: z.number(),
-    ratio: z.number(),
-}) satisfies z.ZodType<IAnalyticSessionDeviceRatio>;
-
-/** @public */
-export const AnalyticApiKeyLifecycleCacheSchema = z.object({
-    created: z.number(),
-    reset: z.number(),
-    updated: z.number(),
-    deleted: z.number(),
-}) satisfies z.ZodType<IAnalyticApiKeyLifecycle>;
 
 /** @public */
 export const AnalyticApiKeyActiveExpiredCacheSchema = z.object({
@@ -224,28 +196,29 @@ export const AnalyticTermPolicyAcceptanceRateCacheSchema = z.object({
 }) satisfies z.ZodType<IAnalyticTermPolicyAcceptanceRate>;
 
 /** @public */
-export const AnalyticTermPolicyTimeToAcceptCacheSchema = z.object({
-    count: z.number(),
-    averageMs: z.number(),
-}) satisfies z.ZodType<IAnalyticTermPolicyTimeToAccept>;
-
-/** @public */
 export const AnalyticWorkspaceCountCacheSchema = z.object({
     workspaceId: z.string(),
     count: z.number(),
 }) satisfies z.ZodType<IAnalyticWorkspaceCount>;
 
 /** @public */
-export const AnalyticProjectCountCacheSchema = z.object({
-    projectId: z.string(),
-    count: z.number(),
-}) satisfies z.ZodType<IAnalyticProjectCount>;
-
-/** @public */
 export const AnalyticProjectCreationCacheSchema = z.object({
     created: z.number(),
     perWorkspace: z.array(AnalyticWorkspaceCountCacheSchema),
 }) satisfies z.ZodType<IAnalyticProjectCreation>;
+
+/** @public */
+export const AnalyticNotificationDeliveryCacheSchema = z.object({
+    channels: z.array(
+        z.object({
+            channel: z.enum(EnumNotificationChannel),
+            total: z.number(),
+            sent: z.number(),
+            failed: z.number(),
+            pending: z.number(),
+        })
+    ),
+}) satisfies z.ZodType<IAnalyticNotificationDeliveryResult>;
 
 /** @public */
 export const AnalyticStatusCountCacheSchema = z.object({
@@ -271,20 +244,6 @@ export const AnalyticWorkspaceCountPageCacheSchema = z.object({
     totalPage: z.number(),
     data: z.array(AnalyticWorkspaceCountCacheSchema),
 }) satisfies z.ZodType<IPaginationOffsetReturn<IAnalyticWorkspaceCount>>;
-
-/** @public */
-export const AnalyticProjectCountPageCacheSchema = z.object({
-    type: z.literal(EnumPaginationType.offset),
-    count: z.number(),
-    perPage: z.number(),
-    hasNext: z.boolean(),
-    hasPrevious: z.boolean(),
-    page: z.number(),
-    nextPage: z.number().exactOptional(),
-    previousPage: z.number().exactOptional(),
-    totalPage: z.number(),
-    data: z.array(AnalyticProjectCountCacheSchema),
-}) satisfies z.ZodType<IPaginationOffsetReturn<IAnalyticProjectCount>>;
 
 /** @public */
 export const AnalyticWorkspaceSummaryCacheSchema = z.object({
@@ -366,6 +325,15 @@ export const AnalyticUserChurnPipelineSchema = z.array(
 ) satisfies z.ZodType<IAnalyticChurnCount[]>;
 
 /** @public */
+export const AnalyticUserActivePipelineSchema = z.array(
+    z.object({
+        daily: z.number(),
+        weekly: z.number(),
+        monthly: z.number(),
+    })
+) satisfies z.ZodType<IAnalyticActiveUsersCount[]>;
+
+/** @public */
 export const AnalyticUserBlockedPipelineSchema = z.array(
     z.object({
         trend: z.number().nullable(),
@@ -398,14 +366,6 @@ export const AnalyticAuthMfaAdoptionPipelineSchema = z.array(
 );
 
 /** @public */
-export const AnalyticDeviceSessionRatioPipelineSchema = z.array(
-    z.object({
-        sessions: z.number(),
-        devices: z.number(),
-    })
-);
-
-/** @public */
 export const AnalyticDevicePerUserPipelineSchema = z.array(
     z.object({
         _id: z.union([z.number(), z.string()]),
@@ -432,41 +392,21 @@ export const AnalyticTermPolicyAcceptancePipelineSchema = z.array(
 ) satisfies z.ZodType<IAnalyticTermPolicyAcceptanceCount[]>;
 
 /** @public */
-export const AnalyticTermPolicyTimeToAcceptPipelineSchema = z.array(
-    z.object({
-        count: z.number(),
-        averageMs: z.number().nullable(),
-    })
-) satisfies z.ZodType<IAnalyticTermPolicyTimeToAcceptAverage[]>;
-
-/** @public */
 export const AnalyticWorkspaceMembershipPipelineSchema = z.array(
     z.object({
-        data: z.array(
-            z.object({
-                _id: AnalyticPipelineObjectIdSchema,
-                count: z.number(),
-            })
-        ),
-        total: z.array(z.object({ n: z.number() })),
+        _id: AnalyticPipelineObjectIdSchema,
+        count: z.number(),
     })
 );
+
+/** @public */
+export const AnalyticWorkspaceMembershipSnapshotDataSchema = z.object({
+    workspaceId: z.string(),
+    count: z.number(),
+}) satisfies z.ZodType<IAnalyticWorkspaceCount>;
 
 /** @public */
 export const AnalyticWorkspaceActivityVolumePipelineSchema = z.array(
-    z.object({
-        data: z.array(
-            z.object({
-                _id: AnalyticPipelineObjectIdSchema,
-                count: z.number(),
-            })
-        ),
-        total: z.array(z.object({ n: z.number() })),
-    })
-);
-
-/** @public */
-export const AnalyticProjectMembershipPipelineSchema = z.array(
     z.object({
         data: z.array(
             z.object({
@@ -490,6 +430,17 @@ export const AnalyticProjectCreationPipelineSchema = z.array(
         ),
     })
 );
+
+/** @public */
+export const AnalyticNotificationDeliveryPipelineSchema = z.array(
+    z.object({
+        channel: z.enum(EnumNotificationChannel),
+        total: z.number(),
+        sent: z.number(),
+        failed: z.number(),
+        pending: z.number(),
+    })
+) satisfies z.ZodType<IAnalyticNotificationDelivery[]>;
 
 /** @public */
 export const AnalyticWorkspaceSummaryPipelineSchema = z.array(
@@ -523,15 +474,6 @@ export const AnalyticDeviceProliferationPipelineSchema = z.array(
                 zScore: z.number(),
             })
         ),
-    })
-);
-
-/** @public */
-export const AnalyticLoginTimeAnomalyPipelineSchema = z.array(
-    z.object({
-        _id: AnalyticPipelineObjectIdSchema,
-        lastHour: z.number(),
-        historicalFrequencyPercent: z.number(),
     })
 );
 
@@ -601,19 +543,6 @@ export const AnalyticSessionAfterAdminPipelineSchema = z.array(
 );
 
 /** @public */
-export const AnalyticBackupCodeNewDevicePipelineSchema = z.array(
-    z.object({
-        data: z.array(
-            z.object({
-                userId: AnalyticPipelineObjectIdSchema,
-                regeneratedAt: z.coerce.date(),
-            })
-        ),
-        total: AnalyticFraudCountPipelineSchema,
-    })
-);
-
-/** @public */
 export const AnalyticSharedFingerprintPipelineSchema = z.array(
     z.object({
         fingerprint: z.string(),
@@ -637,19 +566,6 @@ export const AnalyticForgotPasswordAbusePipelineSchema = z.array(
             z.object({
                 userId: AnalyticPipelineObjectIdSchema,
                 tokenCount: z.number(),
-            })
-        ),
-        total: AnalyticFraudCountPipelineSchema,
-    })
-);
-
-/** @public */
-export const AnalyticUserCountPipelineSchema = z.array(
-    z.object({
-        data: z.array(
-            z.object({
-                userId: AnalyticPipelineObjectIdSchema,
-                count: z.number(),
             })
         ),
         total: AnalyticFraudCountPipelineSchema,

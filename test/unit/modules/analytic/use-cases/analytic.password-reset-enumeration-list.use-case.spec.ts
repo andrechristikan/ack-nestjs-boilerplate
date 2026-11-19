@@ -21,8 +21,6 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const windowMs: number = 3600000;
-
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
@@ -64,7 +62,7 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands the pagination alone to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [{ key: 'example.com', count: 7 }],
@@ -74,7 +72,6 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
             );
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -82,7 +79,7 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.passwordResetEnumerationList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
@@ -90,22 +87,6 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
                     defaultOrderBy: EnumAnalyticKeyCountOrderBy.mostCount,
                 }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudService.passwordResetEnumerationList.mockResolvedValue(
-                page
-            );
-
-            await useCase.execute({
-                page: 1,
-                perPage: 20,
-            });
-
-            expect(
-                analyticFraudService.passwordResetEnumerationList
-            ).toHaveBeenCalledWith(null, pagination);
         });
     });
 });

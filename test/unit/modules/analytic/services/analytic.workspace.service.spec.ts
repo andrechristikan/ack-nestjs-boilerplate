@@ -1,16 +1,18 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
-    AnalyticBucketsResultCacheSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticStatusCountsCacheSchema,
     AnalyticWorkspaceCountPageCacheSchema,
+    AnalyticWorkspaceMembershipSnapshotDataSchema,
     AnalyticWorkspaceSummaryCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/analytic.workspace.repository';
+import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Test } from '@nestjs/testing';
@@ -28,6 +30,8 @@ describe('AnalyticWorkspaceService', () => {
         mock<AnalyticDateUtil>();
     const analyticWorkspaceRepository: MockProxy<AnalyticWorkspaceRepository> =
         mock<AnalyticWorkspaceRepository>();
+    const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
+        mock<AnalyticSnapshotService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -76,6 +80,10 @@ describe('AnalyticWorkspaceService', () => {
                 { provide: CacheService, useValue: cacheService },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 {
+                    provide: AnalyticSnapshotService,
+                    useValue: analyticSnapshotService,
+                },
+                {
                     provide: AnalyticWorkspaceRepository,
                     useValue: analyticWorkspaceRepository,
                 },
@@ -106,32 +114,6 @@ describe('AnalyticWorkspaceService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.workspacesCreation}:${startToken}:${endToken}`,
                 AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('workspacesVisibility', () => {
-        it('returns the repository buckets', async () => {
-            const buckets = [{ key: 'private', count: 3 }];
-            analyticWorkspaceRepository.groupVisibility.mockResolvedValue(
-                buckets
-            );
-
-            const result = await service.workspacesVisibility();
-
-            expect(result).toEqual({ buckets });
-        });
-
-        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            await service.workspacesVisibility();
-
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesVisibility}:_:_`,
-                AnalyticBucketsResultCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );
@@ -202,34 +184,49 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
+    describe('computeWorkspaceMembership', () => {
+        it('returns the repository items with null metadata and a null window', async () => {
+            const items = [
+                {
+                    key: 'workspace-1',
+                    value: 3,
+                    occurredAt: null,
+                    data: { workspaceId: 'workspace-1', count: 3 },
+                },
+            ];
+            analyticWorkspaceRepository.findMembership.mockResolvedValue(items);
+
+            const result = await service.computeWorkspaceMembership();
+
+            expect(result).toEqual({
+                items,
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+            });
+            expect(
+                analyticWorkspaceRepository.findMembership
+            ).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('workspacesMembership', () => {
-        it('passes the pagination params to one repository method and returns its page unchanged', async () => {
-            analyticWorkspaceRepository.groupMembership.mockResolvedValue(
-                offsetPage
-            );
+        it('returns the stored page for the signal with a null value filter and touches neither the repository nor the cache', async () => {
+            analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
             const result = await service.workspacesMembership(pagination);
 
             expect(result).toBe(offsetPage);
-            expect(
-                analyticWorkspaceRepository.groupMembership
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticWorkspaceRepository.groupMembership
-            ).toHaveBeenCalledWith(pagination);
-        });
-
-        it('reads through with the page key, AnalyticWorkspaceCountPageCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            await service.workspacesMembership(pagination);
-
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesMembership}:_:_:1:20`,
-                AnalyticWorkspaceCountPageCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
+            expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
+                EnumAnalyticSnapshotSignal.workspaceMembership,
+                pagination,
+                null,
+                AnalyticWorkspaceMembershipSnapshotDataSchema
             );
+            expect(
+                analyticWorkspaceRepository.findMembership
+            ).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });
 
@@ -376,25 +373,6 @@ describe('AnalyticWorkspaceService', () => {
             expect(
                 analyticWorkspaceRepository.groupMemberRoles
             ).toHaveBeenCalledWith('workspace-1');
-        });
-    });
-
-    describe('activity', () => {
-        it('wraps the repository activity count', async () => {
-            analyticWorkspaceRepository.countActivity.mockResolvedValue(12);
-
-            const result = await service.activity(
-                'workspace-1',
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 12 });
-            expect(
-                analyticWorkspaceRepository.countActivity
-            ).toHaveBeenCalledWith('workspace-1', startDate, endDate, [
-                ...ActivityLogWorkspaceVolumeContract,
-            ]);
         });
     });
 });

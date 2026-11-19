@@ -1,25 +1,27 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
-    AnalyticBucketsResultCacheSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticStatusCountsCacheSchema,
     AnalyticWorkspaceCountPageCacheSchema,
+    AnalyticWorkspaceMembershipSnapshotDataSchema,
     AnalyticWorkspaceSummaryCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
-    IAnalyticBucketsResult,
     IAnalyticMetricCount,
     IAnalyticRoleCount,
+    IAnalyticSnapshotResult,
     IAnalyticStatusCount,
     IAnalyticWorkspaceCount,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/analytic.workspace.repository';
+import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
 
@@ -29,6 +31,7 @@ export class AnalyticWorkspaceService {
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
         private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly analyticWorkspaceRepository: AnalyticWorkspaceRepository
     ) {}
 
@@ -88,26 +91,6 @@ export class AnalyticWorkspaceService {
         );
     }
 
-    async workspacesVisibility(): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.workspacesVisibility,
-            null,
-            null
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticBucketsResultCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticWorkspaceRepository.groupVisibility();
-
-                return { buckets };
-            }
-        );
-    }
-
     async workspacesInviteFunnel(
         startDate: Date,
         endDate: Date
@@ -154,25 +137,22 @@ export class AnalyticWorkspaceService {
         );
     }
 
+    async computeWorkspaceMembership(): Promise<
+        IAnalyticSnapshotResult<IAnalyticWorkspaceCount, null>
+    > {
+        const items = await this.analyticWorkspaceRepository.findMembership();
+
+        return { items, metadata: null, windowStart: null, windowEnd: null };
+    }
+
     async workspacesMembership(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        const key = this.dashboardPageKey(
-            EnumAnalyticDashboardMetric.workspacesMembership,
+        return this.analyticSnapshotService.getListOffset(
+            EnumAnalyticSnapshotSignal.workspaceMembership,
+            params,
             null,
-            null,
-            params.skip,
-            params.limit
-        );
-
-        return this.cacheService.readThrough<
-            IResponsePaginationReturn<IAnalyticWorkspaceCount>,
-            IResponsePaginationReturn<IAnalyticWorkspaceCount>
-        >(
-            key,
-            AnalyticWorkspaceCountPageCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            () => this.analyticWorkspaceRepository.groupMembership(params)
+            AnalyticWorkspaceMembershipSnapshotDataSchema
         );
     }
 
@@ -259,20 +239,5 @@ export class AnalyticWorkspaceService {
 
     async memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
         return this.analyticWorkspaceRepository.groupMemberRoles(workspaceId);
-    }
-
-    async activity(
-        workspaceId: string,
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        const count = await this.analyticWorkspaceRepository.countActivity(
-            workspaceId,
-            startDate,
-            endDate,
-            [...ActivityLogWorkspaceVolumeContract]
-        );
-
-        return { count };
     }
 }

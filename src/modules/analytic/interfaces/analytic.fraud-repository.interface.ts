@@ -2,15 +2,12 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IAnalyticAccountTakeover,
-    IAnalyticApiKeyBurst,
-    IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticDateRange,
     IAnalyticForgotPasswordAbuse,
     IAnalyticFraudRiskScore,
     IAnalyticMassRegistration,
     IAnalyticPasswordResetEnumeration,
-    IAnalyticRefreshSpike,
     IAnalyticRiskScoreOptions,
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
@@ -45,15 +42,6 @@ export interface IAnalyticFraudRepository {
         sessionAfterAdminRevokeInMs: number,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>>;
-    countBackupCodeNewDevice(
-        range: IAnalyticDateRange,
-        newDeviceAfterInMs: number
-    ): Promise<number>;
-    findBackupCodeNewDeviceOffset(
-        range: IAnalyticDateRange,
-        newDeviceAfterInMs: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>>;
     findSharedFingerprints(
         minUsersPerFingerprint: number
     ): Promise<IAnalyticSharedFingerprint[]>;
@@ -84,24 +72,6 @@ export interface IAnalyticFraudRepository {
         minUnusedTokens: number,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>>;
-    countRefreshSpike(
-        range: IAnalyticDateRange,
-        minCount: number
-    ): Promise<number>;
-    findRefreshSpikeOffset(
-        range: IAnalyticDateRange,
-        minCount: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>>;
-    countApiKeyBurst(
-        range: IAnalyticDateRange,
-        minCount: number
-    ): Promise<number>;
-    findApiKeyBurstOffset(
-        range: IAnalyticDateRange,
-        minCount: number,
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>>;
     existsUserById(id: string): Promise<boolean>;
     findRiskScoreCandidates(
         options: IAnalyticRiskScoreOptions

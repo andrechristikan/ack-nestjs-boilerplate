@@ -14,8 +14,6 @@ import {
     AnalyticDeviceProliferationSnapshotMetaSchema,
     AnalyticImpossibleTravelSnapshotDataSchema,
     AnalyticImpossibleTravelSnapshotMetaSchema,
-    AnalyticLoginTimeAnomalySnapshotDataSchema,
-    AnalyticSnapshotNullMetaSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticAnomalyRepository } from '@modules/analytic/repositories/analytic.anomaly.repository';
@@ -95,9 +93,6 @@ describe('AnalyticAnomalyService', () => {
                 'analytic.anomaly.impossibleTravel.maxDeltaInMs': 3600000,
                 'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
                 'analytic.anomaly.loginSpikeIp.windowInMs': 600000,
-                'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent': 20,
-                'analytic.anomaly.loginTimeAnomaly.historyLimit': 1000,
-                'analytic.anomaly.minSample': 5,
                 'analytic.anomaly.lookbackInMs': 2592000000,
                 'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
                 'app.timezone': 'Asia/Jakarta',
@@ -443,49 +438,6 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('loginTimeSummary', () => {
-        it('reads the snapshot summary and returns its header fields', async () => {
-            const computedAt = new Date('2026-02-28T23:45:00.000Z');
-            analyticSnapshotService.getSummary.mockResolvedValue({
-                count: 4,
-                metadata: null,
-                windowStart: startDate,
-                windowEnd: endDate,
-                computedAt,
-            });
-
-            const result = await service.loginTimeSummary();
-
-            expect(result).toEqual({
-                count: 4,
-                windowStart: startDate,
-                windowEnd: endDate,
-                computedAt,
-            });
-            expect(analyticSnapshotService.getSummary).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.loginTime,
-                AnalyticSnapshotNullMetaSchema
-            );
-            expect(cacheService.readThrough).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('loginTimeList', () => {
-        it('pages the snapshot rows of the login-time signal', async () => {
-            analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
-
-            const result = await service.loginTimeList(pagination);
-
-            expect(result).toBe(offsetPage);
-            expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.loginTime,
-                pagination,
-                null,
-                AnalyticLoginTimeAnomalySnapshotDataSchema
-            );
-        });
-    });
-
     describe('computeImpossibleTravel', () => {
         it('returns the items of one repository call over the lookback window with the thresholds as metadata', async () => {
             const items = [
@@ -554,58 +506,6 @@ describe('AnalyticAnomalyService', () => {
             expect(
                 analyticAnomalyRepository.findDeviceProliferation
             ).toHaveBeenCalledWith(3);
-        });
-    });
-
-    describe('computeLoginTimeAnomalies', () => {
-        it('returns the items of one repository call over the lookback window with no metadata', async () => {
-            const items = [
-                {
-                    key: 'user-1',
-                    value: 0,
-                    occurredAt: null,
-                    data: {
-                        userId: 'user-1',
-                        lastHour: 3,
-                        historicalFrequencyPercent: 0,
-                    },
-                },
-            ];
-            analyticAnomalyRepository.findLoginTimeAnomaly.mockResolvedValue(
-                items
-            );
-
-            const result = await service.computeLoginTimeAnomalies();
-
-            expect(result).toEqual({
-                items,
-                metadata: null,
-                windowStart: startDate,
-                windowEnd: now,
-            });
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(
-                2592000000
-            );
-        });
-
-        it('passes the sample, history, frequency, and time zone configuration to the repository', async () => {
-            analyticAnomalyRepository.findLoginTimeAnomaly.mockResolvedValue(
-                []
-            );
-
-            await service.computeLoginTimeAnomalies();
-
-            expect(
-                analyticAnomalyRepository.findLoginTimeAnomaly
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAnomalyRepository.findLoginTimeAnomaly
-            ).toHaveBeenCalledWith(range, {
-                minSample: 5,
-                historyLimit: 1000,
-                historicalFrequencyPercent: 20,
-                timezone: 'Asia/Jakarta',
-            });
         });
     });
 });

@@ -5,7 +5,6 @@ export interface IConfigAnalytic {
     cache: {
         dashboardTtlInMs: number;
         anomalySummaryTtlInMs: number;
-        fraudSummaryTtlInMs: number;
         liveSummaryTtlInMs: number;
         dashboardKeyPattern: string;
         dashboardPageKeyPattern: string;
@@ -16,7 +15,6 @@ export interface IConfigAnalytic {
     };
     maxWindowInMs: number;
     anomaly: {
-        minSample: number;
         lookbackInMs: number;
         impossibleTravel: {
             minDistanceKm: number;
@@ -29,13 +27,16 @@ export interface IConfigAnalytic {
         deviceProliferation: {
             zScoreThreshold: number;
         };
-        loginTimeAnomaly: {
-            historicalFrequencyPercent: number;
-            historyLimit: number;
-        };
     };
     device: {
         inactivityInMs: number;
+    };
+    user: {
+        active: {
+            dailyInMs: number;
+            weeklyInMs: number;
+            monthlyInMs: number;
+        };
     };
     fraud: {
         credentialStuffing: {
@@ -62,18 +63,6 @@ export interface IConfigAnalytic {
         forgotPasswordTokenAbuse: {
             windowInMs: number;
             minUnusedTokens: number;
-        };
-        refreshSpike: {
-            windowInMs: number;
-            minCount: number;
-        };
-        backupCodeNewDevice: {
-            windowInMs: number;
-            newDeviceAfterInMs: number;
-        };
-        apiKeyBurst: {
-            windowInMs: number;
-            minCount: number;
         };
         weights: {
             sessionAfterAdmin: number;
@@ -108,7 +97,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
     cache: {
         dashboardTtlInMs: ms('30m'),
         anomalySummaryTtlInMs: ms('15m'),
-        fraudSummaryTtlInMs: ms('15m'),
         liveSummaryTtlInMs: ms('1m'),
         dashboardKeyPattern: 'Analytic:Dashboard:{metric}:{start}:{end}',
         dashboardPageKeyPattern:
@@ -121,7 +109,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
     },
     maxWindowInMs: ms('90d'),
     anomaly: {
-        minSample: 5,
         lookbackInMs: ms('30d'),
         impossibleTravel: {
             minDistanceKm: 500,
@@ -134,13 +121,16 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         deviceProliferation: {
             zScoreThreshold: 3,
         },
-        loginTimeAnomaly: {
-            historicalFrequencyPercent: 5,
-            historyLimit: 1000,
-        },
     },
     device: {
         inactivityInMs: ms('30d'),
+    },
+    user: {
+        active: {
+            dailyInMs: ms('1d'),
+            weeklyInMs: ms('7d'),
+            monthlyInMs: ms('30d'),
+        },
     },
     fraud: {
         credentialStuffing: {
@@ -167,18 +157,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         forgotPasswordTokenAbuse: {
             windowInMs: ms('24h'),
             minUnusedTokens: 5,
-        },
-        refreshSpike: {
-            windowInMs: ms('10m'),
-            minCount: 20,
-        },
-        backupCodeNewDevice: {
-            windowInMs: ms('1h'),
-            newDeviceAfterInMs: ms('1h'),
-        },
-        apiKeyBurst: {
-            windowInMs: ms('10m'),
-            minCount: 5,
         },
         weights: {
             sessionAfterAdmin: 50,

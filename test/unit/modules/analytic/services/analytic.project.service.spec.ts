@@ -1,10 +1,6 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticProjectCountPageCacheSchema,
-    AnalyticProjectCreationCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticProjectCreationCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticProjectRepository } from '@modules/analytic/repositories/analytic.project.repository';
 import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
@@ -32,17 +28,6 @@ describe('AnalyticProjectService', () => {
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
     const startToken = '2026-01-01T00:00:00.000Z';
     const endToken = '2026-02-01T00:00:00.000Z';
-    const pagination = { skip: 0, limit: 20, orderBy: [] };
-    const page = {
-        type: EnumPaginationType.offset as const,
-        count: 1,
-        perPage: 20,
-        page: 1,
-        totalPage: 1,
-        hasNext: false,
-        hasPrevious: false,
-        data: [{ projectId: 'project-1', count: 4 }],
-    };
     const cachedValue = { count: 99 };
 
     let service: AnalyticProjectService;
@@ -55,10 +40,6 @@ describe('AnalyticProjectService', () => {
         );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
-        );
-        analyticCache.buildDashboardPageKey.mockImplementation(
-            (metric, start, end, pageNumber, perPage) =>
-                `${metric}:${start}:${end}:${pageNumber}:${perPage}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -115,35 +96,6 @@ describe('AnalyticProjectService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.projectsCreation}:${startToken}:${endToken}`,
                 AnalyticProjectCreationCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('projectsMembership', () => {
-        it('passes the pagination params to one repository method and returns its page unchanged', async () => {
-            analyticProjectRepository.groupMembership.mockResolvedValue(page);
-
-            const result = await service.projectsMembership(pagination);
-
-            expect(result).toBe(page);
-            expect(
-                analyticProjectRepository.groupMembership
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticProjectRepository.groupMembership
-            ).toHaveBeenCalledWith(pagination);
-        });
-
-        it('reads through with the page key, AnalyticProjectCountPageCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            await service.projectsMembership(pagination);
-
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.projectsMembership}:_:_:1:20`,
-                AnalyticProjectCountPageCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );

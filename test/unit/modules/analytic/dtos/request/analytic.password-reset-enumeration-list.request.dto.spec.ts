@@ -2,19 +2,17 @@ import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/anal
 import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticPasswordResetEnumerationListRequestSchema.parse({
             page: 1,
             perPage: 20,
             orderBy: 'mostCount',
-            windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
             orderBy: 'mostCount',
-            windowMs: 3600000,
         });
     });
 
@@ -26,12 +24,12 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticPasswordResetEnumerationListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs', () => {
+        expect(
+            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
+                windowMs: '600000',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {

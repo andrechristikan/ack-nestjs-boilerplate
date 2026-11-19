@@ -24,16 +24,6 @@ export class AnalyticDateService {
         return { startDate, endDate };
     }
 
-    resolveWindow(windowMs: number | null, defaultInMs: number): number {
-        if (windowMs === null) {
-            return defaultInMs;
-        }
-        if (windowMs > this.maxWindowInMs) {
-            throw new AnalyticInvalidDateRangeException();
-        }
-        return windowMs;
-    }
-
     optionalRange(
         startDate: Date | null,
         endDate: Date | null

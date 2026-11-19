@@ -11,7 +11,6 @@ import {
     EnumActivityLogAction,
     EnumAnalyticSnapshotSignal,
     EnumPasswordHistoryType,
-    EnumUserLoginFrom,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -21,8 +20,7 @@ import {
     AnalyticForgotPasswordConversionCacheSchema,
     AnalyticLockoutMetricsCacheSchema,
     AnalyticMetricCountCacheSchema,
-    AnalyticMfaAdoptionCacheSchema,
-    AnalyticMfaAttemptSnapshotCacheSchema,
+    AnalyticMfaAdoptionSnapshotMetaSchema,
     AnalyticVerificationFunnelsCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import {
@@ -226,37 +224,6 @@ describe('AnalyticAuthService', () => {
         });
     });
 
-    describe('authLoginSource', () => {
-        it('returns the login-source groups as buckets with one repository read', async () => {
-            const buckets = [{ key: EnumUserLoginFrom.website, count: 7 }];
-            analyticAuthRepository.groupLoginSource.mockResolvedValue(buckets);
-
-            const result = await service.authLoginSource(startDate, endDate);
-
-            expect(result).toEqual({ buckets });
-            expect(
-                analyticAuthRepository.groupLoginSource
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.groupLoginSource
-            ).toHaveBeenCalledWith(startDate, endDate);
-        });
-
-        it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authLoginSource(startDate, endDate);
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authLoginSource}:${startToken}:${endToken}`,
-                AnalyticBucketsResultCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
     describe('authLockout', () => {
         it('splits one action group read into failed logins and max-attempt lockouts', async () => {
             analyticAuthRepository.groupActivityByAction.mockResolvedValue([
@@ -307,46 +274,6 @@ describe('AnalyticAuthService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.authLockout}:${startToken}:${endToken}`,
                 AnalyticLockoutMetricsCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authSessionRevoke', () => {
-        it('counts session revokes in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
-
-            const result = await service.authSessionRevoke(startDate, endDate);
-
-            expect(result).toEqual({ count: 5 });
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [
-                    EnumActivityLogAction.userRevokeSession,
-                    EnumActivityLogAction.userRevokeSessionByAdmin,
-                    EnumActivityLogAction.userRevokeAllSessions,
-                    EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                    EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-                ],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authSessionRevoke(startDate, endDate);
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authSessionRevoke}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );
@@ -444,80 +371,6 @@ describe('AnalyticAuthService', () => {
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.authSessionsUa}:${startToken}:${endToken}`,
                 AnalyticBucketsResultCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authRefreshTokenVolume', () => {
-        it('counts refresh-token activity in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
-
-            const result = await service.authRefreshTokenVolume(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 5 });
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userRefreshToken],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authRefreshTokenVolume(
-                startDate,
-                endDate
-            );
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authRefresh}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authLogoutRate', () => {
-        it('counts logout activity in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
-
-            const result = await service.authLogoutRate(startDate, endDate);
-
-            expect(result).toEqual({ count: 5 });
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userLogout],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authLogoutRate(startDate, endDate);
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authLogout}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
             );
@@ -677,220 +530,70 @@ describe('AnalyticAuthService', () => {
         });
     });
 
-    describe('authAdminForcePassword', () => {
-        it('counts admin password changes in the range with one repository read', async () => {
-            analyticAuthRepository.countPasswordHistoryByType.mockResolvedValue(
-                6
-            );
-
-            const result = await service.authAdminForcePassword(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 6 });
-            expect(
-                analyticAuthRepository.countPasswordHistoryByType
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countPasswordHistoryByType
-            ).toHaveBeenCalledWith(
-                EnumPasswordHistoryType.admin,
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authAdminForcePassword(
-                startDate,
-                endDate
-            );
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authAdminForcePassword}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
     describe('authMfaAdoption', () => {
-        it('maps the one pipeline read into the adoption answer', async () => {
-            const adoption = { enabled: 3, total: 9, rate: 33 };
-            analyticAuthRepository.findMfaAdoption.mockResolvedValue({
-                enabled: 3,
-                total: 9,
+        const computedAt = new Date('2026-03-01T00:00:00.000Z');
+
+        it('answers the stored enabled and total mapped to a rate, with computedAt', async () => {
+            const adoption = { enabled: 40, total: 200, rate: 20 };
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: { enabled: 40, total: 200 },
+                windowStart: null,
+                windowEnd: null,
+                computedAt,
             });
             mfaUtil.mapAdoption.mockReturnValue(adoption);
 
             const result = await service.authMfaAdoption();
 
-            expect(result).toBe(adoption);
+            expect(result).toEqual({ ...adoption, computedAt });
+            expect(analyticSnapshotService.getSummary).toHaveBeenCalledWith(
+                EnumAnalyticSnapshotSignal.mfaAdoption,
+                AnalyticMfaAdoptionSnapshotMetaSchema
+            );
+            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(40, 200);
             expect(
                 analyticAuthRepository.findMfaAdoption
-            ).toHaveBeenCalledTimes(1);
-            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(3, 9);
+            ).not.toHaveBeenCalled();
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
 
-        it('reads through with the dashboard key, AnalyticMfaAdoptionCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
+        it('maps zeros with a null computedAt before the first run', async () => {
+            const adoption = { enabled: 0, total: 0, rate: 0 };
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+                computedAt: null,
+            });
+            mfaUtil.mapAdoption.mockReturnValue(adoption);
 
             const result = await service.authMfaAdoption();
 
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authMfaAdoption}:_:_`,
-                AnalyticMfaAdoptionCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
+            expect(result).toEqual({ ...adoption, computedAt: null });
+            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(0, 0);
         });
     });
 
-    describe('authMfaAdminReset', () => {
-        it('counts admin mfa resets in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
+    describe('computeMfaAdoption', () => {
+        it('returns no items and the repository counts as metadata', async () => {
+            analyticAuthRepository.findMfaAdoption.mockResolvedValue({
+                enabled: 3,
+                total: 9,
+            });
 
-            const result = await service.authMfaAdminReset(startDate, endDate);
+            const result = await service.computeMfaAdoption();
 
-            expect(result).toEqual({ count: 5 });
+            expect(result).toEqual({
+                items: [],
+                metadata: { enabled: 3, total: 9 },
+                windowStart: null,
+                windowEnd: null,
+            });
             expect(
-                analyticAuthRepository.countActivityByActions
+                analyticAuthRepository.findMfaAdoption
             ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userResetMfaByAdmin],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authMfaAdminReset(startDate, endDate);
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authMfaAdminReset}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authMfaVerifySuccess', () => {
-        it('counts successful mfa verifications in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
-
-            const result = await service.authMfaVerifySuccess(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 5 });
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userVerifyMfa],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authMfaVerifySuccess(
-                startDate,
-                endDate
-            );
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authMfaVerify}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authBackupCodeRegeneration', () => {
-        it('counts backup-code regenerations in the range with one repository read', async () => {
-            analyticAuthRepository.countActivityByActions.mockResolvedValue(5);
-
-            const result = await service.authBackupCodeRegeneration(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 5 });
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticAuthRepository.countActivityByActions
-            ).toHaveBeenCalledWith(
-                [EnumActivityLogAction.userRegenerateMfaBackupCodes],
-                startDate,
-                endDate
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authBackupCodeRegeneration(
-                startDate,
-                endDate
-            );
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authBackupCodeRegeneration}:${startToken}:${endToken}`,
-                AnalyticMetricCountCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-    });
-
-    describe('authMfaAttempt', () => {
-        it('returns the mfa attempt snapshot from one repository read', async () => {
-            const snapshot = { usersWithAttempts: 2, totalAttempts: 5 };
-            analyticAuthRepository.findMfaAttempt.mockResolvedValue(snapshot);
-
-            const result = await service.authMfaAttempt();
-
-            expect(result).toBe(snapshot);
-            expect(analyticAuthRepository.findMfaAttempt).toHaveBeenCalledTimes(
-                1
-            );
-        });
-
-        it('reads through with the dashboard key, AnalyticMfaAttemptSnapshotCacheSchema, and the dashboard TTL', async () => {
-            cacheService.readThrough.mockResolvedValue(cachedValue);
-
-            const result = await service.authMfaAttempt();
-
-            expect(result).toBe(cachedValue);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.authMfaAttempt}:_:_`,
-                AnalyticMfaAttemptSnapshotCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
         });
     });
 });

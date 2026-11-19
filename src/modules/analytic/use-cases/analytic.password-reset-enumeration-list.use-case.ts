@@ -30,9 +30,6 @@ export class AnalyticPasswordResetEnumerationListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.passwordResetEnumerationList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticFraudService.passwordResetEnumerationList(params);
     }
 }

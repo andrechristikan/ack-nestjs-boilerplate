@@ -1,4 +1,7 @@
-import type { EnumVerificationType } from '@generated/prisma-client/client';
+import type {
+    EnumNotificationChannel,
+    EnumVerificationType,
+} from '@generated/prisma-client/client';
 
 export interface IAnalyticDateRange {
     startDate: Date;
@@ -43,6 +46,17 @@ export interface IAnalyticMetricRate {
     rate: number;
 }
 
+export interface IAnalyticActiveUsersCount {
+    daily: number;
+    weekly: number;
+    monthly: number;
+}
+
+export interface IAnalyticActiveUsers extends IAnalyticActiveUsersCount {
+    windowEnd: Date;
+    computedAt: Date | null;
+}
+
 export interface IAnalyticBlockedUsers {
     trend: number;
     current: number;
@@ -59,15 +73,14 @@ export interface IAnalyticForgotPasswordConversion {
     rate: number;
 }
 
-export interface IAnalyticMfaAdoption {
+export interface IAnalyticMfaAdoptionRate {
     enabled: number;
     total: number;
     rate: number;
 }
 
-export interface IAnalyticMfaAttemptSnapshot {
-    usersWithAttempts: number;
-    totalAttempts: number;
+export interface IAnalyticMfaAdoption extends IAnalyticMfaAdoptionRate {
+    computedAt: Date | null;
 }
 
 export interface IAnalyticVerificationFunnel {
@@ -82,33 +95,9 @@ export interface IAnalyticVerificationFunnels {
     mobile: IAnalyticVerificationFunnel;
 }
 
-export interface IAnalyticMobileChurn {
-    added: number;
-    updated: number;
-    deleted: number;
-}
-
-export interface IAnalyticSessionDeviceRatio {
-    sessions: number;
-    devices: number;
-    ratio: number;
-}
-
-export interface IAnalyticSessionDeviceCount {
-    sessions: number;
-    devices: number;
-}
-
 export interface IAnalyticDevicePushTokenCount {
     total: number;
     withToken: number;
-}
-
-export interface IAnalyticApiKeyLifecycle {
-    created: number;
-    reset: number;
-    updated: number;
-    deleted: number;
 }
 
 export interface IAnalyticApiKeyActiveExpired {
@@ -124,20 +113,10 @@ export interface IAnalyticTermPolicyAcceptanceRate {
     rate: number;
 }
 
-export interface IAnalyticTermPolicyTimeToAccept {
-    count: number;
-    averageMs: number;
-}
-
 export interface IAnalyticTermPolicyAcceptanceCount {
     published: number;
     acceptances: number;
     users: number;
-}
-
-export interface IAnalyticTermPolicyTimeToAcceptAverage {
-    count: number;
-    averageMs: number | null;
 }
 
 export interface IAnalyticProjectCreation {
@@ -145,15 +124,22 @@ export interface IAnalyticProjectCreation {
     perWorkspace: IAnalyticWorkspaceCount[];
 }
 
-export interface IAnalyticWorkspaceCount {
-    workspaceId: string;
-    count: number;
+export interface IAnalyticNotificationDelivery {
+    channel: EnumNotificationChannel;
+    total: number;
+    sent: number;
+    failed: number;
+    pending: number;
 }
 
-export interface IAnalyticProjectCount {
-    projectId: string;
-    count: number;
+export interface IAnalyticNotificationDeliveryResult {
+    channels: IAnalyticNotificationDelivery[];
 }
+
+export type IAnalyticWorkspaceCount = {
+    workspaceId: string;
+    count: number;
+};
 
 export interface IAnalyticRoleCount {
     role: string;
@@ -217,7 +203,7 @@ export interface IAnalyticVerificationGroupCount {
     count: number;
 }
 
-export interface IAnalyticMfaAdoptionCount {
+export type IAnalyticMfaAdoptionCount = {
     enabled: number;
     total: number;
-}
+};

@@ -8,7 +8,6 @@ import {
     AnalyticDevicesPerUserSnapshotDataSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
-    AnalyticSessionDeviceRatioCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
@@ -16,7 +15,6 @@ import type {
     IAnalyticCountBucket,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
-    IAnalyticSessionDeviceRatio,
     IAnalyticSnapshotBucketsResult,
     IAnalyticSnapshotResult,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -31,7 +29,6 @@ import { Duration } from 'luxon';
 @Injectable()
 export class AnalyticDeviceService {
     private readonly inactivityInMs: number;
-    private readonly idleTimeoutInMs: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -47,9 +44,6 @@ export class AnalyticDeviceService {
         this.inactivityInMs = this.configService.get<number>(
             'analytic.device.inactivityInMs'
         )!;
-        this.idleTimeoutInMs = this.configService.get<number>(
-            'session.idleTimeoutInMs'
-        )!;
     }
 
     private dashboardKey(
@@ -61,32 +55,6 @@ export class AnalyticDeviceService {
         const end = this.analyticDateUtil.cacheToken(endDate);
 
         return this.analyticCache.buildDashboardKey(metric, start, end);
-    }
-
-    async devicesRegistration(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesRegistration,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMetricCountCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticDeviceRepository.countRegistrations(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
-        );
     }
 
     async devicesPlatform(): Promise<IAnalyticBucketsResult> {
@@ -126,64 +94,6 @@ export class AnalyticDeviceService {
                 const rate = this.helperNumberService.percent(withToken, total);
 
                 return { count: withToken, total, rate };
-            }
-        );
-    }
-
-    async devicesInfoRefresh(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesInfoRefresh,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMetricCountCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticDeviceRepository.countInfoRefresh(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
-        );
-    }
-
-    async devicesSessionRatio(): Promise<IAnalyticSessionDeviceRatio> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesSessionRatio,
-            null,
-            null
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticSessionDeviceRatioCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-                const idleSince = this.helperDateService.backward(
-                    now,
-                    Duration.fromMillis(this.idleTimeoutInMs)
-                );
-                const { sessions, devices } =
-                    await this.analyticDeviceRepository.findSessionRatioCounts(
-                        now,
-                        idleSince
-                    );
-
-                return {
-                    sessions,
-                    devices,
-                    ratio: devices === 0 ? 0 : sessions / devices,
-                };
             }
         );
     }

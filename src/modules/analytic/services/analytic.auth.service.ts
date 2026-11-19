@@ -14,8 +14,7 @@ import {
     AnalyticForgotPasswordConversionCacheSchema,
     AnalyticLockoutMetricsCacheSchema,
     AnalyticMetricCountCacheSchema,
-    AnalyticMfaAdoptionCacheSchema,
-    AnalyticMfaAttemptSnapshotCacheSchema,
+    AnalyticMfaAdoptionSnapshotMetaSchema,
     AnalyticVerificationFunnelsCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import {
@@ -29,7 +28,7 @@ import type {
     IAnalyticLockoutMetrics,
     IAnalyticMetricCount,
     IAnalyticMfaAdoption,
-    IAnalyticMfaAttemptSnapshot,
+    IAnalyticMfaAdoptionCount,
     IAnalyticSnapshotBucketsResult,
     IAnalyticSnapshotResult,
     IAnalyticVerificationFunnel,
@@ -196,32 +195,6 @@ export class AnalyticAuthService {
         );
     }
 
-    async authLoginSource(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.authLoginSource,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticBucketsResultCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticAuthRepository.groupLoginSource(
-                        startDate,
-                        endDate
-                    );
-
-                return { buckets };
-            }
-        );
-    }
-
     async authLockout(
         startDate: Date,
         endDate: Date
@@ -259,24 +232,6 @@ export class AnalyticAuthService {
                         countOf(EnumActivityLogAction.userReachMaxMfaAttempt),
                 };
             }
-        );
-    }
-
-    async authSessionRevoke(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authSessionRevoke,
-            [
-                EnumActivityLogAction.userRevokeSession,
-                EnumActivityLogAction.userRevokeSessionByAdmin,
-                EnumActivityLogAction.userRevokeAllSessions,
-                EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                EnumActivityLogAction.userRevokeSessionByDeviceLogin,
-            ],
-            startDate,
-            endDate
         );
     }
 
@@ -370,30 +325,6 @@ export class AnalyticAuthService {
         );
     }
 
-    async authRefreshTokenVolume(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authRefresh,
-            [EnumActivityLogAction.userRefreshToken],
-            startDate,
-            endDate
-        );
-    }
-
-    async authLogoutRate(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authLogout,
-            [EnumActivityLogAction.userLogout],
-            startDate,
-            endDate
-        );
-    }
-
     async authVerificationFunnel(
         startDate: Date,
         endDate: Date
@@ -472,86 +403,35 @@ export class AnalyticAuthService {
         );
     }
 
-    async authAdminForcePassword(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countPasswordHistory(
-            EnumAnalyticDashboardMetric.authAdminForcePassword,
-            EnumPasswordHistoryType.admin,
-            startDate,
-            endDate
-        );
+    async computeMfaAdoption(): Promise<
+        IAnalyticSnapshotResult<never, IAnalyticMfaAdoptionCount>
+    > {
+        const { enabled, total } =
+            await this.analyticAuthRepository.findMfaAdoption();
+
+        return {
+            items: [],
+            metadata: { enabled, total },
+            windowStart: null,
+            windowEnd: null,
+        };
     }
 
     async authMfaAdoption(): Promise<IAnalyticMfaAdoption> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.authMfaAdoption,
-            null,
-            null
+        const { metadata, computedAt } =
+            await this.analyticSnapshotService.getSummary(
+                EnumAnalyticSnapshotSignal.mfaAdoption,
+                AnalyticMfaAdoptionSnapshotMetaSchema
+            );
+
+        const adoption = this.mfaUtil.mapAdoption(
+            metadata?.enabled ?? 0,
+            metadata?.total ?? 0
         );
 
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMfaAdoptionCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const { enabled, total } =
-                    await this.analyticAuthRepository.findMfaAdoption();
-
-                return this.mfaUtil.mapAdoption(enabled, total);
-            }
-        );
-    }
-
-    async authMfaAdminReset(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authMfaAdminReset,
-            [EnumActivityLogAction.userResetMfaByAdmin],
-            startDate,
-            endDate
-        );
-    }
-
-    async authMfaVerifySuccess(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authMfaVerify,
-            [EnumActivityLogAction.userVerifyMfa],
-            startDate,
-            endDate
-        );
-    }
-
-    async authBackupCodeRegeneration(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        return this.countByActions(
-            EnumAnalyticDashboardMetric.authBackupCodeRegeneration,
-            [EnumActivityLogAction.userRegenerateMfaBackupCodes],
-            startDate,
-            endDate
-        );
-    }
-
-    async authMfaAttempt(): Promise<IAnalyticMfaAttemptSnapshot> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.authMfaAttempt,
-            null,
-            null
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMfaAttemptSnapshotCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            () => this.analyticAuthRepository.findMfaAttempt()
-        );
+        return {
+            ...adoption,
+            computedAt,
+        };
     }
 }

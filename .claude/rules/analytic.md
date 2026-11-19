@@ -5,7 +5,7 @@ paths:
 
 # Analytic results
 
-Every analytic read lives in `src/modules/analytic/`. Every result is on request or generated.
+Every analytic read lives in `src/modules/analytic/`. Every result is on request or generated. An endpoint answers a question an operator acts on, never one activity-log action alone.
 
 ## One statement
 
@@ -19,9 +19,9 @@ Every analytic read lives in `src/modules/analytic/`. Every result is on request
 
 ## On request or generated
 
-- On request: a statement whose match an index bounds to a short window or to rare events, a count or group over one collection an index serves (its live parent read by `$lookup` included), or a join that only counts the rows an indexed lookup key matches; read through `CacheService.readThrough`.
-- Generated: a pipeline that joins, windows, or buckets per user over a whole live population and groups or sorts by a per-user value. The `analytic` queue's refresh job computes it into `AnalyticSnapshot` and `AnalyticSnapshotItem`; never computed in the request.
+- On request: a statement whose match an index bounds to a short window or to rare events, a count or group over one collection an index serves, answered whole or bounded by a window (its live parent read by `$lookup` included), or a join from a parent set a filter bounds that only counts the rows an indexed lookup key matches; read through `CacheService.readThrough`.
+- Generated: a pipeline over a whole live population that joins, windows, or buckets per user and groups or sorts by a per-user value, that groups a whole collection with no bounding window and sorts and pages the groups, or that joins per row of that population. The `analytic` queue's refresh job computes it into `AnalyticSnapshot` and `AnalyticSnapshotItem`; never computed in the request.
 - A generated route reads the snapshot from MongoDB with no cache in front, takes no window or date range from the client (its window is the configured one), and answers `computedAt`: before the first run a summary or one-item read carries `null`, and a list's metadata omits the key (`null-safety.md`).
 - An on-request signal whose window is fixed in config takes no window from the client; its summary answers `windowStart`, `windowEnd`, and `computedAt: null`.
-- A snapshot is one header per signal and one `AnalyticSnapshotItem` per item under the run's `runId`; a reader resolves the header, then reads that `runId`'s items. No transaction spans a run, and no document holds a whole item list.
+- A snapshot is one header per signal and one `AnalyticSnapshotItem` per item under the run's `runId`; a reader resolves the header, then reads that `runId`'s items. No transaction spans a run, and no document holds a whole item list. A signal whose result is a fixed set of named values writes no item and carries it in the header's `metadata`.
 - A new generated signal adds its `EnumAnalyticSnapshotSignal` member, its compute method, and its case in `AnalyticProcessRefreshSnapshotUseCase`.

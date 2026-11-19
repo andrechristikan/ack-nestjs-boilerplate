@@ -10,7 +10,6 @@ import {
     AnalyticImpossibleTravelPipelineSchema,
     AnalyticLoginSpikeIpCountPipelineSchema,
     AnalyticLoginSpikeIpPipelineSchema,
-    AnalyticLoginTimeAnomalyPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticGroupKey } from '@modules/analytic/enums/analytic.enum';
 import type { IAnalyticAnomalyRepository } from '@modules/analytic/interfaces/analytic.anomaly-repository.interface';
@@ -20,8 +19,6 @@ import type {
     IAnalyticImpossibleTravel,
     IAnalyticImpossibleTravelThresholds,
     IAnalyticLoginSpikeIp,
-    IAnalyticLoginTimeAnomaly,
-    IAnalyticLoginTimeAnomalyThresholds,
     IAnalyticNearLockout,
     IAnalyticSnapshotItemInput,
 } from '@modules/analytic/interfaces/analytic.interface';
@@ -187,120 +184,6 @@ export class AnalyticAnomalyRepository implements IAnalyticAnomalyRepository {
                 zScore: item.zScore,
             })),
         };
-    }
-
-    async findLoginTimeAnomaly(
-        range: IAnalyticDateRange,
-        {
-            minSample,
-            historyLimit,
-            historicalFrequencyPercent,
-            timezone,
-        }: IAnalyticLoginTimeAnomalyThresholds
-    ): Promise<IAnalyticSnapshotItemInput<IAnalyticLoginTimeAnomaly>[]> {
-        const start = this.analyticPipelineUtil.toDate(range.startDate);
-        const end = this.analyticPipelineUtil.toDate(range.endDate);
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [
-                    {
-                        $match: {
-                            action: { $in: UserLoginAnalyticActions },
-                            createdAt: {
-                                $gte: start,
-                                $lt: end,
-                            },
-                        },
-                    },
-                    {
-                        $group: {
-                            _id: '$userId',
-                            total: { $sum: 1 },
-                            hours: {
-                                $topN: {
-                                    n: historyLimit,
-                                    sortBy: { createdAt: -1 },
-                                    output: {
-                                        $hour: {
-                                            date: '$createdAt',
-                                            timezone,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    { $match: { total: { $gte: minSample } } },
-                    {
-                        $addFields: {
-                            lastHour: { $first: '$hours' },
-                            history: { $slice: ['$hours', 1, historyLimit] },
-                        },
-                    },
-                    {
-                        $addFields: {
-                            historyLength: { $size: '$history' },
-                            sameHourCount: {
-                                $size: {
-                                    $filter: {
-                                        input: '$history',
-                                        cond: { $eq: ['$$this', '$lastHour'] },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    {
-                        $addFields: {
-                            historicalFrequencyPercent: {
-                                $cond: [
-                                    { $eq: ['$historyLength', 0] },
-                                    0,
-                                    {
-                                        $multiply: [
-                                            {
-                                                $divide: [
-                                                    '$sameHourCount',
-                                                    '$historyLength',
-                                                ],
-                                            },
-                                            100,
-                                        ],
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                    {
-                        $match: {
-                            historicalFrequencyPercent: {
-                                $lt: historicalFrequencyPercent,
-                            },
-                        },
-                    },
-                    {
-                        $project: {
-                            lastHour: 1,
-                            historicalFrequencyPercent: 1,
-                        },
-                    },
-                ],
-            });
-        const parsed = AnalyticLoginTimeAnomalyPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data.map(row => ({
-            key: row._id,
-            value: row.historicalFrequencyPercent,
-            occurredAt: null,
-            data: {
-                userId: row._id,
-                lastHour: row.lastHour,
-                historicalFrequencyPercent: row.historicalFrequencyPercent,
-            },
-        }));
     }
 
     async countLoginSpikeIp(

@@ -9,8 +9,6 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
-    const windowMs: number = 3600000;
-
     let useCase: AnalyticPasswordResetEnumerationSummaryUseCase;
 
     beforeEach(async () => {
@@ -30,7 +28,7 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
     });
 
     describe('execute', () => {
-        it('wraps the domain result in the response envelope', async () => {
+        it('wraps the domain result in the response envelope and passes no window to the service', async () => {
             analyticFraudService.passwordResetEnumerationSummary.mockResolvedValue(
                 {
                     count: 6,
@@ -40,9 +38,7 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
                 }
             );
 
-            const result = await useCase.execute({
-                windowMs,
-            });
+            const result = await useCase.execute();
 
             expect(result).toEqual({
                 data: {
@@ -54,24 +50,7 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
             });
             expect(
                 analyticFraudService.passwordResetEnumerationSummary
-            ).toHaveBeenCalledWith(windowMs);
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            analyticFraudService.passwordResetEnumerationSummary.mockResolvedValue(
-                {
-                    count: 0,
-                    windowStart: null,
-                    windowEnd: null,
-                    computedAt: null,
-                }
-            );
-
-            await useCase.execute({});
-
-            expect(
-                analyticFraudService.passwordResetEnumerationSummary
-            ).toHaveBeenCalledWith(null);
+            ).toHaveBeenCalledWith();
         });
     });
 });

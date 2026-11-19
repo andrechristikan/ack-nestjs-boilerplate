@@ -12,6 +12,7 @@ import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.se
 import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticProcessRefreshSnapshotUseCase } from '@modules/analytic/use-cases/analytic.process-refresh-snapshot.use-case';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -30,6 +31,8 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
         mock<AnalyticAnomalyService>();
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
         mock<AnalyticSnapshotService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const sharedFingerprintResult: IAnalyticSnapshotResult<
         IAnalyticSharedFingerprint,
@@ -91,6 +94,10 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
+                },
+                {
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
             ],
         }).compile();
@@ -178,7 +185,6 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             'credentialStuffing',
             'accountTakeover',
             'sessionAfterAdmin',
-            'backupCodeNewDevice',
         ])(
             'throws the fatal unknownProcess queue exception for %s, which no job computes',
             async name => {
@@ -193,6 +199,75 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 expect(analyticSnapshotService.replace).not.toHaveBeenCalled();
             }
         );
+
+        it('computes the workspace-membership rows, replaces the snapshot with them, and returns the row count', async () => {
+            const snapshot = {
+                items: [
+                    {
+                        key: 'workspace-1',
+                        value: 3,
+                        occurredAt: null,
+                        data: { workspaceId: 'workspace-1', count: 3 },
+                    },
+                    {
+                        key: 'workspace-2',
+                        value: 1,
+                        occurredAt: null,
+                        data: { workspaceId: 'workspace-2', count: 1 },
+                    },
+                ],
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+            };
+            analyticWorkspaceService.computeWorkspaceMembership.mockResolvedValue(
+                snapshot
+            );
+
+            const result = await useCase.execute({
+                signal: EnumAnalyticSnapshotSignal.workspaceMembership,
+            });
+
+            expect(
+                analyticWorkspaceService.computeWorkspaceMembership
+            ).toHaveBeenCalledTimes(1);
+            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
+                EnumAnalyticSnapshotSignal.workspaceMembership,
+                snapshot
+            );
+            expect(result).toEqual({
+                message: 'analytic.queue.refreshSnapshot',
+                signal: EnumAnalyticSnapshotSignal.workspaceMembership,
+                count: 2,
+            });
+        });
+
+        it('computes the mfa adoption header through the auth service, replaces the snapshot with it, and returns count 0', async () => {
+            const snapshot = {
+                items: [],
+                metadata: { enabled: 40, total: 200 },
+                windowStart: null,
+                windowEnd: null,
+            };
+            analyticAuthService.computeMfaAdoption.mockResolvedValue(snapshot);
+
+            const result = await useCase.execute({
+                signal: EnumAnalyticSnapshotSignal.mfaAdoption,
+            });
+
+            expect(
+                analyticAuthService.computeMfaAdoption
+            ).toHaveBeenCalledTimes(1);
+            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
+                EnumAnalyticSnapshotSignal.mfaAdoption,
+                snapshot
+            );
+            expect(result).toEqual({
+                message: 'analytic.queue.refreshSnapshot',
+                signal: EnumAnalyticSnapshotSignal.mfaAdoption,
+                count: 0,
+            });
+        });
 
         it('computes the device-proliferation rows, replaces the snapshot with them, and returns the row count', async () => {
             const snapshot = {
@@ -226,46 +301,6 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.deviceProliferation,
-                count: 1,
-            });
-        });
-
-        it('computes the login-time rows, replaces the snapshot with them, and returns the row count', async () => {
-            const snapshot = {
-                items: [
-                    {
-                        key: 'user-1',
-                        value: 0,
-                        occurredAt: null,
-                        data: {
-                            userId: 'user-1',
-                            lastHour: 3,
-                            historicalFrequencyPercent: 0,
-                        },
-                    },
-                ],
-                metadata: null,
-                windowStart: new Date('2025-12-02T00:00:00.000Z'),
-                windowEnd: new Date('2026-01-01T00:00:00.000Z'),
-            };
-            analyticAnomalyService.computeLoginTimeAnomalies.mockResolvedValue(
-                snapshot
-            );
-
-            const result = await useCase.execute({
-                signal: EnumAnalyticSnapshotSignal.loginTime,
-            });
-
-            expect(
-                analyticAnomalyService.computeLoginTimeAnomalies
-            ).toHaveBeenCalledTimes(1);
-            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.loginTime,
-                snapshot
-            );
-            expect(result).toEqual({
-                message: 'analytic.queue.refreshSnapshot',
-                signal: EnumAnalyticSnapshotSignal.loginTime,
                 count: 1,
             });
         });

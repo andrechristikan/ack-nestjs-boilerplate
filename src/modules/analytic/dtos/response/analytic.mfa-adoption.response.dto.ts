@@ -15,6 +15,11 @@ export const AnalyticMfaAdoptionResponseSchema = z.object({
         description: 'Enabled divided by total, as a percentage between 0-100',
         example: faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
     }),
+    computedAt: z.date().nullable().meta({
+        description:
+            'When the stored result was computed, null before the first run',
+        example: faker.date.recent(),
+    }),
 });
 
 /** @public */

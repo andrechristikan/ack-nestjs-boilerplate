@@ -11,6 +11,7 @@ import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.se
 import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
         private readonly analyticDeviceService: AnalyticDeviceService,
         private readonly analyticFraudService: AnalyticFraudService,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService,
         private readonly messageService: MessageService
     ) {}
 
@@ -64,13 +66,6 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
 
                 return this.toResponse(signal, result.items.length);
             }
-            case EnumAnalyticSnapshotSignal.loginTime: {
-                const result =
-                    await this.analyticAnomalyService.computeLoginTimeAnomalies();
-                await this.analyticSnapshotService.replace(signal, result);
-
-                return this.toResponse(signal, result.items.length);
-            }
             case EnumAnalyticSnapshotSignal.riskScore: {
                 const result =
                     await this.analyticFraudService.computeRiskScore();
@@ -88,6 +83,20 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
             case EnumAnalyticSnapshotSignal.devicesPerUser: {
                 const result =
                     await this.analyticDeviceService.computeDevicesPerUser();
+                await this.analyticSnapshotService.replace(signal, result);
+
+                return this.toResponse(signal, result.items.length);
+            }
+            case EnumAnalyticSnapshotSignal.workspaceMembership: {
+                const result =
+                    await this.analyticWorkspaceService.computeWorkspaceMembership();
+                await this.analyticSnapshotService.replace(signal, result);
+
+                return this.toResponse(signal, result.items.length);
+            }
+            case EnumAnalyticSnapshotSignal.mfaAdoption: {
+                const result =
+                    await this.analyticAuthService.computeMfaAdoption();
                 await this.analyticSnapshotService.replace(signal, result);
 
                 return this.toResponse(signal, result.items.length);

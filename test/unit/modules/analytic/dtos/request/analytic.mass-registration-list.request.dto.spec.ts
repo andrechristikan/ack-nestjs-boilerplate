@@ -2,19 +2,17 @@ import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dto
 import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticMassRegistrationListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticMassRegistrationListRequestSchema.parse({
             page: 1,
             perPage: 20,
             orderBy: 'mostCount',
-            windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
             orderBy: 'mostCount',
-            windowMs: 3600000,
         });
     });
 
@@ -24,12 +22,12 @@ describe('AnalyticMassRegistrationListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticMassRegistrationListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs', () => {
+        expect(
+            AnalyticMassRegistrationListRequestSchema.safeParse({
+                windowMs: '600000',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {

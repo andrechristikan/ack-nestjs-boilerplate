@@ -1,7 +1,6 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
 import { AnalyticRoleCountResponseSchema } from '@modules/analytic/dtos/response/analytic.role-count.response.dto';
 import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -11,7 +10,6 @@ import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/r
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-summary.response.dto';
 import type {
-    IAnalyticMetricCount,
     IAnalyticRoleCountList,
     IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
@@ -33,7 +31,6 @@ import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.sum
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
-import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @ApiTags('modules.user.analytic')
@@ -46,8 +43,7 @@ export class AnalyticUserController {
         private readonly analyticSummaryUseCase: AnalyticSummaryUseCase,
         private readonly analyticInviteFunnelUseCase: AnalyticInviteFunnelUseCase,
         private readonly analyticJoinOutcomesUseCase: AnalyticJoinOutcomesUseCase,
-        private readonly analyticMemberRolesUseCase: AnalyticMemberRolesUseCase,
-        private readonly analyticActivityUseCase: AnalyticActivityUseCase
+        private readonly analyticMemberRolesUseCase: AnalyticMemberRolesUseCase
     ) {}
 
     @Doc({ summary: 'get current workspace analytic summary' })
@@ -134,25 +130,5 @@ export class AnalyticUserController {
         @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
         return this.analyticMemberRolesUseCase.execute(workspaceContext);
-    }
-
-    @Doc({ summary: 'get current workspace activity count by date range' })
-    @Response('analytic.workspaceActivity', {
-        schema: AnalyticMetricCountResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
-    @UserProtected()
-    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/workspace/activity')
-    async activity(
-        @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticActivityUseCase.execute(workspaceContext, query);
     }
 }

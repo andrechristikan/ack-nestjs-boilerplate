@@ -30,9 +30,6 @@ export class AnalyticForgotPasswordTokenAbuseListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.forgotPasswordTokenAbuseList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticFraudService.forgotPasswordTokenAbuseList(params);
     }
 }

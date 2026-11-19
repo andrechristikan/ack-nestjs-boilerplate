@@ -37,7 +37,6 @@ describe('AnalyticCache', () => {
                     'Fraud:{signal}:{window}',
                 'analytic.cache.dashboardTtlInMs': 1000,
                 'analytic.cache.anomalySummaryTtlInMs': 2000,
-                'analytic.cache.fraudSummaryTtlInMs': 3000,
                 'analytic.cache.liveSummaryTtlInMs': 4000,
             };
             return values[key];
@@ -80,15 +79,6 @@ describe('AnalyticCache', () => {
             expect(cache.liveSummaryTtlInMs).toBe(4000);
             expect(configService.get).toHaveBeenCalledWith(
                 'analytic.cache.liveSummaryTtlInMs'
-            );
-        });
-    });
-
-    describe('fraudSummaryTtlInMs', () => {
-        it('reads fraudSummaryTtlInMs from analytic.cache.fraudSummaryTtlInMs', () => {
-            expect(cache.fraudSummaryTtlInMs).toBe(3000);
-            expect(configGet).toHaveBeenCalledWith(
-                'analytic.cache.fraudSummaryTtlInMs'
             );
         });
     });

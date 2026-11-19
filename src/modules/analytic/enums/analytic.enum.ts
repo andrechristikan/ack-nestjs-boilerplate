@@ -19,12 +19,9 @@ export enum EnumAnalyticFraudSignal {
     credentialStuffing = 'credential-stuffing',
     accountTakeover = 'account-takeover',
     sessionAfterAdmin = 'session-after-admin',
-    backupCodeNewDevice = 'backup-code-new-device',
     massRegistration = 'mass-registration',
     passwordResetEnumeration = 'password-reset-enumeration',
     forgotPasswordTokenAbuse = 'forgot-password-token-abuse',
-    refreshSpike = 'refresh-spike',
-    apiKeyBurst = 'api-key-burst',
 }
 
 /** @public */
@@ -53,59 +50,35 @@ export enum EnumAnalyticDashboardMetric {
     usersChurn = 'users.churn',
     usersBlocked = 'users.blocked',
     usersSignUpWith = 'users.signUpWith',
-    usersSignUpFrom = 'users.signUpFrom',
     usersEmailVerification = 'users.emailVerification',
-    usersMobileVerification = 'users.mobileVerification',
     usersStatus = 'users.status',
     usersCountry = 'users.country',
     usersRole = 'users.role',
-    usersSelfDelete = 'users.selfDelete',
-    usersClaimUsername = 'users.claimUsername',
-    usersMobileChurn = 'users.mobileChurn',
+    usersActive = 'users.active',
     authLoginFrequency = 'auth.loginFrequency',
     authLoginMethod = 'auth.loginMethod',
-    authLoginSource = 'auth.loginSource',
     authLockout = 'auth.lockout',
-    authSessionRevoke = 'auth.sessionRevoke',
     authSessionsGeo = 'auth.sessionsGeo',
     authSessionsUa = 'auth.sessionsUa',
-    authRefresh = 'auth.refresh',
-    authLogout = 'auth.logout',
     authVerificationFunnel = 'auth.verificationFunnel',
     authPasswordChange = 'auth.passwordChange',
     authForgotConversion = 'auth.forgotConversion',
-    authAdminForcePassword = 'auth.adminForcePassword',
-    authMfaAdoption = 'auth.mfaAdoption',
-    authMfaAdminReset = 'auth.mfaAdminReset',
-    authMfaVerify = 'auth.mfaVerify',
-    authBackupCodeRegeneration = 'auth.backupCodeRegeneration',
-    authMfaAttempt = 'auth.mfaAttempt',
-    devicesRegistration = 'devices.registration',
     devicesPlatform = 'devices.platform',
     devicesPushToken = 'devices.pushToken',
-    devicesInfoRefresh = 'devices.infoRefresh',
-    devicesSessionRatio = 'devices.sessionRatio',
     devicesInactivity = 'devices.inactivity',
-    apiKeysLifecycle = 'apiKeys.lifecycle',
     apiKeysActiveExpired = 'apiKeys.activeExpired',
-    apiKeysTypeMix = 'apiKeys.typeMix',
     termPoliciesAcceptance = 'termPolicies.acceptance',
-    termPoliciesTimeToAccept = 'termPolicies.timeToAccept',
     workspacesCreation = 'workspaces.creation',
-    workspacesVisibility = 'workspaces.visibility',
     workspacesInviteFunnel = 'workspaces.inviteFunnel',
     workspacesJoinOutcomes = 'workspaces.joinOutcomes',
-    workspacesMembership = 'workspaces.membership',
     workspacesActivity = 'workspaces.activity',
     projectsCreation = 'projects.creation',
-    projectsMembership = 'projects.membership',
+    notificationsDelivery = 'notifications.delivery',
 }
 
 /** @public */
 export enum EnumAnalyticGroupKey {
     unknown = 'unknown',
-    public = 'public',
-    private = 'private',
 }
 
 /** @public */
@@ -142,12 +115,6 @@ export enum EnumAnalyticSessionAfterAdminOrderBy {
 }
 
 /** @public */
-export enum EnumAnalyticBackupCodeNewDeviceOrderBy {
-    latest = 'latest',
-    userId = 'userId',
-}
-
-/** @public */
 export enum EnumAnalyticKeyCountOrderBy {
     mostCount = 'mostCount',
     key = 'key',
@@ -156,12 +123,6 @@ export enum EnumAnalyticKeyCountOrderBy {
 /** @public */
 export enum EnumAnalyticForgotPasswordAbuseOrderBy {
     mostTokens = 'mostTokens',
-    userId = 'userId',
-}
-
-/** @public */
-export enum EnumAnalyticUserCountOrderBy {
-    mostCount = 'mostCount',
     userId = 'userId',
 }
 

@@ -1,9 +1,4 @@
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type {
-    IAnalyticProjectCount,
-    IAnalyticProjectCreation,
-} from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticProjectCreation } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IAnalyticProjectRepository {
     findCreation(
@@ -11,7 +6,4 @@ export interface IAnalyticProjectRepository {
         endDate: Date,
         perWorkspaceLimit: number
     ): Promise<IAnalyticProjectCreation>;
-    groupMembership(
-        params: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>>;
 }

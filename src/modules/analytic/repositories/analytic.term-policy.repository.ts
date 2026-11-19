@@ -4,15 +4,11 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import {
-    AnalyticTermPolicyAcceptancePipelineSchema,
-    AnalyticTermPolicyTimeToAcceptPipelineSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticTermPolicyAcceptancePipelineSchema } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticTermPolicyRepository } from '@modules/analytic/interfaces/analytic.term-policy-repository.interface';
 import type {
     IAnalyticPipelineDate,
     IAnalyticTermPolicyAcceptanceCount,
-    IAnalyticTermPolicyTimeToAcceptAverage,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
@@ -95,54 +91,5 @@ export class AnalyticTermPolicyRepository implements IAnalyticTermPolicyReposito
         }
 
         return parsed.data[0] ?? { published: 0, acceptances: 0, users: 0 };
-    }
-
-    async findTimeToAccept(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticTermPolicyTimeToAcceptAverage> {
-        const start = this.analyticPipelineUtil.toDate(startDate);
-        const end = this.analyticPipelineUtil.toDate(endDate);
-        const result =
-            await this.databaseService.client.termPolicyUserAcceptance.aggregateRaw(
-                {
-                    pipeline: [
-                        {
-                            $match: { acceptedAt: { $gte: start, $lt: end } },
-                        },
-                        {
-                            $lookup: {
-                                from: 'TermPolicies',
-                                localField: 'termPolicyId',
-                                foreignField: '_id',
-                                pipeline: [{ $project: { publishedAt: 1 } }],
-                                as: 'p',
-                            },
-                        },
-                        { $unwind: '$p' },
-                        {
-                            $group: {
-                                _id: null,
-                                count: { $sum: 1 },
-                                averageMs: {
-                                    $avg: {
-                                        $subtract: [
-                                            '$acceptedAt',
-                                            '$p.publishedAt',
-                                        ],
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                }
-            );
-        const parsed =
-            AnalyticTermPolicyTimeToAcceptPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data[0] ?? { count: 0, averageMs: null };
     }
 }

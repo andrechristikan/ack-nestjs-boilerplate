@@ -4,12 +4,13 @@ import {
     EnumActivityLogAction,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { IActivityLogAnalyticActionCount } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
+    AnalyticUserActivePipelineSchema,
     AnalyticUserBlockedPipelineSchema,
     AnalyticUserChurnPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import type {
+    IAnalyticActiveUsersCount,
     IAnalyticBlockedUsers,
     IAnalyticChurnCount,
     IAnalyticCountBucket,
@@ -171,6 +172,62 @@ export class AnalyticUserRepository implements IAnalyticUserRepository {
         return { trend: row?.trend ?? 0, current: row?.current ?? 0 };
     }
 
+    async findActiveCounts(
+        dailySince: Date,
+        weeklySince: Date,
+        monthlySince: Date
+    ): Promise<IAnalyticActiveUsersCount> {
+        const daily = this.analyticPipelineUtil.toDate(dailySince);
+        const weekly = this.analyticPipelineUtil.toDate(weeklySince);
+        const monthly = this.analyticPipelineUtil.toDate(monthlySince);
+        const result = await this.databaseService.client.user.aggregateRaw({
+            pipeline: [
+                {
+                    $match: {
+                        deletedAt: null,
+                        lastLoginAt: { $gte: monthly },
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        daily: {
+                            $sum: {
+                                $cond: [
+                                    { $gte: ['$lastLoginAt', daily] },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        weekly: {
+                            $sum: {
+                                $cond: [
+                                    { $gte: ['$lastLoginAt', weekly] },
+                                    1,
+                                    0,
+                                ],
+                            },
+                        },
+                        monthly: { $sum: 1 },
+                    },
+                },
+            ],
+        });
+        const parsed = AnalyticUserActivePipelineSchema.safeParse(result);
+        if (!parsed.success) {
+            throw new AppUnknownException(parsed.error);
+        }
+
+        const [row] = parsed.data;
+
+        return {
+            daily: row?.daily ?? 0,
+            weekly: row?.weekly ?? 0,
+            monthly: row?.monthly ?? 0,
+        };
+    }
+
     async groupSignUpWith(
         startDate: Date | null,
         endDate: Date | null
@@ -191,26 +248,6 @@ export class AnalyticUserRepository implements IAnalyticUserRepository {
         }));
     }
 
-    async groupSignUpFrom(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticCountBucket[]> {
-        const rows = await this.databaseService.client.user.groupBy({
-            by: ['signUpFrom'],
-            where: {
-                deletedAt: null,
-                ...(startDate &&
-                    endDate && { signUpAt: { gte: startDate, lt: endDate } }),
-            },
-            _count: { _all: true },
-        });
-
-        return rows.map(row => ({
-            key: row.signUpFrom,
-            count: row._count._all,
-        }));
-    }
-
     async groupEmailVerification(
         startDate: Date | null,
         endDate: Date | null
@@ -224,30 +261,6 @@ export class AnalyticUserRepository implements IAnalyticUserRepository {
             },
             _count: { _all: true },
         });
-
-        return rows.map(row => ({
-            isVerified: row.isVerified,
-            count: row._count._all,
-        }));
-    }
-
-    async groupMobileVerification(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticVerifiedGroupCount[]> {
-        const rows = await this.databaseService.client.userMobileNumber.groupBy(
-            {
-                by: ['isVerified'],
-                where: {
-                    user: { deletedAt: null },
-                    ...(startDate &&
-                        endDate && {
-                            createdAt: { gte: startDate, lt: endDate },
-                        }),
-                },
-                _count: { _all: true },
-            }
-        );
 
         return rows.map(row => ({
             isVerified: row.isVerified,
@@ -286,38 +299,5 @@ export class AnalyticUserRepository implements IAnalyticUserRepository {
         });
 
         return rows.map(row => ({ key: row.roleId, count: row._count._all }));
-    }
-
-    async countActivityByActions(
-        actions: EnumActivityLogAction[],
-        startDate: Date,
-        endDate: Date
-    ): Promise<number> {
-        return this.databaseService.client.activityLog.count({
-            where: {
-                action: { in: actions },
-                createdAt: { gte: startDate, lt: endDate },
-            },
-        });
-    }
-
-    async groupActivityByAction(
-        actions: EnumActivityLogAction[],
-        startDate: Date,
-        endDate: Date
-    ): Promise<IActivityLogAnalyticActionCount[]> {
-        const rows = await this.databaseService.client.activityLog.groupBy({
-            by: ['action'],
-            where: {
-                action: { in: actions },
-                createdAt: { gte: startDate, lt: endDate },
-            },
-            _count: { _all: true },
-        });
-
-        return rows.map(row => ({
-            action: row.action,
-            count: row._count._all,
-        }));
     }
 }

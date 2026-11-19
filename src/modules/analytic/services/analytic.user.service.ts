@@ -1,36 +1,54 @@
 import { CacheService } from '@common/cache/services/cache.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
+    AnalyticActiveUsersCacheSchema,
     AnalyticBlockedUsersCacheSchema,
     AnalyticBucketsResultCacheSchema,
     AnalyticMetricCountCacheSchema,
     AnalyticMetricRateCacheSchema,
-    AnalyticMobileChurnCacheSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
+    IAnalyticActiveUsers,
     IAnalyticBlockedUsers,
     IAnalyticBucketsResult,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
-    IAnalyticMobileChurn,
     IAnalyticVerifiedGroupCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticUserRepository } from '@modules/analytic/repositories/analytic.user.repository';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
 
 @Injectable()
 export class AnalyticUserService {
+    private readonly dailyInMs: number;
+    private readonly weeklyInMs: number;
+    private readonly monthlyInMs: number;
+
     constructor(
+        private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
         private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
         private readonly analyticUserRepository: AnalyticUserRepository
-    ) {}
+    ) {
+        this.dailyInMs = this.configService.get<number>(
+            'analytic.user.active.dailyInMs'
+        )!;
+        this.weeklyInMs = this.configService.get<number>(
+            'analytic.user.active.weeklyInMs'
+        )!;
+        this.monthlyInMs = this.configService.get<number>(
+            'analytic.user.active.monthlyInMs'
+        )!;
+    }
 
     private dashboardKey(
         metric: EnumAnalyticDashboardMetric,
@@ -54,6 +72,43 @@ export class AnalyticUserService {
         const rate = this.helperNumberService.percent(verified, total);
 
         return { count: verified, total, rate };
+    }
+
+    async usersActive(): Promise<IAnalyticActiveUsers> {
+        const key = this.dashboardKey(
+            EnumAnalyticDashboardMetric.usersActive,
+            null,
+            null
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticActiveUsersCacheSchema,
+            this.analyticCache.dashboardTtlInMs,
+            async () => {
+                const now = this.helperDateService.create();
+                const dailySince = this.helperDateService.backward(
+                    now,
+                    Duration.fromMillis(this.dailyInMs)
+                );
+                const weeklySince = this.helperDateService.backward(
+                    now,
+                    Duration.fromMillis(this.weeklyInMs)
+                );
+                const monthlySince = this.helperDateService.backward(
+                    now,
+                    Duration.fromMillis(this.monthlyInMs)
+                );
+                const counts =
+                    await this.analyticUserRepository.findActiveCounts(
+                        dailySince,
+                        weeklySince,
+                        monthlySince
+                    );
+
+                return { ...counts, windowEnd: now, computedAt: null };
+            }
+        );
     }
 
     async usersRegistrations(
@@ -158,32 +213,6 @@ export class AnalyticUserService {
         );
     }
 
-    async usersSignUpFrom(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersSignUpFrom,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticBucketsResultCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticUserRepository.groupSignUpFrom(
-                        startDate,
-                        endDate
-                    );
-
-                return { buckets };
-            }
-        );
-    }
-
     async usersEmailVerification(
         startDate: Date | null,
         endDate: Date | null
@@ -201,32 +230,6 @@ export class AnalyticUserService {
             async () => {
                 const rows =
                     await this.analyticUserRepository.groupEmailVerification(
-                        startDate,
-                        endDate
-                    );
-
-                return this.toVerificationRate(rows);
-            }
-        );
-    }
-
-    async usersMobileVerification(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticMetricRate> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersMobileVerification,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMetricRateCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticUserRepository.groupMobileVerification(
                         startDate,
                         endDate
                     );
@@ -290,101 +293,6 @@ export class AnalyticUserService {
                 const buckets = await this.analyticUserRepository.groupRole();
 
                 return { buckets };
-            }
-        );
-    }
-
-    async usersSelfDelete(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersSelfDelete,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMetricCountCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticUserRepository.countActivityByActions(
-                        [EnumActivityLogAction.userDeleteSelf],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
-        );
-    }
-
-    async usersClaimUsername(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersClaimUsername,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMetricCountCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticUserRepository.countActivityByActions(
-                        [EnumActivityLogAction.userClaimUsername],
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
-        );
-    }
-
-    async usersMobileChurn(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticMobileChurn> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersMobileChurn,
-            startDate,
-            endDate
-        );
-
-        return this.cacheService.readThrough(
-            key,
-            AnalyticMobileChurnCacheSchema,
-            this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticUserRepository.groupActivityByAction(
-                        [
-                            EnumActivityLogAction.userAddMobileNumber,
-                            EnumActivityLogAction.userUpdateMobileNumber,
-                            EnumActivityLogAction.userDeleteMobileNumber,
-                        ],
-                        startDate,
-                        endDate
-                    );
-                const countOf = (action: EnumActivityLogAction): number =>
-                    rows.find(row => row.action === action)?.count ?? 0;
-
-                return {
-                    added: countOf(EnumActivityLogAction.userAddMobileNumber),
-                    updated: countOf(
-                        EnumActivityLogAction.userUpdateMobileNumber
-                    ),
-                    deleted: countOf(
-                        EnumActivityLogAction.userDeleteMobileNumber
-                    ),
-                };
             }
         );
     }

@@ -104,7 +104,9 @@ Rule: `analytic.md`, On request or generated.
 - Computing every signal in the request behind a cache: the first reader of each window pays for the whole collection, and each later list page pays for it again.
 - Analytic as a read-only module: it then has nowhere to keep a result.
 - Every one-statement result on request behind a cache: a cache miss under heavy traffic scans the whole live population.
-- Every whole-population result generated, a single-collection indexed count or group included: an indexed count or group over one collection answers within the request, and a snapshot adds a job, an enum member, and a stale `computedAt` for no saving.
+- Every whole-population result generated, a single-collection indexed count or a group answered whole included: it answers within the request, and a snapshot adds a job, an enum member, and a stale `computedAt` for no saving.
+- A whole-collection group sorted and paged on request behind a per-page cache: each page miss repeats the group.
+- A join per row of a whole live population on request because every lookup is indexed: a cache miss still joins every row.
 
 ### Every analytic read lives in the analytic module
 

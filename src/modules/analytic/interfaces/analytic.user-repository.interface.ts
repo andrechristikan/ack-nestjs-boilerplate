@@ -1,6 +1,5 @@
-import type { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { IActivityLogAnalyticActionCount } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
+    IAnalyticActiveUsersCount,
     IAnalyticBlockedUsers,
     IAnalyticChurnCount,
     IAnalyticCountBucket,
@@ -17,11 +16,12 @@ export interface IAnalyticUserRepository {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBlockedUsers>;
+    findActiveCounts(
+        dailySince: Date,
+        weeklySince: Date,
+        monthlySince: Date
+    ): Promise<IAnalyticActiveUsersCount>;
     groupSignUpWith(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticCountBucket[]>;
-    groupSignUpFrom(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticCountBucket[]>;
@@ -29,21 +29,7 @@ export interface IAnalyticUserRepository {
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticVerifiedGroupCount[]>;
-    groupMobileVerification(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IAnalyticVerifiedGroupCount[]>;
     groupStatus(): Promise<IAnalyticCountBucket[]>;
     groupCountry(): Promise<IAnalyticCountBucket[]>;
     groupRole(): Promise<IAnalyticCountBucket[]>;
-    countActivityByActions(
-        actions: EnumActivityLogAction[],
-        startDate: Date,
-        endDate: Date
-    ): Promise<number>;
-    groupActivityByAction(
-        actions: EnumActivityLogAction[],
-        startDate: Date,
-        endDate: Date
-    ): Promise<IActivityLogAnalyticActionCount[]>;
 }

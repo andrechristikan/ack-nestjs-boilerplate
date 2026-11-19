@@ -1,5 +1,5 @@
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import type { IAnalyticMfaAdoption } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticMfaAdoptionRate } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -9,7 +9,7 @@ export class MfaUtil {
     mapAdoption(
         enabled: number,
         activeUserCount: number
-    ): IAnalyticMfaAdoption {
+    ): IAnalyticMfaAdoptionRate {
         const rate = this.helperNumberService.percent(enabled, activeUserCount);
         return { enabled, total: activeUserCount, rate };
     }

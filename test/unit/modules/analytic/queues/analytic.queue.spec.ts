@@ -69,11 +69,11 @@ describe('AnalyticQueue', () => {
             );
         });
 
-        it('schedules exactly the seven generated signals', async () => {
+        it('schedules exactly the eight generated signals', async () => {
             await queue.onModuleInit();
 
-            expect(Object.values(EnumAnalyticSnapshotSignal)).toHaveLength(7);
-            expect(analyticQueue.upsertJobScheduler).toHaveBeenCalledTimes(7);
+            expect(Object.values(EnumAnalyticSnapshotSignal)).toHaveLength(8);
+            expect(analyticQueue.upsertJobScheduler).toHaveBeenCalledTimes(8);
         });
 
         it.each([
@@ -81,7 +81,6 @@ describe('AnalyticQueue', () => {
             'credentialStuffing',
             'accountTakeover',
             'sessionAfterAdmin',
-            'backupCodeNewDevice',
         ])('adds no scheduler for %s, which answers on request', async name => {
             await queue.onModuleInit();
 

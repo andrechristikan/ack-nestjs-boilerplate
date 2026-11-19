@@ -9,8 +9,6 @@ describe('AnalyticMassRegistrationSummaryUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
-    const windowMs: number = 3600000;
-
     let useCase: AnalyticMassRegistrationSummaryUseCase;
 
     beforeEach(async () => {
@@ -30,7 +28,7 @@ describe('AnalyticMassRegistrationSummaryUseCase', () => {
     });
 
     describe('execute', () => {
-        it('wraps the domain result in the response envelope', async () => {
+        it('wraps the domain result in the response envelope and passes no window to the service', async () => {
             analyticFraudService.massRegistrationSummary.mockResolvedValue({
                 count: 6,
                 windowStart: null,
@@ -38,7 +36,7 @@ describe('AnalyticMassRegistrationSummaryUseCase', () => {
                 computedAt: null,
             });
 
-            const result = await useCase.execute({ windowMs });
+            const result = await useCase.execute();
 
             expect(result).toEqual({
                 data: {
@@ -50,22 +48,7 @@ describe('AnalyticMassRegistrationSummaryUseCase', () => {
             });
             expect(
                 analyticFraudService.massRegistrationSummary
-            ).toHaveBeenCalledWith(windowMs);
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            analyticFraudService.massRegistrationSummary.mockResolvedValue({
-                count: 0,
-                windowStart: null,
-                windowEnd: null,
-                computedAt: null,
-            });
-
-            await useCase.execute({});
-
-            expect(
-                analyticFraudService.massRegistrationSummary
-            ).toHaveBeenCalledWith(null);
+            ).toHaveBeenCalledWith();
         });
     });
 });

@@ -2,19 +2,17 @@ import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/
 import { EnumAnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({
             page: 1,
             perPage: 20,
             orderBy: 'mostTokens',
-            windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
             orderBy: 'mostTokens',
-            windowMs: 3600000,
         });
     });
 
@@ -24,12 +22,12 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs', () => {
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                windowMs: '600000',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {

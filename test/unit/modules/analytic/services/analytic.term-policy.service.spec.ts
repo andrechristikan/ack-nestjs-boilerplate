@@ -5,10 +5,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticTermPolicyAcceptanceRateCacheSchema,
-    AnalyticTermPolicyTimeToAcceptCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticTermPolicyAcceptanceRateCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticTermPolicyRepository } from '@modules/analytic/repositories/analytic.term-policy.repository';
 import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
@@ -126,48 +123,6 @@ describe('AnalyticTermPolicyService', () => {
                 dashboardTtlInMs,
                 expect.any(Function)
             );
-        });
-    });
-
-    describe('termPoliciesTimeToAccept', () => {
-        it('answers the count and average from one repository call', async () => {
-            analyticTermPolicyRepository.findTimeToAccept.mockResolvedValue({
-                count: 3,
-                averageMs: 1500,
-            });
-
-            const result = await service.termPoliciesTimeToAccept(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 3, averageMs: 1500 });
-            expect(
-                analyticTermPolicyRepository.findTimeToAccept
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                analyticTermPolicyRepository.findTimeToAccept
-            ).toHaveBeenCalledWith(startDate, endDate);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.termPoliciesTimeToAccept}:${startToken}:${endToken}`,
-                AnalyticTermPolicyTimeToAcceptCacheSchema,
-                dashboardTtlInMs,
-                expect.any(Function)
-            );
-        });
-
-        it('answers an average of 0 when no acceptance falls in the range', async () => {
-            analyticTermPolicyRepository.findTimeToAccept.mockResolvedValue({
-                count: 0,
-                averageMs: null,
-            });
-
-            const result = await service.termPoliciesTimeToAccept(
-                startDate,
-                endDate
-            );
-
-            expect(result).toEqual({ count: 0, averageMs: 0 });
         });
     });
 });

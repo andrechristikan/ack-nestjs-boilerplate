@@ -21,8 +21,6 @@ describe('AnalyticMassRegistrationListUseCase', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const windowMs: number = 3600000;
-
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
@@ -64,7 +62,7 @@ describe('AnalyticMassRegistrationListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands the pagination alone to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [{ key: '10.0.0.1', count: 8 }],
@@ -72,7 +70,6 @@ describe('AnalyticMassRegistrationListUseCase', () => {
             analyticFraudService.massRegistrationList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -80,7 +77,7 @@ describe('AnalyticMassRegistrationListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.massRegistrationList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
@@ -88,17 +85,6 @@ describe('AnalyticMassRegistrationListUseCase', () => {
                     defaultOrderBy: EnumAnalyticKeyCountOrderBy.mostCount,
                 }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudService.massRegistrationList.mockResolvedValue(page);
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(
-                analyticFraudService.massRegistrationList
-            ).toHaveBeenCalledWith(null, pagination);
         });
     });
 });
