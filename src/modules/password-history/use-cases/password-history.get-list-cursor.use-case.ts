@@ -7,11 +7,12 @@ import type { IPasswordHistoryList } from '@modules/password-history/interfaces/
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { Injectable } from '@nestjs/common';
 import {
-    PasswordHistoryCursorAvailableOrderBy,
+    PasswordHistoryCursorOrderBy,
     PasswordHistorySharedListCursorScope,
 } from '@modules/password-history/constants/password-history.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumPasswordHistoryCursorOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 @Injectable()
 export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class PasswordHistoryGetListCursorUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: PasswordHistorySharedListCursorScope,
-            availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+            orderBy: PasswordHistoryCursorOrderBy,
+            defaultOrderBy: EnumPasswordHistoryCursorOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

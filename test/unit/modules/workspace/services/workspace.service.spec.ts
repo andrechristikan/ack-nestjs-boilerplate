@@ -29,7 +29,6 @@ import {
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
-import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
@@ -123,53 +122,6 @@ describe('WorkspaceService', () => {
         }).compile();
 
         service = module.get(WorkspaceService);
-    });
-
-    describe('validateWorkspaceGuard', () => {
-        it('throws WorkspaceHeaderMissingException when the id is null', async () => {
-            await expect(
-                service.validateWorkspaceGuard(null)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceHeaderMissingException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.headerMissing,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.headerMissing
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'workspace.error.headerMissing',
-            });
-            expect(workspaceRepository.findActiveById).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceNotFoundException when no active workspace matches the id', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(null);
-
-            await expect(
-                service.validateWorkspaceGuard('workspace-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
-            });
-        });
-
-        it('returns the active workspace resolved by id', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-
-            const result = await service.validateWorkspaceGuard('workspace-1');
-
-            expect(result).toBe(workspace);
-            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
-                'workspace-1'
-            );
-        });
     });
 
     describe('getListCursorByMember', () => {
@@ -340,15 +292,14 @@ describe('WorkspaceService', () => {
             ]);
             databaseUtil.createId.mockReturnValue('workspace-1');
             featureFlagService.getMetadataNumber.mockResolvedValue(5);
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                ['owned-1']
-            );
         });
 
         it('refuses a create for an owner of 2 workspaces when the flag caps at 2', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(2);
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                2
+            );
 
             await expect(
                 service.createWorkspace(
@@ -367,7 +318,9 @@ describe('WorkspaceService', () => {
         it('allows a create for an owner of 2 workspaces when the flag caps at 3', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(3);
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                2
+            );
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             const result = await service.createWorkspace(
@@ -403,7 +356,9 @@ describe('WorkspaceService', () => {
 
         it('throws WorkspaceCapReachedException from inside the transaction when the owner already meets the cap', async () => {
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(5);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                5
+            );
 
             await expect(
                 service.createWorkspace(
@@ -423,12 +378,8 @@ describe('WorkspaceService', () => {
                 messagePath: 'workspace.error.capReached',
             });
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
-                tx,
-                ['owned-1']
-            );
+                workspaceMemberRepository.countOwnedActiveByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
             expect(
@@ -437,7 +388,9 @@ describe('WorkspaceService', () => {
         });
 
         it('creates the workspace on the first slug candidate', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
@@ -450,12 +403,8 @@ describe('WorkspaceService', () => {
 
             expect(result).toBe(workspace);
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
-                tx,
-                ['owned-1']
-            );
+                workspaceMemberRepository.countOwnedActiveByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -469,7 +418,9 @@ describe('WorkspaceService', () => {
         });
 
         it('adds the creator entry on the tx of the create', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
@@ -496,7 +447,9 @@ describe('WorkspaceService', () => {
         });
 
         it('retries with the next slug candidate after a collision and creates on the second attempt', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             const collision = new Error('slug collision');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
@@ -523,7 +476,9 @@ describe('WorkspaceService', () => {
         });
 
         it('wraps a non-collision transaction error in AppUnknownException without retrying', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             const otherError = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -543,7 +498,9 @@ describe('WorkspaceService', () => {
         });
 
         it('propagates an AppBaseException raised in the transaction without retrying', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             const typedError = new WorkspaceNotFoundException();
             outboxService.withTransaction.mockRejectedValue(typedError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
@@ -560,7 +517,9 @@ describe('WorkspaceService', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(1);
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                1
+            );
             const collision = new Error('slug collision');
             outboxService.withTransaction.mockRejectedValue(collision);
             databaseUtil.isUniqueCollision.mockReturnValue(true);
@@ -855,22 +814,24 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
         const deletedAt = new Date('2026-01-01T00:00:00.000Z');
 
-        it('reads the owner workspace ids on the transaction and soft-deletes them, returning their ids', async () => {
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                ['workspace-1', 'workspace-2']
-            );
+        it('soft-deletes the given workspace ids and returns the deleted ids without reading the owned ids again', async () => {
             workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
                 'workspace-1',
                 'workspace-2',
             ]);
 
             await expect(
-                service.softDeleteOwnedByUserInTx(tx, 'user-1', deletedAt)
+                service.softDeleteOwnedByUserInTx(
+                    tx,
+                    ['workspace-1', 'workspace-2'],
+                    'user-1',
+                    deletedAt
+                )
             ).resolves.toEqual(['workspace-1', 'workspace-2']);
 
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).not.toHaveBeenCalled();
             expect(
                 workspaceRepository.softDeleteOwnedByUserInTx
             ).toHaveBeenCalledWith(
@@ -882,13 +843,10 @@ describe('WorkspaceService', () => {
         });
 
         it('passes an empty owner id list to the repository unchanged', async () => {
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                []
-            );
             workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([]);
 
             await expect(
-                service.softDeleteOwnedByUserInTx(tx, 'user-1', deletedAt)
+                service.softDeleteOwnedByUserInTx(tx, [], 'user-1', deletedAt)
             ).resolves.toEqual([]);
 
             expect(
@@ -926,55 +884,45 @@ describe('WorkspaceService', () => {
             });
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberRepository.findWorkspaceIdsByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
             expect(
                 workspaceRepository.existsOwnedWithOtherMembersInTx
             ).toHaveBeenCalledWith(tx, ['workspace-1'], 'user-1');
         });
 
-        it('resolves when no owned workspace has another member', async () => {
+        it('returns the owned workspace ids it read when no owned workspace has another member', async () => {
             workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
                 false
             );
 
             await expect(
                 service.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
-            ).resolves.toBeUndefined();
+            ).resolves.toEqual(['workspace-1']);
         });
     });
 
     describe('countOwnedInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
 
-        it('reads the owner workspace ids on the transaction and counts them', async () => {
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                ['workspace-1', 'workspace-2']
+        it('returns the one owned-active count read on the transaction and reads nothing else', async () => {
+            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+                2
             );
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(2);
 
             await expect(service.countOwnedInTx(tx, 'user-1')).resolves.toBe(2);
 
             expect(
+                workspaceMemberRepository.countOwnedActiveByUserInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberRepository.countOwnedActiveByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1');
+            expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
-                tx,
-                ['workspace-1', 'workspace-2']
-            );
-        });
-
-        it('passes an empty owner id list to the repository unchanged', async () => {
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                []
-            );
-            workspaceRepository.countByOwnerInTx.mockResolvedValue(0);
-
-            await expect(service.countOwnedInTx(tx, 'user-1')).resolves.toBe(0);
-
-            expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
-                tx,
-                []
-            );
+            ).not.toHaveBeenCalled();
         });
     });
 

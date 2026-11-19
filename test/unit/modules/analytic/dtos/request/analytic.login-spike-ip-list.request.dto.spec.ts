@@ -1,20 +1,18 @@
-import { AnalyticLoginSpikeIpAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import { EnumAnalyticLoginSpikeIpOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticLoginSpikeIpListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticLoginSpikeIpListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'mostUsers',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'mostUsers',
         });
     });
 
@@ -24,12 +22,16 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticLoginSpikeIpListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs and the date range', () => {
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({ windowMs: 1000 })
+                .success
+        ).toBe(false);
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({
+                startDate: '2026-01-01T00:00:00.000Z',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {
@@ -48,52 +50,49 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticLoginSpikeIpAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumAnalyticLoginSpikeIpOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticLoginSpikeIpOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticLoginSpikeIpAvailableOrderBy[0];
-
-        expect(
-            AnalyticLoginSpikeIpListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticLoginSpikeIpAvailableOrderBy[0];
-        const last =
-            AnalyticLoginSpikeIpAvailableOrderBy[
-                AnalyticLoginSpikeIpAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticLoginSpikeIpListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:`,
-        `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:DESC`,
-        `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'mostUsers:asc',
+        'default',
+        'createdAt',
+        'uniqueUsers',
+        'attempts',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({
+                orderBy: ['mostUsers', 'mostUsers'],
+            }).success
         ).toBe(false);
     });
 });

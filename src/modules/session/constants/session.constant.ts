@@ -4,16 +4,6 @@ import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { z } from 'zod';
 
 /** @public */
-export const SessionAnalyticSelect = {
-    id: true,
-    userId: true,
-    ipAddress: true,
-    createdAt: true,
-    geoLocation: true,
-    userAgent: true,
-} satisfies Prisma.SessionSelect;
-
-/** @public */
 export const SessionListSelect = {
     id: true,
     userId: true,

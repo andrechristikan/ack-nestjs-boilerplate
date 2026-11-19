@@ -17,6 +17,7 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
+import { UserService } from '@modules/user/services/user.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
@@ -27,6 +28,7 @@ import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.
 describe('SessionRevokeByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
@@ -138,6 +140,7 @@ describe('SessionRevokeByAdminUseCase', () => {
                 SessionRevokeByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
+                { provide: UserService, useValue: userService },
                 { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
@@ -146,7 +149,7 @@ describe('SessionRevokeByAdminUseCase', () => {
 
     describe('execute', () => {
         it('checks rank, then revokes as the admin passing the request context', async () => {
-            roleService.getOneByUserId.mockResolvedValue(userRole);
+            userService.getRoleById.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(revokedAt);
             sessionService.revokeByAdmin.mockResolvedValue(session);
 
@@ -160,7 +163,7 @@ describe('SessionRevokeByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(roleService.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(userService.getRoleById).toHaveBeenCalledWith('user-1');
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
                 EnumRoleType.user
@@ -176,7 +179,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('rethrows the rank exception and revokes nothing when the actor does not outrank the target', async () => {
-            roleService.getOneByUserId.mockResolvedValue(superAdminRole);
+            userService.getRoleById.mockResolvedValue(superAdminRole);
             const rankForbidden = new RoleRankForbiddenException();
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw rankForbidden;
@@ -196,7 +199,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('rethrows the domain exception', async () => {
-            roleService.getOneByUserId.mockResolvedValue(userRole);
+            userService.getRoleById.mockResolvedValue(userRole);
             helperDateService.create.mockReturnValue(revokedAt);
             const failure = new SessionNotFoundException();
             sessionService.revokeByAdmin.mockRejectedValue(failure);

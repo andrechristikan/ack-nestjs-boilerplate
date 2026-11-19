@@ -6,8 +6,9 @@ import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analyti
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticForgotPasswordAbuse } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticForgotPasswordTokenAbuseListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticForgotPasswordTokenAbuseListUseCase implements IAppUseCase<
         query: AnalyticForgotPasswordAbuseListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticForgotPasswordAbuseAvailableOrderBy,
+            orderBy: AnalyticForgotPasswordAbuseOrderBy,
+            defaultOrderBy: EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

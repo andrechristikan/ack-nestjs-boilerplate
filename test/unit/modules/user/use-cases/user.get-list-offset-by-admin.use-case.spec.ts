@@ -13,10 +13,11 @@ import { UserService } from '@modules/user/services/user.service';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { IUserList } from '@modules/user/interfaces/user.interface';
 import {
-    UserDefaultAvailableOrderBy,
+    UserOrderBy,
     UserDefaultAvailableSearch,
 } from '@modules/user/constants/user.list.constant';
 import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
+import { EnumUserOrderBy } from '@modules/user/enums/user.enum';
 
 describe('UserGetListOffsetByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -101,7 +102,8 @@ describe('UserGetListOffsetByAdminUseCase', () => {
             );
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: UserDefaultAvailableSearch,
-                availableOrderBy: UserDefaultAvailableOrderBy,
+                orderBy: UserOrderBy,
+                defaultOrderBy: EnumUserOrderBy.latest,
             });
             expect(userService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 params,

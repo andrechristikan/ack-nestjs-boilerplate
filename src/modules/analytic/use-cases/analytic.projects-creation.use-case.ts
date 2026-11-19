@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
 import type { IAnalyticProjectCreation } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticProjectsCreationUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticProjectCreation>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticProjectService: AnalyticProjectService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -23,7 +23,7 @@ export class AnalyticProjectsCreationUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticProjectCreation>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticDashboardService.projectsCreation(
+        const data = await this.analyticProjectService.projectsCreation(
             range.startDate,
             range.endDate
         );

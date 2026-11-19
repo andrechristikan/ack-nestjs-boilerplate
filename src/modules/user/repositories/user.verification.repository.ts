@@ -8,7 +8,10 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserVerificationEmailCreate,
+    IUserVerificationWithUser,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -22,7 +25,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
 
     async findOneActiveByVerificationEmailToken(
         token: string
-    ): Promise<Verification | null> {
+    ): Promise<IUserVerificationWithUser | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.verification.findFirst({
@@ -38,6 +41,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                     status: EnumUserStatus.active,
                 },
             },
+            include: { user: true },
         });
     }
 

@@ -1,19 +1,19 @@
-import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
+import { EnumAnalyticUserCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticRefreshSpikeListRequestSchema', () => {
     it('parses page, perPage, orderBy, and windowMs', () => {
         const result = AnalyticRefreshSpikeListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticUserCountAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostCount',
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticUserCountAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostCount',
             windowMs: 3600000,
         });
     });
@@ -48,52 +48,48 @@ describe('AnalyticRefreshSpikeListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticRefreshSpikeListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticUserCountAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumAnalyticUserCountOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticUserCountOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticRefreshSpikeListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticRefreshSpikeListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticUserCountAvailableOrderBy[0];
-
-        expect(
-            AnalyticRefreshSpikeListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticUserCountAvailableOrderBy[0];
-        const last =
-            AnalyticUserCountAvailableOrderBy[
-                AnalyticUserCountAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticRefreshSpikeListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticUserCountAvailableOrderBy[0]}:`,
-        `${AnalyticUserCountAvailableOrderBy[0]}:DESC`,
-        `${AnalyticUserCountAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'mostCount:asc',
+        'default',
+        'createdAt',
+        'count',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticRefreshSpikeListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticRefreshSpikeListRequestSchema.safeParse({
+                orderBy: ['mostCount', 'mostCount'],
+            }).success
         ).toBe(false);
     });
 });

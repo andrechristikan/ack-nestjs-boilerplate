@@ -44,7 +44,7 @@ Propose no option a rule forbids or an entry in `.claude/decisions/` rejects unl
 
 ## Layering
 
-Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). A service holds one module's application logic; a use case assembles services into one action's business logic; `src/modules/analytic/` aggregates analytic reads. Only a repository queries `databaseService.client`, health indicators excepted. `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
+Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). A service holds one module's application logic; a use case assembles services into one action's business logic; `src/modules/analytic/` computes analytic results. Only a repository queries `databaseService.client`, health indicators excepted. `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
 
 ## Discipline
 

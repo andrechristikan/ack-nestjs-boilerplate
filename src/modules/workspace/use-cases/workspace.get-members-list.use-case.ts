@@ -5,8 +5,8 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import {
-    WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
+    WorkspaceMemberOrderBy,
     WorkspaceMemberUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
@@ -17,6 +17,7 @@ import type {
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 @Injectable()
 export class WorkspaceGetMembersListUseCase implements IAppUseCase<
@@ -36,7 +37,8 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceMemberUserListCursorScope,
-            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+            orderBy: WorkspaceMemberOrderBy,
+            defaultOrderBy: EnumWorkspaceMemberOrderBy.latest,
         });
         const role = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceMemberScalarFieldEnum.role,

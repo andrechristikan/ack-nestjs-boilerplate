@@ -4,12 +4,7 @@ import type {
     EnumSessionQueue,
 } from '@modules/session/enums/session.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import type {
-    GeoLocation,
-    Prisma,
-    Session,
-    UserAgent,
-} from '@generated/prisma-client/client';
+import type { Prisma, Session } from '@generated/prisma-client/client';
 import type {
     SessionListSelect,
     SessionLoginSelect,
@@ -40,20 +35,6 @@ export interface ISessionPurgeLoginsPayload {
 export type ISessionLogin = Prisma.SessionGetPayload<{
     select: typeof SessionLoginSelect;
 }>;
-
-export interface ISessionAnalyticSession {
-    id: string;
-    userId: string;
-    ipAddress: string | null;
-    createdAt: Date;
-    geoLocation: GeoLocation | null;
-    userAgent: UserAgent;
-}
-
-export interface ISessionAnalyticUserCount {
-    userId: string;
-    count: number;
-}
 
 export interface ISessionPurgeLoginsEffect extends IOutboxEffect {
     queue: EnumSessionQueue.session;

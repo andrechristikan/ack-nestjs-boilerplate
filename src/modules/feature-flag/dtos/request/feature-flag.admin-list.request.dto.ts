@@ -1,10 +1,7 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import {
-    FeatureFlagDefaultAvailableOrderBy,
-    FeatureFlagDefaultAvailableSearch,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 /** @public */
 export const FeatureFlagAdminListRequestSchema =
@@ -14,18 +11,11 @@ export const FeatureFlagAdminListRequestSchema =
             example: '',
         }),
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(FeatureFlagDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumFeatureFlagOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${FeatureFlagDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${FeatureFlagDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${FeatureFlagDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumFeatureFlagOrderBy).join(', ')}. An empty or absent value uses \`${EnumFeatureFlagOrderBy.latest}\`.`,
+                example: EnumFeatureFlagOrderBy.latest,
             }),
     });
 

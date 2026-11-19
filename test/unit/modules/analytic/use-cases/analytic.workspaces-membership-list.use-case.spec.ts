@@ -2,16 +2,18 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
+import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticWorkspacesMembershipListUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -38,8 +40,8 @@ describe('AnalyticWorkspacesMembershipListUseCase', () => {
             providers: [
                 AnalyticWorkspacesMembershipListUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
@@ -61,7 +63,7 @@ describe('AnalyticWorkspacesMembershipListUseCase', () => {
                 hasPrevious: false,
                 data: [{ workspaceId: 'workspace-1', count: 3 }],
             };
-            analyticDashboardService.workspacesMembership.mockResolvedValue(
+            analyticWorkspaceService.workspacesMembership.mockResolvedValue(
                 page
             );
 
@@ -71,8 +73,17 @@ describe('AnalyticWorkspacesMembershipListUseCase', () => {
             });
 
             expect(result).toEqual(page);
+
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+
+                {
+                    orderBy: AnalyticCountOrderBy,
+                    defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
+                }
+            );
             expect(
-                analyticDashboardService.workspacesMembership
+                analyticWorkspaceService.workspacesMembership
             ).toHaveBeenCalledWith(pagination);
         });
     });

@@ -4,14 +4,15 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Country } from '@generated/prisma-client/client';
 import {
-    CountryDefaultAvailableOrderBy,
     CountryDefaultAvailableSearch,
+    CountryOrderBy,
     CountryPublicListCursorScope,
 } from '@modules/country/constants/country.list.constant';
 import type { CountryListRequestDto } from '@modules/country/dtos/request/country.list.request.dto';
 import { CountryService } from '@modules/country/services/country.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumCountryOrderBy } from '@modules/country/enums/country.enum';
 
 @Injectable()
 export class CountryGetListCursorUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class CountryGetListCursorUseCase implements IAppUseCase<
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: CountryPublicListCursorScope,
             availableSearch: CountryDefaultAvailableSearch,
-            availableOrderBy: CountryDefaultAvailableOrderBy,
+            orderBy: CountryOrderBy,
+            defaultOrderBy: EnumCountryOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

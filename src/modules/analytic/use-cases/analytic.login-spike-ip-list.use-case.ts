@@ -6,8 +6,9 @@ import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import type { IAnalyticLoginSpikeIp } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticLoginSpikeIpAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticLoginSpikeIpOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticLoginSpikeIpOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticLoginSpikeIpListUseCase implements IAppUseCase<
@@ -24,13 +25,11 @@ export class AnalyticLoginSpikeIpListUseCase implements IAppUseCase<
         query: AnalyticLoginSpikeIpListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
+            orderBy: AnalyticLoginSpikeIpOrderBy,
+            defaultOrderBy: EnumAnalyticLoginSpikeIpOrderBy.mostUsers,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticAnomalyService.loginSpikeIpList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticAnomalyService.loginSpikeIpList(params);
     }
 }

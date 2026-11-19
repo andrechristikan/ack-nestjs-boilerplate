@@ -1,8 +1,6 @@
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
-import {
-    WorkspaceDefaultAvailableSearch,
-    WorkspaceCursorAvailableOrderBy,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceCursorOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceUserListRequestSchema', () => {
     it('parses cursor, perPage, search, and orderBy', () => {
@@ -10,14 +8,14 @@ describe('WorkspaceUserListRequestSchema', () => {
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -33,53 +31,50 @@ describe('WorkspaceUserListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
+    it('keeps the module search description', () => {
         expect(
             WorkspaceUserListRequestSchema.shape.search.meta()?.description
         ).toContain(WorkspaceDefaultAvailableSearch.join(', '));
-        expect(
-            WorkspaceUserListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(WorkspaceCursorAvailableOrderBy.join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            WorkspaceUserListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumWorkspaceCursorOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumWorkspaceCursorOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceUserListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             WorkspaceUserListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceCursorAvailableOrderBy[0];
-
-        expect(
-            WorkspaceUserListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceCursorAvailableOrderBy[0];
-        const last =
-            WorkspaceCursorAvailableOrderBy[
-                WorkspaceCursorAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceUserListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${WorkspaceCursorAvailableOrderBy[0]}:`,
-        `${WorkspaceCursorAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceCursorAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             WorkspaceUserListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceUserListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

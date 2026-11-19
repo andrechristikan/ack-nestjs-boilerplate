@@ -38,4 +38,33 @@ describe('AnalyticBucketUtil', () => {
             expect(util.toBuckets([], 'key')).toEqual([]);
         });
     });
+
+    describe('toBucketSnapshot', () => {
+        it('maps each bucket to a snapshot item whose value is its index', () => {
+            const buckets = [
+                { key: '1', count: 2 },
+                { key: '2', count: 0 },
+            ];
+
+            expect(util.toBucketSnapshot(buckets)).toEqual({
+                items: [
+                    {
+                        key: '1',
+                        value: 0,
+                        occurredAt: null,
+                        data: { key: '1', count: 2 },
+                    },
+                    {
+                        key: '2',
+                        value: 1,
+                        occurredAt: null,
+                        data: { key: '2', count: 0 },
+                    },
+                ],
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+            });
+        });
+    });
 });

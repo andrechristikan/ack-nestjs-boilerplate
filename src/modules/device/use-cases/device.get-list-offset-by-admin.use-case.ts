@@ -8,8 +8,9 @@ import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/dev
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { Injectable } from '@nestjs/common';
-import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { DeviceOrderBy } from '@modules/device/constants/device.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumDeviceOrderBy } from '@modules/device/enums/device.enum';
 
 @Injectable()
 export class DeviceGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -28,7 +29,8 @@ export class DeviceGetListOffsetByAdminUseCase implements IAppUseCase<
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: DeviceDefaultAvailableOrderBy,
+            orderBy: DeviceOrderBy,
+            defaultOrderBy: EnumDeviceOrderBy.latest,
         });
         const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,

@@ -8,21 +8,34 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithEmail,
+    IWorkspaceTransferMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberRepository {
     findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
     ): Promise<WorkspaceMember | null>;
-    findOneOwnerByWorkspace(
-        workspaceId: string
-    ): Promise<WorkspaceMember | null>;
+    findOneByWorkspaceAndUserWithUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceTransferMember | null>;
+    existsActiveByWorkspaceAndUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<boolean>;
     findByIdAndWorkspace(
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<WorkspaceMember | null>;
-    findReviewerUserIdsByWorkspace(workspaceId: string): Promise<string[]>;
+    findByIdAndWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceMemberId: string,
+        workspaceId: string
+    ): Promise<IWorkspaceMemberWithEmail | null>;
     findWorkspaceIdsByUser(
         userId: string,
         role: EnumWorkspaceMemberRole | null
@@ -32,6 +45,10 @@ export interface IWorkspaceMemberRepository {
         userId: string,
         role: EnumWorkspaceMemberRole | null
     ): Promise<string[]>;
+    countOwnedActiveByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
     findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,

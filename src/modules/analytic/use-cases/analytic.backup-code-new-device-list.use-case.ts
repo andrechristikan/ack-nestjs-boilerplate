@@ -6,8 +6,9 @@ import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analyti
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticBackupCodeNewDevice } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticBackupCodeNewDeviceAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticBackupCodeNewDeviceOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticBackupCodeNewDeviceOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticBackupCodeNewDeviceListUseCase implements IAppUseCase<
@@ -24,13 +25,11 @@ export class AnalyticBackupCodeNewDeviceListUseCase implements IAppUseCase<
         query: AnalyticBackupCodeNewDeviceListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticBackupCodeNewDeviceAvailableOrderBy,
+            orderBy: AnalyticBackupCodeNewDeviceOrderBy,
+            defaultOrderBy: EnumAnalyticBackupCodeNewDeviceOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.backupCodeNewDeviceList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticFraudService.backupCodeNewDeviceList(params);
     }
 }

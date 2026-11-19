@@ -1,3 +1,4 @@
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -40,6 +41,7 @@ describe('WorkspaceResendInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -144,6 +146,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: UserService, useValue: userService },
+                { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
 
@@ -156,7 +159,7 @@ describe('WorkspaceResendInviteUseCase', () => {
         beforeEach(() => {
             workspaceInviteService.getResendableById.mockResolvedValue(invite);
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            workspaceInviteService.getInviterName.mockResolvedValue('Jane Doe');
+            userUtil.getDisplayName.mockReturnValue('Jane Doe');
             workspaceInviteService.resendInvite.mockResolvedValue({
                 invite,
                 tokenData,
@@ -182,6 +185,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 'invite-1',
                 body
@@ -192,6 +196,9 @@ describe('WorkspaceResendInviteUseCase', () => {
             expect(
                 workspaceInviteService.getResendableById
             ).toHaveBeenCalledWith('invite-1', 'workspace-1');
+            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
+                userContext.user
+            );
             expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
                 'invitee@example.com'
             );
@@ -210,6 +217,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 'invite-1',
                 {
@@ -234,6 +242,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 'invite-1',
                 body
@@ -259,28 +268,12 @@ describe('WorkspaceResendInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     'invite-1',
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
-            expect(workspaceInviteService.resendInvite).not.toHaveBeenCalled();
-        });
-
-        it('rotates nothing when the inviter name read rejects', async () => {
-            const failure = new Error('read-failed');
-            workspaceInviteService.getInviterName.mockRejectedValue(failure);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'invite-1',
-                    body
-                )
-            ).rejects.toBe(failure);
             expect(workspaceInviteService.resendInvite).not.toHaveBeenCalled();
         });
 
@@ -294,6 +287,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     'invite-1',
                     body

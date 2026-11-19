@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import type { IAnalyticBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticAuthLoginMethodUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticBucketsResult>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticAuthService: AnalyticAuthService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -23,7 +23,7 @@ export class AnalyticAuthLoginMethodUseCase implements IAppUseCase<
             query.startDate ?? null,
             query.endDate ?? null
         );
-        const data = await this.analyticDashboardService.authLoginMethod(
+        const data = await this.analyticAuthService.authLoginMethod(
             range.startDate,
             range.endDate
         );

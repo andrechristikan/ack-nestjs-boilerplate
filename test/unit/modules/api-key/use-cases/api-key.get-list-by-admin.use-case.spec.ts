@@ -14,7 +14,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
-    ApiKeyDefaultAvailableOrderBy,
+    ApiKeyOrderBy,
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
@@ -22,6 +22,7 @@ import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
+import { EnumApiKeyOrderBy } from '@modules/api-key/enums/api-key.enum';
 
 describe('ApiKeyGetListByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
@@ -131,7 +132,8 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,
-                availableOrderBy: ApiKeyDefaultAvailableOrderBy,
+                orderBy: ApiKeyOrderBy,
+                defaultOrderBy: EnumApiKeyOrderBy.latest,
             });
             expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.ApiKeyScalarFieldEnum.isActive,

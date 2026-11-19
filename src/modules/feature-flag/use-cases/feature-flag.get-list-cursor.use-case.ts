@@ -4,14 +4,15 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
-    FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
+    FeatureFlagOrderBy,
     FeatureFlagSystemListCursorScope,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 @Injectable()
 export class FeatureFlagGetListCursorUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class FeatureFlagGetListCursorUseCase implements IAppUseCase<
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: FeatureFlagSystemListCursorScope,
             availableSearch: FeatureFlagDefaultAvailableSearch,
-            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+            orderBy: FeatureFlagOrderBy,
+            defaultOrderBy: EnumFeatureFlagOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

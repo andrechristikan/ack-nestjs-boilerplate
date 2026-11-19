@@ -61,7 +61,10 @@ export class SessionSharedController {
         private readonly sessionRevokeUseCase: SessionRevokeUseCase
     ) {}
 
-    @Doc({ summary: 'get all user Sessions' })
+    @Doc({
+        summary: 'get all user Sessions',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()

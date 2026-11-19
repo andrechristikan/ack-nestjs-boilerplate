@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthRefreshTokenVolumeUseCase } from '@modules/analytic/use-cases/analytic.auth-refresh-token-volume.use-case';
 
 describe('AnalyticAuthRefreshTokenVolumeUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthRefreshTokenVolumeUseCase', () => {
             providers: [
                 AnalyticAuthRefreshTokenVolumeUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticAuthRefreshTokenVolumeUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authRefreshTokenVolume.mockResolvedValue({
+            analyticAuthService.authRefreshTokenVolume.mockResolvedValue({
                 count: 12,
             });
 
@@ -53,7 +53,7 @@ describe('AnalyticAuthRefreshTokenVolumeUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.authRefreshTokenVolume
+                analyticAuthService.authRefreshTokenVolume
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -61,7 +61,7 @@ describe('AnalyticAuthRefreshTokenVolumeUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authRefreshTokenVolume.mockResolvedValue({
+            analyticAuthService.authRefreshTokenVolume.mockResolvedValue({
                 count: 12,
             });
 

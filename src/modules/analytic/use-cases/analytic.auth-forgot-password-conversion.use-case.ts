@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import type { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticAuthForgotPasswordConversionUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticForgotPasswordConversion>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticAuthService: AnalyticAuthService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -24,7 +24,7 @@ export class AnalyticAuthForgotPasswordConversionUseCase implements IAppUseCase<
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
         const data =
-            await this.analyticDashboardService.authForgotPasswordConversion(
+            await this.analyticAuthService.authForgotPasswordConversion(
                 range.startDate,
                 range.endDate
             );

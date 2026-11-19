@@ -14,7 +14,11 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithEmail,
+    IWorkspaceTransferMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -49,15 +53,34 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async findOneOwnerByWorkspace(
-        workspaceId: string
-    ): Promise<WorkspaceMember | null> {
+    async findOneByWorkspaceAndUserWithUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceTransferMember | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
                 workspaceId,
-                role: EnumWorkspaceMemberRole.owner,
+                userId,
             },
+            include: { user: { select: { status: true, deletedAt: true } } },
         });
+    }
+
+    async existsActiveByWorkspaceAndUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<boolean> {
+        const member =
+            await this.databaseService.client.workspaceMember.findFirst({
+                where: {
+                    workspaceId,
+                    userId,
+                    workspace: { is: { deletedAt: null } },
+                },
+                select: { id: true },
+            });
+
+        return member !== null;
     }
 
     async findByIdAndWorkspace(
@@ -72,24 +95,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async findReviewerUserIdsByWorkspace(
+    async findByIdAndWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceMemberId: string,
         workspaceId: string
-    ): Promise<string[]> {
-        const reviewers =
-            await this.databaseService.client.workspaceMember.findMany({
-                where: {
-                    workspaceId,
-                    role: {
-                        in: [
-                            EnumWorkspaceMemberRole.owner,
-                            EnumWorkspaceMemberRole.admin,
-                        ],
-                    },
-                },
-                select: { userId: true },
-            });
-
-        return reviewers.map(reviewer => reviewer.userId);
+    ): Promise<IWorkspaceMemberWithEmail | null> {
+        return tx.workspaceMember.findFirst({
+            where: {
+                id: workspaceMemberId,
+                workspaceId,
+            },
+            include: { user: { select: { email: true } } },
+        });
     }
 
     async findWorkspaceIdsByUser(
@@ -116,6 +133,19 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
 
         return members.map(member => member.workspaceId);
+    }
+
+    async countOwnedActiveByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        return tx.workspaceMember.count({
+            where: {
+                userId,
+                role: EnumWorkspaceMemberRole.owner,
+                workspace: { is: { deletedAt: null } },
+            },
+        });
     }
 
     async findWithPaginationOffset(

@@ -84,7 +84,11 @@ export class ApiKeyAdminController {
         private readonly apiKeyDeleteByAdminUseCase: ApiKeyDeleteByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'get list of api keys' })
+    @Doc({
+        summary: 'get list of api keys',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
+    })
     @ResponsePagination('apiKey.list', {
         schema: ApiKeyResponseSchema,
     })

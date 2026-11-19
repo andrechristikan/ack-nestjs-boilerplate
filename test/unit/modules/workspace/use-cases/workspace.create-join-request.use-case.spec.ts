@@ -1,3 +1,4 @@
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,10 +9,8 @@ import type {
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
 import {
@@ -25,9 +24,6 @@ import {
 describe('WorkspaceCreateJoinRequestUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
-        mock<WorkspaceMemberService>();
-    const userService: MockProxy<UserService> = mock<UserService>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -41,6 +37,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         description: null,
         isPublic: true,
     };
+    const joinable = { workspace, reviewerIds: ['reviewer-1'] };
     const joinRequest: WorkspaceJoinRequest = {
         id: 'join-request-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -64,6 +61,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     let useCase: WorkspaceCreateJoinRequestUseCase;
 
     beforeEach(async () => {
@@ -76,11 +74,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     provide: WorkspaceJoinRequestService,
                     useValue: workspaceJoinRequestService,
                 },
-                {
-                    provide: WorkspaceMemberService,
-                    useValue: workspaceMemberService,
-                },
-                { provide: UserService, useValue: userService },
+                { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
 
@@ -95,24 +89,15 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
 
         beforeEach(() => {
             workspaceJoinRequestService.getJoinableWorkspace.mockResolvedValue(
-                workspace
+                joinable
             );
             workspaceJoinRequestService.createJoinRequest.mockResolvedValue(
                 joinRequest
             );
-            userService.getNameById.mockResolvedValue({
-                name: 'Jane Doe',
-                username: 'jane',
-            });
-            workspaceJoinRequestService.resolveRequesterName.mockReturnValue(
-                'Jane Doe'
-            );
-            workspaceMemberService.getReviewerUserIds.mockResolvedValue([
-                'reviewer-1',
-            ]);
+            userUtil.getDisplayName.mockReturnValue('Jane Doe');
         });
 
-        it('gates on the flag, reads the target, creates the request with the notice and the context', async () => {
+        it('gates on the flag, reads the joinable workspace, creates the request with the notice and the context', async () => {
             const callOrder: string[] = [];
             workspaceJoinRequestService.assertJoinRequestAllowed.mockImplementation(
                 async () => {
@@ -123,7 +108,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 async () => {
                     callOrder.push('joinable');
 
-                    return workspace;
+                    return joinable;
                 }
             );
             workspaceJoinRequestService.createJoinRequest.mockImplementation(
@@ -137,6 +122,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 body
             );
 
@@ -149,13 +135,9 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
             ).toHaveBeenCalledWith('user-2', 'workspace-1');
-            expect(
-                workspaceMemberService.getReviewerUserIds
-            ).toHaveBeenCalledWith('workspace-1');
-            expect(userService.getNameById).toHaveBeenCalledWith('user-2');
-            expect(
-                workspaceJoinRequestService.resolveRequesterName
-            ).toHaveBeenCalledWith({ name: 'Jane Doe', username: 'jane' });
+            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
+                userContext.user
+            );
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(
@@ -172,9 +154,13 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         });
 
         it('passes null for an omitted message', async () => {
-            await useCase.execute(requestContext, apiKeyContext, authContext, {
-                workspaceId: 'workspace-1',
-            });
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                { workspaceId: 'workspace-1' }
+            );
 
             expect(
                 workspaceJoinRequestService.createJoinRequest
@@ -188,12 +174,16 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
         });
 
         it('passes an empty reviewer list when the workspace has no reviewer', async () => {
-            workspaceMemberService.getReviewerUserIds.mockResolvedValue([]);
+            workspaceJoinRequestService.getJoinableWorkspace.mockResolvedValue({
+                workspace,
+                reviewerIds: [],
+            });
 
             const result = await useCase.execute(
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 body
             );
 
@@ -219,6 +209,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     body
                 )
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
@@ -237,29 +228,10 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotPublicException);
-            expect(userService.getNameById).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.createJoinRequest
-            ).not.toHaveBeenCalled();
-        });
-
-        it('creates nothing when the reviewer read rejects', async () => {
-            const failure = new Error('read-failed');
-            workspaceMemberService.getReviewerUserIds.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    body
-                )
-            ).rejects.toBe(failure);
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).not.toHaveBeenCalled();
@@ -275,6 +247,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotPublicException);

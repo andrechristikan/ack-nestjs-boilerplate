@@ -9,11 +9,12 @@ import type { NotificationListRequestDto } from '@modules/notification/dtos/requ
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { Injectable } from '@nestjs/common';
 import {
-    NotificationDefaultAvailableOrderBy,
+    NotificationOrderBy,
     NotificationSharedListCursorScope,
 } from '@modules/notification/constants/notification.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumNotificationOrderBy } from '@modules/notification/enums/notification.enum';
 
 @Injectable()
 export class NotificationGetListCursorUseCase implements IAppUseCase<
@@ -34,7 +35,8 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<Notification>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: NotificationSharedListCursorScope,
-            availableOrderBy: NotificationDefaultAvailableOrderBy,
+            orderBy: NotificationOrderBy,
+            defaultOrderBy: EnumNotificationOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

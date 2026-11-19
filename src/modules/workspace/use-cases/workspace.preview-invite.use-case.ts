@@ -1,5 +1,4 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
@@ -12,8 +11,7 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
     IResponseReturn<WorkspaceInvitePreviewResponseDto>
 > {
     constructor(
-        private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly userService: UserService
+        private readonly workspaceInviteService: WorkspaceInviteService
     ) {}
 
     async execute({
@@ -23,16 +21,7 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
     > {
         const invite =
             await this.workspaceInviteService.validateInviteToken(inviteToken);
-        const [workspace, inviter] = await Promise.all([
-            this.workspaceInviteService.getWorkspaceOfInvite(invite),
-            this.userService.getNameById(invite.invitedByUserId),
-        ]);
-
-        const preview = this.workspaceInviteService.mapInvitePreview(
-            workspace,
-            invite,
-            inviter
-        );
+        const preview = this.workspaceInviteService.mapInvitePreview(invite);
 
         return { data: preview };
     }

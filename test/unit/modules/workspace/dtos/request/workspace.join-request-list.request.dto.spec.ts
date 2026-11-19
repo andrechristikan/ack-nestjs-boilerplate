@@ -1,19 +1,19 @@
-import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceJoinRequestListRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
+import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceJoinRequestListRequestSchema', () => {
     it('parses cursor, perPage, orderBy, and status', () => {
         const result = WorkspaceJoinRequestListRequestSchema.parse({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             status: 'pending',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             status: 'pending',
         });
     });
@@ -37,55 +37,6 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
-        expect(
-            WorkspaceJoinRequestListRequestSchema.shape.orderBy.meta()
-                ?.description
-        ).toContain(WorkspaceJoinRequestDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy: '' })
-                .success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceJoinRequestDefaultAvailableOrderBy[0];
-
-        expect(
-            WorkspaceJoinRequestListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceJoinRequestDefaultAvailableOrderBy[0];
-        const last =
-            WorkspaceJoinRequestDefaultAvailableOrderBy[
-                WorkspaceJoinRequestDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceJoinRequestListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:`,
-        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(
-            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
-    });
-
     it('accepts a status of 256 characters and rejects one of 257', () => {
         expect(() =>
             WorkspaceJoinRequestListRequestSchema.parse({
@@ -97,5 +48,49 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
                 status: 'a'.repeat(257),
             })
         ).toThrow();
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(Object.values(EnumWorkspaceJoinRequestOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumWorkspaceJoinRequestOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

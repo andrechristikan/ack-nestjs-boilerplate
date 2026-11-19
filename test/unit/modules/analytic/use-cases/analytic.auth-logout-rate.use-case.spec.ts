@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthLogoutRateUseCase } from '@modules/analytic/use-cases/analytic.auth-logout-rate.use-case';
 
 describe('AnalyticAuthLogoutRateUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthLogoutRateUseCase', () => {
             providers: [
                 AnalyticAuthLogoutRateUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,23 +42,24 @@ describe('AnalyticAuthLogoutRateUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authLogoutRate.mockResolvedValue({
+            analyticAuthService.authLogoutRate.mockResolvedValue({
                 count: 12,
             });
 
             const result = await useCase.execute({ startDate, endDate });
 
             expect(result).toEqual({ data: { count: 12 } });
-            expect(
-                analyticDashboardService.authLogoutRate
-            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(analyticAuthService.authLogoutRate).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
         });
         it('passes the query dates to the range check', async () => {
             analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authLogoutRate.mockResolvedValue({
+            analyticAuthService.authLogoutRate.mockResolvedValue({
                 count: 12,
             });
 

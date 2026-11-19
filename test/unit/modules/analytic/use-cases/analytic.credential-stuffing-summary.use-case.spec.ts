@@ -9,7 +9,7 @@ describe('AnalyticCredentialStuffingSummaryUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
-    const windowMs: number = 3600000;
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
 
     let useCase: AnalyticCredentialStuffingSummaryUseCase;
 
@@ -33,38 +33,26 @@ describe('AnalyticCredentialStuffingSummaryUseCase', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudService.credentialStuffingSummary.mockResolvedValue({
                 count: 6,
-                window: '24h',
-                meta: { minUniqueAccounts: 5 },
+                windowStart: null,
+                windowEnd: null,
+                computedAt,
+                metadata: { minUniqueAccounts: 2 },
             });
 
-            const result = await useCase.execute({
-                windowMs,
-            });
+            const result = await useCase.execute();
 
             expect(result).toEqual({
                 data: {
                     count: 6,
-                    window: '24h',
-                    meta: { minUniqueAccounts: 5 },
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt,
+                    metadata: { minUniqueAccounts: 2 },
                 },
             });
             expect(
                 analyticFraudService.credentialStuffingSummary
-            ).toHaveBeenCalledWith(windowMs);
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            analyticFraudService.credentialStuffingSummary.mockResolvedValue({
-                count: 0,
-                window: null,
-                meta: { minUniqueAccounts: 5 },
-            });
-
-            await useCase.execute({});
-
-            expect(
-                analyticFraudService.credentialStuffingSummary
-            ).toHaveBeenCalledWith(null);
+            ).toHaveBeenCalledWith();
         });
     });
 });

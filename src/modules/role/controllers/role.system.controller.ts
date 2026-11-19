@@ -20,7 +20,11 @@ export class RoleSystemController {
         private readonly roleGetListCursorBySystemUseCase: RoleGetListCursorBySystemUseCase
     ) {}
 
-    @Doc({ summary: 'get list of roles' })
+    @Doc({
+        summary: 'get list of roles',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
+    })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @ApiKeySystemProtected()
     @Get('/list')

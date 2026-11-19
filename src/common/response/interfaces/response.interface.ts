@@ -12,6 +12,7 @@ export interface IResponseMetadata {
     httpStatus?: HttpStatus;
     messagePath?: string;
     messageProperties?: IMessageProperties;
+    computedAt?: Date;
 }
 
 export interface IResponseOptions {

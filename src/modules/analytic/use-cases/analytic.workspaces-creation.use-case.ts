@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import type { IAnalyticMetricCount } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticWorkspacesCreationUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticMetricCount>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -23,7 +23,7 @@ export class AnalyticWorkspacesCreationUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticMetricCount>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticDashboardService.workspacesCreation(
+        const data = await this.analyticWorkspaceService.workspacesCreation(
             range.startDate,
             range.endDate
         );

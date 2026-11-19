@@ -19,8 +19,9 @@ export class UserLoginGeneratePasskeyUseCase implements IAppUseCase<
     async execute(): Promise<
         IResponseReturn<UserLoginPasskeyGenerateResponseDto>
     > {
-        const passkeyOptions =
-            await this.mfaPasskeyService.getAssertionOptions(null);
+        const passkeyOptions = await this.mfaPasskeyService.getAssertionOptions(
+            []
+        );
 
         const { challengeToken, expiresInMs } =
             await this.mfaChallengeService.create({

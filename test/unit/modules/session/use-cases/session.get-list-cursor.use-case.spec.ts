@@ -8,7 +8,7 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    SessionCursorAvailableOrderBy,
+    SessionCursorOrderBy,
     SessionSharedListCursorScope,
 } from '@modules/session/constants/session.list.constant';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
@@ -20,6 +20,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumSessionCursorOrderBy } from '@modules/session/enums/session.enum';
 
 describe('SessionGetListCursorUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -80,7 +81,8 @@ describe('SessionGetListCursorUseCase', () => {
             });
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: SessionSharedListCursorScope,
-                availableOrderBy: SessionCursorAvailableOrderBy,
+                orderBy: SessionCursorOrderBy,
+                defaultOrderBy: EnumSessionCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

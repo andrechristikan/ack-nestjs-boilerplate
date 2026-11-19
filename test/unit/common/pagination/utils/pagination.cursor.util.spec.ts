@@ -286,6 +286,21 @@ describe('PaginationCursorUtil', () => {
             );
         });
 
+        it('hashes different canonical text for two different preset term sets', () => {
+            const texts: string[] = [];
+            helperHashService.sha256Hash.mockImplementation(text => {
+                texts.push(text);
+
+                return digest;
+            });
+
+            util.fingerprint(scope, {}, [{ createdAt: desc }]);
+            util.fingerprint(scope, {}, [{ name: asc }]);
+
+            expect(texts).toHaveLength(2);
+            expect(texts[0]).not.toBe(texts[1]);
+        });
+
         it.each<[string, ITestPaginationCursorDto, string]>([
             [
                 'perPage and cursor left out',

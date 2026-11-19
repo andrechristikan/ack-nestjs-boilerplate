@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
 import type { IAnalyticTermPolicyAcceptanceRate } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticTermPoliciesAcceptanceRateUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticTermPolicyAcceptanceRate>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticTermPolicyService: AnalyticTermPolicyService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -24,7 +24,7 @@ export class AnalyticTermPoliciesAcceptanceRateUseCase implements IAppUseCase<
             query.endDate ?? null
         );
         const data =
-            await this.analyticDashboardService.termPoliciesAcceptanceRate(
+            await this.analyticTermPolicyService.termPoliciesAcceptanceRate(
                 range.startDate,
                 range.endDate
             );

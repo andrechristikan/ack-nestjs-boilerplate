@@ -1,8 +1,6 @@
 import { FeatureFlagAdminListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
-import {
-    FeatureFlagDefaultAvailableSearch,
-    FeatureFlagDefaultAvailableOrderBy,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 describe('FeatureFlagAdminListRequestSchema', () => {
     it('parses page, perPage, search, and a string orderBy', () => {
@@ -10,14 +8,14 @@ describe('FeatureFlagAdminListRequestSchema', () => {
             page: 1,
             perPage: 20,
             search: 'login',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
             search: 'login',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -33,53 +31,50 @@ describe('FeatureFlagAdminListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
+    it('keeps the module search description', () => {
         expect(
             FeatureFlagAdminListRequestSchema.shape.search.meta()?.description
         ).toContain(FeatureFlagDefaultAvailableSearch.join(', '));
-        expect(
-            FeatureFlagAdminListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(FeatureFlagDefaultAvailableOrderBy.join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            FeatureFlagAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumFeatureFlagOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumFeatureFlagOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                FeatureFlagAdminListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             FeatureFlagAdminListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = FeatureFlagDefaultAvailableOrderBy[0];
-
-        expect(
-            FeatureFlagAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = FeatureFlagDefaultAvailableOrderBy[0];
-        const last =
-            FeatureFlagDefaultAvailableOrderBy[
-                FeatureFlagDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            FeatureFlagAdminListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${FeatureFlagDefaultAvailableOrderBy[0]}:`,
-        `${FeatureFlagDefaultAvailableOrderBy[0]}:DESC`,
-        `${FeatureFlagDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             FeatureFlagAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            FeatureFlagAdminListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

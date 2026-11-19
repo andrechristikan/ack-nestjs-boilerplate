@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticUsersClaimUsernameUseCase } from '@modules/analytic/use-cases/analytic.users-claim-username.use-case';
 
 describe('AnalyticUsersClaimUsernameUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticUsersClaimUsernameUseCase', () => {
             providers: [
                 AnalyticUsersClaimUsernameUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticUsersClaimUsernameUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersClaimUsername.mockResolvedValue({
+            analyticUserService.usersClaimUsername.mockResolvedValue({
                 count: 12,
             });
 
@@ -52,16 +52,17 @@ describe('AnalyticUsersClaimUsernameUseCase', () => {
             });
 
             expect(result).toEqual({ data: { count: 12 } });
-            expect(
-                analyticDashboardService.usersClaimUsername
-            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(analyticUserService.usersClaimUsername).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
         });
         it('passes the query dates to the range check', async () => {
             analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersClaimUsername.mockResolvedValue({
+            analyticUserService.usersClaimUsername.mockResolvedValue({
                 count: 12,
             });
 

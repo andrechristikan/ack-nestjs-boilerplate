@@ -5,12 +5,16 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
+    User,
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
-import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
+import type {
+    WorkspaceInvitePreviewInclude,
+    WorkspaceInviteUserListSelect,
+} from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
@@ -22,12 +26,46 @@ export interface IWorkspaceContext {
 
 export type IWorkspaceContextPatch = IRequestStorePatch<IWorkspaceContext>;
 
+export interface IWorkspaceWithMembers extends Workspace {
+    members: WorkspaceMember[];
+}
+
 export interface IWorkspaceMember extends WorkspaceMember {
     user: IUserRef;
 }
 
+export interface IWorkspaceWithJoinMembers extends Workspace {
+    members: Pick<WorkspaceMember, 'userId' | 'role'>[];
+}
+
+export interface IWorkspaceJoinable {
+    workspace: Workspace;
+    reviewerIds: string[];
+}
+
+export interface IWorkspaceTransferMember extends WorkspaceMember {
+    user: Pick<User, 'status' | 'deletedAt'>;
+}
+
+export interface IWorkspaceWithTransferMembers extends Workspace {
+    members: IWorkspaceTransferMember[];
+}
+
+export type IWorkspaceMemberWithEmail = Prisma.WorkspaceMemberGetPayload<{
+    include: { user: { select: { email: true } } };
+}>;
+
+export type IWorkspaceJoinRequestWithEmail =
+    Prisma.WorkspaceJoinRequestGetPayload<{
+        include: { user: { select: { email: true } } };
+    }>;
+
 export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
     select: typeof WorkspaceInviteUserListSelect;
+}>;
+
+export type IWorkspaceInvitePreview = Prisma.WorkspaceInviteGetPayload<{
+    include: typeof WorkspaceInvitePreviewInclude;
 }>;
 
 export interface IWorkspaceInviteNotice {

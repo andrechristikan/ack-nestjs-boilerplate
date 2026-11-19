@@ -17,15 +17,19 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
 import type {
+    IProjectContext,
     IProjectMember,
     IProjectMemberActor,
 } from '@modules/project/interfaces/project.interface';
+import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -37,6 +41,7 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 export class ProjectMemberService {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
+        private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
@@ -55,45 +60,45 @@ export class ProjectMemberService {
         }
     }
 
-    async validateProjectMemberGuard(
-        projectId: string,
-        userId: string
-    ): Promise<ProjectMember> {
-        const member =
-            await this.projectMemberRepository.findOneByProjectAndUser(
-                projectId,
-                userId
-            );
-        if (!member) {
-            throw new ProjectMemberForbiddenException();
-        }
-
-        return member;
-    }
-
-    async validateProjectRoleGuard(
-        projectId: string,
+    async validateProjectGuard(
         workspaceMember: WorkspaceMember,
-        allowedProjectRoles: EnumProjectMemberRole[]
-    ): Promise<ProjectMember | null> {
-        const hasWorkspaceBypass =
-            this.projectUtil.hasWorkspaceBypass(workspaceMember);
-        if (hasWorkspaceBypass) {
-            return null;
+        projectId: string | null,
+        allowedRoles: EnumProjectMemberRole[]
+    ): Promise<IProjectContext> {
+        if (!projectId) {
+            throw new RequestContextMissingException('params.projectId');
         }
 
-        const member =
-            await this.projectMemberRepository.findOneByProjectAndUser(
+        const row =
+            await this.projectRepository.findActiveByIdAndWorkspaceWithMember(
                 projectId,
+                workspaceMember.workspaceId,
                 workspaceMember.userId
             );
-        if (!member) {
+        if (!row) {
+            throw new ProjectNotFoundException();
+        }
+
+        const { members, ...project } = row;
+        const projectMember = members[0] ?? null;
+        const isRoleChecked = allowedRoles.length > 0;
+        const isWorkspaceBypass =
+            this.projectUtil.hasWorkspaceBypass(workspaceMember);
+        const hasWorkspaceBypass = isRoleChecked && isWorkspaceBypass;
+        if (hasWorkspaceBypass) {
+            return { project, projectMember };
+        }
+
+        if (projectMember === null) {
             throw new ProjectMemberForbiddenException();
-        } else if (!allowedProjectRoles.includes(member.role)) {
+        } else if (
+            isRoleChecked &&
+            !allowedRoles.includes(projectMember.role)
+        ) {
             throw new ProjectRoleForbiddenException();
         }
 
-        return member;
+        return { project, projectMember };
     }
 
     assertMember(member: ProjectMember | null): ProjectMember {

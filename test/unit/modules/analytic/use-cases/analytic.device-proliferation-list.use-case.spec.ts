@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-list.use-case';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticDeviceProliferationListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
@@ -67,8 +68,8 @@ describe('AnalyticDeviceProliferationListUseCase', () => {
                 data: [
                     {
                         userId: 'user-1',
-                        deviceCount: 12,
-                        zScore: 3.1,
+                        deviceCount: 9,
+                        zScore: 4.2,
                     },
                 ],
             };
@@ -88,10 +89,11 @@ describe('AnalyticDeviceProliferationListUseCase', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
-                    availableOrderBy:
-                        AnalyticDeviceProliferationAvailableOrderBy,
+                    orderBy: AnalyticSnapshotOrderBy,
+                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
                 }
             );
+            expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });
     });
 });

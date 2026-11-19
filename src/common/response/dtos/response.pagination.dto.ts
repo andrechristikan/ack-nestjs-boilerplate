@@ -3,10 +3,7 @@ import { ResponseSchema } from '@common/response/dtos/response.dto';
 import { ResponsePaginationMetadataSchema } from '@common/response/dtos/response.pagination-metadata.dto';
 import type { ResponsePaginationMetadataDto } from '@common/response/dtos/response.pagination-metadata.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 /** @public */
 export const ResponsePaginationSchema = ResponseSchema.extend({
@@ -32,9 +29,9 @@ export const ResponsePaginationSchema = ResponseSchema.extend({
             previousCursor: faker.string.alphanumeric(16),
             hasNext: true,
             hasPrevious: false,
-            orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+            orderBy: 'latest',
             availableSearch: ['name'],
-            availableOrderBy: ['createdAt', 'updatedAt'],
+            availableOrderBy: ['latest', 'name'],
             type: EnumPaginationType.offset,
         },
     }),

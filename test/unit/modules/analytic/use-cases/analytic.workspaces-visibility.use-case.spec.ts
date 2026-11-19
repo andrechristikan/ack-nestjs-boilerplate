@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticWorkspacesVisibilityUseCase } from '@modules/analytic/use-cases/analytic.workspaces-visibility.use-case';
 
 describe('AnalyticWorkspacesVisibilityUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     let useCase: AnalyticWorkspacesVisibilityUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticWorkspacesVisibilityUseCase', () => {
             providers: [
                 AnalyticWorkspacesVisibilityUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticWorkspacesVisibilityUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.workspacesVisibility.mockResolvedValue({
+            analyticWorkspaceService.workspacesVisibility.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -39,7 +39,7 @@ describe('AnalyticWorkspacesVisibilityUseCase', () => {
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
             expect(
-                analyticDashboardService.workspacesVisibility
+                analyticWorkspaceService.workspacesVisibility
             ).toHaveBeenCalledWith();
         });
     });

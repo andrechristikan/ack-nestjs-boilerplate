@@ -20,7 +20,11 @@ export class FeatureFlagSystemController {
         private readonly featureFlagGetListCursorUseCase: FeatureFlagGetListCursorUseCase
     ) {}
 
-    @Doc({ summary: 'get all of active feature flags' })
+    @Doc({
+        summary: 'get all of active feature flags',
+        description:
+            'orderBy presets: latest (createdAt descending, default), key (key ascending).',
+    })
     @ResponsePagination('featureFlag.list', {
         schema: FeatureFlagResponseSchema,
     })

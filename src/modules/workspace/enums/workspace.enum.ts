@@ -16,3 +16,30 @@ export enum EnumWorkspaceInviteExpiry {
     twoWeeks = 14,
     oneMonth = 30,
 }
+
+/** @public */
+export enum EnumWorkspaceOrderBy {
+    latest = 'latest',
+    name = 'name',
+}
+
+/** @public */
+export enum EnumWorkspaceCursorOrderBy {
+    latest = 'latest',
+}
+
+/** @public */
+export enum EnumWorkspaceMemberOrderBy {
+    latest = 'latest',
+    recentlyJoined = 'recentlyJoined',
+}
+
+/** @public */
+export enum EnumWorkspaceInviteOrderBy {
+    latest = 'latest',
+}
+
+/** @public */
+export enum EnumWorkspaceJoinRequestOrderBy {
+    latest = 'latest',
+}

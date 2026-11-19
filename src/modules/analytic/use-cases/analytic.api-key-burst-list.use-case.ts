@@ -6,8 +6,9 @@ import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/r
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticApiKeyBurst } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticUserCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticUserCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticApiKeyBurstListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticApiKeyBurstListUseCase implements IAppUseCase<
         query: AnalyticApiKeyBurstListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticUserCountAvailableOrderBy,
+            orderBy: AnalyticUserCountOrderBy,
+            defaultOrderBy: EnumAnalyticUserCountOrderBy.mostCount,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

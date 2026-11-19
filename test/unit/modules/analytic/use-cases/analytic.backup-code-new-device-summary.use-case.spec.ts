@@ -9,7 +9,7 @@ describe('AnalyticBackupCodeNewDeviceSummaryUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
-    const windowMs: number = 3600000;
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
 
     let useCase: AnalyticBackupCodeNewDeviceSummaryUseCase;
 
@@ -33,35 +33,24 @@ describe('AnalyticBackupCodeNewDeviceSummaryUseCase', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudService.backupCodeNewDeviceSummary.mockResolvedValue({
                 count: 6,
-                window: '24h',
+                windowStart: null,
+                windowEnd: null,
+                computedAt,
             });
 
-            const result = await useCase.execute({
-                windowMs,
-            });
+            const result = await useCase.execute();
 
             expect(result).toEqual({
                 data: {
                     count: 6,
-                    window: '24h',
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt,
                 },
             });
             expect(
                 analyticFraudService.backupCodeNewDeviceSummary
-            ).toHaveBeenCalledWith(windowMs);
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            analyticFraudService.backupCodeNewDeviceSummary.mockResolvedValue({
-                count: 0,
-                window: null,
-            });
-
-            await useCase.execute({});
-
-            expect(
-                analyticFraudService.backupCodeNewDeviceSummary
-            ).toHaveBeenCalledWith(null);
+            ).toHaveBeenCalledWith();
         });
     });
 });

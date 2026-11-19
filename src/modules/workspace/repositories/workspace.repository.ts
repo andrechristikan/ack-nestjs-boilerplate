@@ -9,11 +9,17 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumWorkspaceMemberRole,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import type {
     IWorkspaceCreate,
     IWorkspaceUpdate,
+    IWorkspaceWithJoinMembers,
+    IWorkspaceWithMembers,
+    IWorkspaceWithTransferMembers,
 } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -34,7 +40,10 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         )!;
     }
 
-    async findActiveById(workspaceId: string): Promise<Workspace | null> {
+    async findActiveByIdWithMember(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceWithMembers | null> {
         const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
         if (!isValidId) {
             return null;
@@ -44,6 +53,72 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 id: workspaceId,
                 deletedAt: null,
+            },
+            include: { members: { where: { userId }, take: 1 } },
+        });
+    }
+
+    async findActiveByIdWithJoinMembers(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceWithJoinMembers | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
+        if (!isValidId) {
+            return null;
+        }
+
+        return this.databaseService.client.workspace.findFirst({
+            where: {
+                id: workspaceId,
+                deletedAt: null,
+            },
+            include: {
+                members: {
+                    where: {
+                        OR: [
+                            { userId },
+                            {
+                                role: {
+                                    in: [
+                                        EnumWorkspaceMemberRole.owner,
+                                        EnumWorkspaceMemberRole.admin,
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                    select: { userId: true, role: true },
+                },
+            },
+        });
+    }
+
+    async findActiveByIdWithTransferMembers(
+        workspaceId: string,
+        targetUserId: string
+    ): Promise<IWorkspaceWithTransferMembers | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
+        if (!isValidId) {
+            return null;
+        }
+
+        return this.databaseService.client.workspace.findFirst({
+            where: {
+                id: workspaceId,
+                deletedAt: null,
+            },
+            include: {
+                members: {
+                    where: {
+                        OR: [
+                            { role: EnumWorkspaceMemberRole.owner },
+                            { userId: targetUserId },
+                        ],
+                    },
+                    include: {
+                        user: { select: { status: true, deletedAt: true } },
+                    },
+                },
             },
         });
     }
@@ -61,18 +136,6 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async findByIdByAdmin(workspaceId: string): Promise<Workspace | null> {
         return this.databaseService.client.workspace.findUnique({
             where: { id: workspaceId },
-        });
-    }
-
-    async countByOwnerInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[]
-    ): Promise<number> {
-        return tx.workspace.count({
-            where: {
-                id: { in: workspaceIds },
-                deletedAt: null,
-            },
         });
     }
 

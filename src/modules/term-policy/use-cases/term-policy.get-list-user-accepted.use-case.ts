@@ -6,12 +6,13 @@ import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import {
-    TermPolicyAcceptanceDefaultAvailableOrderBy,
+    TermPolicyAcceptanceOrderBy,
     TermPolicyAcceptanceSharedListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumTermPolicyAcceptanceOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 @Injectable()
 export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class TermPolicyGetListUserAcceptedUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: TermPolicyAcceptanceSharedListCursorScope,
-            availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+            orderBy: TermPolicyAcceptanceOrderBy,
+            defaultOrderBy: EnumTermPolicyAcceptanceOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

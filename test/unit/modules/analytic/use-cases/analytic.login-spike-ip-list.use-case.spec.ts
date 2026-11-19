@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticLoginSpikeIpAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticLoginSpikeIpOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-list.use-case';
+import { EnumAnalyticLoginSpikeIpOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticLoginSpikeIpListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
@@ -19,8 +20,6 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const windowMs: number = 3600000;
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -63,21 +62,20 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [
                     {
-                        ipAddress: '10.0.0.1',
-                        uniqueUsers: 5,
-                        attempts: 9,
+                        ipAddress: '1.1.1.1',
+                        uniqueUsers: 3,
+                        attempts: 4,
                     },
                 ],
             };
             analyticAnomalyService.loginSpikeIpList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -85,31 +83,15 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticAnomalyService.loginSpikeIpList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy }
+                {
+                    orderBy: AnalyticLoginSpikeIpOrderBy,
+                    defaultOrderBy: EnumAnalyticLoginSpikeIpOrderBy.mostUsers,
+                }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = {
-                ...offsetPage,
-                data: [
-                    {
-                        ipAddress: '10.0.0.1',
-                        uniqueUsers: 5,
-                        attempts: 9,
-                    },
-                ],
-            };
-            analyticAnomalyService.loginSpikeIpList.mockResolvedValue(page);
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(
-                analyticAnomalyService.loginSpikeIpList
-            ).toHaveBeenCalledWith(null, pagination);
+            expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });
     });
 });

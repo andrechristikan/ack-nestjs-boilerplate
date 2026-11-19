@@ -1,25 +1,17 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { EnumSessionCursorOrderBy } from '@modules/session/enums/session.enum';
 
 /** @public */
 export const SessionSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(SessionCursorAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumSessionCursorOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${SessionCursorAvailableOrderBy[0]}:desc\`). Available fields: ${SessionCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${SessionCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumSessionCursorOrderBy).join(', ')}. An empty or absent value uses \`${EnumSessionCursorOrderBy.latest}\`.`,
+            example: EnumSessionCursorOrderBy.latest,
         }),
 });
 

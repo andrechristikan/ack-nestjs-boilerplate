@@ -3,8 +3,10 @@ import { AnalyticAnomalyImpossibleTravelSummaryResponseSchema } from '@modules/a
 describe('AnalyticAnomalyImpossibleTravelSummaryResponseSchema', () => {
     const row = {
         count: 4,
-        window: 'window-token',
-        meta: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
+        windowStart: new Date('2026-01-01T00:00:00.000Z'),
+        windowEnd: new Date('2026-01-02T00:00:00.000Z'),
+        computedAt: new Date('2026-01-02T00:00:05.000Z'),
+        metadata: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -24,20 +26,22 @@ describe('AnalyticAnomalyImpossibleTravelSummaryResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('rejects a row without meta', () => {
+    it('rejects a row without metadata', () => {
         expect(() =>
             AnalyticAnomalyImpossibleTravelSummaryResponseSchema.parse({
                 count: row.count,
-                window: row.window,
+                windowStart: row.windowStart,
+                windowEnd: row.windowEnd,
+                computedAt: row.computedAt,
             })
         ).toThrow();
     });
 
-    it('rejects a cached summary without the window key', () => {
+    it('rejects a summary without the window and computedAt keys', () => {
         expect(() =>
             AnalyticAnomalyImpossibleTravelSummaryResponseSchema.parse({
                 count: row.count,
-                meta: row.meta,
+                metadata: row.metadata,
             })
         ).toThrow();
     });

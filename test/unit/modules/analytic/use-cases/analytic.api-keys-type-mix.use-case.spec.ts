@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticApiKeyService } from '@modules/analytic/services/analytic.api-key.service';
 import { AnalyticApiKeysTypeMixUseCase } from '@modules/analytic/use-cases/analytic.api-keys-type-mix.use-case';
 
 describe('AnalyticApiKeysTypeMixUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticApiKeyService: MockProxy<AnalyticApiKeyService> =
+        mock<AnalyticApiKeyService>();
 
     let useCase: AnalyticApiKeysTypeMixUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticApiKeysTypeMixUseCase', () => {
             providers: [
                 AnalyticApiKeysTypeMixUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticApiKeyService,
+                    useValue: analyticApiKeyService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticApiKeysTypeMixUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.apiKeysTypeMix.mockResolvedValue({
+            analyticApiKeyService.apiKeysTypeMix.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -38,9 +38,7 @@ describe('AnalyticApiKeysTypeMixUseCase', () => {
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
-            expect(
-                analyticDashboardService.apiKeysTypeMix
-            ).toHaveBeenCalledWith();
+            expect(analyticApiKeyService.apiKeysTypeMix).toHaveBeenCalledWith();
         });
     });
 });

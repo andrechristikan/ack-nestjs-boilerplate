@@ -6,10 +6,6 @@ import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 
 export interface IProjectMemberRepository {
-    findOneByProjectAndUser(
-        projectId: string,
-        userId: string
-    ): Promise<ProjectMember | null>;
     findByIdAndProject(
         projectMemberId: string,
         projectId: string

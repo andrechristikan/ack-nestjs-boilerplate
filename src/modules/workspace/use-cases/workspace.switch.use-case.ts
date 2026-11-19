@@ -5,7 +5,6 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -23,7 +22,6 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
     IResponseReturn<void>
 > {
     constructor(
-        private readonly workspaceService: WorkspaceService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly userService: UserService,
         private readonly activityLogService: ActivityLogService,
@@ -38,10 +36,10 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const userId = authContext.userId;
         // Sequential by design: gate before the work it guards
-        await this.workspaceService.validateWorkspaceGuard(workspaceId);
-        await this.workspaceMemberService.validateWorkspaceMemberGuard(
+        await this.workspaceMemberService.validateWorkspaceGuard(
             workspaceId,
-            userId
+            userId,
+            []
         );
 
         await this.outboxService.withTransaction(async tx => {

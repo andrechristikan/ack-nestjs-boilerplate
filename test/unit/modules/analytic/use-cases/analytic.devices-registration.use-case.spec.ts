@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticDevicesRegistrationUseCase } from '@modules/analytic/use-cases/analytic.devices-registration.use-case';
 
 describe('AnalyticDevicesRegistrationUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticDeviceService: MockProxy<AnalyticDeviceService> =
+        mock<AnalyticDeviceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticDevicesRegistrationUseCase', () => {
             providers: [
                 AnalyticDevicesRegistrationUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticDeviceService,
+                    useValue: analyticDeviceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticDevicesRegistrationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.devicesRegistration.mockResolvedValue({
+            analyticDeviceService.devicesRegistration.mockResolvedValue({
                 count: 12,
             });
 
@@ -53,7 +53,7 @@ describe('AnalyticDevicesRegistrationUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.devicesRegistration
+                analyticDeviceService.devicesRegistration
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -61,7 +61,7 @@ describe('AnalyticDevicesRegistrationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.devicesRegistration.mockResolvedValue({
+            analyticDeviceService.devicesRegistration.mockResolvedValue({
                 count: 12,
             });
 

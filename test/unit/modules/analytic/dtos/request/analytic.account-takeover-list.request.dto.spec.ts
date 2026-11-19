@@ -1,42 +1,44 @@
-import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import { EnumAnalyticAccountTakeoverOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticAccountTakeoverListRequestSchema', () => {
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-
-    it('parses page, perPage, orderBy, and the date range', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticAccountTakeoverListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticAccountTakeoverAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticAccountTakeoverAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'latest',
         });
     });
 
-    it('coerces ISO strings into Date values', () => {
-        const result = AnalyticAccountTakeoverListRequestSchema.parse({
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-        });
+    it('parses an empty object', () => {
+        const result = AnalyticAccountTakeoverListRequestSchema.parse({});
 
-        expect(result).toEqual({ startDate, endDate });
+        expect(result).toEqual({});
+    });
+
+    it('rejects windowMs and the date range', () => {
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                windowMs: 1000,
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                startDate: '2026-01-01T00:00:00.000Z',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
             AnalyticAccountTakeoverListRequestSchema.parse({
-                startDate,
-                endDate,
+                page: 1,
                 extra: true,
             })
         ).toThrow();
@@ -44,70 +46,55 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
 
     it('rejects search', () => {
         expect(
-            AnalyticAccountTakeoverListRequestSchema.safeParse({
-                search: 'x',
-                startDate,
-                endDate,
-            }).success
+            AnalyticAccountTakeoverListRequestSchema.safeParse({ search: 'x' })
+                .success
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticAccountTakeoverListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticAccountTakeoverAvailableOrderBy.join(', '));
+        ).toContain(
+            Object.values(EnumAnalyticAccountTakeoverOrderBy).join(', ')
+        );
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticAccountTakeoverOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticAccountTakeoverListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
-            AnalyticAccountTakeoverListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy: '',
-            }).success
+            AnalyticAccountTakeoverListRequestSchema.safeParse({ orderBy: '' })
+                .success
         ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticAccountTakeoverAvailableOrderBy[0];
-
-        expect(
-            AnalyticAccountTakeoverListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticAccountTakeoverAvailableOrderBy[0];
-        const last =
-            AnalyticAccountTakeoverAvailableOrderBy[
-                AnalyticAccountTakeoverAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticAccountTakeoverListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
     });
 
     it.each([
-        'unknownField:asc',
-        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:`,
-        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:DESC`,
-        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'passwordChangedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy,
+                orderBy: ['latest', 'latest'],
             }).success
         ).toBe(false);
     });

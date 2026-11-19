@@ -17,11 +17,7 @@ import {
     EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
 } from '@generated/prisma-client/client';
-import type {
-    Project,
-    Workspace,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -32,16 +28,13 @@ import { NotificationService } from '@modules/notification/services/notification
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { UserService } from '@modules/user/services/user.service';
-import type {
-    IUserName,
-    IUserSignUpWorkspaceInvite,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
@@ -51,12 +44,13 @@ import type {
     IWorkspaceInviteIssued,
     IWorkspaceInviteList,
     IWorkspaceInviteNotice,
+    IWorkspaceInvitePreview,
     IWorkspaceInvitePreviewSummary,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
-import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -75,13 +69,12 @@ export class WorkspaceInviteService {
 
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
-        private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
@@ -107,13 +100,6 @@ export class WorkspaceInviteService {
         this.signUpLinkPattern = this.configService.get<string>(
             'workspace.invite.signUpLinkPattern'
         )!;
-    }
-
-    private resolveInviterName(
-        inviter: IUserName | null,
-        workspace: Workspace
-    ): string {
-        return inviter?.name ?? inviter?.username ?? workspace.name;
     }
 
     private async resolveExpiresInDays(
@@ -252,31 +238,29 @@ export class WorkspaceInviteService {
     }
 
     mapInvitePreview(
-        workspace: Workspace,
-        invite: WorkspaceInvite,
-        inviter: IUserName | null
+        invite: IWorkspaceInvitePreview
     ): IWorkspaceInvitePreviewSummary {
-        const inviterName = this.resolveInviterName(inviter, workspace);
+        if (invite.invitedBy.deletedAt !== null) {
+            return {
+                workspaceName: invite.workspace.name,
+                inviterName: invite.workspace.name,
+                workspaceRole: invite.workspaceRole,
+                expiredAt: invite.expiredAt,
+            };
+        }
+
+        const inviterName = this.userUtil.getDisplayName(invite.invitedBy);
 
         return {
-            workspaceName: workspace.name,
+            workspaceName: invite.workspace.name,
             inviterName,
             workspaceRole: invite.workspaceRole,
             expiredAt: invite.expiredAt,
         };
     }
 
-    async getInviterName(
-        workspace: Workspace,
-        actorId: string
-    ): Promise<string> {
-        const inviter = await this.userService.getNameById(actorId);
-
-        return this.resolveInviterName(inviter, workspace);
-    }
-
-    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token. */
-    async validateInviteToken(token: string): Promise<WorkspaceInvite> {
+    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token with its workspace and inviter name; a soft-deleted workspace throws the workspace-not-found exception. */
+    async validateInviteToken(token: string): Promise<IWorkspaceInvitePreview> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagService.validateFeatureFlagMetadata(
             EnumFeatureFlagKey.workspace,
@@ -289,6 +273,9 @@ export class WorkspaceInviteService {
             );
         if (!invite) {
             throw new WorkspaceInviteInvalidException();
+        }
+        if (invite.workspace.deletedAt !== null) {
+            throw new WorkspaceNotFoundException();
         }
 
         return invite;
@@ -742,16 +729,5 @@ export class WorkspaceInviteService {
             context.workspaceMemberRole,
             userId
         );
-    }
-
-    async getWorkspaceOfInvite(invite: WorkspaceInvite): Promise<Workspace> {
-        const workspace = await this.workspaceRepository.findActiveById(
-            invite.workspaceId
-        );
-        if (!workspace) {
-            throw new WorkspaceInviteInvalidException();
-        }
-
-        return workspace;
     }
 }

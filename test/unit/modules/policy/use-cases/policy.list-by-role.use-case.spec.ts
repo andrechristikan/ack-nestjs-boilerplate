@@ -5,15 +5,15 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
+    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import { PolicyService } from '@modules/policy/services/policy.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { PolicyListByRoleUseCase } from '@modules/policy/use-cases/policy.list-by-role.use-case';
 
 describe('PolicyListByRoleUseCase', () => {
-    const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
 
     const policy: Policy = {
@@ -27,6 +27,19 @@ describe('PolicyListByRoleUseCase', () => {
         action: [EnumPolicyAction.manage],
     };
 
+    const role: IRoleWithPolicies = {
+        id: 'role-1',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        name: 'admin',
+        description: null,
+        type: EnumRoleType.admin,
+        isImmutable: false,
+        policies: [policy],
+    };
+
     let useCase: PolicyListByRoleUseCase;
 
     beforeEach(async () => {
@@ -35,7 +48,6 @@ describe('PolicyListByRoleUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyListByRoleUseCase,
-                { provide: PolicyService, useValue: policyService },
                 { provide: RoleService, useValue: roleService },
             ],
         }).compile();
@@ -44,25 +56,26 @@ describe('PolicyListByRoleUseCase', () => {
     });
 
     describe('execute', () => {
-        it('reads nothing when the role gate rejects', async () => {
+        it('rethrows the role not found failure', async () => {
             const failure = new RoleNotFoundException();
-            roleService.assertExistsById.mockRejectedValue(failure);
+            roleService.getOneWithPolicies.mockRejectedValue(failure);
 
             const promise = useCase.execute('role-1');
 
             await expect(promise).rejects.toBe(failure);
-            expect(roleService.assertExistsById).toHaveBeenCalledWith('role-1');
-            expect(policyService.getManyByRole).not.toHaveBeenCalled();
+            expect(roleService.getOneWithPolicies).toHaveBeenCalledWith(
+                'role-1'
+            );
         });
 
-        it('wraps the policies found for the role in the response envelope', async () => {
-            roleService.assertExistsById.mockResolvedValue();
-            policyService.getManyByRole.mockResolvedValue([policy]);
+        it('wraps the policies of the role in the response envelope after one role read', async () => {
+            roleService.getOneWithPolicies.mockResolvedValue(role);
 
             const result = await useCase.execute('role-1');
 
             expect(result).toEqual({ data: { policies: [policy] } });
-            expect(policyService.getManyByRole).toHaveBeenCalledWith('role-1');
+            expect(roleService.getOneWithPolicies).toHaveBeenCalledTimes(1);
+            expect(roleService.getOne).not.toHaveBeenCalled();
         });
     });
 });

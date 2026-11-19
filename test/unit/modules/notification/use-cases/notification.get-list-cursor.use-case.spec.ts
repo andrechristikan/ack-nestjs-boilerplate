@@ -14,7 +14,7 @@ import {
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import {
-    NotificationDefaultAvailableOrderBy,
+    NotificationOrderBy,
     NotificationSharedListCursorScope,
 } from '@modules/notification/constants/notification.list.constant';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
@@ -24,6 +24,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumNotificationOrderBy } from '@modules/notification/enums/notification.enum';
 
 describe('NotificationGetListCursorUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
@@ -90,7 +91,8 @@ describe('NotificationGetListCursorUseCase', () => {
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: NotificationSharedListCursorScope,
-                availableOrderBy: NotificationDefaultAvailableOrderBy,
+                orderBy: NotificationOrderBy,
+                defaultOrderBy: EnumNotificationOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

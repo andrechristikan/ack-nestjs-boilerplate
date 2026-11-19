@@ -1,11 +1,8 @@
 import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import {
-    RoleDefaultAvailableOrderBy,
-    RoleDefaultAvailableSearch,
-} from '@modules/role/constants/role.list.constant';
+import { RoleDefaultAvailableSearch } from '@modules/role/constants/role.list.constant';
+import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 /** @public */
 export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
@@ -14,18 +11,11 @@ export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
         example: '',
     }),
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(RoleDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumRoleOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${RoleDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumRoleOrderBy).join(', ')}. An empty or absent value uses \`${EnumRoleOrderBy.latest}\`.`,
+            example: EnumRoleOrderBy.latest,
         }),
     type: z
         .string()

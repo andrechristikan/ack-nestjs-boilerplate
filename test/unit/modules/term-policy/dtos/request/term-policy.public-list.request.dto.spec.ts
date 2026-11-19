@@ -1,12 +1,12 @@
-import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyPublicListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
+import { EnumTermPolicyOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyPublicListRequestSchema', () => {
     it('parses a payload into exactly the declared fields', () => {
         const payload = {
             cursor: 'eyJpZCI6IjEifQ',
             perPage: 20,
-            orderBy: 'version:desc',
+            orderBy: 'latest',
             type: 'privacy',
         };
 
@@ -33,53 +33,6 @@ describe('TermPolicyPublicListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
-        expect(
-            TermPolicyPublicListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(TermPolicyDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            TermPolicyPublicListRequestSchema.safeParse({ orderBy: '' }).success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = TermPolicyDefaultAvailableOrderBy[0];
-
-        expect(
-            TermPolicyPublicListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = TermPolicyDefaultAvailableOrderBy[0];
-        const last =
-            TermPolicyDefaultAvailableOrderBy[
-                TermPolicyDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            TermPolicyPublicListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${TermPolicyDefaultAvailableOrderBy[0]}:`,
-        `${TermPolicyDefaultAvailableOrderBy[0]}:DESC`,
-        `${TermPolicyDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(
-            TermPolicyPublicListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
-    });
-
     it('accepts a type of 256 characters and rejects one of 257', () => {
         expect(() =>
             TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(256) })
@@ -87,5 +40,48 @@ describe('TermPolicyPublicListRequestSchema', () => {
         expect(() =>
             TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(257) })
         ).toThrow();
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            TermPolicyPublicListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumTermPolicyOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumTermPolicyOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                TermPolicyPublicListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            TermPolicyPublicListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'publishedAt',
+        'version',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            TermPolicyPublicListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            TermPolicyPublicListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

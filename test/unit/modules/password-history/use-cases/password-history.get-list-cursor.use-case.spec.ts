@@ -7,7 +7,7 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    PasswordHistoryCursorAvailableOrderBy,
+    PasswordHistoryCursorOrderBy,
     PasswordHistorySharedListCursorScope,
 } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -18,6 +18,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumPasswordHistoryCursorOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 describe('PasswordHistoryGetListCursorUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
@@ -79,7 +80,8 @@ describe('PasswordHistoryGetListCursorUseCase', () => {
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: PasswordHistorySharedListCursorScope,
-                availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+                orderBy: PasswordHistoryCursorOrderBy,
+                defaultOrderBy: EnumPasswordHistoryCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

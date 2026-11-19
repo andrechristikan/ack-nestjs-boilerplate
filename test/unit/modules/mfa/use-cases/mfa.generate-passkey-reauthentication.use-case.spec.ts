@@ -22,12 +22,16 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
     let useCase: MfaGeneratePasskeyReauthenticationUseCase;
 
     const authContext = buildAuthJwtAccessContext('user-quartz');
+    const credentials = [
+        { credentialId: 'credential-quartz', transports: ['internal'] },
+    ];
     const passkeyOptions = {
         challenge: 'challenge-quartz',
     } as PublicKeyCredentialRequestOptionsJSON;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mfaPasskeyService.getCredentialsByUser.mockResolvedValue(credentials);
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);
         mfaChallengeService.create.mockResolvedValue({
             challengeToken: 'token-quartz',
@@ -56,13 +60,22 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
             });
 
             expect(mfaPasskeyService.assertHasPasskey).toHaveBeenCalledWith(
-                'user-quartz'
+                credentials
             );
             expect(mfaPasskeyService.assertHasPasskey).toHaveBeenCalledBefore(
                 mfaPasskeyService.getAssertionOptions
             );
-            expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
                 'user-quartz'
+            );
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledBefore(mfaPasskeyService.assertHasPasskey);
+            expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
+                credentials
             );
             expect(mfaChallengeService.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.reauthentication,
@@ -76,9 +89,9 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
         });
 
         it('throws MfaMethodUnavailableException and stores no challenge for a user without a passkey', async () => {
-            mfaPasskeyService.assertHasPasskey.mockRejectedValue(
-                new MfaMethodUnavailableException()
-            );
+            mfaPasskeyService.assertHasPasskey.mockImplementation(() => {
+                throw new MfaMethodUnavailableException();
+            });
 
             await expect(useCase.execute(authContext)).rejects.toMatchObject({
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,

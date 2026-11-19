@@ -1333,6 +1333,10 @@ describe('MfaService', () => {
     });
 
     describe('getLoginMethods', () => {
+        const passkeyCredentials = [
+            { credentialId: 'credential-one', transports: ['internal'] },
+        ];
+
         it.each([
             [
                 'a TOTP only',
@@ -1362,11 +1366,13 @@ describe('MfaService', () => {
             async (_label, hasTotp, hasPasskey, expected) => {
                 mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
                 mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
-                mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
                 featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
                 await expect(
-                    service.getLoginMethods('user-quartz')
+                    service.getLoginMethods(
+                        'user-quartz',
+                        hasPasskey ? passkeyCredentials : []
+                    )
                 ).resolves.toEqual(expected);
             }
         );
@@ -1377,23 +1383,22 @@ describe('MfaService', () => {
                 backupCodes: [],
             });
             mfaTotpService.existsConfirmed.mockResolvedValue(true);
-            mfaPasskeyService.existsByUser.mockResolvedValue(true);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.getLoginMethods('user-quartz')
+                service.getLoginMethods('user-quartz', passkeyCredentials)
             ).resolves.toEqual([EnumMfaMethod.totp, EnumMfaMethod.passkey]);
         });
 
         it('reads no flag for a user with no stored factor', async () => {
             mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaTotpService.existsConfirmed.mockResolvedValue(false);
-            mfaPasskeyService.existsByUser.mockResolvedValue(false);
 
             await expect(
-                service.getLoginMethods('user-quartz')
+                service.getLoginMethods('user-quartz', [])
             ).resolves.toEqual([]);
             expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -1425,7 +1430,6 @@ describe('MfaService', () => {
             ) => {
                 mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
                 mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
-                mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
                 featureFlagService.isMetadataAllowed.mockImplementation(
                     async (_key, metadataKey) =>
                         metadataKey === EnumFeatureFlagMetadataKey.totpAllowed
@@ -1434,7 +1438,10 @@ describe('MfaService', () => {
                 );
 
                 await expect(
-                    service.getLoginMethods('user-quartz')
+                    service.getLoginMethods(
+                        'user-quartz',
+                        hasPasskey ? passkeyCredentials : []
+                    )
                 ).resolves.toEqual(expected);
             }
         );
@@ -1442,11 +1449,10 @@ describe('MfaService', () => {
         it('leaves out backupCode when the user has no Mfa row', async () => {
             mfaRepository.findOneByUserId.mockResolvedValue(null);
             mfaTotpService.existsConfirmed.mockResolvedValue(true);
-            mfaPasskeyService.existsByUser.mockResolvedValue(false);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.getLoginMethods('user-quartz')
+                service.getLoginMethods('user-quartz', [])
             ).resolves.toEqual([EnumMfaMethod.totp]);
         });
     });

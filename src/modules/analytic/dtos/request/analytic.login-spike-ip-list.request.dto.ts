@@ -1,29 +1,18 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { AnalyticLoginSpikeIpAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
-import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import { EnumAnalyticLoginSpikeIpOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 /** @public */
 export const AnalyticLoginSpikeIpListRequestSchema =
-    PaginationOffsetQuerySchema.omit({ search: true })
-        .extend({
-            orderBy: z
-                .union([
-                    z.templateLiteral([
-                        z.enum(AnalyticLoginSpikeIpAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ]),
-                    z.literal(''),
-                ])
-                .optional()
-                .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticLoginSpikeIpAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticLoginSpikeIpAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                    example: `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-                }),
-        })
-        .extend(AnalyticWindowRequestSchema.shape);
+    PaginationOffsetQuerySchema.omit({ search: true }).extend({
+        orderBy: z
+            .union([z.enum(EnumAnalyticLoginSpikeIpOrderBy), z.literal('')])
+            .optional()
+            .meta({
+                description: `Sort preset name. Available presets: ${Object.values(EnumAnalyticLoginSpikeIpOrderBy).join(', ')}. An empty or absent value uses \`${EnumAnalyticLoginSpikeIpOrderBy.mostUsers}\`.`,
+                example: EnumAnalyticLoginSpikeIpOrderBy.mostUsers,
+            }),
+    });
 
 /** @public */
 export type AnalyticLoginSpikeIpListRequestDto = z.infer<

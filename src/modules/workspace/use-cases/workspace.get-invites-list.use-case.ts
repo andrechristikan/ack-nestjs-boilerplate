@@ -5,9 +5,9 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import {
-    WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
+    WorkspaceInviteOrderBy,
     WorkspaceInviteUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
@@ -18,6 +18,7 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 @Injectable()
 export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
@@ -38,7 +39,8 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceInviteUserListCursorScope,
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
-            availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
+            orderBy: WorkspaceInviteOrderBy,
+            defaultOrderBy: EnumWorkspaceInviteOrderBy.latest,
         });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceInviteScalarFieldEnum.status,

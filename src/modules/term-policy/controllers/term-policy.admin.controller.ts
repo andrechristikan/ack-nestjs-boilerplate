@@ -92,7 +92,11 @@ export class TermPolicyAdminController {
         private readonly termPolicyResendEmailByAdminUseCase: TermPolicyResendEmailByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'retrieve list of terms and policies for admin' })
+    @Doc({
+        summary: 'retrieve list of terms and policies for admin',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyPublished (publishedAt descending), latestVersion (version descending).',
+    })
     @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })

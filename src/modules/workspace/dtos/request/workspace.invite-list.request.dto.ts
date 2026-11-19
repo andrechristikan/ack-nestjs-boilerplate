@@ -1,11 +1,8 @@
 import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import {
-    WorkspaceInviteDefaultAvailableOrderBy,
-    WorkspaceInviteDefaultAvailableSearch,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceInviteDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 /** @public */
 export const WorkspaceInviteListRequestSchema =
@@ -15,18 +12,11 @@ export const WorkspaceInviteListRequestSchema =
             example: '',
         }),
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(WorkspaceInviteDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumWorkspaceInviteOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceInviteDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceInviteDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${WorkspaceInviteDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumWorkspaceInviteOrderBy).join(', ')}. An empty or absent value uses \`${EnumWorkspaceInviteOrderBy.latest}\`.`,
+                example: EnumWorkspaceInviteOrderBy.latest,
             }),
         status: z
             .string()

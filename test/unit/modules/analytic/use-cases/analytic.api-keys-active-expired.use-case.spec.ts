@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticApiKeyService } from '@modules/analytic/services/analytic.api-key.service';
 import { AnalyticApiKeysActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-keys-active-expired.use-case';
 
 describe('AnalyticApiKeysActiveExpiredUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticApiKeyService: MockProxy<AnalyticApiKeyService> =
+        mock<AnalyticApiKeyService>();
 
     let useCase: AnalyticApiKeysActiveExpiredUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticApiKeysActiveExpiredUseCase', () => {
             providers: [
                 AnalyticApiKeysActiveExpiredUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticApiKeyService,
+                    useValue: analyticApiKeyService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticApiKeysActiveExpiredUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.apiKeysActiveExpired.mockResolvedValue({
+            analyticApiKeyService.apiKeysActiveExpired.mockResolvedValue({
                 active: 6,
                 expired: 1,
                 inactive: 2,
@@ -41,7 +41,7 @@ describe('AnalyticApiKeysActiveExpiredUseCase', () => {
                 data: { active: 6, expired: 1, inactive: 2 },
             });
             expect(
-                analyticDashboardService.apiKeysActiveExpired
+                analyticApiKeyService.apiKeysActiveExpired
             ).toHaveBeenCalledWith();
         });
     });

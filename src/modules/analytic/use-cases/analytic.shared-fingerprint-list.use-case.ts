@@ -2,16 +2,17 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
+import type { AnalyticSnapshotListRequestDto } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticSharedFingerprintAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticSharedFingerprintListUseCase implements IAppUseCase<
-    [AnalyticSharedFingerprintListRequestDto],
+    [AnalyticSnapshotListRequestDto],
     IResponsePaginationReturn<IAnalyticSharedFingerprint>
 > {
     constructor(
@@ -21,10 +22,11 @@ export class AnalyticSharedFingerprintListUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        query: AnalyticSharedFingerprintListRequestDto
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
+            orderBy: AnalyticSnapshotOrderBy,
+            defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

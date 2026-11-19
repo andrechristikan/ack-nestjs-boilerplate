@@ -2,16 +2,18 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
 import { AnalyticProjectsMembershipListUseCase } from '@modules/analytic/use-cases/analytic.projects-membership-list.use-case';
+import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticProjectsMembershipListUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticProjectService: MockProxy<AnalyticProjectService> =
+        mock<AnalyticProjectService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -38,8 +40,8 @@ describe('AnalyticProjectsMembershipListUseCase', () => {
             providers: [
                 AnalyticProjectsMembershipListUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticProjectService,
+                    useValue: analyticProjectService,
                 },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
@@ -61,7 +63,7 @@ describe('AnalyticProjectsMembershipListUseCase', () => {
                 hasPrevious: false,
                 data: [{ projectId: 'project-1', count: 4 }],
             };
-            analyticDashboardService.projectsMembership.mockResolvedValue(page);
+            analyticProjectService.projectsMembership.mockResolvedValue(page);
 
             const result = await useCase.execute({
                 page: 1,
@@ -69,8 +71,17 @@ describe('AnalyticProjectsMembershipListUseCase', () => {
             });
 
             expect(result).toEqual(page);
+
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+
+                {
+                    orderBy: AnalyticCountOrderBy,
+                    defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
+                }
+            );
             expect(
-                analyticDashboardService.projectsMembership
+                analyticProjectService.projectsMembership
             ).toHaveBeenCalledWith(pagination);
         });
     });

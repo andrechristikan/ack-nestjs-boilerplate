@@ -211,19 +211,6 @@ describe('PolicyService', () => {
         );
     });
 
-    describe('getManyByRole', () => {
-        it('returns the policies of the role', async () => {
-            policyRepository.findManyByRoleId.mockResolvedValue([policy]);
-
-            const result = await service.getManyByRole('role-1');
-
-            expect(result).toEqual([policy]);
-            expect(policyRepository.findManyByRoleId).toHaveBeenCalledWith(
-                'role-1'
-            );
-        });
-    });
-
     describe('createByAdminInTx', () => {
         const body: PolicyRequestDto = {
             subject: EnumPolicySubject.user,

@@ -3,9 +3,7 @@ import {
     PaginationDefaultMaxPerPage,
     PaginationDefaultOrderBy,
     PaginationDefaultPerPage,
-    PaginationOrderBySeparator,
 } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
@@ -13,6 +11,7 @@ import { PaginationPerPageCannotBeLessThanOneException } from '@common/paginatio
 import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
 import type {
     IPaginationOrderBy,
+    IPaginationOrderByPresets,
     IPaginationOrderByQuery,
     IPaginationQueryCursorOptions,
     IPaginationQueryCursorParams,
@@ -47,19 +46,17 @@ export class PaginationQueryUtil {
         };
     }
 
-    private resolveOrderBy(orderBy: string | null): IPaginationOrderBy[] {
-        if (!orderBy) {
-            return [...PaginationDefaultOrderBy];
-        }
+    private resolvePreset(
+        requested: string | null,
+        presets: IPaginationOrderByPresets,
+        defaultName: string
+    ): { name: string; terms: IPaginationOrderBy[] } {
+        const name =
+            requested !== null && Object.hasOwn(presets, requested)
+                ? requested
+                : defaultName;
 
-        const [field, direction] = orderBy.split(PaginationOrderBySeparator);
-
-        const resolved =
-            direction === EnumPaginationOrderDirectionType.desc
-                ? EnumPaginationOrderDirectionType.desc
-                : EnumPaginationOrderDirectionType.asc;
-
-        return [{ [field!]: resolved }];
+        return { name, terms: [...presets[name]!] };
     }
 
     private validateAndParsePage(page?: number | string): number {
@@ -122,15 +119,14 @@ export class PaginationQueryUtil {
         return trimmed;
     }
 
-    offset(
+    offset<T extends IPaginationOrderByPresets>(
         dto: PaginationOffsetQueryDto & { orderBy?: IPaginationOrderByQuery },
-        options: IPaginationQueryOffsetOptions
+        options: IPaginationQueryOffsetOptions<T>
     ): {
         params: IPaginationQueryOffsetParams;
         storePatch: IPaginationQueryPatch;
     } {
         const availableSearch = options.availableSearch ?? [];
-        const availableOrderBy = options.availableOrderBy;
         const page = this.validateAndParsePage(dto.page);
         const perPage = this.validateAndParsePerPage(
             dto.perPage,
@@ -141,7 +137,11 @@ export class PaginationQueryUtil {
         if (search && availableSearch.length > 0) {
             where = this.buildSearchObject(search, availableSearch);
         }
-        const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
+        const { name, terms: orderBy } = this.resolvePreset(
+            dto.orderBy ?? null,
+            options.orderBy,
+            options.defaultOrderBy
+        );
         const skip = this.paginationOffsetUtil.skip(page, perPage);
 
         return {
@@ -154,23 +154,22 @@ export class PaginationQueryUtil {
             storePatch: {
                 page,
                 perPage,
-                orderBy,
+                orderBy: name,
                 availableSearch,
-                availableOrderBy,
+                availableOrderBy: Object.keys(options.orderBy),
                 ...(search && availableSearch.length > 0 ? { search } : {}),
             },
         };
     }
 
-    cursor(
+    cursor<T extends IPaginationOrderByPresets>(
         dto: PaginationCursorQueryDto & { orderBy?: IPaginationOrderByQuery },
-        options: IPaginationQueryCursorOptions
+        options: IPaginationQueryCursorOptions<T>
     ): {
         params: IPaginationQueryCursorParams;
         storePatch: IPaginationQueryPatch;
     } {
         const availableSearch = options.availableSearch ?? [];
-        const availableOrderBy = options.availableOrderBy;
         const perPage = this.validateAndParsePerPage(
             dto.perPage,
             options.defaultPerPage
@@ -181,7 +180,11 @@ export class PaginationQueryUtil {
         if (search && availableSearch.length > 0) {
             where = this.buildSearchObject(search, availableSearch);
         }
-        const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
+        const { name, terms: orderBy } = this.resolvePreset(
+            dto.orderBy ?? null,
+            options.orderBy,
+            options.defaultOrderBy
+        );
         const fingerprint = this.paginationCursorUtil.fingerprint(
             options.scope,
             dto,
@@ -199,9 +202,9 @@ export class PaginationQueryUtil {
             storePatch: {
                 perPage,
                 ...(cursor && { cursor }),
-                orderBy,
+                orderBy: name,
                 availableSearch,
-                availableOrderBy,
+                availableOrderBy: Object.keys(options.orderBy),
                 ...(search && availableSearch.length > 0 ? { search } : {}),
             },
         };

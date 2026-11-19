@@ -20,7 +20,11 @@ export class CountryPublicController {
         private readonly countryGetListCursorUseCase: CountryGetListCursorUseCase
     ) {}
 
-    @Doc({ summary: 'get all list country' })
+    @Doc({
+        summary: 'get all list country',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending), alpha2Code (alpha2Code ascending).',
+    })
     @ResponsePagination('country.list', { schema: CountryResponseSchema })
     @ApiKeyProtected()
     @Get('/list')

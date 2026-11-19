@@ -33,7 +33,9 @@ describe('AnalyticApiKeyBurstSummaryUseCase', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudService.apiKeyBurstSummary.mockResolvedValue({
                 count: 6,
-                window: '24h',
+                windowStart: null,
+                windowEnd: null,
+                computedAt: null,
             });
 
             const result = await useCase.execute({ windowMs });
@@ -41,7 +43,9 @@ describe('AnalyticApiKeyBurstSummaryUseCase', () => {
             expect(result).toEqual({
                 data: {
                     count: 6,
-                    window: '24h',
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt: null,
                 },
             });
             expect(
@@ -52,7 +56,9 @@ describe('AnalyticApiKeyBurstSummaryUseCase', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudService.apiKeyBurstSummary.mockResolvedValue({
                 count: 0,
-                window: null,
+                windowStart: null,
+                windowEnd: null,
+                computedAt: null,
             });
 
             await useCase.execute({});

@@ -247,6 +247,9 @@ describe('UserDeleteSelfUseCase', () => {
         beforeEach(() => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             userAuthService.assertReauthentication.mockResolvedValue(check);
+            workspaceService.assertOwnedHasNoOtherMembersInTx.mockResolvedValue(
+                []
+            );
             workspaceService.softDeleteOwnedByUserInTx.mockResolvedValue([]);
             userService.deleteSelfInTx.mockResolvedValue();
             sessionService.revokeAllByUserInTx.mockResolvedValue(revoked);
@@ -310,6 +313,8 @@ describe('UserDeleteSelfUseCase', () => {
             workspaceService.assertOwnedHasNoOtherMembersInTx.mockImplementation(
                 async () => {
                     calls.push('assertNoOtherMembers');
+
+                    return ['workspace-one', 'workspace-two'];
                 }
             );
             workspaceService.softDeleteOwnedByUserInTx.mockImplementationOnce(
@@ -412,7 +417,12 @@ describe('UserDeleteSelfUseCase', () => {
             );
             expect(
                 workspaceService.softDeleteOwnedByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder', now);
+            ).toHaveBeenCalledWith(
+                tx,
+                ['workspace-one', 'workspace-two'],
+                'user-cinder',
+                now
+            );
             expect(
                 projectService.softDeleteByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-one', now, 'user-cinder');

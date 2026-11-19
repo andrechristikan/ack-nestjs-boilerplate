@@ -60,7 +60,10 @@ export class TermPolicySharedController {
         private readonly termPolicyUserAcceptUseCase: TermPolicyUserAcceptUseCase
     ) {}
 
-    @Doc({ summary: 'list of terms or policies accepted by the user' })
+    @Doc({
+        summary: 'list of terms or policies accepted by the user',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('termPolicy.listAccepted', {
         schema: TermPolicyUserAcceptanceResponseSchema,
     })

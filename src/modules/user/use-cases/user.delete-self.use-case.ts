@@ -146,13 +146,15 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         authContext,
                         check
                     );
-                    await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
-                        tx,
-                        userId
-                    );
+                    const owned =
+                        await this.workspaceService.assertOwnedHasNoOtherMembersInTx(
+                            tx,
+                            userId
+                        );
                     const ownedIds =
                         await this.workspaceService.softDeleteOwnedByUserInTx(
                             tx,
+                            owned,
                             userId,
                             now
                         );

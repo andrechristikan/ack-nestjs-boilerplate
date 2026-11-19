@@ -1,48 +1,60 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Workspace } from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import {
     WorkspaceContextStoreKey,
     WorkspaceIdStoreKey,
+    WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
+import {
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceContext,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGuard', () => {
-    const workspaceService: MockProxy<WorkspaceService> =
-        mock<WorkspaceService>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
+        mock<WorkspaceMemberService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const executionContext: MockProxy<ExecutionContext> =
         mock<ExecutionContext>();
-
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const handler = vi.fn();
+    const userContext = buildUserContext(
+        buildUser('user-1', 'jane@example.com')
+    );
+    const workspaceContext = buildWorkspaceContext(
+        buildWorkspace(),
+        buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
+    );
 
     let guard: WorkspaceGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        executionContext.getHandler.mockReturnValue(handler);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGuard,
-                { provide: WorkspaceService, useValue: workspaceService },
+                { provide: Reflector, useValue: reflector },
+                {
+                    provide: WorkspaceMemberService,
+                    useValue: workspaceMemberService,
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -51,38 +63,78 @@ describe('WorkspaceGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('resolves the workspace by the stored id and merges it into the workspace context', async () => {
-            requestStoreService.get.mockReturnValue('workspace-1');
-            workspaceService.validateWorkspaceGuard.mockResolvedValue(
-                workspace
+        it('passes the stored workspace id, the user id, and the roles metadata in one call and merges the returned context', async () => {
+            const store: Record<string, unknown> = {
+                [WorkspaceIdStoreKey]: 'workspace-1',
+                [UserContextStoreKey]: userContext,
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            reflector.get.mockReturnValue([EnumWorkspaceMemberRole.admin]);
+            workspaceMemberService.validateWorkspaceGuard.mockResolvedValue(
+                workspaceContext
             );
 
             const result = await guard.canActivate(executionContext);
 
             expect(result).toBe(true);
-            expect(requestStoreService.get).toHaveBeenCalledWith(
-                WorkspaceIdStoreKey
+            expect(reflector.get).toHaveBeenCalledWith(
+                WorkspaceRoleMetaKey,
+                handler
             );
             expect(
-                workspaceService.validateWorkspaceGuard
-            ).toHaveBeenCalledWith('workspace-1');
+                workspaceMemberService.validateWorkspaceGuard
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberService.validateWorkspaceGuard
+            ).toHaveBeenCalledWith('workspace-1', 'user-1', [
+                EnumWorkspaceMemberRole.admin,
+            ]);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 WorkspaceContextStoreKey,
-                { workspaceId: 'workspace-1', workspace }
+                workspaceContext
             );
         });
 
-        it('validates with a null id when the store holds none', async () => {
-            requestStoreService.get.mockReturnValue(null);
-            workspaceService.validateWorkspaceGuard.mockResolvedValue(
-                workspace
+        it('validates with a null id and an empty role list when the store holds no id and the route sets no roles', async () => {
+            const store: Record<string, unknown> = {
+                [UserContextStoreKey]: userContext,
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            reflector.get.mockReturnValue(undefined);
+            workspaceMemberService.validateWorkspaceGuard.mockResolvedValue(
+                workspaceContext
             );
 
             await guard.canActivate(executionContext);
 
             expect(
-                workspaceService.validateWorkspaceGuard
-            ).toHaveBeenCalledWith(null);
+                workspaceMemberService.validateWorkspaceGuard
+            ).toHaveBeenCalledWith(null, 'user-1', []);
+        });
+
+        it('throws UserGuardMissingException before the domain call when the store holds no user context', async () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
+            expect(
+                workspaceMemberService.validateWorkspaceGuard
+            ).not.toHaveBeenCalled();
+            expect(requestStoreService.merge).not.toHaveBeenCalled();
         });
     });
 });

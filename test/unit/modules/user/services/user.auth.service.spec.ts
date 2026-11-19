@@ -1645,7 +1645,12 @@ describe('UserAuthService', () => {
             notificationToken: null,
         };
 
+        const credentials = [
+            { credentialId: 'credential-halcyon', transports: ['internal'] },
+        ];
+
         it('creates a login challenge with no WebAuthn challenge and null options for a user without a passkey', async () => {
+            mfaPasskeyService.getCredentialsByUser.mockResolvedValue([]);
             mfaService.getLoginMethods.mockResolvedValue([
                 EnumMfaMethod.totp,
                 EnumMfaMethod.backupCode,
@@ -1669,8 +1674,15 @@ describe('UserAuthService', () => {
                 methods: [EnumMfaMethod.totp, EnumMfaMethod.backupCode],
                 passkeyOptions: null,
             });
-            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
                 'user-halcyon'
+            );
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-halcyon',
+                []
             );
             expect(
                 mfaPasskeyService.getAssertionOptions
@@ -1689,6 +1701,9 @@ describe('UserAuthService', () => {
             const passkeyOptions = {
                 challenge: 'challenge-webauthn',
             } as PublicKeyCredentialRequestOptionsJSON;
+            mfaPasskeyService.getCredentialsByUser.mockResolvedValue(
+                credentials
+            );
             mfaService.getLoginMethods.mockResolvedValue([
                 EnumMfaMethod.passkey,
                 EnumMfaMethod.backupCode,
@@ -1715,8 +1730,15 @@ describe('UserAuthService', () => {
                 methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
                 passkeyOptions,
             });
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-halcyon',
+                credentials
+            );
             expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
-                'user-halcyon'
+                credentials
             );
             expect(mfaChallengeService.createInTx).toHaveBeenCalledWith(tx, {
                 purpose: EnumMfaChallengePurpose.login,

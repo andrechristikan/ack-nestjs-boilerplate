@@ -2,42 +2,39 @@ import type {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
+import type { IAnalyticImpossibleTravelThresholds } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 
 export interface IAnalyticFraudSummary {
     count: number;
-    window: string | null;
+    windowStart: Date | null;
+    windowEnd: Date | null;
+    computedAt: Date | null;
 }
 
-export interface IAnalyticFraudCredentialStuffingSummaryMeta {
+export type IAnalyticFraudCredentialStuffingSummaryMetadata = {
     minUniqueAccounts: number;
-}
+};
 
 export interface IAnalyticFraudCredentialStuffingSummary extends IAnalyticFraudSummary {
-    meta: IAnalyticFraudCredentialStuffingSummaryMeta;
+    metadata: IAnalyticFraudCredentialStuffingSummaryMetadata;
 }
 
-export interface IAnalyticFraudRiskScore {
+export type IAnalyticFraudRiskScore = {
     userId: string;
     score: number;
     band: EnumAnalyticFraudBand;
     contributingSignalCodes: EnumAnalyticFraudContributingSignal[];
+};
+
+export interface IAnalyticFraudRiskScoreUser extends IAnalyticFraudRiskScore {
+    computedAt: Date | null;
 }
 
-export interface IAnalyticFraudSignalUsers {
-    sessionAfterAdmin: Set<string>;
-    impossibleTravel: Set<string>;
-    newDeviceAfterPasswordChange: Set<string>;
-    credentialStuffingIp: Set<string>;
-    sharedFingerprint: Set<string>;
-    massRegistrationIp: Set<string>;
-    forgotPasswordAbuse: Set<string>;
-}
-
-export interface IAnalyticCredentialStuffing {
+export type IAnalyticCredentialStuffing = {
     ipAddress: string;
     uniqueUsers: number;
     failCount: number;
-}
+};
 
 export interface IAnalyticAccountTakeover {
     userId: string;
@@ -55,11 +52,11 @@ export interface IAnalyticPasswordResetEnumeration {
     count: number;
 }
 
-export interface IAnalyticSharedFingerprint {
+export type IAnalyticSharedFingerprint = {
     fingerprint: string;
     userCount: number;
     userIds: string[];
-}
+};
 
 export interface IAnalyticSessionAfterAdmin {
     userId: string;
@@ -87,12 +84,17 @@ export interface IAnalyticApiKeyBurst {
     count: number;
 }
 
-export interface IAnalyticFraudSignalRows {
-    sessionAfterAdmin: IAnalyticSessionAfterAdmin[];
-    impossibleTravelUserIds: string[];
-    accountTakeover: IAnalyticAccountTakeover[];
-    credentialStuffingUserIds: Set<string>;
-    sharedFingerprint: IAnalyticSharedFingerprint[];
-    massRegistrationUserIds: Set<string>;
-    forgotPasswordAbuse: IAnalyticForgotPasswordAbuse[];
+export interface IAnalyticRiskScoreOptions {
+    now: Date;
+    nearLockoutMinAttempt: number;
+    riskScore: { lookbackInMs: number };
+    credentialStuffing: { windowInMs: number; minUniqueAccounts: number };
+    accountTakeover: { newDeviceAfterPasswordChangeInMs: number };
+    massRegistration: { windowInMs: number; minAccountsPerIp: number };
+    sharedFingerprint: { minUsersPerFingerprint: number };
+    sessionAfterAdmin: { sessionAfterAdminRevokeInMs: number };
+    forgotPasswordTokenAbuse: { windowInMs: number; minUnusedTokens: number };
+    impossibleTravel: IAnalyticImpossibleTravelThresholds;
+    weights: Record<EnumAnalyticFraudContributingSignal, number>;
+    bands: { monitorMax: number; reviewMax: number; elevateMax: number };
 }

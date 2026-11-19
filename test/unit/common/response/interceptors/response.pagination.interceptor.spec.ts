@@ -9,14 +9,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
-import type {
-    IPaginationOrderBy,
-    IPaginationQuery,
-} from '@common/pagination/interfaces/pagination.interface';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
 import {
     ResponseMessagePathMetaKey,
     ResponseSchemaMetaKey,
@@ -24,6 +18,9 @@ import {
 import { ResponsePaginationInterceptor } from '@common/response/interceptors/response.pagination.interceptor';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
@@ -74,7 +71,10 @@ describe('ResponsePaginationInterceptor', () => {
         response.status.mockReturnValue(response);
         responseMetadataService.create.mockReturnValue(metadata);
         messageService.setMessage.mockReturnValue('localized message');
-        requestStoreService.get.mockReturnValue(null);
+        requestStoreService.get.mockReturnValue({
+            orderBy: '',
+            availableOrderBy: [],
+        });
         reflectorGet.mockImplementation((key: unknown) => {
             if (key === ResponseMessagePathMetaKey) {
                 return 'response.pagination.default.path';
@@ -193,6 +193,32 @@ describe('ResponsePaginationInterceptor', () => {
             }
         );
 
+        it('rejects with RequestContextMissingException when the store holds no pagination entry', async () => {
+            requestStoreService.get.mockReturnValue(null);
+            callHandler.handle.mockReturnValue(
+                buildPaginationEmission({
+                    type: EnumPaginationType.cursor,
+                    perPage: 20,
+                    hasNext: false,
+                    data: [{ id: '1' }],
+                })
+            );
+
+            const promise = firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            await expect(promise).rejects.toBeInstanceOf(
+                RequestContextMissingException
+            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                httpStatus: 500,
+                contextKey: PaginationStoreKey,
+            });
+        });
+
         it('builds a cursor page from the store defaults with hasPrevious false', async () => {
             callHandler.handle.mockReturnValue(
                 buildPaginationEmission({
@@ -227,7 +253,7 @@ describe('ResponsePaginationInterceptor', () => {
                     perPage: 20,
                     search: undefined,
                     filters: undefined,
-                    orderBy: [],
+                    orderBy: '',
                     availableSearch: [],
                     availableOrderBy: [],
                 },
@@ -244,9 +270,9 @@ describe('ResponsePaginationInterceptor', () => {
             const storedPagination: Partial<IPaginationQuery> = {
                 search: 'jane',
                 filters: { active: true },
-                orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
+                orderBy: 'name',
                 availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
+                availableOrderBy: ['latest', 'name'],
             };
             requestStoreService.get.mockReturnValue(storedPagination);
 
@@ -285,9 +311,9 @@ describe('ResponsePaginationInterceptor', () => {
                 hasPrevious: true,
                 search: 'jane',
                 filters: { active: true },
-                orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+                orderBy: 'name',
                 availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
+                availableOrderBy: ['latest', 'name'],
             });
             expect(result.metadata).not.toHaveProperty('httpStatus');
             expect(result.metadata).not.toHaveProperty('statusCode');
@@ -301,6 +327,51 @@ describe('ResponsePaginationInterceptor', () => {
                 }
             );
             expect(response.status).toHaveBeenCalledWith(201);
+        });
+
+        it('copies computedAt from the return metadata into the response metadata', async () => {
+            const computedAt = new Date('2026-01-01T00:00:05.000Z');
+            callHandler.handle.mockReturnValue(
+                buildPaginationEmission({
+                    type: EnumPaginationType.offset,
+                    count: 1,
+                    perPage: 20,
+                    hasNext: false,
+                    hasPrevious: false,
+                    page: 1,
+                    totalPage: 1,
+                    data: [{ id: '1' }],
+                    metadata: { computedAt },
+                })
+            );
+
+            const result = await firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            expect(result.metadata).toMatchObject({ computedAt });
+        });
+
+        it('answers no computedAt key when the return metadata carries none', async () => {
+            callHandler.handle.mockReturnValue(
+                buildPaginationEmission({
+                    type: EnumPaginationType.offset,
+                    count: 0,
+                    perPage: 20,
+                    hasNext: false,
+                    hasPrevious: false,
+                    page: 1,
+                    totalPage: 0,
+                    data: [],
+                    metadata: {},
+                })
+            );
+
+            const result = await firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            expect(result.metadata).not.toHaveProperty('computedAt');
         });
 
         it('rejects with no schema declared on the route', async () => {
@@ -371,24 +442,6 @@ describe('ResponsePaginationInterceptor', () => {
                 messagePath: 'response.error.serialization',
                 rawError: issues,
             });
-        });
-    });
-
-    describe('mapOrderBy', () => {
-        it('answers an empty array when orderBy is undefined', () => {
-            expect(interceptor['mapOrderBy'](undefined)).toEqual([]);
-        });
-
-        it('flattens every field:direction pair across the order list', () => {
-            const orderBy: IPaginationOrderBy[] = [
-                { createdAt: EnumPaginationOrderDirectionType.desc },
-                { name: EnumPaginationOrderDirectionType.asc },
-            ];
-
-            expect(interceptor['mapOrderBy'](orderBy)).toEqual([
-                `createdAt:${EnumPaginationOrderDirectionType.desc}`,
-                `name:${EnumPaginationOrderDirectionType.asc}`,
-            ]);
         });
     });
 

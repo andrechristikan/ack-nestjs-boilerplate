@@ -1,20 +1,18 @@
-import { AnalyticBackupCodeNewDeviceAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import { EnumAnalyticBackupCodeNewDeviceOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticBackupCodeNewDeviceListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'latest',
         });
     });
 
@@ -24,12 +22,17 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticBackupCodeNewDeviceListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs and the date range', () => {
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                windowMs: 1000,
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                startDate: '2026-01-01T00:00:00.000Z',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {
@@ -49,14 +52,27 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticBackupCodeNewDeviceListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticBackupCodeNewDeviceAvailableOrderBy.join(', '));
+        ).toContain(
+            Object.values(EnumAnalyticBackupCodeNewDeviceOrderBy).join(', ')
+        );
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticBackupCodeNewDeviceOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                    orderBy,
+                }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
                 orderBy: '',
@@ -64,39 +80,25 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticBackupCodeNewDeviceAvailableOrderBy[0];
-
-        expect(
-            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticBackupCodeNewDeviceAvailableOrderBy[0];
-        const last =
-            AnalyticBackupCodeNewDeviceAvailableOrderBy[
-                AnalyticBackupCodeNewDeviceAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:`,
-        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:DESC`,
-        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'regeneratedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

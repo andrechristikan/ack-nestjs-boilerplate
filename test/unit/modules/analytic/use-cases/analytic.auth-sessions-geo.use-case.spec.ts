@@ -2,13 +2,14 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthSessionsGeoUseCase } from '@modules/analytic/use-cases/analytic.auth-sessions-geo.use-case';
 
 describe('AnalyticAuthSessionsGeoUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +27,8 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
             providers: [
                 AnalyticAuthSessionsGeoUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -38,50 +39,40 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
+            analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authSessionsGeo.mockResolvedValue({
+            analyticAuthService.authSessionsGeo.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await useCase.execute({
-                startDate,
-                endDate,
-            });
+            const result = await useCase.execute({ startDate, endDate });
 
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
+            expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
-
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
-            expect(
-                analyticDashboardService.authSessionsGeo
-            ).toHaveBeenCalledWith(startDate, endDate);
-        });
-        it('passes null dates when the optional range is empty', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate: null,
-                endDate: null,
-            });
-            analyticDashboardService.authSessionsGeo.mockResolvedValue({
-                buckets: [{ key: 'key-1', count: 7 }],
-            });
-
-            await useCase.execute({});
-
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
-                null,
-                null
+            expect(analyticAuthService.authSessionsGeo).toHaveBeenCalledWith(
+                startDate,
+                endDate
             );
+        });
 
-            expect(
-                analyticDashboardService.authSessionsGeo
-            ).toHaveBeenCalledWith(null, null);
+        it('throws and reads nothing when the range check rejects the range', async () => {
+            analyticDateService.requireRange.mockImplementation(() => {
+                throw new AnalyticInvalidDateRangeException();
+            });
+
+            const promise = useCase.execute({ startDate, endDate });
+
+            await expect(promise).rejects.toBeInstanceOf(
+                AnalyticInvalidDateRangeException
+            );
+            expect(analyticAuthService.authSessionsGeo).not.toHaveBeenCalled();
         });
     });
 });

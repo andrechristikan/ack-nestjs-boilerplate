@@ -2,7 +2,6 @@ import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /** @public */
@@ -26,32 +25,23 @@ export const ProjectProtectedDocErrors: IDocResponseEntry[] = [
     },
     {
         httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumProjectStatusCodeError.memberForbidden,
+        messagePath: 'project.error.memberForbidden',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumWorkspaceStatusCodeError.guardMissing,
         messagePath: 'workspace.error.guardMissing',
     },
 ];
 
 /** @public */
-export const ProjectMemberProtectedDocErrors: IDocResponseEntry[] = [
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.memberForbidden,
-        messagePath: 'project.error.memberForbidden',
-    },
-    {
-        httpStatus: HttpStatus.UNAUTHORIZED,
-        statusCode: EnumUserStatusCodeError.guardMissing,
-        messagePath: 'user.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.guardMissing,
-        messagePath: 'project.error.guardMissing',
-    },
-];
-
-/** @public */
 export const ProjectRoleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumProjectStatusCodeError.notFound,
+        messagePath: 'project.error.notFound',
+    },
     {
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumProjectStatusCodeError.memberForbidden,
@@ -64,12 +54,7 @@ export const ProjectRoleProtectedDocErrors: IDocResponseEntry[] = [
     },
     {
         httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.guardMissing,
-        messagePath: 'project.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-        messagePath: 'workspace.error.memberGuardMissing',
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
     },
 ];

@@ -10,13 +10,14 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
-    TermPolicyDefaultAvailableOrderBy,
+    TermPolicyOrderBy,
     TermPolicyDefaultType,
     TermPolicyPublicListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyGetListPublishedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-published.use-case';
 import type { TermPolicyPublicListRequestDto } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
+import { EnumTermPolicyOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyGetListPublishedUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
@@ -80,7 +81,8 @@ describe('TermPolicyGetListPublishedUseCase', () => {
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: TermPolicyPublicListCursorScope,
-                availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+                orderBy: TermPolicyOrderBy,
+                defaultOrderBy: EnumTermPolicyOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.TermPolicyScalarFieldEnum.type,

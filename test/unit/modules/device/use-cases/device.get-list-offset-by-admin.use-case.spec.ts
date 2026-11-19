@@ -11,8 +11,9 @@ import { EnumDevicePlatform, Prisma } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
-import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { DeviceOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
+import { EnumDeviceOrderBy } from '@modules/device/enums/device.enum';
 
 describe('DeviceGetListOffsetByAdminUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
@@ -126,7 +127,8 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
                 },
             ]);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: DeviceDefaultAvailableOrderBy,
+                orderBy: DeviceOrderBy,
+                defaultOrderBy: EnumDeviceOrderBy.latest,
             });
             expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,

@@ -9,6 +9,7 @@ import type { Project } from '@generated/prisma-client/client';
 import type {
     IProjectCreate,
     IProjectUpdate,
+    IProjectWithMembers,
 } from '@modules/project/interfaces/project.interface';
 
 export interface IProjectRepository {
@@ -16,6 +17,11 @@ export interface IProjectRepository {
         projectId: string,
         workspaceId: string
     ): Promise<Project | null>;
+    findActiveByIdAndWorkspaceWithMember(
+        projectId: string,
+        workspaceId: string,
+        userId: string
+    ): Promise<IProjectWithMembers | null>;
     findByIdByAdmin(projectId: string): Promise<Project | null>;
     findWithPaginationCursorForWorkspace(
         workspaceId: string,

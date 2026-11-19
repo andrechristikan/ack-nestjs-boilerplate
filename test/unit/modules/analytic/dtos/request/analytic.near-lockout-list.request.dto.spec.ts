@@ -1,18 +1,18 @@
-import { AnalyticNearLockoutAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
+import { EnumAnalyticNearLockoutOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticNearLockoutListRequestSchema', () => {
     it('parses page, perPage, and orderBy', () => {
         const result = AnalyticNearLockoutListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -35,52 +35,47 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticNearLockoutListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticNearLockoutAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumAnalyticNearLockoutOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticNearLockoutOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticNearLockoutListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticNearLockoutListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticNearLockoutAvailableOrderBy[0];
-
-        expect(
-            AnalyticNearLockoutListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticNearLockoutAvailableOrderBy[0];
-        const last =
-            AnalyticNearLockoutAvailableOrderBy[
-                AnalyticNearLockoutAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticNearLockoutListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticNearLockoutAvailableOrderBy[0]}:`,
-        `${AnalyticNearLockoutAvailableOrderBy[0]}:DESC`,
-        `${AnalyticNearLockoutAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticNearLockoutListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

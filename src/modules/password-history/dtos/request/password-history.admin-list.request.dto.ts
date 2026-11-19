@@ -1,24 +1,16 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
+import { EnumPasswordHistoryOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 /** @public */
 export const PasswordHistoryAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(PasswordHistoryDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumPasswordHistoryOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${PasswordHistoryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${PasswordHistoryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumPasswordHistoryOrderBy).join(', ')}. An empty or absent value uses \`${EnumPasswordHistoryOrderBy.latest}\`.`,
+                example: EnumPasswordHistoryOrderBy.latest,
             }),
     });
 

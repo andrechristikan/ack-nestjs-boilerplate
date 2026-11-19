@@ -97,13 +97,30 @@ Rule: `seeding.md`, Outside the layering.
 
 - Seeds calling the feature services: a service write takes a request context and adds outbox effects, which a seed command neither has nor wants.
 
+### Analytic stores its generated results; expensive signals are computed by a job
+
+Rule: `analytic.md`, On request or generated.
+
+- Computing every signal in the request behind a cache: the first reader of each window pays for the whole collection, and each later list page pays for it again.
+- Analytic as a read-only module: it then has nowhere to keep a result.
+- Every one-statement result on request behind a cache: a cache miss under heavy traffic scans the whole live population.
+- Every whole-population result generated, a single-collection indexed count or group included: an indexed count or group over one collection answers within the request, and a snapshot adds a job, an enum member, and a stale `computedAt` for no saving.
+
+### Every analytic read lives in the analytic module
+
+Rule: `layering.md`, Dependency order.
+
+- A per-module analytic service and repository: a metric is spread over fourteen modules, and a cross-collection pipeline has no owner.
+- The root collection's module owning a cross-collection pipeline: the risk score would sit in the user module.
+
 ## Naming
 
-### A Lua script or a raw query sits in the method that runs it
+### A Lua script, a raw query, or a pipeline's stages sit in the class that runs them
 
-Rule: `naming.md`, Files.
+Rule: `naming.md`, Files; `analytic.md`, One statement.
 
-- The script as a data constant in `constants/`: the script reads apart from the call that runs it.
+- The script or the stages as a data constant in `constants/`: they read apart from the call that runs them.
+- One method per pipeline with the shared stages copied: one signal is written twice.
 
 ### The `<module>.` file prefix stays
 
@@ -142,6 +159,13 @@ Rule: `testing.md`, Layout and runs.
 - The full gate on every commit: it is slow enough that agents were told to skip it.
 - lint-staged alone: a type error or a red spec surfaces only after the push.
 - A `pre-push` hook: a second copy of what CI runs.
+
+### Analytic pipelines are proven by review and a boot
+
+Rule: `analytic.md`, One statement.
+
+- Repository unit specs asserting the stages: a spec that repeats the stages passes on a pipeline MongoDB rejects.
+- Testcontainers integration tests: integration is held (`testing.md`).
 
 ### A caller spec names an exception by `module` and `statusCode`
 

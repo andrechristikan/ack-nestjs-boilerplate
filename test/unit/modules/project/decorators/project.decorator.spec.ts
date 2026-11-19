@@ -9,33 +9,30 @@ import {
 } from '@test/unit/helpers/test.unit.decorator.helper';
 import {
     ProjectContext,
-    ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
 import {
     ProjectContextStoreKey,
+    ProjectProtectedDocErrors,
     ProjectRoleMetaKey,
+    ProjectRoleProtectedDocErrors,
 } from '@modules/project/constants/project.constant';
 import {
     buildProject,
     buildProjectMember,
     expectRequestContextMissingWithKey,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
-import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
-import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 
 describe('project.decorator', () => {
     describe('ProjectProtected', () => {
-        it('mounts ProjectGuard and documents the projectId path param', () => {
+        it('mounts ProjectGuard, stores the empty roles, and documents the projectId path param', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
@@ -45,6 +42,9 @@ describe('project.decorator', () => {
             expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
                 ProjectGuard,
             ]);
+            expect(Reflect.getMetadata(ProjectRoleMetaKey, handler)).toEqual(
+                []
+            );
             expect(
                 Reflect.getMetadata(DECORATORS.API_PARAMETERS, handler)
             ).toEqual([
@@ -56,7 +56,7 @@ describe('project.decorator', () => {
             ]);
         });
 
-        it('documents the project not-found and workspace guard-missing errors', () => {
+        it('documents the project not-found and workspace guard-missing errors with no roles', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
@@ -68,105 +68,47 @@ describe('project.decorator', () => {
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual([
-                {
-                    httpStatus: HttpStatus.NOT_FOUND,
-                    statusCode: EnumProjectStatusCodeError.notFound,
-                    messagePath: 'project.error.notFound',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                    messagePath: 'workspace.error.guardMissing',
-                },
-            ]);
+            expect(entries).toEqual(ProjectProtectedDocErrors);
+            expect(entries).toContainEqual({
+                httpStatus: HttpStatus.NOT_FOUND,
+                statusCode: EnumProjectStatusCodeError.notFound,
+                messagePath: 'project.error.notFound',
+            });
+            expect(entries).toContainEqual({
+                httpStatus: HttpStatus.FORBIDDEN,
+                statusCode: EnumProjectStatusCodeError.memberForbidden,
+                messagePath: 'project.error.memberForbidden',
+            });
         });
-    });
 
-    describe('ProjectMemberProtected', () => {
-        it('mounts ProjectMemberGuard with no roles and documents the member errors', () => {
+        it('stores the roles and documents the role errors with roles', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
 
-            ProjectMemberProtected()(target, propertyKey, descriptor);
-
-            expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-                ProjectMemberGuard,
-            ]);
-            expect(
-                Reflect.getMetadata(ProjectRoleMetaKey, handler)
-            ).toBeUndefined();
-
-            const entries = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                handler
-            ) as IDocResponseEntry[];
-
-            expect(entries).toEqual([
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumProjectStatusCodeError.memberForbidden,
-                    messagePath: 'project.error.memberForbidden',
-                },
-                {
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    statusCode: EnumUserStatusCodeError.guardMissing,
-                    messagePath: 'user.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumProjectStatusCodeError.guardMissing,
-                    messagePath: 'project.error.guardMissing',
-                },
-            ]);
-        });
-
-        it('mounts ProjectRoleGuard with roles, stores the roles, and documents the role errors', () => {
-            const handler = vi.fn();
-            const { target, propertyKey, descriptor } =
-                buildDecoratorTarget(handler);
-
-            ProjectMemberProtected(EnumProjectMemberRole.admin)(
+            ProjectProtected(EnumProjectMemberRole.admin)(
                 target,
                 propertyKey,
                 descriptor
             );
 
             expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-                ProjectRoleGuard,
+                ProjectGuard,
             ]);
             expect(Reflect.getMetadata(ProjectRoleMetaKey, handler)).toEqual([
                 EnumProjectMemberRole.admin,
             ]);
-
             const entries = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual([
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumProjectStatusCodeError.memberForbidden,
-                    messagePath: 'project.error.memberForbidden',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumProjectStatusCodeError.roleForbidden,
-                    messagePath: 'project.error.roleForbidden',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumProjectStatusCodeError.guardMissing,
-                    messagePath: 'project.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-                    messagePath: 'workspace.error.memberGuardMissing',
-                },
-            ]);
+            expect(entries).toEqual(ProjectRoleProtectedDocErrors);
+            expect(entries).toContainEqual({
+                httpStatus: HttpStatus.FORBIDDEN,
+                statusCode: EnumProjectStatusCodeError.roleForbidden,
+                messagePath: 'project.error.roleForbidden',
+            });
         });
     });
 

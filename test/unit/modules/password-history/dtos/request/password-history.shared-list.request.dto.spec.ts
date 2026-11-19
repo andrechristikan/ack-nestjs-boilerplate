@@ -1,11 +1,11 @@
-import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistorySharedListRequestSchema } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
+import { EnumPasswordHistoryCursorOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 describe('PasswordHistorySharedListRequestSchema', () => {
     const payload = {
         cursor: 'eyJpZCI6IjE2In0',
         perPage: 20,
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -36,53 +36,48 @@ describe('PasswordHistorySharedListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             PasswordHistorySharedListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(PasswordHistoryCursorAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumPasswordHistoryCursorOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumPasswordHistoryCursorOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                PasswordHistorySharedListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             PasswordHistorySharedListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = PasswordHistoryCursorAvailableOrderBy[0];
-
-        expect(
-            PasswordHistorySharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = PasswordHistoryCursorAvailableOrderBy[0];
-        const last =
-            PasswordHistoryCursorAvailableOrderBy[
-                PasswordHistoryCursorAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            PasswordHistorySharedListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${PasswordHistoryCursorAvailableOrderBy[0]}:`,
-        `${PasswordHistoryCursorAvailableOrderBy[0]}:DESC`,
-        `${PasswordHistoryCursorAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             PasswordHistorySharedListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            PasswordHistorySharedListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

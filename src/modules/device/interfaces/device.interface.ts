@@ -49,11 +49,6 @@ export interface IDeviceRefresh {
     notificationToken: string | null;
 }
 
-export interface IDeviceOwnershipAnalyticUserCount {
-    userId: string;
-    count: number;
-}
-
 export interface IDeviceRemoveResult {
     deviceOwnership: IDeviceOwnership;
     revokedSessions: ISessionRef[];

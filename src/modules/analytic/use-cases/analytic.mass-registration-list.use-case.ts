@@ -6,8 +6,9 @@ import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/d
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticMassRegistration } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticKeyCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticMassRegistrationListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticMassRegistrationListUseCase implements IAppUseCase<
         query: AnalyticMassRegistrationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+            orderBy: AnalyticKeyCountOrderBy,
+            defaultOrderBy: EnumAnalyticKeyCountOrderBy.mostCount,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

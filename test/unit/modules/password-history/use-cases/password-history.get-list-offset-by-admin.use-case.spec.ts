@@ -6,10 +6,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
+import { PasswordHistoryOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type { PasswordHistoryAdminListRequestDto } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
 import { PasswordHistoryGetListOffsetByAdminUseCase } from '@modules/password-history/use-cases/password-history.get-list-offset-by-admin.use-case';
+import { EnumPasswordHistoryOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 describe('PasswordHistoryGetListOffsetByAdminUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
@@ -75,7 +76,8 @@ describe('PasswordHistoryGetListOffsetByAdminUseCase', () => {
             const result = await useCase.execute('user-id', query);
 
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
+                orderBy: PasswordHistoryOrderBy,
+                defaultOrderBy: EnumPasswordHistoryOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

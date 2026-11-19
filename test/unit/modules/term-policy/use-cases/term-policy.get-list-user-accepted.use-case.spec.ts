@@ -11,7 +11,7 @@ import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-c
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
-    TermPolicyAcceptanceDefaultAvailableOrderBy,
+    TermPolicyAcceptanceOrderBy,
     TermPolicyAcceptanceSharedListCursorScope,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import {
@@ -19,6 +19,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumTermPolicyAcceptanceOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyGetListUserAcceptedUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
@@ -81,7 +82,8 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: TermPolicyAcceptanceSharedListCursorScope,
-                availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+                orderBy: TermPolicyAcceptanceOrderBy,
+                defaultOrderBy: EnumTermPolicyAcceptanceOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

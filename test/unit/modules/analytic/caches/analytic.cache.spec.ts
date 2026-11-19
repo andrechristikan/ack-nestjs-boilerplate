@@ -35,11 +35,10 @@ describe('AnalyticCache', () => {
                     'Anomaly:{signal}:{window}',
                 'analytic.cache.fraudSummaryKeyPattern':
                     'Fraud:{signal}:{window}',
-                'analytic.cache.riskScoreKeyPattern': 'RiskScore:{userId}',
                 'analytic.cache.dashboardTtlInMs': 1000,
                 'analytic.cache.anomalySummaryTtlInMs': 2000,
                 'analytic.cache.fraudSummaryTtlInMs': 3000,
-                'analytic.cache.riskScoreTtlInMs': 4000,
+                'analytic.cache.liveSummaryTtlInMs': 4000,
             };
             return values[key];
         });
@@ -76,20 +75,20 @@ describe('AnalyticCache', () => {
         });
     });
 
+    describe('liveSummaryTtlInMs', () => {
+        it('reads liveSummaryTtlInMs from analytic.cache.liveSummaryTtlInMs', () => {
+            expect(cache.liveSummaryTtlInMs).toBe(4000);
+            expect(configService.get).toHaveBeenCalledWith(
+                'analytic.cache.liveSummaryTtlInMs'
+            );
+        });
+    });
+
     describe('fraudSummaryTtlInMs', () => {
         it('reads fraudSummaryTtlInMs from analytic.cache.fraudSummaryTtlInMs', () => {
             expect(cache.fraudSummaryTtlInMs).toBe(3000);
             expect(configGet).toHaveBeenCalledWith(
                 'analytic.cache.fraudSummaryTtlInMs'
-            );
-        });
-    });
-
-    describe('riskScoreTtlInMs', () => {
-        it('reads riskScoreTtlInMs from analytic.cache.riskScoreTtlInMs', () => {
-            expect(cache.riskScoreTtlInMs).toBe(4000);
-            expect(configGet).toHaveBeenCalledWith(
-                'analytic.cache.riskScoreTtlInMs'
             );
         });
     });
@@ -157,15 +156,15 @@ describe('AnalyticCache', () => {
     describe('buildAnomalySummaryKey', () => {
         it('builds the anomaly summary key from the pattern', () => {
             const result = cache.buildAnomalySummaryKey(
-                EnumAnalyticAnomalySignal.impossibleTravel,
+                EnumAnalyticAnomalySignal.failedLoginSpike,
                 '3600000'
             );
 
-            expect(result).toBe('impossible-travel:3600000');
+            expect(result).toBe('failed-login-spike:3600000');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Anomaly:{signal}:{window}',
                 {
-                    signal: EnumAnalyticAnomalySignal.impossibleTravel,
+                    signal: EnumAnalyticAnomalySignal.failedLoginSpike,
                     window: '3600000',
                 }
             );
@@ -175,27 +174,18 @@ describe('AnalyticCache', () => {
     describe('buildFraudSummaryKey', () => {
         it('builds the fraud summary key from the pattern', () => {
             const result = cache.buildFraudSummaryKey(
-                EnumAnalyticFraudSignal.credentialStuffing,
+                EnumAnalyticFraudSignal.massRegistration,
                 '86400000'
             );
 
-            expect(result).toBe('credential-stuffing:86400000');
+            expect(result).toBe('mass-registration:86400000');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Fraud:{signal}:{window}',
                 {
-                    signal: EnumAnalyticFraudSignal.credentialStuffing,
+                    signal: EnumAnalyticFraudSignal.massRegistration,
                     window: '86400000',
                 }
             );
-        });
-    });
-
-    describe('buildRiskScoreKey', () => {
-        it('builds the risk score key from the pattern', () => {
-            const result = cache.buildRiskScoreKey('user-$&');
-
-            expect(result).toBe('RiskScore:user-$&');
-            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
         });
     });
 });

@@ -36,7 +36,6 @@ import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleWithPoliciesCacheSchema } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IRoleActor,
     IRoleCreate,
@@ -313,31 +312,37 @@ describe('RoleService', () => {
         });
     });
 
-    describe('getOneByUserId', () => {
-        it('throws UserNotFoundException when no role holds the user', async () => {
-            roleRepository.findOneByUserId.mockResolvedValue(null);
+    describe('getOneWithPolicies', () => {
+        it('reads the role with its policies from the repository once and never through the cache', async () => {
+            roleRepository.findOneWithPoliciesById.mockResolvedValue(
+                roleWithPolicies
+            );
 
-            await expect(
-                service.getOneByUserId('missing')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'user.error.notFound',
-            });
+            const result = await service.getOneWithPolicies(role.id);
+
+            expect(result).toBe(roleWithPolicies);
+            expect(
+                roleRepository.findOneWithPoliciesById
+            ).toHaveBeenCalledTimes(1);
+            expect(roleRepository.findOneWithPoliciesById).toHaveBeenCalledWith(
+                role.id
+            );
+            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
 
-        it('returns the role the user holds', async () => {
-            roleRepository.findOneByUserId.mockResolvedValue(role);
+        it('throws RoleNotFoundException when the repository answers null', async () => {
+            roleRepository.findOneWithPoliciesById.mockResolvedValue(null);
 
-            const result = await service.getOneByUserId('user-1');
-
-            expect(result).toBe(role);
-            expect(roleRepository.findOneByUserId).toHaveBeenCalledWith(
-                'user-1'
-            );
+            await expect(
+                service.getOneWithPolicies('missing')
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'role.error.notFound',
+            });
         });
     });
 
@@ -1004,32 +1009,6 @@ describe('RoleService', () => {
                 roleKeys
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
-        });
-    });
-
-    describe('assertExistsById', () => {
-        it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.existsById.mockResolvedValue(false);
-
-            await expect(
-                service.assertExistsById('missing')
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
-            });
-        });
-
-        it('resolves when the role exists', async () => {
-            roleRepository.existsById.mockResolvedValue(true);
-
-            await expect(
-                service.assertExistsById(role.id)
-            ).resolves.toBeUndefined();
-            expect(roleRepository.existsById).toHaveBeenCalledWith(role.id);
         });
     });
 

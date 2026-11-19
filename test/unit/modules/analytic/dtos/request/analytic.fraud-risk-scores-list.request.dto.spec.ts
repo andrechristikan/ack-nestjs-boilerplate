@@ -1,19 +1,19 @@
-import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticFraudRiskScoresListRequestSchema', () => {
     it('parses page, perPage, orderBy, and minScore', () => {
         const result = AnalyticFraudRiskScoresListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'score:desc',
+            orderBy: 'highestValue',
             minScore: 30,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'score:desc',
+            orderBy: 'highestValue',
             minScore: 30,
         });
     });
@@ -48,53 +48,51 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticFraudRiskScoreAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumAnalyticSnapshotOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticSnapshotOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
-
-        expect(
-            AnalyticFraudRiskScoresListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
-        const last =
-            AnalyticFraudRiskScoreAvailableOrderBy[
-                AnalyticFraudRiskScoreAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticFraudRiskScoresListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:`,
-        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:DESC`,
-        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'highestValue:asc',
+        'default',
+        'createdAt',
+        'value',
+        'occurredAt',
+        'recent',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({
+                orderBy: ['highestValue', 'highestValue'],
+            }).success
         ).toBe(false);
     });
 });

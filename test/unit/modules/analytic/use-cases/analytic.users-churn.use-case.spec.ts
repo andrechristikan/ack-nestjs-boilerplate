@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticUsersChurnUseCase } from '@modules/analytic/use-cases/analytic.users-churn.use-case';
 
 describe('AnalyticUsersChurnUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticUsersChurnUseCase', () => {
             providers: [
                 AnalyticUsersChurnUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticUsersChurnUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersChurn.mockResolvedValue({
+            analyticUserService.usersChurn.mockResolvedValue({
                 count: 4,
                 total: 10,
                 rate: 0.4,
@@ -53,7 +53,7 @@ describe('AnalyticUsersChurnUseCase', () => {
             expect(result).toEqual({
                 data: { count: 4, total: 10, rate: 0.4 },
             });
-            expect(analyticDashboardService.usersChurn).toHaveBeenCalledWith(
+            expect(analyticUserService.usersChurn).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -63,7 +63,7 @@ describe('AnalyticUsersChurnUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersChurn.mockResolvedValue({
+            analyticUserService.usersChurn.mockResolvedValue({
                 count: 4,
                 total: 10,
                 rate: 0.4,

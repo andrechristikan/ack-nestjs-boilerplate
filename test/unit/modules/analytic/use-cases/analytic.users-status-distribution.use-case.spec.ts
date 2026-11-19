@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticUsersStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-status-distribution.use-case';
 
 describe('AnalyticUsersStatusDistributionUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     let useCase: AnalyticUsersStatusDistributionUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticUsersStatusDistributionUseCase', () => {
             providers: [
                 AnalyticUsersStatusDistributionUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticUsersStatusDistributionUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.usersStatusDistribution.mockResolvedValue({
+            analyticUserService.usersStatusDistribution.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -39,7 +39,7 @@ describe('AnalyticUsersStatusDistributionUseCase', () => {
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
             expect(
-                analyticDashboardService.usersStatusDistribution
+                analyticUserService.usersStatusDistribution
             ).toHaveBeenCalledWith();
         });
     });

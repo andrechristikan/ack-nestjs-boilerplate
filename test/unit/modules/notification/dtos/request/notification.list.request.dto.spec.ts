@@ -1,11 +1,11 @@
-import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
+import { EnumNotificationOrderBy } from '@modules/notification/enums/notification.enum';
 
 describe('NotificationListRequestSchema', () => {
     const payload = {
         cursor: 'eyJpZCI6IjE2In0',
         perPage: 20,
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -32,49 +32,44 @@ describe('NotificationListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             NotificationListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(NotificationDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumNotificationOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumNotificationOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                NotificationListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             NotificationListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = NotificationDefaultAvailableOrderBy[0];
-
-        expect(
-            NotificationListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = NotificationDefaultAvailableOrderBy[0];
-        const last =
-            NotificationDefaultAvailableOrderBy[
-                NotificationDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            NotificationListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${NotificationDefaultAvailableOrderBy[0]}:`,
-        `${NotificationDefaultAvailableOrderBy[0]}:DESC`,
-        `${NotificationDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             NotificationListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            NotificationListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

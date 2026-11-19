@@ -1,8 +1,5 @@
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponsePaginationMetadataSchema } from '@common/response/dtos/response.pagination-metadata.dto';
 
 describe('ResponsePaginationMetadataSchema', () => {
@@ -17,9 +14,9 @@ describe('ResponsePaginationMetadataSchema', () => {
         perPage: 20,
         hasNext: true,
         hasPrevious: false,
-        orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+        orderBy: 'latest',
         availableSearch: ['name'],
-        availableOrderBy: ['createdAt', 'updatedAt'],
+        availableOrderBy: ['latest', 'name'],
         type: EnumPaginationType.offset,
     };
 
@@ -63,6 +60,24 @@ describe('ResponsePaginationMetadataSchema', () => {
 
         expect(() =>
             ResponsePaginationMetadataSchema.parse(incomplete)
+        ).toThrow();
+    });
+
+    it('rejects an orderBy array of term objects', () => {
+        expect(() =>
+            ResponsePaginationMetadataSchema.parse({
+                ...base,
+                orderBy: [{ createdAt: 'desc' }],
+            })
+        ).toThrow();
+    });
+
+    it('rejects an availableOrderBy array of term objects', () => {
+        expect(() =>
+            ResponsePaginationMetadataSchema.parse({
+                ...base,
+                availableOrderBy: [{ createdAt: 'desc' }],
+            })
         ).toThrow();
     });
 

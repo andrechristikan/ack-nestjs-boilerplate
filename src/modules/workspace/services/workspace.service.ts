@@ -24,7 +24,6 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
-import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
@@ -82,22 +81,6 @@ export class WorkspaceService {
         const isPatternValid = this.slugRegex.test(slug);
 
         return slug.length <= this.slugMaxLength && isPatternValid;
-    }
-
-    async validateWorkspaceGuard(
-        workspaceId: string | null
-    ): Promise<Workspace> {
-        if (!workspaceId) {
-            throw new WorkspaceHeaderMissingException();
-        }
-
-        const workspace =
-            await this.workspaceRepository.findActiveById(workspaceId);
-        if (!workspace) {
-            throw new WorkspaceNotFoundException();
-        }
-
-        return workspace;
     }
 
     async getListCursorByMember(
@@ -374,20 +357,16 @@ export class WorkspaceService {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<number> {
-        const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
-                tx,
-                userId,
-                EnumWorkspaceMemberRole.owner
-            );
-
-        return this.workspaceRepository.countByOwnerInTx(tx, workspaceIds);
+        return this.workspaceMemberRepository.countOwnedActiveByUserInTx(
+            tx,
+            userId
+        );
     }
 
     async assertOwnedHasNoOtherMembersInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<void> {
+    ): Promise<string[]> {
         const workspaceIds =
             await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
                 tx,
@@ -403,20 +382,16 @@ export class WorkspaceService {
         if (hasOtherMembers) {
             throw new WorkspaceOwnerTransferRequiredException();
         }
+
+        return workspaceIds;
     }
 
     async softDeleteOwnedByUserInTx(
         tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
         userId: string,
         deletedAt: Date
     ): Promise<string[]> {
-        const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
-                tx,
-                userId,
-                EnumWorkspaceMemberRole.owner
-            );
-
         return this.workspaceRepository.softDeleteOwnedByUserInTx(
             tx,
             workspaceIds,

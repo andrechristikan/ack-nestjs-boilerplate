@@ -1,57 +1,58 @@
 export interface IAnalyticAnomalySummary {
     count: number;
-    window: string | null;
+    windowStart: Date | null;
+    windowEnd: Date | null;
+    computedAt: Date | null;
 }
 
-export interface IAnalyticAnomalyImpossibleTravelSummaryMeta {
+export type IAnalyticAnomalyImpossibleTravelSummaryMetadata = {
     minDistanceKm: number;
     maxDeltaInMs: number;
-}
+};
 
 export interface IAnalyticAnomalyImpossibleTravelSummary extends IAnalyticAnomalySummary {
-    meta: IAnalyticAnomalyImpossibleTravelSummaryMeta;
+    metadata: IAnalyticAnomalyImpossibleTravelSummaryMetadata;
 }
 
-export interface IAnalyticAnomalyLoginSpikeIpSummaryMeta {
+export type IAnalyticAnomalyLoginSpikeIpSummaryMetadata = {
     minUniqueAccounts: number;
-}
+};
 
 export interface IAnalyticAnomalyLoginSpikeIpSummary extends IAnalyticAnomalySummary {
-    meta: IAnalyticAnomalyLoginSpikeIpSummaryMeta;
+    metadata: IAnalyticAnomalyLoginSpikeIpSummaryMetadata;
 }
 
-export interface IAnalyticAnomalyFailedLoginSpikeSummaryMeta {
+export interface IAnalyticAnomalyFailedLoginSpikeSummaryMetadata {
     nearLockoutMinAttempt: number;
-    bucketCount: number;
 }
 
 export interface IAnalyticAnomalyFailedLoginSpikeSummary extends IAnalyticAnomalySummary {
-    meta: IAnalyticAnomalyFailedLoginSpikeSummaryMeta;
+    metadata: IAnalyticAnomalyFailedLoginSpikeSummaryMetadata;
 }
 
-export interface IAnalyticAnomalyDeviceProliferationSummaryMeta {
+export type IAnalyticAnomalyDeviceProliferationSummaryMetadata = {
     avg: number;
     stdDev: number;
     zScoreThreshold: number;
-}
+};
 
 export interface IAnalyticAnomalyDeviceProliferationSummary extends IAnalyticAnomalySummary {
-    meta: IAnalyticAnomalyDeviceProliferationSummaryMeta;
+    metadata: IAnalyticAnomalyDeviceProliferationSummaryMetadata;
 }
 
-export interface IAnalyticImpossibleTravel {
+export type IAnalyticImpossibleTravel = {
     userId: string;
     fromSessionId: string;
     toSessionId: string;
     distanceKm: number;
     deltaMs: number;
-}
+};
 
-export interface IAnalyticLoginSpikeIp {
+export type IAnalyticLoginSpikeIp = {
     ipAddress: string;
     uniqueUsers: number;
     attempts: number;
-}
+};
 
 export interface IAnalyticNearLockout {
     id: string;
@@ -61,26 +62,32 @@ export interface IAnalyticNearLockout {
     createdAt: Date;
 }
 
-export interface IAnalyticDeviceProliferation {
+export type IAnalyticDeviceProliferation = {
     userId: string;
     deviceCount: number;
     zScore: number;
-}
+};
 
 export interface IAnalyticDeviceProliferationResult {
-    count: number;
     avg: number;
     stdDev: number;
     rows: IAnalyticDeviceProliferation[];
 }
 
-export interface IAnalyticLoginTimeAnomaly {
+export type IAnalyticLoginTimeAnomaly = {
     userId: string;
     lastHour: number;
     historicalFrequencyPercent: number;
+};
+
+export interface IAnalyticImpossibleTravelThresholds {
+    minDistanceKm: number;
+    maxDeltaInMs: number;
 }
 
-export interface IAnalyticIpGroup {
-    users: Set<string>;
-    count: number;
+export interface IAnalyticLoginTimeAnomalyThresholds {
+    minSample: number;
+    historyLimit: number;
+    historicalFrequencyPercent: number;
+    timezone: string;
 }

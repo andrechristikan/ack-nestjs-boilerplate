@@ -17,7 +17,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import {
-    WorkspaceMemberDefaultAvailableOrderBy,
+    WorkspaceMemberOrderBy,
     WorkspaceMemberDefaultRole,
     WorkspaceMemberUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -30,6 +30,7 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetMembersListUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -109,7 +110,8 @@ describe('WorkspaceGetMembersListUseCase', () => {
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceMemberUserListCursorScope,
-                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+                orderBy: WorkspaceMemberOrderBy,
+                defaultOrderBy: EnumWorkspaceMemberOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceMemberScalarFieldEnum.role,

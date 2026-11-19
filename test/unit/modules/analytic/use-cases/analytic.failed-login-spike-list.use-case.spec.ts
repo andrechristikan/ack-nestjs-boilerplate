@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticNearLockoutAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticNearLockoutOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-list.use-case';
+import { EnumAnalyticNearLockoutOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticFailedLoginSpikeListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
@@ -89,7 +90,10 @@ describe('AnalyticFailedLoginSpikeListUseCase', () => {
             ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticNearLockoutAvailableOrderBy }
+                {
+                    orderBy: AnalyticNearLockoutOrderBy,
+                    defaultOrderBy: EnumAnalyticNearLockoutOrderBy.latest,
+                }
             );
         });
     });

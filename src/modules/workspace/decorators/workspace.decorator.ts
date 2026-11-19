@@ -1,14 +1,11 @@
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
     WorkspaceContextStoreKey,
-    WorkspaceMemberProtectedDocErrors,
     WorkspaceProtectedDocErrors,
     WorkspaceRoleMetaKey,
     WorkspaceRoleProtectedDocErrors,
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
-import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 import {
     SetMetadata,
     UseGuards,
@@ -44,27 +41,16 @@ export const WorkspaceContext = createParamDecorator((): IWorkspaceContext => {
 });
 
 /** @public */
-export function WorkspaceProtected(): MethodDecorator {
-    return applyDecorators(
-        UseGuards(WorkspaceGuard),
-        DocErrors(...WorkspaceProtectedDocErrors)
-    );
-}
-
-/** @public */
-export function WorkspaceMemberProtected(
+export function WorkspaceProtected(
     ...roles: EnumWorkspaceMemberRole[]
 ): MethodDecorator {
-    if (roles.length === 0) {
-        return applyDecorators(
-            UseGuards(WorkspaceMemberGuard),
-            DocErrors(...WorkspaceMemberProtectedDocErrors)
-        );
-    }
-
     return applyDecorators(
-        UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
+        UseGuards(WorkspaceGuard),
         SetMetadata(WorkspaceRoleMetaKey, roles),
-        DocErrors(...WorkspaceRoleProtectedDocErrors)
+        DocErrors(
+            ...(roles.length === 0
+                ? WorkspaceProtectedDocErrors
+                : WorkspaceRoleProtectedDocErrors)
+        )
     );
 }

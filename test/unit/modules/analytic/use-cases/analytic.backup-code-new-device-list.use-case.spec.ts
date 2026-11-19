@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticBackupCodeNewDeviceAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticBackupCodeNewDeviceOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticBackupCodeNewDeviceListUseCase } from '@modules/analytic/use-cases/analytic.backup-code-new-device-list.use-case';
+import { EnumAnalyticBackupCodeNewDeviceOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticBackupCodeNewDeviceListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -19,10 +20,6 @@ describe('AnalyticBackupCodeNewDeviceListUseCase', () => {
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-
-    const windowMs: number = 3600000;
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -39,6 +36,8 @@ describe('AnalyticBackupCodeNewDeviceListUseCase', () => {
         hasNext: false,
         hasPrevious: false,
     };
+
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
 
     let useCase: AnalyticBackupCodeNewDeviceListUseCase;
 
@@ -65,17 +64,16 @@ describe('AnalyticBackupCodeNewDeviceListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
-                data: [{ userId: 'user-1', regeneratedAt: startDate }],
+                data: [{ userId: 'user-1', regeneratedAt: computedAt }],
             };
             analyticFraudService.backupCodeNewDeviceList.mockResolvedValue(
                 page
             );
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -83,27 +81,15 @@ describe('AnalyticBackupCodeNewDeviceListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.backupCodeNewDeviceList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
-                    availableOrderBy:
-                        AnalyticBackupCodeNewDeviceAvailableOrderBy,
+                    orderBy: AnalyticBackupCodeNewDeviceOrderBy,
+                    defaultOrderBy:
+                        EnumAnalyticBackupCodeNewDeviceOrderBy.latest,
                 }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudService.backupCodeNewDeviceList.mockResolvedValue(
-                page
-            );
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(
-                analyticFraudService.backupCodeNewDeviceList
-            ).toHaveBeenCalledWith(null, pagination);
         });
     });
 });

@@ -104,7 +104,11 @@ export class UserAdminController {
         private readonly userExportByAdminUseCase: UserExportByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'get all users' })
+    @Doc({
+        summary: 'get all users',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
+    })
     @ResponsePagination('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

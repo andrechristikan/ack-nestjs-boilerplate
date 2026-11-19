@@ -8,8 +8,9 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import { Injectable } from '@nestjs/common';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { SessionOrderBy } from '@modules/session/constants/session.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumSessionOrderBy } from '@modules/session/enums/session.enum';
 
 @Injectable()
 export class SessionGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -28,7 +29,8 @@ export class SessionGetListOffsetByAdminUseCase implements IAppUseCase<
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: SessionDefaultAvailableOrderBy,
+            orderBy: SessionOrderBy,
+            defaultOrderBy: EnumSessionOrderBy.latest,
         });
         const isRevoked = this.paginationFilterUtil.equalBoolean(
             Prisma.SessionScalarFieldEnum.isRevoked,

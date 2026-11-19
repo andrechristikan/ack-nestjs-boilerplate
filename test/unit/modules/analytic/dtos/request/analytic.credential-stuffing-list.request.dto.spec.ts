@@ -1,20 +1,18 @@
-import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import { EnumAnalyticCredentialStuffingOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticCredentialStuffingListRequestSchema', () => {
-    it('parses page, perPage, orderBy, and windowMs', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticCredentialStuffingListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'mostUsers',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc`,
-            windowMs: 3600000,
+            orderBy: 'mostUsers',
         });
     });
 
@@ -24,12 +22,17 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('coerces a numeric string windowMs into an integer', () => {
-        const result = AnalyticCredentialStuffingListRequestSchema.parse({
-            windowMs: '600000',
-        });
-
-        expect(result).toEqual({ windowMs: 600000 });
+    it('rejects windowMs and the date range', () => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                windowMs: 1000,
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                startDate: '2026-01-01T00:00:00.000Z',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {
@@ -49,14 +52,27 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticCredentialStuffingListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticCredentialStuffingAvailableOrderBy.join(', '));
+        ).toContain(
+            Object.values(EnumAnalyticCredentialStuffingOrderBy).join(', ')
+        );
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticCredentialStuffingOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticCredentialStuffingListRequestSchema.safeParse({
+                    orderBy,
+                }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticCredentialStuffingListRequestSchema.safeParse({
                 orderBy: '',
@@ -64,39 +80,26 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticCredentialStuffingAvailableOrderBy[0];
-
-        expect(
-            AnalyticCredentialStuffingListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticCredentialStuffingAvailableOrderBy[0];
-        const last =
-            AnalyticCredentialStuffingAvailableOrderBy[
-                AnalyticCredentialStuffingAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticCredentialStuffingListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:`,
-        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:DESC`,
-        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'mostUsers:asc',
+        'default',
+        'createdAt',
+        'uniqueUsers',
+        'failCount',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticCredentialStuffingListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                orderBy: ['mostUsers', 'mostUsers'],
+            }).success
         ).toBe(false);
     });
 });

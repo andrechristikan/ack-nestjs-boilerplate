@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticKeyCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticPasswordResetEnumerationListUseCase } from '@modules/analytic/use-cases/analytic.password-reset-enumeration-list.use-case';
+import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticPasswordResetEnumerationListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -84,7 +85,10 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
             ).toHaveBeenCalledWith(windowMs, pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticKeyCountAvailableOrderBy }
+                {
+                    orderBy: AnalyticKeyCountOrderBy,
+                    defaultOrderBy: EnumAnalyticKeyCountOrderBy.mostCount,
+                }
             );
         });
 

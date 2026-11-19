@@ -7,6 +7,10 @@ export interface IProjectContext {
     projectMember: ProjectMember | null;
 }
 
+export interface IProjectWithMembers extends Project {
+    members: ProjectMember[];
+}
+
 export type IProjectContextPatch = IRequestStorePatch<IProjectContext>;
 
 export interface IProjectMember extends ProjectMember {

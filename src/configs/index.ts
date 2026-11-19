@@ -25,7 +25,6 @@ import FileConfig from '@configs/file.config';
 import WorkspaceConfig from '@configs/workspace.config';
 import ProjectConfig from '@configs/project.config';
 import AnalyticConfig from '@configs/analytic.config';
-import ActivityLogConfig from '@configs/activity-log.config';
 import OutboxConfig from '@configs/outbox.config';
 import RoleConfig from '@configs/role.config';
 import HelperConfig from '@configs/helper.config';
@@ -59,7 +58,6 @@ export default [
     WorkspaceConfig,
     ProjectConfig,
     AnalyticConfig,
-    ActivityLogConfig,
     OutboxConfig,
     RoleConfig,
     HelperConfig,

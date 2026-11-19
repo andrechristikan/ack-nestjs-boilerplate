@@ -56,7 +56,11 @@ export class DeviceAdminController {
         private readonly deviceRemoveByAdminUseCase: DeviceRemoveByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'admin get all user Devices' })
+    @Doc({
+        summary: 'admin get all user Devices',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyActive (lastActiveAt descending).',
+    })
     @ResponsePagination('device.list', {
         schema: DeviceOwnershipResponseSchema,
     })

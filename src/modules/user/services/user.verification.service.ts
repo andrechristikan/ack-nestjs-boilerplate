@@ -17,7 +17,6 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
 import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
@@ -125,18 +124,16 @@ export class UserVerificationService {
         token: string
     ): Promise<IUserVerificationEmailTarget> {
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const verification =
+        const found =
             await this.userVerificationRepository.findOneActiveByVerificationEmailToken(
                 hashedToken
             );
-        if (!verification) {
+        if (!found) {
             throw new UserTokenInvalidException();
         }
 
-        const user = await this.userRepository.findOneById(verification.userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.isVerified) {
+        const { user, ...verification } = found;
+        if (user.isVerified) {
             throw new UserEmailAlreadyVerifiedException();
         }
 

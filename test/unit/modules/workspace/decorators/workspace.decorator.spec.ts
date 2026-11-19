@@ -6,7 +6,6 @@ import type { ExecutionContext, Type } from '@nestjs/common';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
 import {
     WorkspaceContext,
-    WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import {
@@ -26,12 +25,36 @@ import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
-import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 
 describe('workspace.decorator', () => {
     describe('WorkspaceProtected', () => {
-        it('mounts WorkspaceGuard and the workspace error kit on the handler', () => {
+        const userGuardMissing = {
+            httpStatus: HttpStatus.UNAUTHORIZED,
+            statusCode: EnumUserStatusCodeError.guardMissing,
+            messagePath: 'user.error.guardMissing',
+        };
+        const headerMissing = {
+            httpStatus: HttpStatus.BAD_REQUEST,
+            statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+            messagePath: 'workspace.error.headerMissing',
+        };
+        const notFound = {
+            httpStatus: HttpStatus.NOT_FOUND,
+            statusCode: EnumWorkspaceStatusCodeError.notFound,
+            messagePath: 'workspace.error.notFound',
+        };
+        const memberForbidden = {
+            httpStatus: HttpStatus.FORBIDDEN,
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        };
+        const roleForbidden = {
+            httpStatus: HttpStatus.FORBIDDEN,
+            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+            messagePath: 'workspace.error.roleForbidden',
+        };
+
+        it('mounts the one WorkspaceGuard, sets empty roles, and carries the no-role error kit when no role is given', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
@@ -40,66 +63,26 @@ describe('workspace.decorator', () => {
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
             ).toEqual([WorkspaceGuard]);
-            const stored = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                descriptor.value
-            ) as IDocResponseEntry[];
-            expect(stored).toEqual([
-                {
-                    httpStatus: HttpStatus.BAD_REQUEST,
-                    statusCode: EnumWorkspaceStatusCodeError.headerMissing,
-                    messagePath: 'workspace.error.headerMissing',
-                },
-                {
-                    httpStatus: HttpStatus.NOT_FOUND,
-                    statusCode: EnumWorkspaceStatusCodeError.notFound,
-                    messagePath: 'workspace.error.notFound',
-                },
-            ]);
-        });
-    });
-
-    describe('WorkspaceMemberProtected', () => {
-        it('mounts only WorkspaceMemberGuard when no role is given', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            WorkspaceMemberProtected()(target, 'method', descriptor);
-
-            expect(
-                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceMemberGuard]);
             expect(
                 Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
-            ).toBeUndefined();
+            ).toEqual([]);
             const stored = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                {
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    statusCode: EnumUserStatusCodeError.guardMissing,
-                    messagePath: 'user.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                    messagePath: 'workspace.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                    messagePath: 'workspace.error.memberForbidden',
-                },
+                headerMissing,
+                notFound,
+                userGuardMissing,
+                memberForbidden,
             ]);
         });
 
-        it('mounts WorkspaceMemberGuard, WorkspaceRoleGuard, the roles, and the role error kit', () => {
+        it('mounts the one WorkspaceGuard, sets the roles, and carries the role error kit when roles are given', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
-            WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)(
+            WorkspaceProtected(EnumWorkspaceMemberRole.admin)(
                 target,
                 'method',
                 descriptor
@@ -107,7 +90,7 @@ describe('workspace.decorator', () => {
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceMemberGuard, WorkspaceRoleGuard]);
+            ).toEqual([WorkspaceGuard]);
             expect(
                 Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
             ).toEqual([EnumWorkspaceMemberRole.admin]);
@@ -116,31 +99,11 @@ describe('workspace.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
-                {
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    statusCode: EnumUserStatusCodeError.guardMissing,
-                    messagePath: 'user.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                    messagePath: 'workspace.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-                    messagePath: 'workspace.error.memberGuardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                    messagePath: 'workspace.error.memberForbidden',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-                    messagePath: 'workspace.error.roleForbidden',
-                },
+                headerMissing,
+                notFound,
+                userGuardMissing,
+                memberForbidden,
+                roleForbidden,
             ]);
         });
     });

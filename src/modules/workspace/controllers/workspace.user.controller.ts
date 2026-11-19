@@ -77,7 +77,6 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import {
     WorkspaceContext,
-    WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
@@ -151,7 +150,10 @@ export class WorkspaceUserController {
         private readonly workspaceRejectJoinRequestUseCase: WorkspaceRejectJoinRequestUseCase
     ) {}
 
-    @Doc({ summary: 'list workspaces the caller is a member of' })
+    @Doc({
+        summary: 'list workspaces the caller is a member of',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('workspace.list', {
         schema: WorkspaceResponseSchema,
     })
@@ -202,7 +204,6 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -221,8 +222,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -254,8 +254,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -284,8 +283,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -340,8 +338,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'transfer workspace ownership to another member' })
     @Response('workspace.transferOwnership')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.owner)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -369,7 +366,6 @@ export class WorkspaceUserController {
     @Doc({ summary: 'leave the current workspace' })
     @Response('workspace.leave')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -395,8 +391,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'soft-delete the current workspace' })
     @Response('workspace.softDelete')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.owner)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -417,12 +412,15 @@ export class WorkspaceUserController {
         );
     }
 
-    @Doc({ summary: 'list members of the current workspace' })
+    @Doc({
+        summary: 'list members of the current workspace',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyJoined (joinedAt descending).',
+    })
     @ResponsePagination('workspace.member.list', {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -444,8 +442,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'update a member role in the current workspace' })
     @Response('workspace.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -475,8 +472,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'remove a member from the current workspace' })
     @Response('workspace.member.remove')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -500,13 +496,15 @@ export class WorkspaceUserController {
         );
     }
 
-    @Doc({ summary: 'list invites for the current workspace' })
+    @Doc({
+        summary: 'list invites for the current workspace',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('workspace.invite.list', {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -532,8 +530,7 @@ export class WorkspaceUserController {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -544,6 +541,7 @@ export class WorkspaceUserController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
@@ -552,6 +550,7 @@ export class WorkspaceUserController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             workspaceContext,
             body
         );
@@ -565,8 +564,7 @@ export class WorkspaceUserController {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -578,6 +576,7 @@ export class WorkspaceUserController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string,
@@ -588,6 +587,7 @@ export class WorkspaceUserController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             workspaceContext,
             workspaceInviteId,
             body
@@ -597,8 +597,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'revoke a pending invite for the current workspace' })
     @Response('workspace.invite.revoke')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -670,6 +669,7 @@ export class WorkspaceUserController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
         body: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
@@ -677,17 +677,20 @@ export class WorkspaceUserController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             body
         );
     }
 
-    @Doc({ summary: 'list join requests for the current workspace' })
+    @Doc({
+        summary: 'list join requests for the current workspace',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('workspace.joinRequest.list', {
         schema: WorkspaceJoinRequestResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -711,8 +714,7 @@ export class WorkspaceUserController {
     })
     @Response('workspace.joinRequest.accept')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -740,8 +742,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'reject a pending join request with a reason code' })
     @Response('workspace.joinRequest.reject')
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })

@@ -31,7 +31,7 @@ Follow `.claude/skills/grilling/SKILL.md`, with these departures:
 The frontier covers what the owner has not named:
 
 - Surface: the route scope (`/public`, `/system`, `/admin`, `/user`, `/shared`), workspace scoping, who may call it (role, policy ability, term-policy, API key, feature flag).
-- Shape: request and response fields, which are optional and which are nullable. For a list: pagination type, the search and order-by allow-lists, filter defaults.
+- Shape: request and response fields, which are optional and which are nullable. For a list: pagination type, the search allow-list, the sort presets and the default one, filter defaults.
 - Failures: each new failure, the module that owns its status code, its message key.
 - Data: the Prisma delta (model, field, index, relation, soft delete), a seed and its remove pair, config keys.
 - Flow: the transaction boundary, the service that owns a sequence several use cases share, whether the flow carries an idempotency key.

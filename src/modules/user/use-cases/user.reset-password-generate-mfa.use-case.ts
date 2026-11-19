@@ -28,7 +28,13 @@ export class UserResetPasswordGenerateMfaUseCase implements IAppUseCase<
         IResponseReturn<UserResetPasswordGenerateMfaResponseDto>
     > {
         const reset = await this.userPasswordService.getOneActiveReset(token);
-        const methods = await this.mfaService.getLoginMethods(reset.userId);
+        const credentials = await this.mfaPasskeyService.getCredentialsByUser(
+            reset.userId
+        );
+        const methods = await this.mfaService.getLoginMethods(
+            reset.userId,
+            credentials
+        );
         if (!methods.includes(EnumMfaMethod.passkey)) {
             return {
                 data: {
@@ -40,9 +46,8 @@ export class UserResetPasswordGenerateMfaUseCase implements IAppUseCase<
             };
         }
 
-        const passkeyOptions = await this.mfaPasskeyService.getAssertionOptions(
-            reset.userId
-        );
+        const passkeyOptions =
+            await this.mfaPasskeyService.getAssertionOptions(credentials);
         const { challengeToken, expiresInMs } =
             await this.mfaChallengeService.create({
                 purpose: EnumMfaChallengePurpose.resetPassword,

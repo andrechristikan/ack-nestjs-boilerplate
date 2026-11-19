@@ -20,6 +20,18 @@ describe('AnalyticDateRangeRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
+    it('rejects a payload missing startDate', () => {
+        expect(() =>
+            AnalyticDateRangeRequestSchema.parse({ endDate })
+        ).toThrow();
+    });
+
+    it('rejects a payload missing endDate', () => {
+        expect(() =>
+            AnalyticDateRangeRequestSchema.parse({ startDate })
+        ).toThrow();
+    });
+
     it('rejects an undeclared key', () => {
         expect(() =>
             AnalyticDateRangeRequestSchema.parse({

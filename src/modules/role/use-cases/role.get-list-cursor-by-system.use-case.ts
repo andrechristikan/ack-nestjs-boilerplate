@@ -5,9 +5,9 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
+    RoleOrderBy,
     RoleSystemListCursorScope,
 } from '@modules/role/constants/role.list.constant';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
@@ -15,6 +15,7 @@ import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.
 import { RoleService } from '@modules/role/services/role.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 @Injectable()
 export class RoleGetListCursorBySystemUseCase implements IAppUseCase<
@@ -34,7 +35,8 @@ export class RoleGetListCursorBySystemUseCase implements IAppUseCase<
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: RoleSystemListCursorScope,
             availableSearch: RoleDefaultAvailableSearch,
-            availableOrderBy: RoleDefaultAvailableOrderBy,
+            orderBy: RoleOrderBy,
+            defaultOrderBy: EnumRoleOrderBy.latest,
         });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,

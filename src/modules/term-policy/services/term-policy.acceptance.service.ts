@@ -48,18 +48,14 @@ export class TermPolicyAcceptanceService {
         const types =
             required.length === 0 ? TermPolicyDefaultRequiredTypes : required;
         const latest =
-            await this.termPolicyRepository.findLatestPublishedByTypes(types);
-        if (latest.length === 0) {
-            return [];
-        }
-
-        const accepted =
-            await this.termPolicyRepository.findAcceptedTermPolicyIdsByUser(
-                userId,
-                latest.map(ref => ref.id)
+            await this.termPolicyRepository.findLatestPublishedWithAcceptanceByUser(
+                types,
+                userId
             );
 
-        return latest.filter(ref => !accepted.includes(ref.id));
+        return latest
+            .filter(ref => ref.userAcceptances.length === 0)
+            .map(({ id, type, version }) => ({ id, type, version }));
     }
 
     async validateTermPolicyGuard(

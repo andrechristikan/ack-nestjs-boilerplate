@@ -36,6 +36,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import type {
     ITermPolicyRef,
+    ITermPolicyRefAcceptance,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -129,83 +130,102 @@ describe('TermPolicyAcceptanceService', () => {
     });
 
     describe('getPendingForUser', () => {
-        const privacyV2: ITermPolicyRef = {
+        const privacyV2: ITermPolicyRefAcceptance = {
             id: 'privacy-2',
             type: EnumTermPolicyType.privacy,
             version: 2,
+            userAcceptances: [],
         };
-        const termsV1: ITermPolicyRef = {
+        const termsV1: ITermPolicyRefAcceptance = {
             id: 'terms-1',
             type: EnumTermPolicyType.termsOfService,
             version: 1,
+            userAcceptances: [{ id: 'acceptance-1' }],
         };
 
-        it('defaults to terms-of-service and privacy when no required types are given', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
-                []
+        it('returns only the refs with no acceptance, without the acceptances key, after one repository call with the default types', async () => {
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
+                [termsV1, privacyV2]
             );
 
-            await service.getPendingForUser('user-1', []);
+            const result = await service.getPendingForUser('u1', []);
 
             expect(
-                termPolicyRepository.findLatestPublishedByTypes
-            ).toHaveBeenCalledWith([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
+                termPolicyRepository.findLatestPublishedWithAcceptanceByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                termPolicyRepository.findLatestPublishedWithAcceptanceByUser
+            ).toHaveBeenCalledWith(
+                [EnumTermPolicyType.termsOfService, EnumTermPolicyType.privacy],
+                'u1'
+            );
+            expect(result).toEqual([
+                {
+                    id: 'privacy-2',
+                    type: EnumTermPolicyType.privacy,
+                    version: 2,
+                },
             ]);
+            expect(result[0]).not.toHaveProperty('userAcceptances');
         });
 
-        it('returns an empty list and reads no acceptance when no required type is published', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+        it('passes the required types through when given', async () => {
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
                 []
             );
 
-            const result = await service.getPendingForUser('user-1', [
+            await service.getPendingForUser('u1', [
                 EnumTermPolicyType.marketing,
             ]);
 
-            expect(result).toEqual([]);
             expect(
-                termPolicyRepository.findAcceptedTermPolicyIdsByUser
-            ).not.toHaveBeenCalled();
+                termPolicyRepository.findLatestPublishedWithAcceptanceByUser
+            ).toHaveBeenCalledWith([EnumTermPolicyType.marketing], 'u1');
         });
 
-        it('returns the latest published policy the user accepted only at an earlier version', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
-                termsV1,
-                privacyV2,
-            ]);
-            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
-                ['terms-1', 'privacy-1']
+        it('returns an empty list when the repository returns none', async () => {
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
+                []
             );
 
-            const result = await service.getPendingForUser('user-1', []);
-
-            expect(
-                termPolicyRepository.findAcceptedTermPolicyIdsByUser
-            ).toHaveBeenCalledWith('user-1', ['terms-1', 'privacy-2']);
-            expect(result).toEqual([privacyV2]);
+            await expect(service.getPendingForUser('u1', [])).resolves.toEqual(
+                []
+            );
         });
 
-        it('returns an empty list when the user accepted every latest published policy', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
-                termsV1,
-                privacyV2,
-            ]);
-            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
-                ['terms-1', 'privacy-2']
+        it('returns every ref when none has an acceptance', async () => {
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
+                [{ ...termsV1, userAcceptances: [] }, privacyV2]
             );
 
-            const result = await service.getPendingForUser('user-1', []);
+            const result = await service.getPendingForUser('u1', []);
 
-            expect(result).toEqual([]);
+            expect(result).toEqual([
+                {
+                    id: 'terms-1',
+                    type: EnumTermPolicyType.termsOfService,
+                    version: 1,
+                },
+                {
+                    id: 'privacy-2',
+                    type: EnumTermPolicyType.privacy,
+                    version: 2,
+                },
+            ]);
         });
     });
 
     describe('validateTermPolicyGuard', () => {
         it('resolves when nothing is pending', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
-                []
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
+                [
+                    {
+                        id: 'privacy-2',
+                        type: EnumTermPolicyType.privacy,
+                        version: 2,
+                        userAcceptances: [{ id: 'acceptance-1' }],
+                    },
+                ]
             );
 
             await expect(
@@ -213,16 +233,16 @@ describe('TermPolicyAcceptanceService', () => {
             ).resolves.toBeUndefined();
         });
 
-        it('throws TermPolicyRequiredInvalidException when the user accepted only version 1 and version 2 is published', async () => {
-            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
-                {
-                    id: 'privacy-2',
-                    type: EnumTermPolicyType.privacy,
-                    version: 2,
-                },
-            ]);
-            termPolicyRepository.findAcceptedTermPolicyIdsByUser.mockResolvedValue(
-                []
+        it('throws TermPolicyRequiredInvalidException when a ref is pending', async () => {
+            termPolicyRepository.findLatestPublishedWithAcceptanceByUser.mockResolvedValue(
+                [
+                    {
+                        id: 'privacy-2',
+                        type: EnumTermPolicyType.privacy,
+                        version: 2,
+                        userAcceptances: [],
+                    },
+                ]
             );
 
             const promise = service.validateTermPolicyGuard('user-1', [

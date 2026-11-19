@@ -54,7 +54,11 @@ export class FeatureFlagAdminController {
         private readonly featureFlagUpdateMetadataByAdminUseCase: FeatureFlagUpdateMetadataByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'admin get all Feature Flags' })
+    @Doc({
+        summary: 'admin get all Feature Flags',
+        description:
+            'orderBy presets: latest (createdAt descending, default), key (key ascending).',
+    })
     @ResponsePagination('featureFlag.list', {
         schema: FeatureFlagResponseSchema,
     })

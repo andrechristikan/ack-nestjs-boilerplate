@@ -6,7 +6,10 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumWorkspaceJoinRejectReason } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
-import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceJoinRequestCreateData,
+    IWorkspaceJoinRequestWithEmail,
+} from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceJoinRequestRepository {
     expireStalePending(): Promise<number>;
@@ -14,6 +17,11 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceJoinRequestId: string,
         workspaceId: string
     ): Promise<WorkspaceJoinRequest | null>;
+    findByIdAndWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceJoinRequestId: string,
+        workspaceId: string
+    ): Promise<IWorkspaceJoinRequestWithEmail | null>;
     findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,

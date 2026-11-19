@@ -20,6 +20,12 @@ Rule: `transaction.md`, Queries.
 
 - Several owners, or a promotion to owner by a role update: one owner gives a transfer, a self-delete, and a block a single row to check.
 
+### One guard per subject loads the subject and the caller's membership
+
+Rule: `guards.md`, Decorator order.
+
+- A subject guard and a member guard stacked: two reads a route, and no route mounts one without the other.
+
 ### `blocked` is final
 
 Rule: `login.md`.

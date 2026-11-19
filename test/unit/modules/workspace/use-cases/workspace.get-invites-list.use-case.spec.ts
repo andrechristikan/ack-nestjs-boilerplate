@@ -13,9 +13,10 @@ import {
     EnumWorkspaceInviteStatus,
     Prisma,
 } from '@generated/prisma-client/client';
+import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 import {
-    WorkspaceInviteDefaultAvailableOrderBy,
+    WorkspaceInviteOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
     WorkspaceInviteUserListCursorScope,
@@ -102,7 +103,8 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceInviteUserListCursorScope,
                 availableSearch: WorkspaceInviteDefaultAvailableSearch,
-                availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
+                orderBy: WorkspaceInviteOrderBy,
+                defaultOrderBy: EnumWorkspaceInviteOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceInviteScalarFieldEnum.status,

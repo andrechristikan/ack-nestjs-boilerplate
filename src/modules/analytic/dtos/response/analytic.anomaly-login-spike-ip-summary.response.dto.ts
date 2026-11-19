@@ -4,7 +4,7 @@ import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/res
 /** @public */
 export const AnalyticAnomalyLoginSpikeIpSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
-        meta: z
+        metadata: z
             .object({
                 minUniqueAccounts: z.number().meta({
                     description: 'Distinct accounts an address must touch',

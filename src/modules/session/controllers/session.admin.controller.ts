@@ -58,7 +58,11 @@ export class SessionAdminController {
         private readonly sessionRevokeAllByAdminUseCase: SessionRevokeAllByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'admin get all user Sessions' })
+    @Doc({
+        summary: 'admin get all user Sessions',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyUpdated (updatedAt descending).',
+    })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(

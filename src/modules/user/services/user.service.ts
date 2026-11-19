@@ -56,11 +56,11 @@ import type {
     IUserDeletedIdentity,
     IUserImport,
     IUserList,
-    IUserName,
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
 import { RoleService } from '@modules/role/services/role.service';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -177,10 +177,6 @@ export class UserService {
         return this.userRepository.findOneActiveByEmail(email);
     }
 
-    async getNameById(userId: string): Promise<IUserName | null> {
-        return this.userRepository.findNameById(userId);
-    }
-
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
@@ -223,13 +219,6 @@ export class UserService {
             userId,
             workspaceId
         );
-    }
-
-    async getEmailByIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<string | null> {
-        return this.userRepository.findEmailByIdInTx(tx, userId);
     }
 
     async resetPasswordAttemptInTx(
@@ -396,6 +385,15 @@ export class UserService {
         }
 
         return user;
+    }
+
+    async getRoleById(userId: string): Promise<IRole> {
+        const role = await this.userRepository.findRoleById(userId);
+        if (!role) {
+            throw new UserNotFoundException();
+        }
+
+        return role;
     }
 
     assertUnblocked({ status }: IUser): void {

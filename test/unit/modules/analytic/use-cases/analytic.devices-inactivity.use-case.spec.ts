@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticDevicesInactivityUseCase } from '@modules/analytic/use-cases/analytic.devices-inactivity.use-case';
 
 describe('AnalyticDevicesInactivityUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticDeviceService: MockProxy<AnalyticDeviceService> =
+        mock<AnalyticDeviceService>();
 
     let useCase: AnalyticDevicesInactivityUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticDevicesInactivityUseCase', () => {
             providers: [
                 AnalyticDevicesInactivityUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticDeviceService,
+                    useValue: analyticDeviceService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticDevicesInactivityUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.devicesInactivity.mockResolvedValue({
+            analyticDeviceService.devicesInactivity.mockResolvedValue({
                 count: 12,
             });
 
@@ -37,7 +37,7 @@ describe('AnalyticDevicesInactivityUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.devicesInactivity
+                analyticDeviceService.devicesInactivity
             ).toHaveBeenCalledWith();
         });
     });

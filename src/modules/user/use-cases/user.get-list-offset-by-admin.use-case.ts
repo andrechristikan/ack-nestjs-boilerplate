@@ -3,9 +3,9 @@ import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
     UserDefaultStatus,
+    UserOrderBy,
 } from '@modules/user/constants/user.list.constant';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -14,6 +14,7 @@ import type { IUserList } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumUserOrderBy } from '@modules/user/enums/user.enum';
 
 @Injectable()
 export class UserGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -32,7 +33,8 @@ export class UserGetListOffsetByAdminUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IUserList>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableSearch: UserDefaultAvailableSearch,
-            availableOrderBy: UserDefaultAvailableOrderBy,
+            orderBy: UserOrderBy,
+            defaultOrderBy: EnumUserOrderBy.latest,
         });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,

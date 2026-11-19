@@ -8,8 +8,9 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import { ActivityLogOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogGetListOffsetByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
@@ -74,7 +75,8 @@ describe('ActivityLogGetListOffsetByUserUseCase', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 offsetQuery,
                 {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                    orderBy: ActivityLogOrderBy,
+                    defaultOrderBy: EnumActivityLogOrderBy.latest,
                 }
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(

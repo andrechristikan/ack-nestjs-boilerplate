@@ -8,6 +8,7 @@ import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type {
     IWorkspaceInviteCreateData,
     IWorkspaceInviteList,
+    IWorkspaceInvitePreview,
 } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceInviteRepository {
@@ -31,7 +32,7 @@ export interface IWorkspaceInviteRepository {
     ): Promise<void>;
     findPendingByHashedToken(
         hashedToken: string
-    ): Promise<WorkspaceInvite | null>;
+    ): Promise<IWorkspaceInvitePreview | null>;
     findByIdAndWorkspace(
         workspaceInviteId: string,
         workspaceId: string

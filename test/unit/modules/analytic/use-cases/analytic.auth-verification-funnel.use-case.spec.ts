@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cases/analytic.auth-verification-funnel.use-case';
 
 describe('AnalyticAuthVerificationFunnelUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
             providers: [
                 AnalyticAuthVerificationFunnelUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authVerificationFunnel.mockResolvedValue({
+            analyticAuthService.authVerificationFunnel.mockResolvedValue({
                 email: { used: 1, unused: 2, total: 3, rate: 0.33 },
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });
@@ -59,7 +59,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 },
             });
             expect(
-                analyticDashboardService.authVerificationFunnel
+                analyticAuthService.authVerificationFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -67,7 +67,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authVerificationFunnel.mockResolvedValue({
+            analyticAuthService.authVerificationFunnel.mockResolvedValue({
                 email: { used: 1, unused: 2, total: 3, rate: 0.33 },
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });

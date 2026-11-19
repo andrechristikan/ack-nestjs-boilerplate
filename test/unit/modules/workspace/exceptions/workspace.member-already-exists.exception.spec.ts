@@ -11,7 +11,7 @@ describe('WorkspaceMemberAlreadyExistsException', () => {
             expect(exception).toBeInstanceOf(AppBaseException);
             expect(exception).toMatchObject({
                 module: 'workspace',
-                statusCode: 51624,
+                statusCode: 51623,
                 statusCodeKey: 'memberAlreadyExists',
                 httpStatus: HttpStatus.BAD_REQUEST,
                 messagePath: 'workspace.error.memberAlreadyExists',

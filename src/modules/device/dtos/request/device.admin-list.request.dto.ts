@@ -1,26 +1,18 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
-import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { EnumDeviceOrderBy } from '@modules/device/enums/device.enum';
 
 /** @public */
 export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(DeviceDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumDeviceOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${DeviceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumDeviceOrderBy).join(', ')}. An empty or absent value uses \`${EnumDeviceOrderBy.latest}\`.`,
+            example: EnumDeviceOrderBy.latest,
         }),
     isRevoked: RequestBooleanStringSchema.optional().meta({
         description: "Filter by revoked ownership: 'true' or 'false'",

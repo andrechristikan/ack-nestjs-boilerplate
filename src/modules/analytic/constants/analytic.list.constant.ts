@@ -1,8 +1,12 @@
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationOrderByPresets } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client/client';
 import type {
-    IAnalyticDeviceProliferation,
-    IAnalyticImpossibleTravel,
+    IAnalyticProjectCount,
+    IAnalyticWorkspaceCount,
+} from '@modules/analytic/interfaces/analytic.interface';
+import type {
     IAnalyticLoginSpikeIp,
-    IAnalyticLoginTimeAnomaly,
     IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 import type {
@@ -10,100 +14,201 @@ import type {
     IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
-    IAnalyticFraudRiskScore,
     IAnalyticMassRegistration,
     IAnalyticRefreshSpike,
     IAnalyticSessionAfterAdmin,
-    IAnalyticSharedFingerprint,
 } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import {
+    EnumAnalyticAccountTakeoverOrderBy,
+    EnumAnalyticBackupCodeNewDeviceOrderBy,
+    EnumAnalyticCountOrderBy,
+    EnumAnalyticCredentialStuffingOrderBy,
+    EnumAnalyticForgotPasswordAbuseOrderBy,
+    EnumAnalyticImpossibleTravelOrderBy,
+    EnumAnalyticKeyCountOrderBy,
+    EnumAnalyticLoginSpikeIpOrderBy,
+    EnumAnalyticNearLockoutOrderBy,
+    EnumAnalyticSessionAfterAdminOrderBy,
+    EnumAnalyticSnapshotOrderBy,
+    EnumAnalyticUserCountOrderBy,
+} from '@modules/analytic/enums/analytic.enum';
 
 /** @public */
-export const AnalyticNearLockoutAvailableOrderBy = [
-    'createdAt',
-    'id',
-] as const satisfies ReadonlyArray<keyof IAnalyticNearLockout>;
+export const AnalyticNearLockoutOrderBy = {
+    [EnumAnalyticNearLockoutOrderBy.latest]: [
+        { createdAt: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticNearLockoutOrderBy.id]: [
+        { id: EnumPaginationOrderDirectionType.desc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticNearLockout,
+    EnumAnalyticNearLockoutOrderBy
+>;
 
 /** @public */
-export const AnalyticCredentialStuffingAvailableOrderBy = [
-    'ipAddress',
-    'uniqueUsers',
-    'failCount',
-] as const satisfies ReadonlyArray<keyof IAnalyticCredentialStuffing>;
+export const AnalyticLoginSpikeIpOrderBy = {
+    [EnumAnalyticLoginSpikeIpOrderBy.mostUsers]: [
+        { uniqueUsers: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticLoginSpikeIpOrderBy.mostAttempts]: [
+        { attempts: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticLoginSpikeIpOrderBy.ipAddress]: [
+        { ipAddress: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticLoginSpikeIp,
+    EnumAnalyticLoginSpikeIpOrderBy
+>;
 
 /** @public */
-export const AnalyticAccountTakeoverAvailableOrderBy = [
-    'userId',
-    'passwordChangedAt',
-] as const satisfies ReadonlyArray<keyof IAnalyticAccountTakeover>;
+export const AnalyticCredentialStuffingOrderBy = {
+    [EnumAnalyticCredentialStuffingOrderBy.mostUsers]: [
+        { uniqueUsers: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticCredentialStuffingOrderBy.mostFailures]: [
+        { failCount: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticCredentialStuffingOrderBy.ipAddress]: [
+        { ipAddress: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticCredentialStuffing,
+    EnumAnalyticCredentialStuffingOrderBy
+>;
 
 /** @public */
-export const AnalyticKeyCountAvailableOrderBy = [
-    'key',
-    'count',
-] as const satisfies ReadonlyArray<keyof IAnalyticMassRegistration>;
+export const AnalyticAccountTakeoverOrderBy = {
+    [EnumAnalyticAccountTakeoverOrderBy.latest]: [
+        { passwordChangedAt: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticAccountTakeoverOrderBy.userId]: [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticAccountTakeover,
+    EnumAnalyticAccountTakeoverOrderBy
+>;
 
 /** @public */
-export const AnalyticSharedFingerprintAvailableOrderBy = [
-    'fingerprint',
-    'userCount',
-] as const satisfies ReadonlyArray<keyof IAnalyticSharedFingerprint>;
+export const AnalyticSessionAfterAdminOrderBy = {
+    [EnumAnalyticSessionAfterAdminOrderBy.latest]: [
+        { revokedAt: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticSessionAfterAdminOrderBy.recentLogin]: [
+        { loginAt: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticSessionAfterAdminOrderBy.userId]: [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticSessionAfterAdmin,
+    EnumAnalyticSessionAfterAdminOrderBy
+>;
 
 /** @public */
-export const AnalyticSessionAfterAdminAvailableOrderBy = [
-    'userId',
-    'revokedAt',
-    'loginAt',
-] as const satisfies ReadonlyArray<keyof IAnalyticSessionAfterAdmin>;
+export const AnalyticBackupCodeNewDeviceOrderBy = {
+    [EnumAnalyticBackupCodeNewDeviceOrderBy.latest]: [
+        { regeneratedAt: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticBackupCodeNewDeviceOrderBy.userId]: [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticBackupCodeNewDevice,
+    EnumAnalyticBackupCodeNewDeviceOrderBy
+>;
 
 /** @public */
-export const AnalyticForgotPasswordAbuseAvailableOrderBy = [
-    'userId',
-    'tokenCount',
-] as const satisfies ReadonlyArray<keyof IAnalyticForgotPasswordAbuse>;
+export const AnalyticKeyCountOrderBy = {
+    [EnumAnalyticKeyCountOrderBy.mostCount]: [
+        { count: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticKeyCountOrderBy.key]: [
+        { key: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticMassRegistration,
+    EnumAnalyticKeyCountOrderBy
+>;
 
 /** @public */
-export const AnalyticUserCountAvailableOrderBy = [
-    'userId',
-    'count',
-] as const satisfies ReadonlyArray<keyof IAnalyticRefreshSpike>;
+export const AnalyticForgotPasswordAbuseOrderBy = {
+    [EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens]: [
+        { tokenCount: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticForgotPasswordAbuseOrderBy.userId]: [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticForgotPasswordAbuse,
+    EnumAnalyticForgotPasswordAbuseOrderBy
+>;
 
 /** @public */
-export const AnalyticBackupCodeNewDeviceAvailableOrderBy = [
-    'userId',
-    'regeneratedAt',
-] as const satisfies ReadonlyArray<keyof IAnalyticBackupCodeNewDevice>;
+export const AnalyticUserCountOrderBy = {
+    [EnumAnalyticUserCountOrderBy.mostCount]: [
+        { count: EnumPaginationOrderDirectionType.desc },
+    ],
+    [EnumAnalyticUserCountOrderBy.userId]: [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticRefreshSpike,
+    EnumAnalyticUserCountOrderBy
+>;
 
 /** @public */
-export const AnalyticFraudRiskScoreAvailableOrderBy = [
-    'userId',
-    'score',
-    'band',
-] as const satisfies ReadonlyArray<keyof IAnalyticFraudRiskScore>;
+export const AnalyticCountOrderBy = {
+    [EnumAnalyticCountOrderBy.mostCount]: [
+        { count: EnumPaginationOrderDirectionType.desc },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    keyof IAnalyticWorkspaceCount & keyof IAnalyticProjectCount,
+    EnumAnalyticCountOrderBy
+>;
 
 /** @public */
-export const AnalyticImpossibleTravelAvailableOrderBy = [
-    'userId',
-    'distanceKm',
-    'deltaMs',
-] as const satisfies ReadonlyArray<keyof IAnalyticImpossibleTravel>;
+export const AnalyticSnapshotOrderBy = {
+    [EnumAnalyticSnapshotOrderBy.highestValue]: [
+        {
+            [Prisma.AnalyticSnapshotItemScalarFieldEnum.value]:
+                EnumPaginationOrderDirectionType.desc,
+        },
+    ],
+    [EnumAnalyticSnapshotOrderBy.key]: [
+        {
+            [Prisma.AnalyticSnapshotItemScalarFieldEnum.key]:
+                EnumPaginationOrderDirectionType.asc,
+        },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    Prisma.AnalyticSnapshotItemScalarFieldEnum,
+    EnumAnalyticSnapshotOrderBy
+>;
 
 /** @public */
-export const AnalyticLoginSpikeIpAvailableOrderBy = [
-    'ipAddress',
-    'uniqueUsers',
-    'attempts',
-] as const satisfies ReadonlyArray<keyof IAnalyticLoginSpikeIp>;
-
-/** @public */
-export const AnalyticDeviceProliferationAvailableOrderBy = [
-    'userId',
-    'deviceCount',
-    'zScore',
-] as const satisfies ReadonlyArray<keyof IAnalyticDeviceProliferation>;
-
-/** @public */
-export const AnalyticLoginTimeAnomalyAvailableOrderBy = [
-    'userId',
-    'lastHour',
-    'historicalFrequencyPercent',
-] as const satisfies ReadonlyArray<keyof IAnalyticLoginTimeAnomaly>;
+export const AnalyticImpossibleTravelOrderBy = {
+    [EnumAnalyticImpossibleTravelOrderBy.highestValue]: [
+        {
+            [Prisma.AnalyticSnapshotItemScalarFieldEnum.value]:
+                EnumPaginationOrderDirectionType.desc,
+        },
+    ],
+    [EnumAnalyticImpossibleTravelOrderBy.recent]: [
+        {
+            [Prisma.AnalyticSnapshotItemScalarFieldEnum.occurredAt]:
+                EnumPaginationOrderDirectionType.desc,
+        },
+    ],
+    [EnumAnalyticImpossibleTravelOrderBy.key]: [
+        {
+            [Prisma.AnalyticSnapshotItemScalarFieldEnum.key]:
+                EnumPaginationOrderDirectionType.asc,
+        },
+    ],
+} as const satisfies IPaginationOrderByPresets<
+    Prisma.AnalyticSnapshotItemScalarFieldEnum,
+    EnumAnalyticImpossibleTravelOrderBy
+>;

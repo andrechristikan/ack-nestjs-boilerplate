@@ -1,12 +1,12 @@
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAcceptedListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
+import { EnumTermPolicyAcceptanceOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyAcceptedListRequestSchema', () => {
     it('parses a payload into exactly the declared fields', () => {
         const payload = {
             cursor: 'eyJpZCI6IjEifQ',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         };
 
         const result = TermPolicyAcceptedListRequestSchema.parse(payload);
@@ -34,52 +34,47 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             TermPolicyAcceptedListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(TermPolicyAcceptanceDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumTermPolicyAcceptanceOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumTermPolicyAcceptanceOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                TermPolicyAcceptedListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             TermPolicyAcceptedListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
-
-        expect(
-            TermPolicyAcceptedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
-        const last =
-            TermPolicyAcceptanceDefaultAvailableOrderBy[
-                TermPolicyAcceptanceDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            TermPolicyAcceptedListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:`,
-        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:DESC`,
-        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             TermPolicyAcceptedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

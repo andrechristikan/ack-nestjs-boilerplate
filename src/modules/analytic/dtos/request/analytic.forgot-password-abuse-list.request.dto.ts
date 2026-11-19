@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import { EnumAnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 /** @public */
 export const AnalyticForgotPasswordAbuseListRequestSchema =
@@ -10,17 +9,13 @@ export const AnalyticForgotPasswordAbuseListRequestSchema =
         .extend({
             orderBy: z
                 .union([
-                    z.templateLiteral([
-                        z.enum(AnalyticForgotPasswordAbuseAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ]),
+                    z.enum(EnumAnalyticForgotPasswordAbuseOrderBy),
                     z.literal(''),
                 ])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticForgotPasswordAbuseAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                    example: `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                    description: `Sort preset name. Available presets: ${Object.values(EnumAnalyticForgotPasswordAbuseOrderBy).join(', ')}. An empty or absent value uses \`${EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens}\`.`,
+                    example: EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens,
                 }),
         })
         .extend(AnalyticWindowRequestSchema.shape);

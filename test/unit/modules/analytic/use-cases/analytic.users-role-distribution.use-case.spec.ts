@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticUsersRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-role-distribution.use-case';
 
 describe('AnalyticUsersRoleDistributionUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     let useCase: AnalyticUsersRoleDistributionUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticUsersRoleDistributionUseCase', () => {
             providers: [
                 AnalyticUsersRoleDistributionUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticUsersRoleDistributionUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.usersRoleDistribution.mockResolvedValue({
+            analyticUserService.usersRoleDistribution.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -39,7 +39,7 @@ describe('AnalyticUsersRoleDistributionUseCase', () => {
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
             expect(
-                analyticDashboardService.usersRoleDistribution
+                analyticUserService.usersRoleDistribution
             ).toHaveBeenCalledWith();
         });
     });

@@ -43,6 +43,8 @@ export class ProjectAdminController {
     @Doc({
         summary:
             'admin list all projects (read-only); optional workspaceId filter',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
     })
     @ResponsePagination('project.admin.list', {
         schema: ProjectResponseSchema,

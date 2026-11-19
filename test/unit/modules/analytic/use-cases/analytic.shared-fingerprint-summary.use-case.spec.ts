@@ -9,6 +9,8 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
 
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
+
     let useCase: AnalyticSharedFingerprintSummaryUseCase;
 
     beforeEach(async () => {
@@ -31,7 +33,9 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudService.sharedFingerprintSummary.mockResolvedValue({
                 count: 6,
-                window: '24h',
+                windowStart: null,
+                windowEnd: null,
+                computedAt,
             });
 
             const result = await useCase.execute();
@@ -39,7 +43,9 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
             expect(result).toEqual({
                 data: {
                     count: 6,
-                    window: '24h',
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt,
                 },
             });
             expect(

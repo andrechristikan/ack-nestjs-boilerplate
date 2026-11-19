@@ -19,8 +19,22 @@ import { PaginationInvalidCursorFormatException } from '@common/pagination/excep
 import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
 import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
 import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
-import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
+import type {
+    IPaginationOrderBy,
+    IPaginationOrderByPresets,
+    IPaginationQueryCursorOptions,
+    IPaginationQueryOffsetOptions,
+} from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client/client';
+
+enum EnumTestOrderBy {
+    latest = 'latest',
+    name = 'name',
+}
+
+enum EnumTestMissingOrderBy {
+    missing = 'missing',
+}
 
 describe('PaginationQueryUtil', () => {
     const paginationCursorUtil: MockProxy<PaginationCursorUtil> =
@@ -28,6 +42,16 @@ describe('PaginationQueryUtil', () => {
     const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
         mock<PaginationOffsetUtil>();
     const fingerprint = 'aaaaaaaaaaaaaaaa';
+    const desc = EnumPaginationOrderDirectionType.desc;
+    const asc = EnumPaginationOrderDirectionType.asc;
+    const presets = {
+        [EnumTestOrderBy.latest]: [{ createdAt: desc }],
+        [EnumTestOrderBy.name]: [{ name: asc }],
+    } as const satisfies IPaginationOrderByPresets<
+        'createdAt' | 'name',
+        EnumTestOrderBy
+    >;
+    const defaultOrderBy = EnumTestOrderBy.latest;
 
     let util: PaginationQueryUtil;
 
@@ -56,31 +80,46 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('offset', () => {
-        it('defaults page, perPage and order by when the dto is empty and the options carry only an empty order by allow-list', () => {
+        it('resolves a named preset to its terms and stores its name and the preset names', () => {
             const { params, storePatch } = util.offset(
-                {},
-                { availableOrderBy: [] }
+                { orderBy: 'name' },
+                { orderBy: presets, defaultOrderBy }
             );
 
+            expect(params.orderBy).toEqual([
+                { name: EnumPaginationOrderDirectionType.asc },
+            ]);
+            expect(storePatch.orderBy).toBe('name');
+            expect(storePatch.availableOrderBy).toEqual(['latest', 'name']);
+        });
+
+        it.each([
+            ['an absent', {}],
+            ['an empty', { orderBy: '' }],
+        ])('resolves %s order by to the default preset name', (_label, dto) => {
+            const { params, storePatch } = util.offset(dto, {
+                orderBy: presets,
+                defaultOrderBy,
+            });
+
             expect(params).toEqual({
-                where: undefined,
                 limit: PaginationDefaultPerPage,
                 skip: 0,
-                orderBy: [...PaginationDefaultOrderBy],
+                orderBy: [{ createdAt: desc }],
             });
             expect(storePatch).toEqual({
                 page: 1,
                 perPage: PaginationDefaultPerPage,
-                orderBy: [...PaginationDefaultOrderBy],
+                orderBy: defaultOrderBy,
                 availableSearch: [],
-                availableOrderBy: [],
+                availableOrderBy: ['latest', 'name'],
             });
         });
 
         it('builds a search where clause and carries search in the store patch when available', () => {
             const { params, storePatch } = util.offset(
                 { search: ' widget ' },
-                { availableSearch: ['name'], availableOrderBy: [] }
+                { availableSearch: ['name'], orderBy: presets, defaultOrderBy }
             );
 
             expect(params.where).toEqual({
@@ -89,40 +128,14 @@ describe('PaginationQueryUtil', () => {
             expect(storePatch.search).toBe('widget');
         });
 
-        it('stores the passed order by allow-list without validating a sent order by', () => {
-            const { params, storePatch } = util.offset(
-                { orderBy: 'anything:asc' },
-                { availableOrderBy: ['name', 'createdAt'] }
-            );
-
-            expect(storePatch.availableOrderBy).toEqual(['name', 'createdAt']);
-            expect(params.orderBy).toEqual([
-                { anything: EnumPaginationOrderDirectionType.asc },
-            ]);
-        });
-
         it('ignores search when no field is searchable', () => {
             const { params, storePatch } = util.offset(
                 { search: 'widget' },
-                { availableOrderBy: [] }
+                { orderBy: presets, defaultOrderBy }
             );
 
             expect(params.where).toBeUndefined();
             expect(storePatch.search).toBeUndefined();
-        });
-
-        it('parses a sent order by into the params and the store patch', () => {
-            const { params, storePatch } = util.offset(
-                { orderBy: 'name:asc' },
-                { availableOrderBy: [] }
-            );
-
-            expect(params.orderBy).toEqual([
-                { name: EnumPaginationOrderDirectionType.asc },
-            ]);
-            expect(storePatch.orderBy).toEqual([
-                { name: EnumPaginationOrderDirectionType.asc },
-            ]);
         });
 
         it('validates and applies an explicit page and perPage', () => {
@@ -131,7 +144,7 @@ describe('PaginationQueryUtil', () => {
 
             const { params, storePatch } = util.offset(
                 { page: 2, perPage: 10 },
-                { availableOrderBy: [] }
+                { orderBy: presets, defaultOrderBy }
             );
 
             expect(paginationOffsetUtil.parsePage).toHaveBeenCalledWith(2);
@@ -147,7 +160,7 @@ describe('PaginationQueryUtil', () => {
 
             let error: unknown;
             try {
-                util.offset({ page: 0 }, { availableOrderBy: [] });
+                util.offset({ page: 0 }, { orderBy: presets, defaultOrderBy });
             } catch (caught) {
                 error = caught;
             }
@@ -164,51 +177,81 @@ describe('PaginationQueryUtil', () => {
                 messageProperties: { minPage: 1, receivedPage: 0 },
             });
         });
+
+        it('accepts only a key of the preset constant', () => {
+            expectTypeOf<
+                IPaginationQueryOffsetOptions<typeof presets>['defaultOrderBy']
+            >().toEqualTypeOf<EnumTestOrderBy.latest | EnumTestOrderBy.name>();
+
+            expectTypeOf<{
+                orderBy: typeof presets;
+                defaultOrderBy: EnumTestMissingOrderBy.missing;
+            }>().not.toExtend<IPaginationQueryOffsetOptions<typeof presets>>();
+            expectTypeOf<{
+                orderBy: typeof presets;
+                defaultOrderBy: EnumTestOrderBy.name;
+            }>().toExtend<IPaginationQueryOffsetOptions<typeof presets>>();
+            expectTypeOf(util.offset<typeof presets>)
+                .parameter(1)
+                .toEqualTypeOf<IPaginationQueryOffsetOptions<typeof presets>>();
+        });
+
+        it('requires a preset for every enum member', () => {
+            expectTypeOf<{
+                [EnumTestOrderBy.latest]: readonly [{ createdAt: typeof desc }];
+            }>().not.toExtend<
+                IPaginationOrderByPresets<'createdAt' | 'name', EnumTestOrderBy>
+            >();
+            expectTypeOf<typeof presets>().toExtend<
+                IPaginationOrderByPresets<'createdAt' | 'name', EnumTestOrderBy>
+            >();
+        });
     });
 
     describe('cursor', () => {
         const options = {
             scope: 'RoleSystemListCursorScope',
-            availableOrderBy: [],
-        };
+            orderBy: presets,
+            defaultOrderBy,
+        } as const;
 
-        it('defaults perPage and order by when the dto is empty and the options carry only an empty order by allow-list', () => {
-            const { params, storePatch } = util.cursor({}, options);
+        it('resolves a named preset to its terms, stores its name and the preset names, and fingerprints the terms', () => {
+            const dto = { orderBy: 'name' };
+
+            const { params, storePatch } = util.cursor(dto, options);
+
+            expect(params.orderBy).toEqual([{ name: asc }]);
+            expect(storePatch.orderBy).toBe('name');
+            expect(storePatch.availableOrderBy).toEqual(['latest', 'name']);
+            expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
+                options.scope,
+                dto,
+                [{ name: asc }]
+            );
+        });
+
+        it.each([
+            ['an absent', {}],
+            ['an empty', { orderBy: '' }],
+        ])('resolves %s order by to the default preset name', (_label, dto) => {
+            const { params, storePatch } = util.cursor(dto, options);
 
             expect(params).toEqual({
                 limit: PaginationDefaultPerPage,
-                orderBy: [...PaginationDefaultOrderBy],
+                orderBy: [{ createdAt: desc }],
                 fingerprint,
             });
             expect(storePatch).toEqual({
                 perPage: PaginationDefaultPerPage,
-                orderBy: [...PaginationDefaultOrderBy],
+                orderBy: defaultOrderBy,
                 availableSearch: [],
-                availableOrderBy: [],
+                availableOrderBy: ['latest', 'name'],
             });
-        });
-
-        it('parses a sent order by into the params and the store patch', () => {
-            const { params, storePatch } = util.cursor(
-                { orderBy: 'name:asc' },
-                options
+            expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
+                options.scope,
+                dto,
+                [{ createdAt: desc }]
             );
-
-            const expected = [{ name: EnumPaginationOrderDirectionType.asc }];
-            expect(params.orderBy).toEqual(expected);
-            expect(storePatch.orderBy).toEqual(expected);
-        });
-
-        it('stores the passed order by allow-list without validating a sent order by', () => {
-            const { params, storePatch } = util.cursor(
-                { orderBy: 'anything:asc' },
-                { ...options, availableOrderBy: ['name', 'createdAt'] }
-            );
-
-            expect(storePatch.availableOrderBy).toEqual(['name', 'createdAt']);
-            expect(params.orderBy).toEqual([
-                { anything: EnumPaginationOrderDirectionType.asc },
-            ]);
         });
 
         it('passes a well-formed cursor through to the params and the store patch without opening it', () => {
@@ -233,23 +276,6 @@ describe('PaginationQueryUtil', () => {
             expect(storePatch.search).toBe('widget');
         });
 
-        it.each([
-            ['an absent', {}],
-            ['an empty', { orderBy: '' }],
-            ['an explicit default', { orderBy: 'createdAt:desc' }],
-        ])(
-            'passes the same resolved order by to the fingerprint for %s order by',
-            (_label, dto) => {
-                util.cursor(dto, options);
-
-                expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
-                    options.scope,
-                    dto,
-                    [{ createdAt: EnumPaginationOrderDirectionType.desc }]
-                );
-            }
-        );
-
         it('passes perPage and cursor to the fingerprint inside the dto', () => {
             const dto = { search: ' a ', perPage: 50, cursor: 'Ab-_1' };
 
@@ -258,7 +284,7 @@ describe('PaginationQueryUtil', () => {
             expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
                 options.scope,
                 dto,
-                [...PaginationDefaultOrderBy]
+                [{ createdAt: desc }]
             );
             expect(params.fingerprint).toBe(fingerprint);
         });
@@ -330,6 +356,18 @@ describe('PaginationQueryUtil', () => {
                 statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
             });
         });
+
+        it('accepts only a key of the preset constant', () => {
+            expectTypeOf<
+                IPaginationQueryCursorOptions<typeof presets>['defaultOrderBy']
+            >().toEqualTypeOf<EnumTestOrderBy.latest | EnumTestOrderBy.name>();
+
+            expectTypeOf<{
+                scope: string;
+                orderBy: typeof presets;
+                defaultOrderBy: EnumTestMissingOrderBy.missing;
+            }>().not.toExtend<IPaginationQueryCursorOptions<typeof presets>>();
+        });
     });
 
     describe('resolveTiebreak', () => {
@@ -383,32 +421,6 @@ describe('PaginationQueryUtil', () => {
                     },
                 ],
             });
-        });
-    });
-
-    describe('resolveOrderBy', () => {
-        it('falls back to the default order when orderBy is not sent', () => {
-            expect(util['resolveOrderBy'](null)).toEqual([
-                ...PaginationDefaultOrderBy,
-            ]);
-        });
-
-        it('falls back to the default order when orderBy is an empty string', () => {
-            expect(util['resolveOrderBy']('')).toEqual([
-                ...PaginationDefaultOrderBy,
-            ]);
-        });
-
-        it('parses an explicit order by', () => {
-            expect(util['resolveOrderBy']('name:asc')).toEqual([
-                { name: EnumPaginationOrderDirectionType.asc },
-            ]);
-        });
-
-        it('does not reject a field or direction outside an allow-list', () => {
-            expect(util['resolveOrderBy']('anything:desc')).toEqual([
-                { anything: EnumPaginationOrderDirectionType.desc },
-            ]);
         });
     });
 

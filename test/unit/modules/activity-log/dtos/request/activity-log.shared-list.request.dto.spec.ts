@@ -1,18 +1,18 @@
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogSharedListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogSharedListRequestSchema', () => {
     it('parses cursor, perPage, and orderBy', () => {
         const result = ActivityLogSharedListRequestSchema.parse({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -35,51 +35,46 @@ describe('ActivityLogSharedListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             ActivityLogSharedListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(ActivityLogDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumActivityLogOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumActivityLogOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                ActivityLogSharedListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             ActivityLogSharedListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = ActivityLogDefaultAvailableOrderBy[0];
-
-        expect(
-            ActivityLogSharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = ActivityLogDefaultAvailableOrderBy[0];
-        const last =
-            ActivityLogDefaultAvailableOrderBy[
-                ActivityLogDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            ActivityLogSharedListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${ActivityLogDefaultAvailableOrderBy[0]}:`,
-        `${ActivityLogDefaultAvailableOrderBy[0]}:DESC`,
-        `${ActivityLogDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             ActivityLogSharedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            ActivityLogSharedListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

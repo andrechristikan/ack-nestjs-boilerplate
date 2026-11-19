@@ -65,7 +65,10 @@ export class DeviceSharedController {
         private readonly deviceRemoveUseCase: DeviceRemoveUseCase
     ) {}
 
-    @Doc({ summary: 'get all user devices' })
+    @Doc({
+        summary: 'get all user devices',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('device.list', {
         schema: DeviceOwnershipResponseSchema,
     })

@@ -7,26 +7,19 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
-import { AnalyticSessionAfterAdminAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSessionAfterAdminOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-list.use-case';
+import { EnumAnalyticSessionAfterAdminOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticSessionAfterAdminListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
-
-    const analyticDateService: MockProxy<AnalyticDateService> =
-        mock<AnalyticDateService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -44,6 +37,8 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
         hasPrevious: false,
     };
 
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
+
     let useCase: AnalyticSessionAfterAdminListUseCase;
 
     beforeEach(async () => {
@@ -60,7 +55,6 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
                     provide: AnalyticFraudService,
                     useValue: analyticFraudService,
                 },
-                { provide: AnalyticDateService, useValue: analyticDateService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -70,26 +64,20 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the required range and pagination to the domain', async () => {
-            analyticDateService.requireRange.mockReturnValue({
-                startDate,
-                endDate,
-            });
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [
                     {
                         userId: 'user-1',
-                        revokedAt: startDate,
-                        loginAt: endDate,
+                        revokedAt: computedAt,
+                        loginAt: computedAt,
                     },
                 ],
             };
             analyticFraudService.sessionAfterAdminList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                startDate,
-                endDate,
                 page: 1,
                 perPage: 20,
             });
@@ -97,10 +85,13 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.sessionAfterAdminList
-            ).toHaveBeenCalledWith(startDate, endDate, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy }
+                {
+                    orderBy: AnalyticSessionAfterAdminOrderBy,
+                    defaultOrderBy: EnumAnalyticSessionAfterAdminOrderBy.latest,
+                }
             );
         });
     });

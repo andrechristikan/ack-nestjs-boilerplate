@@ -6,8 +6,9 @@ import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/r
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticNearLockoutAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticNearLockoutOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticNearLockoutOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticFailedLoginSpikeListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticFailedLoginSpikeListUseCase implements IAppUseCase<
         query: AnalyticNearLockoutListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
+            orderBy: AnalyticNearLockoutOrderBy,
+            defaultOrderBy: EnumAnalyticNearLockoutOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

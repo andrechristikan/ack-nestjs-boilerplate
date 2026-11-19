@@ -1,10 +1,7 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import {
-    CountryDefaultAvailableOrderBy,
-    CountryDefaultAvailableSearch,
-} from '@modules/country/constants/country.list.constant';
+import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
+import { EnumCountryOrderBy } from '@modules/country/enums/country.enum';
 
 /** @public */
 export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
@@ -13,18 +10,11 @@ export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
         example: '',
     }),
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(CountryDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumCountryOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${CountryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${CountryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${CountryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumCountryOrderBy).join(', ')}. An empty or absent value uses \`${EnumCountryOrderBy.latest}\`.`,
+            example: EnumCountryOrderBy.latest,
         }),
 });
 

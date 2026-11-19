@@ -2,13 +2,14 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthSessionsUserAgentUseCase } from '@modules/analytic/use-cases/analytic.auth-sessions-user-agent.use-case';
 
 describe('AnalyticAuthSessionsUserAgentUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +27,8 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
             providers: [
                 AnalyticAuthSessionsUserAgentUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -38,50 +39,41 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
+            analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authSessionsUserAgent.mockResolvedValue({
-                buckets: [{ key: 'key-1', count: 7 }],
+            analyticAuthService.authSessionsUserAgent.mockResolvedValue({
+                buckets: [{ key: 'Chrome', count: 7 }],
             });
 
-            const result = await useCase.execute({
-                startDate,
-                endDate,
-            });
+            const result = await useCase.execute({ startDate, endDate });
 
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
+            expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
-
             expect(result).toEqual({
-                data: { buckets: [{ key: 'key-1', count: 7 }] },
+                data: { buckets: [{ key: 'Chrome', count: 7 }] },
             });
             expect(
-                analyticDashboardService.authSessionsUserAgent
+                analyticAuthService.authSessionsUserAgent
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null dates when the optional range is empty', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate: null,
-                endDate: null,
-            });
-            analyticDashboardService.authSessionsUserAgent.mockResolvedValue({
-                buckets: [{ key: 'key-1', count: 7 }],
+
+        it('throws and reads nothing when the range check rejects the range', async () => {
+            analyticDateService.requireRange.mockImplementation(() => {
+                throw new AnalyticInvalidDateRangeException();
             });
 
-            await useCase.execute({});
+            const promise = useCase.execute({ startDate, endDate });
 
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
-                null,
-                null
+            await expect(promise).rejects.toBeInstanceOf(
+                AnalyticInvalidDateRangeException
             );
-
             expect(
-                analyticDashboardService.authSessionsUserAgent
-            ).toHaveBeenCalledWith(null, null);
+                analyticAuthService.authSessionsUserAgent
+            ).not.toHaveBeenCalled();
         });
     });
 });

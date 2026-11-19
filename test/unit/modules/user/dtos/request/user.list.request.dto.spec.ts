@@ -1,15 +1,13 @@
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
-import {
-    UserDefaultAvailableSearch,
-    UserDefaultAvailableOrderBy,
-} from '@modules/user/constants/user.list.constant';
+import { UserDefaultAvailableSearch } from '@modules/user/constants/user.list.constant';
+import { EnumUserOrderBy } from '@modules/user/enums/user.enum';
 
 describe('UserListRequestSchema', () => {
     const payload = {
         page: 1,
         perPage: 20,
         search: 'john',
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
         status: 'active,inactive',
         roleId: '507f1f77bcf86cd799439011',
         countryId: '507f1f77bcf86cd799439012',
@@ -39,52 +37,6 @@ describe('UserListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
-        expect(
-            UserListRequestSchema.shape.search.meta()?.description
-        ).toContain(UserDefaultAvailableSearch.join(', '));
-        expect(
-            UserListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(UserDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(UserListRequestSchema.safeParse({ orderBy: '' }).success).toBe(
-            true
-        );
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = UserDefaultAvailableOrderBy[0];
-
-        expect(
-            UserListRequestSchema.safeParse({ orderBy: `${first}:asc` }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = UserDefaultAvailableOrderBy[0];
-        const last =
-            UserDefaultAvailableOrderBy[UserDefaultAvailableOrderBy.length - 1];
-
-        expect(
-            UserListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${UserDefaultAvailableOrderBy[0]}:`,
-        `${UserDefaultAvailableOrderBy[0]}:DESC`,
-        `${UserDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(UserListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
-    });
-
     it('accepts a status of 256 characters and rejects one of 257', () => {
         expect(() =>
             UserListRequestSchema.parse({ status: 'a'.repeat(256) })
@@ -92,5 +44,52 @@ describe('UserListRequestSchema', () => {
         expect(() =>
             UserListRequestSchema.parse({ status: 'a'.repeat(257) })
         ).toThrow();
+    });
+
+    it('keeps the module search description', () => {
+        expect(
+            UserListRequestSchema.shape.search.meta()?.description
+        ).toContain(UserDefaultAvailableSearch.join(', '));
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            UserListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumUserOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumUserOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(UserListRequestSchema.safeParse({ orderBy }).success).toBe(
+                true
+            );
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(UserListRequestSchema.safeParse({ orderBy: '' }).success).toBe(
+            true
+        );
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(UserListRequestSchema.safeParse({ orderBy }).success).toBe(
+            false
+        );
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            UserListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

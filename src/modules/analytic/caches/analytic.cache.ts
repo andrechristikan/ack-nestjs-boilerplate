@@ -13,11 +13,10 @@ export class AnalyticCache {
     private readonly workspaceSummaryKeyPattern: string;
     private readonly anomalySummaryKeyPattern: string;
     private readonly fraudSummaryKeyPattern: string;
-    private readonly riskScoreKeyPattern: string;
     readonly dashboardTtlInMs: number;
     readonly anomalySummaryTtlInMs: number;
     readonly fraudSummaryTtlInMs: number;
-    readonly riskScoreTtlInMs: number;
+    readonly liveSummaryTtlInMs: number;
 
     constructor(
         private readonly configService: ConfigService,
@@ -38,9 +37,6 @@ export class AnalyticCache {
         this.fraudSummaryKeyPattern = this.configService.get<string>(
             'analytic.cache.fraudSummaryKeyPattern'
         )!;
-        this.riskScoreKeyPattern = this.configService.get<string>(
-            'analytic.cache.riskScoreKeyPattern'
-        )!;
         this.dashboardTtlInMs = this.configService.get<number>(
             'analytic.cache.dashboardTtlInMs'
         )!;
@@ -50,8 +46,8 @@ export class AnalyticCache {
         this.fraudSummaryTtlInMs = this.configService.get<number>(
             'analytic.cache.fraudSummaryTtlInMs'
         )!;
-        this.riskScoreTtlInMs = this.configService.get<number>(
-            'analytic.cache.riskScoreTtlInMs'
+        this.liveSummaryTtlInMs = this.configService.get<number>(
+            'analytic.cache.liveSummaryTtlInMs'
         )!;
     }
 
@@ -79,10 +75,6 @@ export class AnalyticCache {
                 window,
             }
         );
-    }
-
-    buildRiskScoreKey(userId: string): string {
-        return this.riskScoreKeyPattern.replace('{userId}', () => userId);
     }
 
     buildDashboardKey(metric: string, start: string, end: string): string {

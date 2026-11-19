@@ -21,10 +21,8 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import type {
-    IPaginationOrderBy,
-    IPaginationQueryPatch,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationResponseState } from '@common/pagination/interfaces/pagination.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { ResponsePaginationShapeInvalidException } from '@common/response/exceptions/response.pagination-shape-invalid.exception';
 import { ResponsePaginationTypeInvalidException } from '@common/response/exceptions/response.pagination-type-invalid.exception';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
@@ -37,14 +35,6 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly requestStoreService: RequestStoreService
     ) {}
-
-    private mapOrderBy(orderBy?: IPaginationOrderBy[]): string[] {
-        return (orderBy ?? []).flatMap(order =>
-            Object.entries(order).map(
-                ([field, direction]) => `${field}:${direction}`
-            )
-        );
-    }
 
     private validatePaginationResponse(
         responseData: IResponsePaginationReturn<T>
@@ -163,12 +153,16 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const storedPagination =
-                        this.requestStoreService.get<IPaginationQueryPatch>(
+                    const pagination =
+                        this.requestStoreService.get<IPaginationResponseState>(
                             PaginationStoreKey
                         );
-                    const pagination = storedPagination ?? {};
-                    const orderBy = this.mapOrderBy(pagination.orderBy);
+                    if (pagination === null) {
+                        throw new RequestContextMissingException(
+                            PaginationStoreKey
+                        );
+                    }
+
                     const finalMetadata: ResponsePaginationMetadataDto = {
                         ...metadata,
                         type,
@@ -178,13 +172,14 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
-                        orderBy,
+                        orderBy: pagination.orderBy,
+                        ...(rMetadata?.computedAt !== undefined && {
+                            computedAt: rMetadata.computedAt,
+                        }),
                         availableSearch: [
                             ...(pagination.availableSearch ?? []),
                         ],
-                        availableOrderBy: [
-                            ...(pagination.availableOrderBy ?? []),
-                        ],
+                        availableOrderBy: [...pagination.availableOrderBy],
                     };
 
                     const message: string = this.messageService.setMessage(

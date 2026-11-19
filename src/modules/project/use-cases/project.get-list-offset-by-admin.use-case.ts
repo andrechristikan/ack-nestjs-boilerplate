@@ -6,13 +6,14 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import {
-    ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
+    ProjectOrderBy,
 } from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumProjectOrderBy } from '@modules/project/enums/project.enum';
 
 @Injectable()
 export class ProjectGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -31,7 +32,8 @@ export class ProjectGetListOffsetByAdminUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableSearch: ProjectDefaultAvailableSearch,
-            availableOrderBy: ProjectDefaultAvailableOrderBy,
+            orderBy: ProjectOrderBy,
+            defaultOrderBy: EnumProjectOrderBy.latest,
         });
         const workspaceFilter = this.paginationFilterUtil.equalString(
             Prisma.ProjectScalarFieldEnum.workspaceId,

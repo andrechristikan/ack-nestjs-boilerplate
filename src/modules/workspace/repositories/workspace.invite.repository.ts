@@ -10,11 +10,15 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceInvitePreviewInclude,
+    WorkspaceInviteUserListSelect,
+} from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
     IWorkspaceInviteList,
+    IWorkspaceInvitePreview,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -197,7 +201,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async findPendingByHashedToken(
         hashedToken: string
-    ): Promise<WorkspaceInvite | null> {
+    ): Promise<IWorkspaceInvitePreview | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.workspaceInvite.findFirst({
@@ -207,10 +211,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                workspace: {
-                    deletedAt: null,
-                },
             },
+            include: WorkspaceInvitePreviewInclude,
         });
     }
 

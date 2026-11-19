@@ -15,3 +15,9 @@ export enum EnumUserProcess {
     importByAdmin = 'importByAdmin',
     purgeExpired = 'purgeExpired',
 }
+
+/** @public */
+export enum EnumUserOrderBy {
+    latest = 'latest',
+    name = 'name',
+}

@@ -10,6 +10,7 @@ import type {
     ITermPolicyAcceptanceRow,
     ITermPolicyContent,
     ITermPolicyRef,
+    ITermPolicyRefAcceptance,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -37,17 +38,14 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string
     ): Promise<TermPolicy | null>;
-    findLatestPublishedByTypes(
-        types: EnumTermPolicyType[]
-    ): Promise<ITermPolicyRef[]>;
+    findLatestPublishedWithAcceptanceByUser(
+        types: EnumTermPolicyType[],
+        userId: string
+    ): Promise<ITermPolicyRefAcceptance[]>;
     findLatestPublishedByTypesInTx(
         tx: IDatabaseTransactionClient,
         types: EnumTermPolicyType[]
     ): Promise<ITermPolicyRef[]>;
-    findAcceptedTermPolicyIdsByUser(
-        userId: string,
-        termPolicyIds: string[]
-    ): Promise<string[]>;
     existsByVersionAndType(
         version: number,
         type: EnumTermPolicyType

@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-list.use-case';
+import { EnumAnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -85,8 +86,9 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
                 {
-                    availableOrderBy:
-                        AnalyticForgotPasswordAbuseAvailableOrderBy,
+                    orderBy: AnalyticForgotPasswordAbuseOrderBy,
+                    defaultOrderBy:
+                        EnumAnalyticForgotPasswordAbuseOrderBy.mostTokens,
                 }
             );
         });

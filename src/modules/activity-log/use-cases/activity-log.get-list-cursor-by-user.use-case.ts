@@ -8,11 +8,12 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { Injectable } from '@nestjs/common';
 import {
-    ActivityLogDefaultAvailableOrderBy,
+    ActivityLogOrderBy,
     ActivityLogSharedUserListCursorScope,
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 @Injectable()
 export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
@@ -32,7 +33,8 @@ export class ActivityLogGetListCursorByUserUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IActivityLogMasked>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: ActivityLogSharedUserListCursorScope,
-            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+            orderBy: ActivityLogOrderBy,
+            defaultOrderBy: EnumActivityLogOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

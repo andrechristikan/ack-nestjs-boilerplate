@@ -2,17 +2,19 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
+import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticWorkspacesActivityVolumeListUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -46,8 +48,8 @@ describe('AnalyticWorkspacesActivityVolumeListUseCase', () => {
             providers: [
                 AnalyticWorkspacesActivityVolumeListUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
@@ -74,7 +76,7 @@ describe('AnalyticWorkspacesActivityVolumeListUseCase', () => {
                 hasPrevious: false,
                 data: [{ workspaceId: 'workspace-1', count: 3 }],
             };
-            analyticDashboardService.workspacesActivityVolume.mockResolvedValue(
+            analyticWorkspaceService.workspacesActivityVolume.mockResolvedValue(
                 page
             );
 
@@ -86,8 +88,17 @@ describe('AnalyticWorkspacesActivityVolumeListUseCase', () => {
             });
 
             expect(result).toEqual(page);
+
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+
+                {
+                    orderBy: AnalyticCountOrderBy,
+                    defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
+                }
+            );
             expect(
-                analyticDashboardService.workspacesActivityVolume
+                analyticWorkspaceService.workspacesActivityVolume
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
         });
     });

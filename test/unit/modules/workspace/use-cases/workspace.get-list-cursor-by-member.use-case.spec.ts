@@ -13,7 +13,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
-    WorkspaceCursorAvailableOrderBy,
+    WorkspaceCursorOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -25,6 +25,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceCursorOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetListCursorByMemberUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -105,7 +106,8 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceUserListCursorScope,
                 availableSearch: WorkspaceDefaultAvailableSearch,
-                availableOrderBy: WorkspaceCursorAvailableOrderBy,
+                orderBy: WorkspaceCursorOrderBy,
+                defaultOrderBy: EnumWorkspaceCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

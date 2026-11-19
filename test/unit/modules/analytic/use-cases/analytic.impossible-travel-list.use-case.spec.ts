@@ -7,26 +7,19 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
-import { AnalyticImpossibleTravelAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticImpossibleTravelOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-list.use-case';
+import { EnumAnalyticImpossibleTravelOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticImpossibleTravelListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
         mock<AnalyticAnomalyService>();
-
-    const analyticDateService: MockProxy<AnalyticDateService> =
-        mock<AnalyticDateService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -60,7 +53,6 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
                     provide: AnalyticAnomalyService,
                     useValue: analyticAnomalyService,
                 },
-                { provide: AnalyticDateService, useValue: analyticDateService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -70,11 +62,7 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the optional range and pagination to the domain', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate,
-                endDate,
-            });
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [
@@ -90,8 +78,6 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
             analyticAnomalyService.impossibleTravelList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                startDate,
-                endDate,
                 page: 1,
                 perPage: 20,
             });
@@ -99,37 +85,16 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticAnomalyService.impossibleTravelList
-            ).toHaveBeenCalledWith(startDate, endDate, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy }
+                {
+                    orderBy: AnalyticImpossibleTravelOrderBy,
+                    defaultOrderBy:
+                        EnumAnalyticImpossibleTravelOrderBy.highestValue,
+                }
             );
-        });
-
-        it('passes null dates when the optional range is empty', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate: null,
-                endDate: null,
-            });
-            const page = {
-                ...offsetPage,
-                data: [
-                    {
-                        userId: 'user-1',
-                        fromSessionId: 'session-1',
-                        toSessionId: 'session-2',
-                        distanceKm: 800,
-                        deltaMs: 1000,
-                    },
-                ],
-            };
-            analyticAnomalyService.impossibleTravelList.mockResolvedValue(page);
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(
-                analyticAnomalyService.impossibleTravelList
-            ).toHaveBeenCalledWith(null, null, pagination);
+            expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });
     });
 });

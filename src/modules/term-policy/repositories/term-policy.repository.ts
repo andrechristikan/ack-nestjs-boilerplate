@@ -18,6 +18,7 @@ import type {
     ITermPolicyAcceptanceRow,
     ITermPolicyContent,
     ITermPolicyRef,
+    ITermPolicyRefAcceptance,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
@@ -38,8 +39,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    private pickLatestPerType(rows: ITermPolicyRef[]): ITermPolicyRef[] {
-        const latest = new Map<EnumTermPolicyType, ITermPolicyRef>();
+    private pickLatestPerType<T extends ITermPolicyRef>(rows: T[]): T[] {
+        const latest = new Map<EnumTermPolicyType, T>();
         for (const row of rows) {
             if (!latest.has(row.type)) {
                 latest.set(row.type, row);
@@ -120,16 +121,24 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async findLatestPublishedByTypes(
-        types: EnumTermPolicyType[]
-    ): Promise<ITermPolicyRef[]> {
+    async findLatestPublishedWithAcceptanceByUser(
+        types: EnumTermPolicyType[],
+        userId: string
+    ): Promise<ITermPolicyRefAcceptance[]> {
         const rows = await this.databaseService.client.termPolicy.findMany({
             where: {
                 type: { in: types },
                 status: EnumTermPolicyStatus.published,
             },
             orderBy: { version: Prisma.SortOrder.desc },
-            select: TermPolicyRefSelect,
+            select: {
+                ...TermPolicyRefSelect,
+                userAcceptances: {
+                    where: { userId },
+                    select: { id: true },
+                    take: 1,
+                },
+            },
         });
 
         return this.pickLatestPerType(rows);
@@ -149,24 +158,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
 
         return this.pickLatestPerType(rows);
-    }
-
-    async findAcceptedTermPolicyIdsByUser(
-        userId: string,
-        termPolicyIds: string[]
-    ): Promise<string[]> {
-        const rows =
-            await this.databaseService.client.termPolicyUserAcceptance.findMany(
-                {
-                    where: {
-                        userId,
-                        termPolicyId: { in: termPolicyIds },
-                    },
-                    select: { termPolicyId: true },
-                }
-            );
-
-        return rows.map(row => row.termPolicyId);
     }
 
     async existsByVersionAndType(

@@ -55,7 +55,7 @@ describe('UserLoginGeneratePasskeyUseCase', () => {
             });
 
             expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
-                null
+                []
             );
             expect(mfaChallengeService.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.passwordless,

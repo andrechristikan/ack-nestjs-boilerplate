@@ -4,7 +4,7 @@ import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/res
 /** @public */
 export const AnalyticAnomalyImpossibleTravelSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
-        meta: z
+        metadata: z
             .object({
                 minDistanceKm: z.number().meta({
                     description:

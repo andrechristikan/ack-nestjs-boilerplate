@@ -6,8 +6,9 @@ import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dt
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticFraudRiskScore } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticRiskScoreListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticRiskScoreListUseCase implements IAppUseCase<
         query: AnalyticFraudRiskScoresListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
+            orderBy: AnalyticSnapshotOrderBy,
+            defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

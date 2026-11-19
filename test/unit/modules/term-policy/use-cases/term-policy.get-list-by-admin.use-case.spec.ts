@@ -10,13 +10,14 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
-    TermPolicyDefaultAvailableOrderBy,
+    TermPolicyOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyGetListByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-by-admin.use-case';
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
+import { EnumTermPolicyOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyGetListByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
@@ -84,7 +85,8 @@ describe('TermPolicyGetListByAdminUseCase', () => {
 
             expect(result).toEqual(offsetPage);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+                orderBy: TermPolicyOrderBy,
+                defaultOrderBy: EnumTermPolicyOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenNthCalledWith(
                 1,

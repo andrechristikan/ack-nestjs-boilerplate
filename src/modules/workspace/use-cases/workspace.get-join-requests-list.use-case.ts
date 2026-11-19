@@ -6,8 +6,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import {
-    WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
+    WorkspaceJoinRequestOrderBy,
     WorkspaceJoinRequestUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
@@ -15,6 +15,7 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 @Injectable()
 export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
@@ -37,7 +38,8 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
 
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceJoinRequestUserListCursorScope,
-            availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
+            orderBy: WorkspaceJoinRequestOrderBy,
+            defaultOrderBy: EnumWorkspaceJoinRequestOrderBy.latest,
         });
         const status = this.paginationFilterUtil.inEnum(
             Prisma.WorkspaceJoinRequestScalarFieldEnum.status,

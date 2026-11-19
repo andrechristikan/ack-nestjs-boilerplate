@@ -2,13 +2,14 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
+import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticTermPoliciesTimeToAcceptUseCase } from '@modules/analytic/use-cases/analytic.term-policies-time-to-accept.use-case';
 
 describe('AnalyticTermPoliciesTimeToAcceptUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticTermPolicyService: MockProxy<AnalyticTermPolicyService> =
+        mock<AnalyticTermPolicyService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +27,8 @@ describe('AnalyticTermPoliciesTimeToAcceptUseCase', () => {
             providers: [
                 AnalyticTermPoliciesTimeToAcceptUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticTermPolicyService,
+                    useValue: analyticTermPolicyService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -38,54 +39,39 @@ describe('AnalyticTermPoliciesTimeToAcceptUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
+            analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticDashboardService.termPoliciesTimeToAccept.mockResolvedValue(
-                {
-                    count: 3,
-                    averageMs: 1500,
-                }
+            analyticTermPolicyService.termPoliciesTimeToAccept.mockResolvedValue(
+                { count: 3, averageMs: 1500 }
             );
 
-            const result = await useCase.execute({
-                startDate,
-                endDate,
-            });
+            const result = await useCase.execute({ startDate, endDate });
 
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
+            expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
-
             expect(result).toEqual({ data: { count: 3, averageMs: 1500 } });
             expect(
-                analyticDashboardService.termPoliciesTimeToAccept
+                analyticTermPolicyService.termPoliciesTimeToAccept
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null dates when the optional range is empty', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate: null,
-                endDate: null,
+
+        it('throws and reads nothing when the range check rejects the range', async () => {
+            analyticDateService.requireRange.mockImplementation(() => {
+                throw new AnalyticInvalidDateRangeException();
             });
-            analyticDashboardService.termPoliciesTimeToAccept.mockResolvedValue(
-                {
-                    count: 3,
-                    averageMs: 1500,
-                }
+
+            const promise = useCase.execute({ startDate, endDate });
+
+            await expect(promise).rejects.toBeInstanceOf(
+                AnalyticInvalidDateRangeException
             );
-
-            await useCase.execute({});
-
-            expect(analyticDateService.optionalRange).toHaveBeenCalledWith(
-                null,
-                null
-            );
-
             expect(
-                analyticDashboardService.termPoliciesTimeToAccept
-            ).toHaveBeenCalledWith(null, null);
+                analyticTermPolicyService.termPoliciesTimeToAccept
+            ).not.toHaveBeenCalled();
         });
     });
 });

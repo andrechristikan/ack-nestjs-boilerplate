@@ -1,3 +1,5 @@
+import type { EnumVerificationType } from '@generated/prisma-client/client';
+
 export interface IAnalyticDateRange {
     startDate: Date;
     endDate: Date;
@@ -12,15 +14,10 @@ export interface IAnalyticCounted {
     count: number;
 }
 
-export interface IAnalyticCountBucket {
+export type IAnalyticCountBucket = {
     key: string;
     count: number;
-}
-
-export interface IAnalyticSortedPage<T> {
-    data: T[];
-    total: number;
-}
+};
 
 export interface IAnalyticCountRange {
     key: string;
@@ -30,6 +27,10 @@ export interface IAnalyticCountRange {
 
 export interface IAnalyticBucketsResult {
     buckets: IAnalyticCountBucket[];
+}
+
+export interface IAnalyticSnapshotBucketsResult extends IAnalyticBucketsResult {
+    computedAt: Date | null;
 }
 
 export interface IAnalyticMetricCount {
@@ -93,6 +94,16 @@ export interface IAnalyticSessionDeviceRatio {
     ratio: number;
 }
 
+export interface IAnalyticSessionDeviceCount {
+    sessions: number;
+    devices: number;
+}
+
+export interface IAnalyticDevicePushTokenCount {
+    total: number;
+    withToken: number;
+}
+
 export interface IAnalyticApiKeyLifecycle {
     created: number;
     reset: number;
@@ -116,6 +127,17 @@ export interface IAnalyticTermPolicyAcceptanceRate {
 export interface IAnalyticTermPolicyTimeToAccept {
     count: number;
     averageMs: number;
+}
+
+export interface IAnalyticTermPolicyAcceptanceCount {
+    published: number;
+    acceptances: number;
+    users: number;
+}
+
+export interface IAnalyticTermPolicyTimeToAcceptAverage {
+    count: number;
+    averageMs: number | null;
 }
 
 export interface IAnalyticProjectCreation {
@@ -155,4 +177,47 @@ export interface IAnalyticWorkspaceSummary {
     memberCount: number;
     projectCount: number;
     activityCount: number;
+}
+
+export type IAnalyticPipelineDate = {
+    $date: string;
+};
+
+export type IAnalyticPipelineObjectId = {
+    $oid: string;
+};
+
+export type IAnalyticPipelineSortStage = {
+    $sort: Record<string, 1 | -1>;
+};
+
+export interface IAnalyticChurnCount {
+    deleted: number;
+    total: number;
+}
+
+export interface IAnalyticVerifiedGroupCount {
+    isVerified: boolean;
+    count: number;
+}
+
+export interface IAnalyticGroupCount {
+    key: string | null;
+    count: number;
+}
+
+export interface IAnalyticUsedGroupCount {
+    isUsed: boolean;
+    count: number;
+}
+
+export interface IAnalyticVerificationGroupCount {
+    type: EnumVerificationType;
+    isUsed: boolean;
+    count: number;
+}
+
+export interface IAnalyticMfaAdoptionCount {
+    enabled: number;
+    total: number;
 }

@@ -1,19 +1,19 @@
-import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
+import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceMemberListRequestSchema', () => {
     it('parses cursor, perPage, orderBy, and role', () => {
         const result = WorkspaceMemberListRequestSchema.parse({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'joinedAt:desc',
+            orderBy: 'latest',
             role: 'admin',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'joinedAt:desc',
+            orderBy: 'latest',
             role: 'admin',
         });
     });
@@ -36,53 +36,6 @@ describe('WorkspaceMemberListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
-        expect(
-            WorkspaceMemberListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(WorkspaceMemberDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            WorkspaceMemberListRequestSchema.safeParse({ orderBy: '' }).success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceMemberDefaultAvailableOrderBy[0];
-
-        expect(
-            WorkspaceMemberListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceMemberDefaultAvailableOrderBy[0];
-        const last =
-            WorkspaceMemberDefaultAvailableOrderBy[
-                WorkspaceMemberDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceMemberListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:`,
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(
-            WorkspaceMemberListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
-    });
-
     it('accepts a role of 256 characters and rejects one of 257', () => {
         expect(() =>
             WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(256) })
@@ -90,5 +43,47 @@ describe('WorkspaceMemberListRequestSchema', () => {
         expect(() =>
             WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(257) })
         ).toThrow();
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            WorkspaceMemberListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumWorkspaceMemberOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumWorkspaceMemberOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceMemberListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            WorkspaceMemberListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'joinedAt',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceMemberListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceMemberListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

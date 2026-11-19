@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticUsersBlockedUseCase } from '@modules/analytic/use-cases/analytic.users-blocked.use-case';
 
 describe('AnalyticUsersBlockedUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticUsersBlockedUseCase', () => {
             providers: [
                 AnalyticUsersBlockedUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticUsersBlockedUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersBlocked.mockResolvedValue({
+            analyticUserService.usersBlocked.mockResolvedValue({
                 trend: 3,
                 current: 5,
             });
@@ -50,7 +50,7 @@ describe('AnalyticUsersBlockedUseCase', () => {
             const result = await useCase.execute({ startDate, endDate });
 
             expect(result).toEqual({ data: { trend: 3, current: 5 } });
-            expect(analyticDashboardService.usersBlocked).toHaveBeenCalledWith(
+            expect(analyticUserService.usersBlocked).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -60,7 +60,7 @@ describe('AnalyticUsersBlockedUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersBlocked.mockResolvedValue({
+            analyticUserService.usersBlocked.mockResolvedValue({
                 trend: 3,
                 current: 5,
             });

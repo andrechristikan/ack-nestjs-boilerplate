@@ -10,7 +10,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
-    RoleDefaultAvailableOrderBy,
+    RoleOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
@@ -23,6 +23,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
+import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 describe('RoleGetListOffsetByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -125,7 +126,8 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
             });
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
+                orderBy: RoleOrderBy,
+                defaultOrderBy: EnumRoleOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.RoleScalarFieldEnum.type,

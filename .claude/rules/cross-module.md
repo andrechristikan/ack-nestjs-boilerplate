@@ -18,7 +18,7 @@ A guard, strategy, interceptor, or decorator injects the exported services and u
 
 A repository reaches another module's util only when the owner is `@Global()`. A util injects no `src/modules/` util, its own module's or another module's; the value arrives as an argument. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the dependency order.
 
-`src/modules/analytic/` aggregates every feature's analytics, so a feature's analytic repository, its port, and its analytic service import their shapes from `@modules/analytic/interfaces` (`src/modules/user/repositories/user.analytic.repository.ts:7`).
+`src/modules/analytic/` reads every feature's models in its own repositories, read-only (`layering.md`, Dependency order): the one exception to the table's last row and to model ownership below.
 
 ## A repository owns its model
 

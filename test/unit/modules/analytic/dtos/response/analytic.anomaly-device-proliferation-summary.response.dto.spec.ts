@@ -3,8 +3,10 @@ import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@module
 describe('AnalyticAnomalyDeviceProliferationSummaryResponseSchema', () => {
     const row = {
         count: 4,
-        window: null,
-        meta: { avg: 1.5, stdDev: 0.25, zScoreThreshold: 3 },
+        windowStart: new Date('2026-01-01T00:00:00.000Z'),
+        windowEnd: new Date('2026-01-02T00:00:00.000Z'),
+        computedAt: new Date('2026-01-02T00:00:05.000Z'),
+        metadata: { avg: 1.5, stdDev: 0.25, zScoreThreshold: 3 },
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -24,20 +26,22 @@ describe('AnalyticAnomalyDeviceProliferationSummaryResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('rejects a row without meta', () => {
+    it('rejects a row without metadata', () => {
         expect(() =>
             AnalyticAnomalyDeviceProliferationSummaryResponseSchema.parse({
                 count: row.count,
-                window: row.window,
+                windowStart: row.windowStart,
+                windowEnd: row.windowEnd,
+                computedAt: row.computedAt,
             })
         ).toThrow();
     });
 
-    it('rejects a cached summary without the window key', () => {
+    it('rejects a summary without the window and computedAt keys', () => {
         expect(() =>
             AnalyticAnomalyDeviceProliferationSummaryResponseSchema.parse({
                 count: row.count,
-                meta: row.meta,
+                metadata: row.metadata,
             })
         ).toThrow();
     });

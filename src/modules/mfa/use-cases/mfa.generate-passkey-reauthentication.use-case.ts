@@ -20,11 +20,12 @@ export class MfaGeneratePasskeyReauthenticationUseCase implements IAppUseCase<
     async execute(
         authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<MfaPasskeyReauthenticationGenerateResponseDto>> {
-        // Sequential by design: gate before the work it guards
-        await this.mfaPasskeyService.assertHasPasskey(authContext.userId);
-        const passkeyOptions = await this.mfaPasskeyService.getAssertionOptions(
+        const credentials = await this.mfaPasskeyService.getCredentialsByUser(
             authContext.userId
         );
+        this.mfaPasskeyService.assertHasPasskey(credentials);
+        const passkeyOptions =
+            await this.mfaPasskeyService.getAssertionOptions(credentials);
 
         const { challengeToken, expiresInMs } =
             await this.mfaChallengeService.create({

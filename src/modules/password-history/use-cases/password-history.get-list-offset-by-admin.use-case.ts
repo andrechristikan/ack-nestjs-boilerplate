@@ -6,8 +6,9 @@ import type { PasswordHistoryAdminListRequestDto } from '@modules/password-histo
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { Injectable } from '@nestjs/common';
-import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
+import { PasswordHistoryOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumPasswordHistoryOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 @Injectable()
 export class PasswordHistoryGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -25,7 +26,8 @@ export class PasswordHistoryGetListOffsetByAdminUseCase implements IAppUseCase<
         query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
+            orderBy: PasswordHistoryOrderBy,
+            defaultOrderBy: EnumPasswordHistoryOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

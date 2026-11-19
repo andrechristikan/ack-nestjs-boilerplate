@@ -7,11 +7,12 @@ import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.i
 import { DeviceService } from '@modules/device/services/device.service';
 import { Injectable } from '@nestjs/common';
 import {
-    DeviceCursorAvailableOrderBy,
+    DeviceCursorOrderBy,
     DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumDeviceCursorOrderBy } from '@modules/device/enums/device.enum';
 
 @Injectable()
 export class DeviceGetListCursorUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class DeviceGetListCursorUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: DeviceSharedListCursorScope,
-            availableOrderBy: DeviceCursorAvailableOrderBy,
+            orderBy: DeviceCursorOrderBy,
+            defaultOrderBy: EnumDeviceCursorOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

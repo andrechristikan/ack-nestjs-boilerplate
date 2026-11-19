@@ -51,10 +51,6 @@ export class PolicyService {
         }
     }
 
-    async getManyByRole(roleId: string): Promise<Policy[]> {
-        return this.policyRepository.findManyByRoleId(roleId);
-    }
-
     async createByAdminInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,

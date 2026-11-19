@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticTermPoliciesAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policies-acceptance-rate.use-case';
 
 describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticTermPolicyService: MockProxy<AnalyticTermPolicyService> =
+        mock<AnalyticTermPolicyService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
             providers: [
                 AnalyticTermPoliciesAcceptanceRateUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticTermPolicyService,
+                    useValue: analyticTermPolicyService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.termPoliciesAcceptanceRate.mockResolvedValue(
+            analyticTermPolicyService.termPoliciesAcceptanceRate.mockResolvedValue(
                 { acceptances: 4, users: 8, published: 2, rate: 0.5 }
             );
 
@@ -60,7 +60,7 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
                 data: { acceptances: 4, users: 8, published: 2, rate: 0.5 },
             });
             expect(
-                analyticDashboardService.termPoliciesAcceptanceRate
+                analyticTermPolicyService.termPoliciesAcceptanceRate
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes null dates when the optional range is empty', async () => {
@@ -68,7 +68,7 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardService.termPoliciesAcceptanceRate.mockResolvedValue(
+            analyticTermPolicyService.termPoliciesAcceptanceRate.mockResolvedValue(
                 { acceptances: 4, users: 8, published: 2, rate: 0.5 }
             );
 
@@ -80,7 +80,7 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
             );
 
             expect(
-                analyticDashboardService.termPoliciesAcceptanceRate
+                analyticTermPolicyService.termPoliciesAcceptanceRate
             ).toHaveBeenCalledWith(null, null);
         });
     });

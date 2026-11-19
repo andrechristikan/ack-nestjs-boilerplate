@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import type { IAnalyticRoleCountList } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -11,13 +11,13 @@ export class AnalyticMemberRolesUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticRoleCountList>
 > {
     constructor(
-        private readonly analyticWorkspaceUserService: AnalyticWorkspaceUserService
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService
     ) {}
 
     async execute(
         workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        const roles = await this.analyticWorkspaceUserService.memberRoles(
+        const roles = await this.analyticWorkspaceService.memberRoles(
             workspaceContext.workspace.id
         );
 

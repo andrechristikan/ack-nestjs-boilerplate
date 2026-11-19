@@ -1,8 +1,5 @@
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponsePaginationSchema } from '@common/response/dtos/response.pagination.dto';
 
 describe('ResponsePaginationSchema', () => {
@@ -20,9 +17,9 @@ describe('ResponsePaginationSchema', () => {
             perPage: 20,
             hasNext: true,
             hasPrevious: false,
-            orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+            orderBy: 'latest',
             availableSearch: ['name'],
-            availableOrderBy: ['createdAt', 'updatedAt'],
+            availableOrderBy: ['latest', 'name'],
             type: EnumPaginationType.offset,
         },
     };

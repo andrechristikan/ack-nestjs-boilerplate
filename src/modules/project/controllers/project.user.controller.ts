@@ -50,7 +50,6 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import {
     ProjectContext,
-    ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
 import { ProjectGetListCursorByMemberUseCase } from '@modules/project/use-cases/project.get-list-cursor-by-member.use-case';
@@ -68,7 +67,6 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     WorkspaceContext,
-    WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import {
@@ -112,12 +110,12 @@ export class ProjectUserController {
     @Doc({
         summary:
             'list projects in the current workspace; workspace owner/admin see all, others only assigned projects',
+        description: 'orderBy presets: latest (createdAt descending, default).',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -139,8 +137,7 @@ export class ProjectUserController {
     @Doc({ summary: 'create a project in the current workspace' })
     @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -169,13 +166,11 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
+    @ProjectProtected(
         EnumProjectMemberRole.admin,
         EnumProjectMemberRole.member,
         EnumProjectMemberRole.viewer
     )
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -197,9 +192,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -232,9 +225,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -262,9 +253,8 @@ export class ProjectUserController {
     @Doc({ summary: 'soft-delete a project; workspace owner/admin only' })
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
-    @ProjectProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -287,18 +277,20 @@ export class ProjectUserController {
         );
     }
 
-    @Doc({ summary: 'list members of a project, subject to visibility' })
+    @Doc({
+        summary: 'list members of a project, subject to visibility',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyJoined (joinedAt descending).',
+    })
     @ResponsePagination('project.member.list', {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
+    @ProjectProtected(
         EnumProjectMemberRole.admin,
         EnumProjectMemberRole.member,
         EnumProjectMemberRole.viewer
     )
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -320,9 +312,7 @@ export class ProjectUserController {
     })
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -355,9 +345,7 @@ export class ProjectUserController {
     })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -393,9 +381,7 @@ export class ProjectUserController {
     })
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
-    @ProjectProtected()
-    @WorkspaceMemberProtected()
+    @ProjectProtected(EnumProjectMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -425,9 +411,7 @@ export class ProjectUserController {
     @Doc({ summary: 'leave a project; any project role may leave' })
     @Response('project.member.leave')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected()
     @ProjectProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)

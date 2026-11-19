@@ -1,25 +1,17 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { EnumDeviceCursorOrderBy } from '@modules/device/enums/device.enum';
 
 /** @public */
 export const DeviceSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(DeviceCursorAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumDeviceCursorOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceCursorAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${DeviceCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumDeviceCursorOrderBy).join(', ')}. An empty or absent value uses \`${EnumDeviceCursorOrderBy.latest}\`.`,
+            example: EnumDeviceCursorOrderBy.latest,
         }),
 });
 

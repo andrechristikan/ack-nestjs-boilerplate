@@ -87,6 +87,7 @@ import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.sum
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
+import { AnalyticProcessRefreshSnapshotUseCase } from '@modules/analytic/use-cases/analytic.process-refresh-snapshot.use-case';
 import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
 import { Module } from '@nestjs/common';
 
@@ -182,6 +183,7 @@ import { Module } from '@nestjs/common';
         AnalyticJoinOutcomesUseCase,
         AnalyticMemberRolesUseCase,
         AnalyticActivityUseCase,
+        AnalyticProcessRefreshSnapshotUseCase,
     ],
     exports: [
         AnalyticImpossibleTravelSummaryUseCase,
@@ -273,6 +275,7 @@ import { Module } from '@nestjs/common';
         AnalyticJoinOutcomesUseCase,
         AnalyticMemberRolesUseCase,
         AnalyticActivityUseCase,
+        AnalyticProcessRefreshSnapshotUseCase,
     ],
     imports: [AnalyticModule],
 })

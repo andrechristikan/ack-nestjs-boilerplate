@@ -17,18 +17,6 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    async findOneByProjectAndUser(
-        projectId: string,
-        userId: string
-    ): Promise<ProjectMember | null> {
-        return this.databaseService.client.projectMember.findFirst({
-            where: {
-                projectId,
-                userId,
-            },
-        });
-    }
-
     async findByIdAndProject(
         projectMemberId: string,
         projectId: string

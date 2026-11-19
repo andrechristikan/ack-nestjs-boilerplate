@@ -1,11 +1,8 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
-import {
-    WorkspaceDefaultAvailableOrderBy,
-    WorkspaceDefaultAvailableSearch,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 /** @public */
 export const WorkspaceAdminListRequestSchema =
@@ -15,18 +12,11 @@ export const WorkspaceAdminListRequestSchema =
             example: '',
         }),
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(WorkspaceDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumWorkspaceOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${WorkspaceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumWorkspaceOrderBy).join(', ')}. An empty or absent value uses \`${EnumWorkspaceOrderBy.latest}\`.`,
+                example: EnumWorkspaceOrderBy.latest,
             }),
         isPublic: RequestBooleanStringSchema.optional().meta({
             description: 'Filter by public visibility',

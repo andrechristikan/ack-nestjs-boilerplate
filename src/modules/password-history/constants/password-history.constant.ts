@@ -2,14 +2,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 
 /** @public */
-export const PasswordHistoryAnalyticSelect = {
-    id: true,
-    userId: true,
-    type: true,
-    createdAt: true,
-} satisfies Prisma.PasswordHistorySelect;
-
-/** @public */
 export const PasswordHistoryListSelect = {
     id: true,
     userId: true,

@@ -21,7 +21,7 @@ The module's rank is the `imports:` its module file declares: it sits above ever
 | repository port | `interfaces/<module>.repository.interface.ts` | `src/modules/device/interfaces/device.repository.interface.ts` |
 | repository | `repositories/<module>.repository.ts`, `implements I<Module>Repository` | `DeviceRepository`, `src/modules/device/repositories/device.repository.ts` |
 | data shapes | `interfaces/<module>.interface.ts` | `src/modules/device/interfaces/device.interface.ts` |
-| list fields | `constants/<module>.list.constant.ts`, `Prisma.<Model>ScalarFieldEnum` members `as const satisfies ReadonlyArray<…>` | `DeviceDefaultAvailableOrderBy`, `src/modules/device/constants/device.list.constant.ts` |
+| list fields | `constants/<module>.list.constant.ts`, the sort presets `as const satisfies IPaginationOrderByPresets<Prisma.<Model>ScalarFieldEnum, Enum<Module>OrderBy>` and the search tuple `as const satisfies ReadonlyArray<…>` | `DeviceOrderBy` keyed by `EnumDeviceOrderBy` (`device.enum.ts`), `src/modules/device/constants/device.list.constant.ts` |
 | service | `services/<module>.service.ts`, its own module's collaborators plus the services and utils of the modules it imports | `src/modules/country/services/country.service.ts` |
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `DeviceNotFoundException`, `src/modules/device/exceptions/device.not-found.exception.ts` |

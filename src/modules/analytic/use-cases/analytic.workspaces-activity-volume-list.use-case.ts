@@ -3,11 +3,13 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
+import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticWorkspacesActivityVolumeListUseCase implements IAppUseCase<
@@ -15,7 +17,7 @@ export class AnalyticWorkspacesActivityVolumeListUseCase implements IAppUseCase<
     IResponsePaginationReturn<IAnalyticWorkspaceCount>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService,
         private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -25,7 +27,8 @@ export class AnalyticWorkspacesActivityVolumeListUseCase implements IAppUseCase<
         query: AnalyticWorkspacesActivityVolumeListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: [],
+            orderBy: AnalyticCountOrderBy,
+            defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateService.requireRange(
@@ -33,7 +36,7 @@ export class AnalyticWorkspacesActivityVolumeListUseCase implements IAppUseCase<
             query.endDate
         );
 
-        return this.analyticDashboardService.workspacesActivityVolume(
+        return this.analyticWorkspaceService.workspacesActivityVolume(
             range.startDate,
             range.endDate,
             params

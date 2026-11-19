@@ -9,12 +9,13 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    CountryDefaultAvailableOrderBy,
+    CountryOrderBy,
     CountryDefaultAvailableSearch,
     CountryPublicListCursorScope,
 } from '@modules/country/constants/country.list.constant';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryGetListCursorUseCase } from '@modules/country/use-cases/country.get-list-cursor.use-case';
+import { EnumCountryOrderBy } from '@modules/country/enums/country.enum';
 
 describe('CountryGetListCursorUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
@@ -88,7 +89,8 @@ describe('CountryGetListCursorUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: CountryPublicListCursorScope,
                 availableSearch: CountryDefaultAvailableSearch,
-                availableOrderBy: CountryDefaultAvailableOrderBy,
+                orderBy: CountryOrderBy,
+                defaultOrderBy: EnumCountryOrderBy.latest,
             });
             expect(countryService.getListCursor).toHaveBeenCalledWith(
                 pagination

@@ -1,26 +1,18 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { EnumSessionOrderBy } from '@modules/session/enums/session.enum';
 
 /** @public */
 export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(SessionDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumSessionOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${SessionDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${SessionDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${SessionDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumSessionOrderBy).join(', ')}. An empty or absent value uses \`${EnumSessionOrderBy.latest}\`.`,
+            example: EnumSessionOrderBy.latest,
         }),
     isRevoked: RequestBooleanStringSchema.optional().meta({
         description: "Filter by revoked session: 'true' or 'false'",

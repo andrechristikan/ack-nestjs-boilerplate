@@ -1,11 +1,11 @@
-import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryAdminListRequestSchema } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
+import { EnumPasswordHistoryOrderBy } from '@modules/password-history/enums/password-history.enum';
 
 describe('PasswordHistoryAdminListRequestSchema', () => {
     const payload = {
         page: 1,
         perPage: 20,
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -36,52 +36,48 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             PasswordHistoryAdminListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(PasswordHistoryDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumPasswordHistoryOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumPasswordHistoryOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                PasswordHistoryAdminListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             PasswordHistoryAdminListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = PasswordHistoryDefaultAvailableOrderBy[0];
-
-        expect(
-            PasswordHistoryAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = PasswordHistoryDefaultAvailableOrderBy[0];
-        const last =
-            PasswordHistoryDefaultAvailableOrderBy[
-                PasswordHistoryDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            PasswordHistoryAdminListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${PasswordHistoryDefaultAvailableOrderBy[0]}:`,
-        `${PasswordHistoryDefaultAvailableOrderBy[0]}:DESC`,
-        `${PasswordHistoryDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'expiredAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             PasswordHistoryAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

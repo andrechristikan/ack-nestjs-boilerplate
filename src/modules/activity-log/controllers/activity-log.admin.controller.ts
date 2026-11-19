@@ -36,7 +36,10 @@ export class ActivityLogAdminController {
         private readonly activityLogGetListOffsetByWorkspaceUseCase: ActivityLogGetListOffsetByWorkspaceUseCase
     ) {}
 
-    @Doc({ summary: 'get all activity logs of a user' })
+    @Doc({
+        summary: 'get all activity logs of a user',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('activityLog.listByUser', {
         schema: ActivityLogResponseSchema,
     })
@@ -69,7 +72,10 @@ export class ActivityLogAdminController {
         );
     }
 
-    @Doc({ summary: 'get all activity logs of a workspace' })
+    @Doc({
+        summary: 'get all activity logs of a workspace',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('activityLog.listByWorkspace', {
         schema: ActivityLogResponseSchema,
     })

@@ -12,6 +12,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import type { IWorkspaceMemberWithEmail } from '@modules/workspace/interfaces/workspace.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -107,11 +108,12 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     });
 
     describe('execute', () => {
-        const target: WorkspaceMember = {
+        const target: IWorkspaceMemberWithEmail = {
             ...member,
             id: 'member-2',
             userId: 'user-2',
             role: EnumWorkspaceMemberRole.member,
+            user: { email: 'user-2@example.com' },
         };
 
         it('removes the member and cascades on one transaction for the returned target, then adds the actor entry and the target entry on the same tx', async () => {
@@ -130,11 +132,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     return 1;
                 }
             );
-            userService.getEmailByIdInTx.mockImplementation(async () => {
-                callOrder.push('email');
-
-                return 'user-2@example.com';
-            });
             workspaceInviteService.revokePendingByEmailInTx.mockImplementation(
                 async () => {
                     callOrder.push('invite');
@@ -178,7 +175,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(callOrder).toEqual([
                 'remove',
                 'projectMembers',
-                'email',
                 'invite',
                 'joinRequests',
                 'lastWorkspace',
@@ -219,9 +215,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
 
         it("revokes the pending invite to the removed member's email on the same tx", async () => {
             workspaceMemberService.removeMemberInTx.mockResolvedValue(target);
-            userService.getEmailByIdInTx.mockResolvedValue(
-                'user-2@example.com'
-            );
 
             await useCase.execute(
                 requestContext,
@@ -231,35 +224,9 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'member-2'
             );
 
-            expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
-                tx,
-                'user-2'
-            );
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
-        });
-
-        it('skips the revoke when the user has no row', async () => {
-            workspaceMemberService.removeMemberInTx.mockResolvedValue(target);
-            userService.getEmailByIdInTx.mockResolvedValue(null);
-
-            const result = await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                workspaceContext,
-                'member-2'
-            );
-
-            expect(result).toEqual({});
-            expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(
-                tx,
-                'user-2'
-            );
-            expect(
-                workspaceInviteService.revokePendingByEmailInTx
-            ).not.toHaveBeenCalled();
         });
 
         it('runs no cascade and adds no entry when the removal rejects', async () => {
@@ -279,7 +246,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
-            expect(userService.getEmailByIdInTx).not.toHaveBeenCalled();
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
             ).not.toHaveBeenCalled();

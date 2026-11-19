@@ -5,15 +5,16 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import {
-    ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
+    ApiKeyOrderBy,
 } from '@modules/api-key/constants/api-key.list.constant';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumApiKeyOrderBy } from '@modules/api-key/enums/api-key.enum';
 
 @Injectable()
 export class ApiKeyGetListByAdminUseCase implements IAppUseCase<
@@ -32,7 +33,8 @@ export class ApiKeyGetListByAdminUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IApiKey>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableSearch: ApiKeyDefaultAvailableSearch,
-            availableOrderBy: ApiKeyDefaultAvailableOrderBy,
+            orderBy: ApiKeyOrderBy,
+            defaultOrderBy: EnumApiKeyOrderBy.latest,
         });
         const isActive = this.paginationFilterUtil.equalBoolean(
             Prisma.ApiKeyScalarFieldEnum.isActive,

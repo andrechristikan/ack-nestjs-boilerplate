@@ -1,9 +1,7 @@
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
-import {
-    RoleDefaultAvailableSearch,
-    RoleDefaultAvailableOrderBy,
-} from '@modules/role/constants/role.list.constant';
+import { RoleDefaultAvailableSearch } from '@modules/role/constants/role.list.constant';
+import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 describe('RoleAdminListRequestSchema', () => {
     it('parses page, perPage, search, orderBy, and type', () => {
@@ -11,7 +9,7 @@ describe('RoleAdminListRequestSchema', () => {
             page: 1,
             perPage: 20,
             search: 'lead',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             type: EnumRoleType.admin,
         });
 
@@ -19,7 +17,7 @@ describe('RoleAdminListRequestSchema', () => {
             page: 1,
             perPage: 20,
             search: 'lead',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             type: EnumRoleType.admin,
         });
     });
@@ -36,53 +34,6 @@ describe('RoleAdminListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
-        expect(
-            RoleAdminListRequestSchema.shape.search.meta()?.description
-        ).toContain(RoleDefaultAvailableSearch.join(', '));
-        expect(
-            RoleAdminListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(RoleDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            RoleAdminListRequestSchema.safeParse({ orderBy: '' }).success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = RoleDefaultAvailableOrderBy[0];
-
-        expect(
-            RoleAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = RoleDefaultAvailableOrderBy[0];
-        const last =
-            RoleDefaultAvailableOrderBy[RoleDefaultAvailableOrderBy.length - 1];
-
-        expect(
-            RoleAdminListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${RoleDefaultAvailableOrderBy[0]}:`,
-        `${RoleDefaultAvailableOrderBy[0]}:DESC`,
-        `${RoleDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(RoleAdminListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
-    });
-
     it('accepts a type of 256 characters and rejects one of 257', () => {
         expect(() =>
             RoleAdminListRequestSchema.parse({ type: 'a'.repeat(256) })
@@ -90,5 +41,52 @@ describe('RoleAdminListRequestSchema', () => {
         expect(() =>
             RoleAdminListRequestSchema.parse({ type: 'a'.repeat(257) })
         ).toThrow();
+    });
+
+    it('keeps the module search description', () => {
+        expect(
+            RoleAdminListRequestSchema.shape.search.meta()?.description
+        ).toContain(RoleDefaultAvailableSearch.join(', '));
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            RoleAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumRoleOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumRoleOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                RoleAdminListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            RoleAdminListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(RoleAdminListRequestSchema.safeParse({ orderBy }).success).toBe(
+            false
+        );
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            RoleAdminListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

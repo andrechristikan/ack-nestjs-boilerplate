@@ -1,107 +1,118 @@
-import { AnalyticImpossibleTravelAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import { EnumAnalyticImpossibleTravelOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticImpossibleTravelListRequestSchema', () => {
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-
-    it('parses page, perPage, orderBy, and the date range', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticImpossibleTravelListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticImpossibleTravelAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'highestValue',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticImpossibleTravelAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'highestValue',
         });
     });
 
-    it('parses an empty object when dates are omitted', () => {
-        const result = AnalyticImpossibleTravelListRequestSchema.parse({});
-
-        expect(result).toEqual({});
-    });
-
-    it('coerces ISO strings into Date values', () => {
-        const result = AnalyticImpossibleTravelListRequestSchema.parse({
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-        });
-
-        expect(result).toEqual({ startDate, endDate });
+    it('parses an empty object', () => {
+        expect(AnalyticImpossibleTravelListRequestSchema.parse({})).toEqual({});
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
             AnalyticImpossibleTravelListRequestSchema.parse({
-                startDate,
-                endDate,
+                page: 1,
                 extra: true,
             })
         ).toThrow();
     });
 
-    it('rejects search', () => {
+    it('rejects search, windowMs, and the date range', () => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({ search: 'x' })
                 .success
         ).toBe(false);
-    });
-
-    it('keeps the module orderBy description', () => {
-        expect(
-            AnalyticImpossibleTravelListRequestSchema.shape.orderBy.meta()
-                ?.description
-        ).toContain(AnalyticImpossibleTravelAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy: '' })
-                .success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticImpossibleTravelAvailableOrderBy[0];
-
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
+                windowMs: 1000,
             }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticImpossibleTravelAvailableOrderBy[0];
-        const last =
-            AnalyticImpossibleTravelAvailableOrderBy[
-                AnalyticImpossibleTravelAvailableOrderBy.length - 1
-            ];
-
+        ).toBe(false);
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
+                startDate: '2026-01-01T00:00:00.000Z',
             }).success
         ).toBe(false);
     });
 
     it.each([
         'unknownField:asc',
-        `${AnalyticImpossibleTravelAvailableOrderBy[0]}:`,
-        `${AnalyticImpossibleTravelAvailableOrderBy[0]}:DESC`,
-        `${AnalyticImpossibleTravelAvailableOrderBy[0]}:up`,
+        'runId:asc',
+        'userCount:desc',
+        'value:',
+        'value:DESC',
+        'value:up',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(
+            Object.values(EnumAnalyticImpossibleTravelOrderBy).join(', ')
+        );
+    });
+
+    it.each(Object.values(EnumAnalyticImpossibleTravelOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts the recent preset', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({
+                orderBy: 'recent',
+            }).success
+        ).toBe(true);
+    });
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'highestValue:asc',
+        'default',
+        'createdAt',
+        'value',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({
+                orderBy: ['highestValue', 'highestValue'],
+            }).success
         ).toBe(false);
     });
 });

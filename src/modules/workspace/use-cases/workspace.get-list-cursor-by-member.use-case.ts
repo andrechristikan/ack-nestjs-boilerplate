@@ -4,7 +4,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
-    WorkspaceCursorAvailableOrderBy,
+    WorkspaceCursorOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -13,6 +13,7 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumWorkspaceCursorOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 @Injectable()
 export class WorkspaceGetListCursorByMemberUseCase implements IAppUseCase<
@@ -32,7 +33,8 @@ export class WorkspaceGetListCursorByMemberUseCase implements IAppUseCase<
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceUserListCursorScope,
             availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrderBy: WorkspaceCursorAvailableOrderBy,
+            orderBy: WorkspaceCursorOrderBy,
+            defaultOrderBy: EnumWorkspaceCursorOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

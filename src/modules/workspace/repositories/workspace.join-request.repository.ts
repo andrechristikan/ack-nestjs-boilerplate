@@ -14,7 +14,10 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
-import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceJoinRequestCreateData,
+    IWorkspaceJoinRequestWithEmail,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -93,6 +96,20 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 id: workspaceJoinRequestId,
                 workspaceId,
             },
+        });
+    }
+
+    async findByIdAndWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceJoinRequestId: string,
+        workspaceId: string
+    ): Promise<IWorkspaceJoinRequestWithEmail | null> {
+        return tx.workspaceJoinRequest.findFirst({
+            where: {
+                id: workspaceJoinRequestId,
+                workspaceId,
+            },
+            include: { user: { select: { email: true } } },
         });
     }
 

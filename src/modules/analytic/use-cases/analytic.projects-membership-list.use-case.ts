@@ -3,10 +3,12 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
 import type { IAnalyticProjectCount } from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticProjectsMembershipListUseCase implements IAppUseCase<
@@ -14,7 +16,7 @@ export class AnalyticProjectsMembershipListUseCase implements IAppUseCase<
     IResponsePaginationReturn<IAnalyticProjectCount>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticProjectService: AnalyticProjectService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -23,10 +25,11 @@ export class AnalyticProjectsMembershipListUseCase implements IAppUseCase<
         query: AnalyticProjectsMembershipListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: [],
+            orderBy: AnalyticCountOrderBy,
+            defaultOrderBy: EnumAnalyticCountOrderBy.mostCount,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticDashboardService.projectsMembership(params);
+        return this.analyticProjectService.projectsMembership(params);
     }
 }

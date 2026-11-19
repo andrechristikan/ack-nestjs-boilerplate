@@ -6,8 +6,9 @@ import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { Injectable } from '@nestjs/common';
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import { ActivityLogOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 @Injectable()
 export class ActivityLogGetListOffsetByUserUseCase implements IAppUseCase<
@@ -25,7 +26,8 @@ export class ActivityLogGetListOffsetByUserUseCase implements IAppUseCase<
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+            orderBy: ActivityLogOrderBy,
+            defaultOrderBy: EnumActivityLogOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

@@ -21,32 +21,31 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 @TermPolicyAcceptanceProtected(...)    // 4.  Term policy
 @PolicyProtected({...})                // 5.  CASL policy, admin routes
 @RoleProtected(...)                    // 6.  Role, admin routes
-@ProjectMemberProtected()              // 7.  Project membership
-@ProjectProtected()                    // 8.  Project exists
-@WorkspaceMemberProtected(...)         // 9.  Workspace membership; pass roles to also gate by role
-@WorkspaceProtected()                  // 10. Workspace exists
-@UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag; reads RequestActorStoreKey, so above JWT
-@RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
-@AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
-@ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 16. Upload routes: multipart interceptor, then timeout
-@HttpCode(HttpStatus.OK)               // 17. @Post only
-@Get('/endpoint')                      // 18. HTTP method, always last
+@ProjectProtected(...)                 // 7.  Project and the caller's project member; pass roles to gate by role
+@WorkspaceProtected(...)               // 8.  Workspace and the caller's member; pass roles to gate by role
+@UserProtected()                       // 9.  User status
+@FeatureFlagProtected(...)             // 10. Feature flag; reads RequestActorStoreKey, so above JWT
+@RequestThrottle({ user: true })       // 11. Per-user throttle guard; runs after JWT
+@AuthJwtAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
+@ApiKeyProtected()                     // 13. API key; @ApiKeySystemProtected() on every system route
+@FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 14. Upload routes: multipart interceptor, then timeout
+@HttpCode(HttpStatus.OK)               // 15. @Post only
+@Get('/endpoint')                      // 16. HTTP method, always last
 ```
 
 - `@RequestThrottle` (`src/common/request/decorators/request.decorator.ts`) mounts the per-user throttle guard directly above `@AuthJwtAccessProtected()`, so it runs after the JWT guard and before every guard that reads the database; a route with no JWT guard keeps the slot, directly above `@ApiKeyProtected()`. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
 - A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
-- `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`src/modules/workspace/decorators/workspace.decorator.ts`). `@ProjectMemberProtected(...roles)` uses `ProjectMemberGuard` with no roles and `ProjectRoleGuard` alone with roles (`src/modules/project/decorators/project.decorator.ts`). Both merge the caller's member as `projectMember` into `ProjectContextStoreKey`; `ProjectRoleGuard` merges `null` when a workspace owner or admin passes with no member row.
+- `@WorkspaceProtected(...roles)` mounts `WorkspaceGuard`, which loads the workspace and the caller's member in one call: a member row is always required, and with roles the member's role is in the list, an owner always passing. `@ProjectProtected(...roles)` mounts `ProjectGuard`, which loads the project and the caller's project member in one call: with no roles a member row is required; with roles a workspace owner or admin passes with the row or `null` as `projectMember`, and anyone else needs a row whose role is in the list.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` / `:projectId` param. `@RoleProtected` never lists `superAdmin`; `RoleService.validateRoleGuard` and `PolicyService.validatePolicyGuard` pass it.
 - Every workspace-scoped and project-scoped route in `user`, `shared`, and `public` carries `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`; the decorator takes an `EnumFeatureFlagKey` member, and a metadata sub-key, an `EnumFeatureFlagMetadataKey` member, is asserted in the service (`service.md`, Shape).
 
 ## Guards
 
 - A guard reads transport inputs and delegates to a service.
-- The workspace and project member guards read the database on every request; no cache sits in front of a membership read.
+- The workspace and project guards read the database on every request; no cache sits in front of a membership read.
+- `TermPolicyGuard` reads the latest published policies with the caller's acceptances in one call, with no cache in front.
 - A guard that loads its subject passes the id as it arrived, from the header (`WorkspaceGuard`) or the route (`ProjectGuard`), bound to no schema: the service answers a malformed id as that subject's not-found, never 422.
-- A guard checks the context a guard below it wrote before calling the service (`WorkspaceMemberGuard.canActivate`, `src/modules/workspace/guards/workspace.member.guard.ts`), so a service `validate*Guard` takes a guard-provided subject non-null. A missing context throws that subject's guard-only exception, owned by its module, apart from its service exceptions, and shared by every guard reading it: 401 for identity (`AuthJwtGuardMissingException` for the JWT contexts, `UserGuardMissingException`, `ApiKeyGuardMissingException`), 403 for authorization (`PolicyGuardMissingException`, `WorkspaceGuardMissingException`, `WorkspaceMemberGuardMissingException`, `ProjectGuardMissingException`, `ProjectMemberGuardMissingException`), never 500. The kit's `RequestThrottleUserGuard` alone answers a missing `RequestActorStoreKey` with `RequestContextMissingException` (500).
+- A guard checks the context a guard below it wrote before calling the service (`ProjectGuard.canActivate`, `src/modules/project/guards/project.guard.ts`), so a service `validate*Guard` takes a guard-provided subject non-null. A missing context throws that subject's guard-only exception, owned by its module, apart from its service exceptions, and shared by every guard reading it: 401 for identity (`AuthJwtGuardMissingException` for the JWT contexts, `UserGuardMissingException`, `ApiKeyGuardMissingException`), 403 for authorization (`PolicyGuardMissingException`, `WorkspaceGuardMissingException`), never 500. The kit's `RequestThrottleUserGuard` alone answers a missing `RequestActorStoreKey` with `RequestContextMissingException` (500).
 - A guard reading empty metadata fails closed: `PolicyGuard` denies an empty policy list (`PolicyAbilityFactory.handlerPolicies`, `src/modules/policy/factories/policy.factory.ts`).
 
 ## Decorators

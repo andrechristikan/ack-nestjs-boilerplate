@@ -1,13 +1,10 @@
 import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
-import {
-    ApiKeyDefaultAvailableOrderBy,
-    ApiKeyDefaultAvailableSearch,
-} from '@modules/api-key/constants/api-key.list.constant';
+import { ApiKeyDefaultAvailableSearch } from '@modules/api-key/constants/api-key.list.constant';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
+import { EnumApiKeyOrderBy } from '@modules/api-key/enums/api-key.enum';
 
 /** @public */
 export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
@@ -16,18 +13,11 @@ export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
         example: '',
     }),
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(ApiKeyDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumApiKeyOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${ApiKeyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${ApiKeyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumApiKeyOrderBy).join(', ')}. An empty or absent value uses \`${EnumApiKeyOrderBy.latest}\`.`,
+            example: EnumApiKeyOrderBy.latest,
         }),
     isActive: RequestBooleanStringSchema.optional().meta({
         description: "Filter by active: 'true' or 'false'",

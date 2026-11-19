@@ -6,8 +6,9 @@ import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/an
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticPasswordResetEnumeration } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticKeyCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticPasswordResetEnumerationListUseCase implements IAppUseCase<
@@ -24,7 +25,8 @@ export class AnalyticPasswordResetEnumerationListUseCase implements IAppUseCase<
         query: AnalyticPasswordResetEnumerationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+            orderBy: AnalyticKeyCountOrderBy,
+            defaultOrderBy: EnumAnalyticKeyCountOrderBy.mostCount,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

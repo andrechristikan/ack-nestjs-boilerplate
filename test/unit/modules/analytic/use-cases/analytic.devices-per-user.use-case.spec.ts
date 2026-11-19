@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticDevicesPerUserUseCase } from '@modules/analytic/use-cases/analytic.devices-per-user.use-case';
 
 describe('AnalyticDevicesPerUserUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticDeviceService: MockProxy<AnalyticDeviceService> =
+        mock<AnalyticDeviceService>();
 
     let useCase: AnalyticDevicesPerUserUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticDevicesPerUserUseCase', () => {
             providers: [
                 AnalyticDevicesPerUserUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticDeviceService,
+                    useValue: analyticDeviceService,
                 },
             ],
         }).compile();
@@ -29,18 +29,20 @@ describe('AnalyticDevicesPerUserUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.devicesPerUser.mockResolvedValue({
+            analyticDeviceService.devicesPerUser.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
+                computedAt: null,
             });
 
             const result = await useCase.execute();
 
             expect(result).toEqual({
-                data: { buckets: [{ key: 'key-1', count: 7 }] },
+                data: {
+                    buckets: [{ key: 'key-1', count: 7 }],
+                    computedAt: null,
+                },
             });
-            expect(
-                analyticDashboardService.devicesPerUser
-            ).toHaveBeenCalledWith();
+            expect(analyticDeviceService.devicesPerUser).toHaveBeenCalledWith();
         });
     });
 });

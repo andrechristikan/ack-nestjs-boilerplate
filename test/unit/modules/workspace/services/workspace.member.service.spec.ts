@@ -21,10 +21,10 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
-    User,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
@@ -37,11 +37,11 @@ import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/works
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
+import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
-import { UserService } from '@modules/user/services/user.service';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
@@ -75,8 +75,6 @@ describe('WorkspaceMemberService', () => {
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const userService: MockProxy<UserService> = mock<UserService>();
-    const targetUser = mock<User>({ id: 'user-2' });
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {
@@ -107,7 +105,6 @@ describe('WorkspaceMemberService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
-        userService.getOneActive.mockResolvedValue(targetUser);
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -129,21 +126,21 @@ describe('WorkspaceMemberService', () => {
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: UserService, useValue: userService },
             ],
         }).compile();
 
         service = module.get(WorkspaceMemberService);
     });
 
-    describe('validateWorkspaceMemberGuard', () => {
-        it('throws WorkspaceMemberForbiddenException when no membership is found', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
-            );
+    describe('validateWorkspaceGuard', () => {
+        it('throws WorkspaceMemberForbiddenException after one repository call when the workspace holds no member row', async () => {
+            workspaceRepository.findActiveByIdWithMember.mockResolvedValue({
+                ...workspace,
+                members: [],
+            });
 
             await expect(
-                service.validateWorkspaceMemberGuard('workspace-1', 'user-1')
+                service.validateWorkspaceGuard('workspace-1', 'user-1', [])
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberForbiddenException,
                 module: 'workspace',
@@ -154,50 +151,62 @@ describe('WorkspaceMemberService', () => {
                     ],
                 messagePath: 'workspace.error.memberForbidden',
             });
-        });
-
-        it('returns the resolved membership', async () => {
-            const member = baseMember;
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                member
-            );
-
-            const result = await service.validateWorkspaceMemberGuard(
-                'workspace-1',
-                'user-1'
-            );
-
-            expect(result).toBe(member);
             expect(
-                workspaceMemberRepository.findOneByWorkspaceAndUser
+                workspaceRepository.findActiveByIdWithMember
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceRepository.findActiveByIdWithMember
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
         });
-    });
-    describe('validateWorkspaceRoleGuard', () => {
-        it('returns the member when the role is allowed', () => {
-            const admin = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
 
-            const result = service.validateWorkspaceRoleGuard(admin, [
-                EnumWorkspaceMemberRole.admin,
-            ]);
-
-            expect(result).toBe(admin);
+        it('throws WorkspaceHeaderMissingException with no repository call when the id is null', async () => {
+            await expect(
+                service.validateWorkspaceGuard(null, 'user-1', [])
+            ).rejects.toMatchObject({
+                constructor: WorkspaceHeaderMissingException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.headerMissing
+                    ],
+                messagePath: 'workspace.error.headerMissing',
+            });
+            expect(
+                workspaceRepository.findActiveByIdWithMember
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceRoleForbiddenException when the role is not allowed', () => {
-            let thrown: unknown;
-            try {
-                service.validateWorkspaceRoleGuard(baseMember, [
-                    EnumWorkspaceMemberRole.admin,
-                ]);
-            } catch (error) {
-                thrown = error;
-            }
+        it('throws WorkspaceNotFoundException when the repository answers null', async () => {
+            workspaceRepository.findActiveByIdWithMember.mockResolvedValue(
+                null
+            );
 
-            expect(thrown).toMatchObject({
+            await expect(
+                service.validateWorkspaceGuard('workspace-1', 'user-1', [])
+            ).rejects.toMatchObject({
+                constructor: WorkspaceNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.notFound
+                    ],
+                messagePath: 'workspace.error.notFound',
+            });
+        });
+
+        it('throws WorkspaceRoleForbiddenException when the member is neither owner nor in the allowed roles', async () => {
+            workspaceRepository.findActiveByIdWithMember.mockResolvedValue({
+                ...workspace,
+                members: [baseMember],
+            });
+
+            await expect(
+                service.validateWorkspaceGuard('workspace-1', 'user-1', [
+                    EnumWorkspaceMemberRole.admin,
+                ])
+            ).rejects.toMatchObject({
                 constructor: WorkspaceRoleForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
@@ -206,6 +215,44 @@ describe('WorkspaceMemberService', () => {
                         EnumWorkspaceStatusCodeError.roleForbidden
                     ],
                 messagePath: 'workspace.error.roleForbidden',
+            });
+        });
+
+        it('passes an owner whatever the allowed roles', async () => {
+            const owner = {
+                ...baseMember,
+                role: EnumWorkspaceMemberRole.owner,
+            };
+            workspaceRepository.findActiveByIdWithMember.mockResolvedValue({
+                ...workspace,
+                members: [owner],
+            });
+
+            const result = await service.validateWorkspaceGuard(
+                'workspace-1',
+                'user-1',
+                [EnumWorkspaceMemberRole.admin]
+            );
+
+            expect(result.workspaceMember).toBe(owner);
+        });
+
+        it('returns the workspace without its members and the member row', async () => {
+            workspaceRepository.findActiveByIdWithMember.mockResolvedValue({
+                ...workspace,
+                members: [baseMember],
+            });
+
+            const result = await service.validateWorkspaceGuard(
+                'workspace-1',
+                'user-1',
+                []
+            );
+
+            expect(result).toEqual({
+                workspaceId: 'workspace-1',
+                workspace,
+                workspaceMember: baseMember,
             });
         });
     });
@@ -234,33 +281,14 @@ describe('WorkspaceMemberService', () => {
             const result = await service.resolveLastWorkspaceId('user-1', null);
 
             expect(result).toBeNull();
-            expect(workspaceRepository.findActiveById).not.toHaveBeenCalled();
             expect(
-                workspaceMemberRepository.findOneByWorkspaceAndUser
+                workspaceMemberRepository.existsActiveByWorkspaceAndUser
             ).not.toHaveBeenCalled();
         });
 
-        it('answers null for an inactive workspace', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(null);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                baseMember
-            );
-
-            const result = await service.resolveLastWorkspaceId(
-                'user-1',
-                'workspace-1'
-            );
-
-            expect(result).toBeNull();
-            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
-                'workspace-1'
-            );
-        });
-
-        it('answers null when the user is no longer a member', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
+        it('answers null when no active membership exists', async () => {
+            workspaceMemberRepository.existsActiveByWorkspaceAndUser.mockResolvedValue(
+                false
             );
 
             const result = await service.resolveLastWorkspaceId(
@@ -270,14 +298,16 @@ describe('WorkspaceMemberService', () => {
 
             expect(result).toBeNull();
             expect(
-                workspaceMemberRepository.findOneByWorkspaceAndUser
+                workspaceMemberRepository.existsActiveByWorkspaceAndUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberRepository.existsActiveByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
         });
 
-        it('answers the id otherwise', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                baseMember
+        it('answers the id when an active membership exists', async () => {
+            workspaceMemberRepository.existsActiveByWorkspaceAndUser.mockResolvedValue(
+                true
             );
 
             const result = await service.resolveLastWorkspaceId(
@@ -313,25 +343,14 @@ describe('WorkspaceMemberService', () => {
             );
         });
     });
-    describe('getReviewerUserIds', () => {
-        it('returns the user ids of the workspace reviewers', async () => {
-            workspaceMemberRepository.findReviewerUserIdsByWorkspace.mockResolvedValue(
-                ['user-1', 'user-2']
-            );
-
-            const result = await service.getReviewerUserIds('workspace-1');
-
-            expect(result).toEqual(['user-1', 'user-2']);
-            expect(
-                workspaceMemberRepository.findReviewerUserIdsByWorkspace
-            ).toHaveBeenCalledWith('workspace-1');
-        });
-    });
-
     describe('transferOwnership', () => {
         const tx = {} as IDatabaseTransactionClient;
         const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        const activeTarget = {
+            ...target,
+            user: { status: EnumUserStatus.active, deletedAt: null },
+        };
 
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
@@ -356,7 +375,7 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 null
             );
 
@@ -378,35 +397,54 @@ describe('WorkspaceMemberService', () => {
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceTransferTargetInactiveException when the target account is not active, reading no flag and opening no transaction', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
-            );
-            userService.getOneActive.mockResolvedValue(null);
+        it.each([
+            {
+                label: 'is not active',
+                user: { status: EnumUserStatus.inactive, deletedAt: null },
+            },
+            {
+                label: 'is deleted',
+                user: {
+                    status: EnumUserStatus.active,
+                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                },
+            },
+        ])(
+            'throws WorkspaceTransferTargetInactiveException when the target account $label, reading no flag and opening no transaction',
+            async ({ user }) => {
+                workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                    { ...target, user }
+                );
 
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceTransferTargetInactiveException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.transferTargetInactive,
-                messagePath: 'workspace.error.transferTargetInactive',
-            });
-            expect(userService.getOneActive).toHaveBeenCalledWith('user-2');
-            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-        });
+                await expect(
+                    service.transferOwnership(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        'workspace-1',
+                        actor,
+                        'user-2'
+                    )
+                ).rejects.toMatchObject({
+                    constructor: WorkspaceTransferTargetInactiveException,
+                    module: 'workspace',
+                    statusCode:
+                        EnumWorkspaceStatusCodeError.transferTargetInactive,
+                    messagePath: 'workspace.error.transferTargetInactive',
+                });
+                expect(
+                    workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
+                ).toHaveBeenCalledTimes(1);
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).not.toHaveBeenCalled();
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            }
+        );
 
         it('throws WorkspaceCapReachedException for a target at the cap', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(5);
@@ -441,8 +479,8 @@ describe('WorkspaceMemberService', () => {
 
         it('refuses a transfer to a user owning 2 workspaces when the flag caps at 2', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(2);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(2);
@@ -465,8 +503,8 @@ describe('WorkspaceMemberService', () => {
 
         it('allows a transfer to a user owning 2 workspaces when the flag caps at 3', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(3);
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(2);
@@ -491,8 +529,8 @@ describe('WorkspaceMemberService', () => {
             featureFlagService.getMetadataNumber.mockRejectedValue(
                 notConfigured
             );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
 
             await expect(
@@ -512,8 +550,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('transfers when both statements hit', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(4);
@@ -530,7 +568,7 @@ describe('WorkspaceMemberService', () => {
             ).resolves.toBeUndefined();
 
             expect(
-                workspaceMemberRepository.findOneByWorkspaceAndUser
+                workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
@@ -552,8 +590,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('adds the owner entry and the new owner entry after the swap on the same tx', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
@@ -605,8 +643,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
@@ -639,8 +677,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the demote misses', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
@@ -666,8 +704,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             const conflict = new Error('write-conflict');
             outboxService.withTransaction.mockRejectedValue(conflict);
@@ -694,8 +732,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
+                activeTarget
             );
             outboxService.withTransaction.mockRejectedValue(new Error('boom'));
             databaseUtil.toException.mockReturnValue(null);
@@ -716,22 +754,25 @@ describe('WorkspaceMemberService', () => {
     describe('transferOwnershipByAdmin', () => {
         const tx = {} as IDatabaseTransactionClient;
         const adminContext = buildAuthJwtAccessContext('admin-1');
+        const activeUser = { status: EnumUserStatus.active, deletedAt: null };
         const owner = {
             ...baseMember,
             id: 'member-1',
             userId: 'user-1',
             role: EnumWorkspaceMemberRole.owner,
+            user: activeUser,
         };
-        const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        const target = {
+            ...baseMember,
+            id: 'member-2',
+            userId: 'user-2',
+            user: activeUser,
+        };
         const thirdEntry = buildActivityLogCreateManyEffect('third-entry');
 
         beforeEach(() => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            workspaceMemberRepository.findOneOwnerByWorkspace.mockResolvedValue(
-                owner
-            );
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                target
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner, target] }
             );
             activityLogService.recordEffect.mockReset();
             activityLogService.recordEffect
@@ -743,7 +784,9 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceNotFoundException for a missing or deleted workspace', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(null);
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                null
+            );
 
             await expect(
                 service.transferOwnershipByAdmin(
@@ -758,13 +801,17 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
             });
-            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
-                'workspace-1'
-            );
+            expect(
+                workspaceRepository.findActiveByIdWithTransferMembers
+            ).toHaveBeenCalledWith('workspace-1', 'user-2');
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceSelfTransferException when the target is the current owner', async () => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner] }
+            );
+
             await expect(
                 service.transferOwnershipByAdmin(
                     requestContext,
@@ -778,15 +825,12 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
             });
-            expect(
-                workspaceMemberRepository.findOneOwnerByWorkspace
-            ).toHaveBeenCalledWith('workspace-1');
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberNotFoundException when the workspace has no owner row', async () => {
-            workspaceMemberRepository.findOneOwnerByWorkspace.mockResolvedValue(
-                null
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [target] }
             );
 
             await expect(
@@ -805,8 +849,8 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-                null
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner] }
             );
 
             await expect(
@@ -822,33 +866,49 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
-            expect(
-                workspaceMemberRepository.findOneByWorkspaceAndUser
-            ).toHaveBeenCalledWith('workspace-1', 'user-2');
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceTransferTargetInactiveException when the target account is not active, reading no flag and opening no transaction', async () => {
-            userService.getOneActive.mockResolvedValue(null);
+        it.each([
+            {
+                label: 'is not active',
+                user: { status: EnumUserStatus.blocked, deletedAt: null },
+            },
+            {
+                label: 'is deleted',
+                user: {
+                    status: EnumUserStatus.active,
+                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                },
+            },
+        ])(
+            'throws WorkspaceTransferTargetInactiveException when the target account $label, reading no flag and opening no transaction',
+            async ({ user }) => {
+                workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                    { ...workspace, members: [owner, { ...target, user }] }
+                );
 
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceTransferTargetInactiveException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.transferTargetInactive,
-                messagePath: 'workspace.error.transferTargetInactive',
-            });
-            expect(userService.getOneActive).toHaveBeenCalledWith('user-2');
-            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-        });
+                await expect(
+                    service.transferOwnershipByAdmin(
+                        requestContext,
+                        apiKeyContext,
+                        adminContext,
+                        'workspace-1',
+                        'user-2'
+                    )
+                ).rejects.toMatchObject({
+                    constructor: WorkspaceTransferTargetInactiveException,
+                    module: 'workspace',
+                    statusCode:
+                        EnumWorkspaceStatusCodeError.transferTargetInactive,
+                    messagePath: 'workspace.error.transferTargetInactive',
+                });
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).not.toHaveBeenCalled();
+                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            }
+        );
 
         it('throws WorkspaceCapReachedException for a target at the cap', async () => {
             workspaceService.countOwnedInTx.mockResolvedValue(5);
@@ -875,7 +935,7 @@ describe('WorkspaceMemberService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('swaps the owner guarded by the owner row and adds the admin, previous owner, and new owner entries on the same tx', async () => {
+        it('swaps the owner guarded by the owner row after one repository read and adds the admin, previous owner, and new owner entries on the same tx', async () => {
             await expect(
                 service.transferOwnershipByAdmin(
                     requestContext,
@@ -886,6 +946,9 @@ describe('WorkspaceMemberService', () => {
                 )
             ).resolves.toBeUndefined();
 
+            expect(
+                workspaceRepository.findActiveByIdWithTransferMembers
+            ).toHaveBeenCalledTimes(1);
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
@@ -1324,10 +1387,11 @@ describe('WorkspaceMemberService', () => {
             id: 'member-2',
             userId: 'user-2',
             role: EnumWorkspaceMemberRole.member,
+            user: { email: 'user-2@example.com' },
         };
 
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
                 null
             );
 
@@ -1345,10 +1409,12 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target is the actor itself', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...target,
-                userId: 'user-1',
-            });
+            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
+                {
+                    ...target,
+                    userId: 'user-1',
+                }
+            );
 
             await expect(
                 service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
@@ -1364,10 +1430,12 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...target,
-                role: EnumWorkspaceMemberRole.admin,
-            });
+            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
+                {
+                    ...target,
+                    role: EnumWorkspaceMemberRole.admin,
+                }
+            );
 
             await expect(
                 service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
@@ -1382,8 +1450,8 @@ describe('WorkspaceMemberService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('removes the target member and returns it', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+        it('reads the target with its email on the given tx, removes it, and returns the row read', async () => {
+            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
                 target
             );
 
@@ -1396,6 +1464,12 @@ describe('WorkspaceMemberService', () => {
 
             expect(result).toBe(target);
             expect(
+                workspaceMemberRepository.findByIdAndWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'member-2', 'workspace-1');
+            expect(
+                workspaceMemberRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
+            expect(
                 workspaceMemberRepository.removeMemberInTx
             ).toHaveBeenCalledWith(
                 tx,
@@ -1405,7 +1479,7 @@ describe('WorkspaceMemberService', () => {
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
                 target
             );
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);

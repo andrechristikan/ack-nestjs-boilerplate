@@ -1,7 +1,7 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserUsernameRegex } from '@modules/user/constants/user.constant';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser, IUserName } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { User } from '@generated/prisma-client/client';
@@ -34,6 +34,10 @@ export class UserUtil {
 
     hasBadWord(str: string): boolean {
         return this.profanity.exists(str.replace(/[^a-zA-Z]+/g, ' '));
+    }
+
+    getDisplayName(user: IUserName): string {
+        return user.name ?? user.username;
     }
 
     isUnverified(user: IUser): boolean {

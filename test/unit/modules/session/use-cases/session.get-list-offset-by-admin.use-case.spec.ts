@@ -10,11 +10,12 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IPaginationQueryFilterResult } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { SessionOrderBy } from '@modules/session/constants/session.list.constant';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
+import { EnumSessionOrderBy } from '@modules/session/enums/session.enum';
 
 describe('SessionGetListOffsetByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -87,7 +88,8 @@ describe('SessionGetListOffsetByAdminUseCase', () => {
                 totalPage: 0,
             });
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: SessionDefaultAvailableOrderBy,
+                orderBy: SessionOrderBy,
+                defaultOrderBy: EnumSessionOrderBy.latest,
             });
             expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.SessionScalarFieldEnum.isRevoked,

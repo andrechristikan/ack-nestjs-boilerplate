@@ -17,10 +17,11 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    ActivityLogDefaultAvailableOrderBy,
+    ActivityLogOrderBy,
     ActivityLogSharedWorkspaceListCursorScope,
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListCursorByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-workspace.use-case';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
@@ -95,7 +96,8 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
                 cursorQuery,
                 {
                     scope: ActivityLogSharedWorkspaceListCursorScope,
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                    orderBy: ActivityLogOrderBy,
+                    defaultOrderBy: EnumActivityLogOrderBy.latest,
                 }
             );
             expect(

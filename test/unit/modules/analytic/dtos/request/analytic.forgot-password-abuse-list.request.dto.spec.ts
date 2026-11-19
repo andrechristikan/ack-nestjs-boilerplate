@@ -1,19 +1,19 @@
-import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
+import { EnumAnalyticForgotPasswordAbuseOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
     it('parses page, perPage, orderBy, and windowMs', () => {
         const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostTokens',
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostTokens',
             windowMs: 3600000,
         });
     });
@@ -49,14 +49,27 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticForgotPasswordAbuseAvailableOrderBy.join(', '));
+        ).toContain(
+            Object.values(EnumAnalyticForgotPasswordAbuseOrderBy).join(', ')
+        );
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticForgotPasswordAbuseOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                    orderBy,
+                }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
                 orderBy: '',
@@ -64,39 +77,25 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticForgotPasswordAbuseAvailableOrderBy[0];
-
-        expect(
-            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticForgotPasswordAbuseAvailableOrderBy[0];
-        const last =
-            AnalyticForgotPasswordAbuseAvailableOrderBy[
-                AnalyticForgotPasswordAbuseAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:`,
-        `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:DESC`,
-        `${AnalyticForgotPasswordAbuseAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'mostTokens:asc',
+        'default',
+        'createdAt',
+        'tokenCount',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({ orderBy })
                 .success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                orderBy: ['mostTokens', 'mostTokens'],
+            }).success
         ).toBe(false);
     });
 });

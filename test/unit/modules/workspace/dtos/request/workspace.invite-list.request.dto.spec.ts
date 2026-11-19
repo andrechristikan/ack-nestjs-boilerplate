@@ -1,8 +1,6 @@
 import { WorkspaceInviteListRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
-import {
-    WorkspaceInviteDefaultAvailableSearch,
-    WorkspaceInviteDefaultAvailableOrderBy,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceInviteDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceInviteListRequestSchema', () => {
     it('parses cursor, perPage, search, orderBy, and status', () => {
@@ -10,7 +8,7 @@ describe('WorkspaceInviteListRequestSchema', () => {
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             status: 'pending',
         });
 
@@ -18,7 +16,7 @@ describe('WorkspaceInviteListRequestSchema', () => {
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             status: 'pending',
         });
     });
@@ -35,56 +33,6 @@ describe('WorkspaceInviteListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
-        expect(
-            WorkspaceInviteListRequestSchema.shape.search.meta()?.description
-        ).toContain(WorkspaceInviteDefaultAvailableSearch.join(', '));
-        expect(
-            WorkspaceInviteListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(WorkspaceInviteDefaultAvailableOrderBy.join(', '));
-    });
-
-    it('accepts an empty orderBy so the module default order applies', () => {
-        expect(
-            WorkspaceInviteListRequestSchema.safeParse({ orderBy: '' }).success
-        ).toBe(true);
-    });
-
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceInviteDefaultAvailableOrderBy[0];
-
-        expect(
-            WorkspaceInviteListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceInviteDefaultAvailableOrderBy[0];
-        const last =
-            WorkspaceInviteDefaultAvailableOrderBy[
-                WorkspaceInviteDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceInviteListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
-    it.each([
-        'unknownField:asc',
-        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:`,
-        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
-        expect(
-            WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
-    });
-
     it('accepts a status of 256 characters and rejects one of 257', () => {
         expect(() =>
             WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(256) })
@@ -92,5 +40,52 @@ describe('WorkspaceInviteListRequestSchema', () => {
         expect(() =>
             WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(257) })
         ).toThrow();
+    });
+
+    it('keeps the module search description', () => {
+        expect(
+            WorkspaceInviteListRequestSchema.shape.search.meta()?.description
+        ).toContain(WorkspaceInviteDefaultAvailableSearch.join(', '));
+    });
+
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            WorkspaceInviteListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumWorkspaceInviteOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumWorkspaceInviteOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

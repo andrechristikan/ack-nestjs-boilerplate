@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticUsersEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.users-email-verification.use-case';
 
 describe('AnalyticUsersEmailVerificationUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticUsersEmailVerificationUseCase', () => {
             providers: [
                 AnalyticUsersEmailVerificationUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticUsersEmailVerificationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersEmailVerification.mockResolvedValue({
+            analyticUserService.usersEmailVerification.mockResolvedValue({
                 count: 4,
                 total: 10,
                 rate: 0.4,
@@ -62,7 +62,7 @@ describe('AnalyticUsersEmailVerificationUseCase', () => {
                 data: { count: 4, total: 10, rate: 0.4 },
             });
             expect(
-                analyticDashboardService.usersEmailVerification
+                analyticUserService.usersEmailVerification
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes null dates when the optional range is empty', async () => {
@@ -70,7 +70,7 @@ describe('AnalyticUsersEmailVerificationUseCase', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardService.usersEmailVerification.mockResolvedValue({
+            analyticUserService.usersEmailVerification.mockResolvedValue({
                 count: 4,
                 total: 10,
                 rate: 0.4,
@@ -84,7 +84,7 @@ describe('AnalyticUsersEmailVerificationUseCase', () => {
             );
 
             expect(
-                analyticDashboardService.usersEmailVerification
+                analyticUserService.usersEmailVerification
             ).toHaveBeenCalledWith(null, null);
         });
     });

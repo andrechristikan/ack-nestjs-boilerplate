@@ -1,3 +1,4 @@
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -47,6 +48,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
         mock<WorkspaceInviteService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -165,6 +167,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
+                { provide: UserUtil, useValue: userUtil },
             ],
         }).compile();
 
@@ -178,7 +181,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
         };
         beforeEach(() => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            workspaceInviteService.getInviterName.mockResolvedValue('Jane Doe');
+            userUtil.getDisplayName.mockReturnValue('Jane Doe');
             workspaceInviteService.createInvite.mockResolvedValue({
                 invite,
                 tokenData,
@@ -200,13 +203,11 @@ describe('WorkspaceCreateInviteUseCase', () => {
             workspaceInviteService.assertCreatable.mockImplementation(() => {
                 callOrder.push('assertCreatable');
             });
-            workspaceInviteService.getInviterName.mockImplementation(
-                async () => {
-                    callOrder.push('inviterName');
+            userUtil.getDisplayName.mockImplementation(() => {
+                callOrder.push('inviterName');
 
-                    return 'Jane Doe';
-                }
-            );
+                return 'Jane Doe';
+            });
             workspaceInviteService.createInvite.mockImplementation(async () => {
                 callOrder.push('create');
 
@@ -217,6 +218,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 body
             );
@@ -265,6 +267,30 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
         });
 
+        it("puts the signed-in user's name in the notice and reads no user", async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                workspaceContext,
+                body
+            );
+
+            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
+                userContext.user
+            );
+            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'workspace-1',
+                expect.objectContaining({ email: 'invitee@example.com' }),
+                expect.objectContaining({ inviterName: 'Jane Doe' })
+            );
+            expect(userService.getOneActiveByEmail).toHaveBeenCalledOnce();
+        });
+
         it('passes the invitee user id in the notice when the invitee has an account', async () => {
             userService.getOneActiveByEmail.mockResolvedValue(existingUser);
 
@@ -272,6 +298,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 body
             );
@@ -293,6 +320,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 {
                     ...body,
@@ -338,6 +366,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 {
                     ...body,
@@ -362,6 +391,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     body
                 )
@@ -382,6 +412,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     body
                 )
@@ -396,6 +427,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                userContext,
                 workspaceContext,
                 body
             );
@@ -419,26 +451,11 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
-            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
-        });
-
-        it('creates nothing when the inviter name read rejects', async () => {
-            const failure = new Error('read-failed');
-            workspaceInviteService.getInviterName.mockRejectedValue(failure);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    body
-                )
-            ).rejects.toBe(failure);
             expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
         });
 
@@ -452,6 +469,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    userContext,
                     workspaceContext,
                     body
                 )

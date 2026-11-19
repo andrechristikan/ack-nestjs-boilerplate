@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import type { IAnalyticSessionDeviceRatio } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -10,11 +10,11 @@ export class AnalyticDevicesSessionRatioUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticSessionDeviceRatio>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService
+        private readonly analyticDeviceService: AnalyticDeviceService
     ) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticSessionDeviceRatio>> {
-        const data = await this.analyticDashboardService.devicesSessionRatio();
+        const data = await this.analyticDeviceService.devicesSessionRatio();
 
         return { data };
     }

@@ -48,6 +48,7 @@ import { UserReauthenticationOtpResendLimitException } from '@modules/user/excep
 import type {
     IUser,
     IUserVerificationEmailCreate,
+    IUserVerificationWithUser,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -218,10 +219,15 @@ describe('UserVerificationService', () => {
     });
 
     describe('getOneActiveByEmailToken', () => {
-        it('returns the active verification of the hashed token with its user', async () => {
+        const verificationWithUser: IUserVerificationWithUser = {
+            ...verification,
+            user: baseUser,
+        };
+
+        it('returns the active verification of the hashed token with its included user after one repository call', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
-                verification
+                verificationWithUser
             );
 
             await expect(
@@ -230,27 +236,11 @@ describe('UserVerificationService', () => {
 
             expect(
                 userVerificationRepository.findOneActiveByVerificationEmailToken
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                userVerificationRepository.findOneActiveByVerificationEmailToken
             ).toHaveBeenCalledWith('hashed-token');
-            expect(userRepository.findOneById).toHaveBeenCalledWith(
-                verification.userId
-            );
-        });
-
-        it('returns the verification of an inactive user too', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
-                verification
-            );
-            const inactiveUser = {
-                ...baseUser,
-                status: EnumUserStatus.inactive,
-            };
-            userRepository.findOneById.mockResolvedValue(inactiveUser);
-
-            await expect(
-                service.getOneActiveByEmailToken('raw-token')
-            ).resolves.toEqual({ verification, user: inactiveUser });
-            expect(userRepository.findOneActiveById).not.toHaveBeenCalled();
+            expect(userRepository.findOneById).not.toHaveBeenCalled();
         });
 
         it('throws UserTokenInvalidException when the token is unknown', async () => {
@@ -275,12 +265,11 @@ describe('UserVerificationService', () => {
         it('throws UserEmailAlreadyVerifiedException when the user is already verified', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
-                verification
+                {
+                    ...verificationWithUser,
+                    user: { ...baseUser, isVerified: true },
+                }
             );
-            userRepository.findOneById.mockResolvedValue({
-                ...baseUser,
-                isVerified: true,
-            });
 
             await expect(
                 service.getOneActiveByEmailToken('raw-token')
@@ -288,21 +277,6 @@ describe('UserVerificationService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
                 messagePath: 'user.error.emailAlreadyVerified',
-            });
-        });
-
-        it('throws UserNotFoundException when the verified user is gone', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
-                verification
-            );
-            userRepository.findOneById.mockResolvedValue(null);
-
-            await expect(
-                service.getOneActiveByEmailToken('raw-token')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
             });
         });
     });

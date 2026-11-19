@@ -27,3 +27,9 @@ export enum EnumFeatureFlagMetadataKey {
     passwordMaxAttempts = 'passwordMaxAttempts',
     passwordLockDurationInMinutes = 'passwordLockDurationInMinutes',
 }
+
+/** @public */
+export enum EnumFeatureFlagOrderBy {
+    latest = 'latest',
+    key = 'key',
+}

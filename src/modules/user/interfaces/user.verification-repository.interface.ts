@@ -3,13 +3,16 @@ import type {
     EnumUserReauthenticationAction,
     Verification,
 } from '@generated/prisma-client/client';
-import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserVerificationEmailCreate,
+    IUserVerificationWithUser,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserVerificationRepository {
     findOneActiveByVerificationEmailToken(
         token: string
-    ): Promise<Verification | null>;
+    ): Promise<IUserVerificationWithUser | null>;
     findOneLatestByVerificationEmail(
         userId: string
     ): Promise<Verification | null>;

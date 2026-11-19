@@ -14,7 +14,7 @@ import type {
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
 import {
-    DeviceCursorAvailableOrderBy,
+    DeviceCursorOrderBy,
     DeviceSharedListCursorScope,
 } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
@@ -23,6 +23,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumDeviceCursorOrderBy } from '@modules/device/enums/device.enum';
 
 describe('DeviceGetListCursorUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
@@ -131,7 +132,8 @@ describe('DeviceGetListCursorUseCase', () => {
             ]);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: DeviceSharedListCursorScope,
-                availableOrderBy: DeviceCursorAvailableOrderBy,
+                orderBy: DeviceCursorOrderBy,
+                defaultOrderBy: EnumDeviceCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

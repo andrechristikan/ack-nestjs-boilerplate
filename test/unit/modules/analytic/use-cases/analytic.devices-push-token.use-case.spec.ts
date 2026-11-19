@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
 
 describe('AnalyticDevicesPushTokenUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticDeviceService: MockProxy<AnalyticDeviceService> =
+        mock<AnalyticDeviceService>();
 
     let useCase: AnalyticDevicesPushTokenUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticDevicesPushTokenUseCase', () => {
             providers: [
                 AnalyticDevicesPushTokenUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticDeviceService,
+                    useValue: analyticDeviceService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticDevicesPushTokenUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.devicesPushToken.mockResolvedValue({
+            analyticDeviceService.devicesPushToken.mockResolvedValue({
                 count: 4,
                 total: 10,
                 rate: 0.4,
@@ -41,7 +41,7 @@ describe('AnalyticDevicesPushTokenUseCase', () => {
                 data: { count: 4, total: 10, rate: 0.4 },
             });
             expect(
-                analyticDashboardService.devicesPushToken
+                analyticDeviceService.devicesPushToken
             ).toHaveBeenCalledWith();
         });
     });

@@ -12,6 +12,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumUserStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
@@ -24,6 +25,7 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
+import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -32,11 +34,15 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceContext,
+    IWorkspaceMember,
+    IWorkspaceMemberWithEmail,
+    IWorkspaceTransferMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -50,7 +56,6 @@ export class WorkspaceMemberService {
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly userService: UserService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -65,6 +70,13 @@ export class WorkspaceMemberService {
         return !(
             actorRole === EnumWorkspaceMemberRole.admin &&
             targetRole === EnumWorkspaceMemberRole.admin
+        );
+    }
+
+    private isTransferTargetActive(target: IWorkspaceTransferMember): boolean {
+        return (
+            target.user.status === EnumUserStatus.active &&
+            target.user.deletedAt === null
         );
     }
 
@@ -150,33 +162,37 @@ export class WorkspaceMemberService {
         }
     }
 
-    async validateWorkspaceMemberGuard(
-        workspaceId: string,
-        userId: string
-    ): Promise<WorkspaceMember> {
-        const member =
-            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
-                workspaceId,
-                userId
-            );
-        if (!member) {
+    /** An `owner` passes without being in `allowedRoles`; with a non-empty list any other role must be in it. */
+    async validateWorkspaceGuard(
+        workspaceId: string | null,
+        userId: string,
+        allowedRoles: EnumWorkspaceMemberRole[]
+    ): Promise<IWorkspaceContext> {
+        if (!workspaceId) {
+            throw new WorkspaceHeaderMissingException();
+        }
+
+        const row = await this.workspaceRepository.findActiveByIdWithMember(
+            workspaceId,
+            userId
+        );
+        if (!row) {
+            throw new WorkspaceNotFoundException();
+        }
+
+        const { members, ...workspace } = row;
+        const workspaceMember = members[0];
+        if (!workspaceMember) {
             throw new WorkspaceMemberForbiddenException();
         }
 
-        return member;
-    }
-
-    /** An `owner` passes without being in `allowedRoles`; any other role must be in it, otherwise throws `WorkspaceRoleForbiddenException`. */
-    validateWorkspaceRoleGuard(
-        member: WorkspaceMember,
-        allowedRoles: EnumWorkspaceMemberRole[]
-    ): WorkspaceMember {
-        const hasRole = this.hasRole(member, allowedRoles);
-        if (!hasRole) {
+        const isRoleChecked = allowedRoles.length > 0;
+        const hasRole = this.hasRole(workspaceMember, allowedRoles);
+        if (isRoleChecked && !hasRole) {
             throw new WorkspaceRoleForbiddenException();
         }
 
-        return member;
+        return { workspaceId, workspace, workspaceMember };
     }
 
     async getOneByWorkspaceAndUser(
@@ -197,18 +213,13 @@ export class WorkspaceMemberService {
             return null;
         }
 
-        const [workspace, member] = await Promise.all([
-            this.workspaceRepository.findActiveById(lastWorkspaceId),
-            this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+        const isActiveMember =
+            await this.workspaceMemberRepository.existsActiveByWorkspaceAndUser(
                 lastWorkspaceId,
                 userId
-            ),
-        ]);
-        if (!workspace || !member) {
-            return null;
-        }
+            );
 
-        return lastWorkspaceId;
+        return isActiveMember ? lastWorkspaceId : null;
     }
 
     async createInTx(
@@ -227,12 +238,6 @@ export class WorkspaceMemberService {
         );
     }
 
-    async getReviewerUserIds(workspaceId: string): Promise<string[]> {
-        return this.workspaceMemberRepository.findReviewerUserIdsByWorkspace(
-            workspaceId
-        );
-    }
-
     /** Swaps the owner and adds both activity entries in one transaction, dispatched after the commit. */
     async transferOwnership(
         requestContext: IRequestContext,
@@ -248,7 +253,7 @@ export class WorkspaceMemberService {
 
         // Sequential by design: gate before the work it guards
         const targetMember =
-            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+            await this.workspaceMemberRepository.findOneByWorkspaceAndUserWithUser(
                 workspaceId,
                 targetUserId
             );
@@ -256,8 +261,8 @@ export class WorkspaceMemberService {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        const targetUser = await this.userService.getOneActive(targetUserId);
-        if (!targetUser) {
+        const isTargetActive = this.isTransferTargetActive(targetMember);
+        if (!isTargetActive) {
             throw new WorkspaceTransferTargetInactiveException();
         }
 
@@ -305,16 +310,18 @@ export class WorkspaceMemberService {
         targetUserId: string
     ): Promise<void> {
         // Sequential by design: gate before the work it guards
-        const workspace =
-            await this.workspaceRepository.findActiveById(workspaceId);
-        if (!workspace) {
+        const row =
+            await this.workspaceRepository.findActiveByIdWithTransferMembers(
+                workspaceId,
+                targetUserId
+            );
+        if (!row) {
             throw new WorkspaceNotFoundException();
         }
 
-        const ownerMember =
-            await this.workspaceMemberRepository.findOneOwnerByWorkspace(
-                workspaceId
-            );
+        const ownerMember = row.members.find(
+            member => member.role === EnumWorkspaceMemberRole.owner
+        );
         if (!ownerMember) {
             throw new WorkspaceMemberNotFoundException();
         }
@@ -323,17 +330,15 @@ export class WorkspaceMemberService {
             throw new WorkspaceSelfTransferException();
         }
 
-        const targetMember =
-            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
-                workspaceId,
-                targetUserId
-            );
+        const targetMember = row.members.find(
+            member => member.userId === targetUserId
+        );
         if (!targetMember) {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        const targetUser = await this.userService.getOneActive(targetUserId);
-        if (!targetUser) {
+        const isTargetActive = this.isTransferTargetActive(targetMember);
+        if (!isTargetActive) {
             throw new WorkspaceTransferTargetInactiveException();
         }
 
@@ -514,9 +519,10 @@ export class WorkspaceMemberService {
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
-    ): Promise<WorkspaceMember> {
+    ): Promise<IWorkspaceMemberWithEmail> {
         const targetMember =
-            await this.workspaceMemberRepository.findByIdAndWorkspace(
+            await this.workspaceMemberRepository.findByIdAndWorkspaceInTx(
+                tx,
                 targetMemberId,
                 workspaceId
             );

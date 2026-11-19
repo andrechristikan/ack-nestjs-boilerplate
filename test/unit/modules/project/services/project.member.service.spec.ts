@@ -1,5 +1,4 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +29,7 @@ import type {
     IProjectMemberActor,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
+import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
@@ -38,11 +38,14 @@ import {
     buildApiKeyContext,
     buildUserContext,
     buildAuthJwtAccessContext,
+    expectRequestContextMissingWithKey,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectMemberService', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
+    const projectRepository: MockProxy<ProjectRepository> =
+        mock<ProjectRepository>();
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -136,6 +139,7 @@ describe('ProjectMemberService', () => {
                     provide: ProjectMemberRepository,
                     useValue: projectMemberRepository,
                 },
+                { provide: ProjectRepository, useValue: projectRepository },
                 { provide: ProjectUtil, useValue: projectUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
@@ -145,134 +149,156 @@ describe('ProjectMemberService', () => {
         service = module.get(ProjectMemberService);
     });
 
-    describe('validateProjectMemberGuard', () => {
-        it('throws ProjectMemberForbiddenException when the caller has no member row', async () => {
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
+    describe('validateProjectGuard', () => {
+        const projectId = '507f1f77bcf86cd799439011';
+        const roleMember: WorkspaceMember = baseWorkspaceMember;
+        const memberRow: ProjectMember = {
+            ...baseProjectMember,
+            role: EnumProjectMemberRole.admin,
+        };
+
+        it('throws RequestContextMissingException when the project id is null', async () => {
+            let thrown: unknown;
+            try {
+                await service.validateProjectGuard(roleMember, null, []);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(thrown, 'params.projectId');
+            expect(
+                projectRepository.findActiveByIdAndWorkspaceWithMember
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects with member forbidden when a workspace member with no roles has no project member row, after one repository call', async () => {
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                { ...baseProject, members: [] }
+            );
+
+            await expect(
+                service.validateProjectGuard(roleMember, 'p1', [])
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberForbidden,
+                messagePath: 'project.error.memberForbidden',
+            });
+            expect(
+                projectRepository.findActiveByIdAndWorkspaceWithMember
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                projectRepository.findActiveByIdAndWorkspaceWithMember
+            ).toHaveBeenCalledWith(
+                'p1',
+                roleMember.workspaceId,
+                roleMember.userId
+            );
+        });
+
+        it('throws ProjectNotFoundException when the repository answers null', async () => {
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 null
             );
 
             await expect(
-                service.validateProjectMemberGuard(
-                    '507f1f77bcf86cd799439011',
-                    '507f1f77bcf86cd799439022'
-                )
+                service.validateProjectGuard(roleMember, projectId, [])
             ).rejects.toMatchObject({
                 module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberForbidden
-                    ],
-                messagePath: 'project.error.memberForbidden',
+                statusCode: EnumProjectStatusCodeError.notFound,
+                messagePath: 'project.error.notFound',
             });
         });
 
-        it('returns the resolved project member row', async () => {
-            const member = baseProjectMember;
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                member
+        it('returns the project and the member row when no roles are required and a row exists', async () => {
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                { ...baseProject, members: [memberRow] }
             );
 
-            const result = await service.validateProjectMemberGuard(
-                '507f1f77bcf86cd799439011',
-                '507f1f77bcf86cd799439022'
-            );
-
-            expect(result).toBe(member);
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).toHaveBeenCalledWith(
-                '507f1f77bcf86cd799439011',
-                '507f1f77bcf86cd799439022'
-            );
-        });
-    });
-
-    describe('validateProjectRoleGuard', () => {
-        it('resolves with null and no repository lookup when the caller is the workspace owner', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
-            const workspaceMember = baseWorkspaceMember;
-
-            const result = await service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
+            const result = await service.validateProjectGuard(
+                roleMember,
+                projectId,
                 []
             );
 
-            expect(result).toBeNull();
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                project: baseProject,
+                projectMember: memberRow,
+            });
         });
 
-        it('throws ProjectMemberForbiddenException when the caller holds no project member row', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
+        it('returns a null project member when roles are required, the caller is a workspace admin, and no row exists', async () => {
+            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                { ...baseProject, members: [] }
             );
-            const workspaceMember = baseWorkspaceMember;
 
-            const rejection = service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
+            const result = await service.validateProjectGuard(
+                roleMember,
+                projectId,
                 [EnumProjectMemberRole.admin]
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
+            expect(result).toEqual({
+                project: baseProject,
+                projectMember: null,
+            });
+        });
+
+        it('returns the row when roles are required, the caller is a workspace admin, and a row exists', async () => {
+            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                { ...baseProject, members: [memberRow] }
+            );
+
+            const result = await service.validateProjectGuard(
+                roleMember,
+                projectId,
+                [EnumProjectMemberRole.viewer]
+            );
+
+            expect(result).toEqual({
+                project: baseProject,
+                projectMember: memberRow,
+            });
+        });
+
+        it('throws member forbidden when roles are required, the caller is a workspace member, and no row exists', async () => {
+            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                { ...baseProject, members: [] }
+            );
+
+            await expect(
+                service.validateProjectGuard(roleMember, projectId, [
+                    EnumProjectMemberRole.admin,
+                ])
+            ).rejects.toMatchObject({
                 statusCode: EnumProjectStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'project.error.memberForbidden',
             });
         });
 
-        it('throws ProjectRoleForbiddenException when the member role is not allowed', async () => {
+        it('throws role forbidden when the row role is outside the list', async () => {
             projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
-                ...baseProjectMember,
-                role: EnumProjectMemberRole.viewer,
-            });
-            const workspaceMember = baseWorkspaceMember;
-
-            const rejection = service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                [EnumProjectMemberRole.admin]
+            projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
+                {
+                    ...baseProject,
+                    members: [
+                        {
+                            ...baseProjectMember,
+                            role: EnumProjectMemberRole.viewer,
+                        },
+                    ],
+                }
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
+            await expect(
+                service.validateProjectGuard(roleMember, projectId, [
+                    EnumProjectMemberRole.admin,
+                ])
+            ).rejects.toMatchObject({
                 statusCode: EnumProjectStatusCodeError.roleForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.roleForbidden
-                    ],
-                messagePath: 'project.error.roleForbidden',
             });
-        });
-
-        it('resolves with the member row when the member role is allowed', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            const member = {
-                ...baseProjectMember,
-                role: EnumProjectMemberRole.admin,
-            };
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                member
-            );
-            const workspaceMember = baseWorkspaceMember;
-
-            const result = await service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                [EnumProjectMemberRole.admin]
-            );
-
-            expect(result).toBe(member);
         });
     });
 
@@ -505,9 +531,6 @@ describe('ProjectMemberService', () => {
                 collision,
                 'userId'
             );
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException from the transaction as is, with no collision check', async () => {

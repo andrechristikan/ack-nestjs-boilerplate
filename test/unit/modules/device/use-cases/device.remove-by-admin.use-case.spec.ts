@@ -16,6 +16,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
+import { UserService } from '@modules/user/services/user.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -25,6 +26,7 @@ import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.rem
 describe('DeviceRemoveByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const admin: IUser = {
         id: 'admin-1',
         name: 'Admin One',
@@ -90,6 +92,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 DeviceRemoveByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
+                { provide: UserService, useValue: userService },
             ],
         }).compile();
 
@@ -98,7 +101,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
     describe('execute', () => {
         it('checks the rank, then removes attributed to the admin passing the request context', async () => {
-            roleService.getOneByUserId.mockResolvedValue(userRole);
+            userService.getRoleById.mockResolvedValue(userRole);
             sessionService.removeDeviceOwnershipByAdmin.mockResolvedValue();
 
             const result = await useCase.execute(
@@ -111,7 +114,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(roleService.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(userService.getRoleById).toHaveBeenCalledWith('user-1');
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
                 EnumRoleType.user
@@ -129,7 +132,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
         it('rethrows the removal exception', async () => {
             const notFound = new DeviceNotFoundException();
-            roleService.getOneByUserId.mockResolvedValue(userRole);
+            userService.getRoleById.mockResolvedValue(userRole);
             sessionService.removeDeviceOwnershipByAdmin.mockRejectedValue(
                 notFound
             );
@@ -148,7 +151,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
         it('removes nothing when the actor does not outrank the target', async () => {
             const rankForbidden = new RoleRankForbiddenException();
-            roleService.getOneByUserId.mockResolvedValue({
+            userService.getRoleById.mockResolvedValue({
                 ...userRole,
                 type: EnumRoleType.superAdmin,
             });

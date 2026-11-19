@@ -71,7 +71,11 @@ export class WorkspaceAdminController {
         private readonly workspaceTransferOwnershipByAdminUseCase: WorkspaceTransferOwnershipByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'admin list all workspaces (read-only)' })
+    @Doc({
+        summary: 'admin list all workspaces (read-only)',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
+    })
     @ResponsePagination('workspace.admin.list', {
         schema: WorkspaceResponseSchema,
     })
@@ -118,7 +122,11 @@ export class WorkspaceAdminController {
         return this.workspaceGetByIdByAdminUseCase.execute(workspaceId);
     }
 
-    @Doc({ summary: 'admin list members of a workspace (read-only)' })
+    @Doc({
+        summary: 'admin list members of a workspace (read-only)',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyJoined (joinedAt descending).',
+    })
     @ResponsePagination('workspace.admin.member.list', {
         schema: WorkspaceMemberResponseSchema,
     })

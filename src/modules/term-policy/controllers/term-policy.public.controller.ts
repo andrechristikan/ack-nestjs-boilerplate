@@ -20,7 +20,11 @@ export class TermPolicyPublicController {
         private readonly termPolicyGetListPublishedUseCase: TermPolicyGetListPublishedUseCase
     ) {}
 
-    @Doc({ summary: 'retrieve list of publish terms and policies' })
+    @Doc({
+        summary: 'retrieve list of publish terms and policies',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyPublished (publishedAt descending), latestVersion (version descending).',
+    })
     @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })

@@ -9,9 +9,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumAnalyticFraudBand,
     EnumAnalyticFraudContributingSignal,
+    EnumAnalyticSnapshotOrderBy,
 } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
 
 describe('AnalyticRiskScoreListUseCase', () => {
@@ -94,7 +95,10 @@ describe('AnalyticRiskScoreListUseCase', () => {
             );
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy }
+                {
+                    orderBy: AnalyticSnapshotOrderBy,
+                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
+                }
             );
         });
 

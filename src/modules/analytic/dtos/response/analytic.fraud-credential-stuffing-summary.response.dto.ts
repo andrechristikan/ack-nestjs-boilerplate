@@ -4,7 +4,7 @@ import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/respo
 /** @public */
 export const AnalyticFraudCredentialStuffingSummaryResponseSchema =
     AnalyticFraudSummaryResponseSchema.extend({
-        meta: z
+        metadata: z
             .object({
                 minUniqueAccounts: z.number().meta({
                     description: 'Distinct accounts an address must touch',

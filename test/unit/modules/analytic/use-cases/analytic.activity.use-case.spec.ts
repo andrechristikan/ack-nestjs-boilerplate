@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
@@ -17,8 +17,8 @@ describe('AnalyticActivityUseCase', () => {
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
-    const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
-        mock<AnalyticWorkspaceUserService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -36,8 +36,8 @@ describe('AnalyticActivityUseCase', () => {
             providers: [
                 AnalyticActivityUseCase,
                 {
-                    provide: AnalyticWorkspaceUserService,
-                    useValue: analyticWorkspaceUserService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -52,7 +52,7 @@ describe('AnalyticActivityUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceUserService.activity.mockResolvedValue({
+            analyticWorkspaceService.activity.mockResolvedValue({
                 count: 12,
             });
 
@@ -62,7 +62,7 @@ describe('AnalyticActivityUseCase', () => {
             });
 
             expect(result).toEqual({ data: { count: 12 } });
-            expect(analyticWorkspaceUserService.activity).toHaveBeenCalledWith(
+            expect(analyticWorkspaceService.activity).toHaveBeenCalledWith(
                 'workspace-1',
                 startDate,
                 endDate
@@ -74,7 +74,7 @@ describe('AnalyticActivityUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceUserService.activity.mockResolvedValue({
+            analyticWorkspaceService.activity.mockResolvedValue({
                 count: 0,
             });
 

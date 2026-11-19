@@ -1,12 +1,9 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import {
-    ProjectDefaultAvailableOrderBy,
-    ProjectDefaultAvailableSearch,
-} from '@modules/project/constants/project.list.constant';
+import { ProjectDefaultAvailableSearch } from '@modules/project/constants/project.list.constant';
 import { faker } from '@faker-js/faker';
+import { EnumProjectOrderBy } from '@modules/project/enums/project.enum';
 
 /** @public */
 export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
@@ -16,18 +13,11 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
             example: '',
         }),
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(ProjectDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumProjectOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${ProjectDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${ProjectDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumProjectOrderBy).join(', ')}. An empty or absent value uses \`${EnumProjectOrderBy.latest}\`.`,
+                example: EnumProjectOrderBy.latest,
             }),
         workspaceId: RequestMongoIdSchema.optional().meta({
             description: 'Filter by workspaceId',

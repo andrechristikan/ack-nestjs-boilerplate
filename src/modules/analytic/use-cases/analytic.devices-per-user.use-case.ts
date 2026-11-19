@@ -1,20 +1,20 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import type { IAnalyticBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
+import type { IAnalyticSnapshotBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class AnalyticDevicesPerUserUseCase implements IAppUseCase<
     [],
-    IResponseReturn<IAnalyticBucketsResult>
+    IResponseReturn<IAnalyticSnapshotBucketsResult>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService
+        private readonly analyticDeviceService: AnalyticDeviceService
     ) {}
 
-    async execute(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        const data = await this.analyticDashboardService.devicesPerUser();
+    async execute(): Promise<IResponseReturn<IAnalyticSnapshotBucketsResult>> {
+        const data = await this.analyticDeviceService.devicesPerUser();
 
         return { data };
     }

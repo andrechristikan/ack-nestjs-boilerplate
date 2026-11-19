@@ -12,11 +12,12 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { RoleSelect } from '@modules/role/constants/role.constant';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import {
     UserActiveRecipientCursorScope,
     UserAdminListSelect,
-    UserNameSelect,
     UserNotDeletedWhere,
     UserRecipientSelect,
     UserWithRoleInclude,
@@ -26,7 +27,6 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserDeletedIdentity,
     IUserList,
-    IUserName,
     IUserProfile,
     IUserRecipient,
     IUserUpdateProfile,
@@ -155,25 +155,6 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findNameById(userId: string): Promise<IUserName | null> {
-        return this.databaseService.client.user.findUnique({
-            where: { id: userId, deletedAt: null },
-            select: UserNameSelect,
-        });
-    }
-
-    async findEmailByIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<string | null> {
-        const user = await tx.user.findUnique({
-            where: { id: userId, deletedAt: null },
-            select: { email: true },
-        });
-
-        return user?.email ?? null;
-    }
-
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
@@ -216,6 +197,15 @@ export class UserRepository implements IUserRepository {
             where: { id, deletedAt: null },
             include: UserWithRoleInclude,
         });
+    }
+
+    async findRoleById(id: string): Promise<IRole | null> {
+        const user = await this.databaseService.client.user.findUnique({
+            where: { id, deletedAt: null },
+            select: { role: { select: RoleSelect } },
+        });
+
+        return user?.role ?? null;
     }
 
     async findByEmails(emails: string[]): Promise<IUser[]> {

@@ -4,7 +4,6 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 
 export interface IPolicyRepository {
-    findManyByRoleId(roleId: string): Promise<Policy[]>;
     findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
     findOneByRoleIdAndIdInTx(
         tx: IDatabaseTransactionClient,

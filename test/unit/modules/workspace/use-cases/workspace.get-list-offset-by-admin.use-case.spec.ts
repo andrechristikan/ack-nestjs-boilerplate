@@ -15,12 +15,13 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
-    WorkspaceDefaultAvailableOrderBy,
+    WorkspaceOrderBy,
     WorkspaceDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetListOffsetByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-list-offset-by-admin.use-case';
+import { EnumWorkspaceOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetListOffsetByAdminUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
@@ -111,7 +112,8 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
-                availableOrderBy: WorkspaceDefaultAvailableOrderBy,
+                orderBy: WorkspaceOrderBy,
+                defaultOrderBy: EnumWorkspaceOrderBy.latest,
             });
             expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.WorkspaceScalarFieldEnum.isPublic,

@@ -1,3 +1,5 @@
+import { AnalyticUseCaseModule } from '@modules/analytic/analytic.use-case.module';
+import { AnalyticProcessor } from '@modules/analytic/processors/analytic.processor';
 import { CacheProcessor } from '@common/cache/processors/cache.processor';
 import { ActivityLogUseCaseModule } from '@modules/activity-log/activity-log.use-case.module';
 import { ActivityLogProcessor } from '@modules/activity-log/processors/activity-log.processor';
@@ -21,6 +23,7 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [
         ActivityLogProcessor,
+        AnalyticProcessor,
         CacheProcessor,
         NotificationProcessor,
         NotificationEmailProcessor,
@@ -35,6 +38,7 @@ import { Module } from '@nestjs/common';
     exports: [],
     imports: [
         ActivityLogUseCaseModule,
+        AnalyticUseCaseModule,
         NotificationUseCaseModule,
         SessionUseCaseModule,
         TermPolicyUseCaseModule,

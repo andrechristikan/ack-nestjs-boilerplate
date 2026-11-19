@@ -9,7 +9,11 @@ describe('AnalyticLoginSpikeIpSummaryUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
         mock<AnalyticAnomalyService>();
 
-    const windowMs: number = 3600000;
+    const windowStart = new Date('2025-12-02T00:00:00.000Z');
+
+    const windowEnd = new Date('2026-01-01T00:00:00.000Z');
+
+    const computedAt = new Date('2026-01-01T00:15:00.000Z');
 
     let useCase: AnalyticLoginSpikeIpSummaryUseCase;
 
@@ -31,38 +35,23 @@ describe('AnalyticLoginSpikeIpSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticAnomalyService.loginSpikeIpSummary.mockResolvedValue({
-                count: 4,
-                window: '1h',
-                meta: { minUniqueAccounts: 5 },
-            });
+            const summary = {
+                count: 6,
+                windowStart,
+                windowEnd,
+                computedAt,
+                metadata: { minUniqueAccounts: 2 },
+            };
+            analyticAnomalyService.loginSpikeIpSummary.mockResolvedValue(
+                summary
+            );
 
-            const result = await useCase.execute({ windowMs });
+            const result = await useCase.execute();
 
-            expect(result).toEqual({
-                data: {
-                    count: 4,
-                    window: '1h',
-                    meta: { minUniqueAccounts: 5 },
-                },
-            });
+            expect(result).toEqual({ data: summary });
             expect(
                 analyticAnomalyService.loginSpikeIpSummary
-            ).toHaveBeenCalledWith(windowMs);
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            analyticAnomalyService.loginSpikeIpSummary.mockResolvedValue({
-                count: 0,
-                window: null,
-                meta: { minUniqueAccounts: 5 },
-            });
-
-            await useCase.execute({});
-
-            expect(
-                analyticAnomalyService.loginSpikeIpSummary
-            ).toHaveBeenCalledWith(null);
+            ).toHaveBeenCalledWith();
         });
     });
 });

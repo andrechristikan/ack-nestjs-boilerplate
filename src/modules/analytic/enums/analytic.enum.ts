@@ -1,23 +1,29 @@
 /** @public */
+export enum EnumAnalyticQueue {
+    analytic = 'analytic',
+}
+
+/** @public */
+export enum EnumAnalyticProcess {
+    refreshSnapshot = 'refreshSnapshot',
+}
+
+/** @public */
 export enum EnumAnalyticAnomalySignal {
-    impossibleTravel = 'impossible-travel',
-    loginSpikeIp = 'login-spike-ip',
     failedLoginSpike = 'failed-login-spike',
-    deviceProliferation = 'device-proliferation',
-    loginTime = 'login-time',
+    loginSpikeIp = 'login-spike-ip',
 }
 
 /** @public */
 export enum EnumAnalyticFraudSignal {
     credentialStuffing = 'credential-stuffing',
     accountTakeover = 'account-takeover',
+    sessionAfterAdmin = 'session-after-admin',
+    backupCodeNewDevice = 'backup-code-new-device',
     massRegistration = 'mass-registration',
     passwordResetEnumeration = 'password-reset-enumeration',
-    sharedFingerprint = 'shared-fingerprint',
-    sessionAfterAdmin = 'session-after-admin',
     forgotPasswordTokenAbuse = 'forgot-password-token-abuse',
     refreshSpike = 'refresh-spike',
-    backupCodeNewDevice = 'backup-code-new-device',
     apiKeyBurst = 'api-key-burst',
 }
 
@@ -61,7 +67,6 @@ export enum EnumAnalyticDashboardMetric {
     authLoginSource = 'auth.loginSource',
     authLockout = 'auth.lockout',
     authSessionRevoke = 'auth.sessionRevoke',
-    authConcurrent = 'auth.concurrent',
     authSessionsGeo = 'auth.sessionsGeo',
     authSessionsUa = 'auth.sessionsUa',
     authRefresh = 'auth.refresh',
@@ -80,7 +85,6 @@ export enum EnumAnalyticDashboardMetric {
     devicesPushToken = 'devices.pushToken',
     devicesInfoRefresh = 'devices.infoRefresh',
     devicesSessionRatio = 'devices.sessionRatio',
-    devicesPerUser = 'devices.perUser',
     devicesInactivity = 'devices.inactivity',
     apiKeysLifecycle = 'apiKeys.lifecycle',
     apiKeysActiveExpired = 'apiKeys.activeExpired',
@@ -102,4 +106,79 @@ export enum EnumAnalyticGroupKey {
     unknown = 'unknown',
     public = 'public',
     private = 'private',
+}
+
+/** @public */
+export enum EnumAnalyticNearLockoutOrderBy {
+    latest = 'latest',
+    id = 'id',
+}
+
+/** @public */
+export enum EnumAnalyticLoginSpikeIpOrderBy {
+    mostUsers = 'mostUsers',
+    mostAttempts = 'mostAttempts',
+    ipAddress = 'ipAddress',
+}
+
+/** @public */
+export enum EnumAnalyticCredentialStuffingOrderBy {
+    mostUsers = 'mostUsers',
+    mostFailures = 'mostFailures',
+    ipAddress = 'ipAddress',
+}
+
+/** @public */
+export enum EnumAnalyticAccountTakeoverOrderBy {
+    latest = 'latest',
+    userId = 'userId',
+}
+
+/** @public */
+export enum EnumAnalyticSessionAfterAdminOrderBy {
+    latest = 'latest',
+    recentLogin = 'recentLogin',
+    userId = 'userId',
+}
+
+/** @public */
+export enum EnumAnalyticBackupCodeNewDeviceOrderBy {
+    latest = 'latest',
+    userId = 'userId',
+}
+
+/** @public */
+export enum EnumAnalyticKeyCountOrderBy {
+    mostCount = 'mostCount',
+    key = 'key',
+}
+
+/** @public */
+export enum EnumAnalyticForgotPasswordAbuseOrderBy {
+    mostTokens = 'mostTokens',
+    userId = 'userId',
+}
+
+/** @public */
+export enum EnumAnalyticUserCountOrderBy {
+    mostCount = 'mostCount',
+    userId = 'userId',
+}
+
+/** @public */
+export enum EnumAnalyticCountOrderBy {
+    mostCount = 'mostCount',
+}
+
+/** @public */
+export enum EnumAnalyticSnapshotOrderBy {
+    highestValue = 'highestValue',
+    key = 'key',
+}
+
+/** @public */
+export enum EnumAnalyticImpossibleTravelOrderBy {
+    highestValue = 'highestValue',
+    recent = 'recent',
+    key = 'key',
 }

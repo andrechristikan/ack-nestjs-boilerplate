@@ -1,19 +1,19 @@
-import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
+import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
     it('parses page, perPage, orderBy, and windowMs', () => {
         const result = AnalyticPasswordResetEnumerationListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticKeyCountAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostCount',
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticKeyCountAvailableOrderBy[0]}:desc`,
+            orderBy: 'mostCount',
             windowMs: 3600000,
         });
     });
@@ -51,14 +51,25 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticKeyCountAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumAnalyticKeyCountOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticKeyCountOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
+                    orderBy,
+                }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 orderBy: '',
@@ -66,39 +77,25 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticKeyCountAvailableOrderBy[0];
-
-        expect(
-            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticKeyCountAvailableOrderBy[0];
-        const last =
-            AnalyticKeyCountAvailableOrderBy[
-                AnalyticKeyCountAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${AnalyticKeyCountAvailableOrderBy[0]}:`,
-        `${AnalyticKeyCountAvailableOrderBy[0]}:DESC`,
-        `${AnalyticKeyCountAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'mostCount:asc',
+        'default',
+        'createdAt',
+        'count',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 orderBy,
+            }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
+                orderBy: ['mostCount', 'mostCount'],
             }).success
         ).toBe(false);
     });

@@ -77,7 +77,11 @@ export class RoleAdminController {
         private readonly roleDeleteByAdminUseCase: RoleDeleteByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'get list of roles' })
+    @Doc({
+        summary: 'get list of roles',
+        description:
+            'orderBy presets: latest (createdAt descending, default), name (name ascending).',
+    })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

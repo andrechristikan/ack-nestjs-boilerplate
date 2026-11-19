@@ -1,11 +1,11 @@
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
+import { EnumSessionOrderBy } from '@modules/session/enums/session.enum';
 
 describe('SessionAdminListRequestSchema', () => {
     const query = {
         page: 1,
         perPage: 20,
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
         isRevoked: 'true',
     };
 
@@ -15,7 +15,7 @@ describe('SessionAdminListRequestSchema', () => {
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             isRevoked: true,
         });
     });
@@ -41,49 +41,45 @@ describe('SessionAdminListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             SessionAdminListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(SessionDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumSessionOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumSessionOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                SessionAdminListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             SessionAdminListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = SessionDefaultAvailableOrderBy[0];
-
-        expect(
-            SessionAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = SessionDefaultAvailableOrderBy[0];
-        const last =
-            SessionDefaultAvailableOrderBy[
-                SessionDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            SessionAdminListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${SessionDefaultAvailableOrderBy[0]}:`,
-        `${SessionDefaultAvailableOrderBy[0]}:DESC`,
-        `${SessionDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'updatedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             SessionAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            SessionAdminListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

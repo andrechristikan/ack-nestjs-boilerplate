@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
 
 describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
             providers: [
                 AnalyticWorkspacesJoinOutcomesUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesJoinOutcomes.mockResolvedValue([
+            analyticWorkspaceService.workspacesJoinOutcomes.mockResolvedValue([
                 { status: 'pending', count: 2 },
             ]);
 
@@ -55,7 +55,7 @@ describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
                 data: { statuses: [{ status: 'pending', count: 2 }] },
             });
             expect(
-                analyticDashboardService.workspacesJoinOutcomes
+                analyticWorkspaceService.workspacesJoinOutcomes
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -63,7 +63,7 @@ describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesJoinOutcomes.mockResolvedValue(
+            analyticWorkspaceService.workspacesJoinOutcomes.mockResolvedValue(
                 []
             );
 

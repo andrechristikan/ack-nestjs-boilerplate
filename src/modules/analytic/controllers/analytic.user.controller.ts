@@ -24,7 +24,6 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     WorkspaceContext,
-    WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
@@ -56,8 +55,7 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -77,8 +75,7 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -103,8 +100,7 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -127,8 +123,7 @@ export class AnalyticUserController {
         schema: AnalyticRoleCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })
@@ -146,8 +141,7 @@ export class AnalyticUserController {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
-    @WorkspaceProtected()
+    @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ user: true })

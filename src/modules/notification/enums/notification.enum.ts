@@ -79,3 +79,8 @@ export enum EnumNotificationKeyPattern {
     joinRequestPattern = 'joinRequestPattern',
     userTermPolicyPattern = 'userTermPolicyPattern',
 }
+
+/** @public */
+export enum EnumNotificationOrderBy {
+    latest = 'latest',
+}

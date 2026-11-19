@@ -47,19 +47,6 @@ export interface ITermPolicyContentPresign {
     size: number;
 }
 
-export interface ITermPolicyAnalyticLatest {
-    type: EnumTermPolicyType;
-    version: number;
-}
-
-export interface ITermPolicyAcceptanceAnalytic {
-    id: string;
-    userId: string;
-    termPolicyId: string;
-    acceptedAt: Date;
-    publishedAt: Date | null;
-}
-
 export interface ITermPolicyDeleteContentPayload {
     keys: string[];
 }
@@ -78,6 +65,10 @@ export interface ITermPolicyAcceptanceRow {
 }
 
 export type ITermPolicyRef = Pick<TermPolicy, 'id' | 'type' | 'version'>;
+
+export type ITermPolicyRefAcceptance = ITermPolicyRef & {
+    userAcceptances: { id: string }[];
+};
 
 export interface ITermPolicyPending {
     termPolicies: ITermPolicyRef[];

@@ -1,24 +1,16 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import { EnumTermPolicyAcceptanceOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 /** @public */
 export const TermPolicyAcceptedListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(TermPolicyAcceptanceDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumTermPolicyAcceptanceOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumTermPolicyAcceptanceOrderBy).join(', ')}. An empty or absent value uses \`${EnumTermPolicyAcceptanceOrderBy.latest}\`.`,
+                example: EnumTermPolicyAcceptanceOrderBy.latest,
             }),
     });
 

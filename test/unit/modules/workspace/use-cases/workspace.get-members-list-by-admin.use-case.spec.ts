@@ -11,11 +11,12 @@ import type {
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceMemberOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
+import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetMembersListByAdminUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -85,7 +86,8 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
             await useCase.execute('workspace-1', query);
 
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+                orderBy: WorkspaceMemberOrderBy,
+                defaultOrderBy: EnumWorkspaceMemberOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

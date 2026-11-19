@@ -1,18 +1,18 @@
-import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceAdminMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
+import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceAdminMemberListRequestSchema', () => {
     it('parses page, perPage, and orderBy', () => {
         const result = WorkspaceAdminMemberListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'joinedAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'joinedAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -35,52 +35,48 @@ describe('WorkspaceAdminMemberListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             WorkspaceAdminMemberListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(WorkspaceMemberDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumWorkspaceMemberOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumWorkspaceMemberOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceAdminMemberListRequestSchema.safeParse({ orderBy })
+                    .success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             WorkspaceAdminMemberListRequestSchema.safeParse({ orderBy: '' })
                 .success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceMemberDefaultAvailableOrderBy[0];
-
-        expect(
-            WorkspaceAdminMemberListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceMemberDefaultAvailableOrderBy[0];
-        const last =
-            WorkspaceMemberDefaultAvailableOrderBy[
-                WorkspaceMemberDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceAdminMemberListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:`,
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceMemberDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'joinedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             WorkspaceAdminMemberListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceAdminMemberListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

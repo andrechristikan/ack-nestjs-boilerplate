@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
 
 describe('AnalyticWorkspacesInviteFunnelUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticWorkspacesInviteFunnelUseCase', () => {
             providers: [
                 AnalyticWorkspacesInviteFunnelUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticWorkspacesInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesInviteFunnel.mockResolvedValue([
+            analyticWorkspaceService.workspacesInviteFunnel.mockResolvedValue([
                 { status: 'pending', count: 2 },
             ]);
 
@@ -55,7 +55,7 @@ describe('AnalyticWorkspacesInviteFunnelUseCase', () => {
                 data: { statuses: [{ status: 'pending', count: 2 }] },
             });
             expect(
-                analyticDashboardService.workspacesInviteFunnel
+                analyticWorkspaceService.workspacesInviteFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -63,7 +63,7 @@ describe('AnalyticWorkspacesInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesInviteFunnel.mockResolvedValue(
+            analyticWorkspaceService.workspacesInviteFunnel.mockResolvedValue(
                 []
             );
 

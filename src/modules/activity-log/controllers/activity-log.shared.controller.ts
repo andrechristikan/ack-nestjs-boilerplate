@@ -19,7 +19,6 @@ import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/t
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     WorkspaceContext,
-    WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
@@ -38,7 +37,10 @@ export class ActivityLogSharedController {
         private readonly activityLogGetListCursorByWorkspaceUseCase: ActivityLogGetListCursorByWorkspaceUseCase
     ) {}
 
-    @Doc({ summary: 'get my own activity logs' })
+    @Doc({
+        summary: 'get my own activity logs',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('activityLog.listSelf', {
         schema: ActivityLogResponseSchema,
     })
@@ -59,12 +61,14 @@ export class ActivityLogSharedController {
         );
     }
 
-    @Doc({ summary: 'get my own activity logs in the current workspace' })
+    @Doc({
+        summary: 'get my own activity logs in the current workspace',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('activityLog.listSelfByWorkspace', {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)

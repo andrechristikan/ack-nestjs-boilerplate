@@ -1,18 +1,18 @@
-import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
+import { EnumProjectMemberOrderBy } from '@modules/project/enums/project.enum';
 
 describe('ProjectMemberListRequestSchema', () => {
     it('parses cursor, perPage, and a string orderBy', () => {
         const result = ProjectMemberListRequestSchema.parse({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: `${ProjectMemberDefaultAvailableOrderBy[0]}:desc`,
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: `${ProjectMemberDefaultAvailableOrderBy[0]}:desc`,
+            orderBy: 'latest',
         });
     });
 
@@ -34,50 +34,45 @@ describe('ProjectMemberListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             ProjectMemberListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(ProjectMemberDefaultAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumProjectMemberOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumProjectMemberOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                ProjectMemberListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             ProjectMemberListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = ProjectMemberDefaultAvailableOrderBy[0];
-
-        expect(
-            ProjectMemberListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = ProjectMemberDefaultAvailableOrderBy[0];
-        const last =
-            ProjectMemberDefaultAvailableOrderBy[
-                ProjectMemberDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            ProjectMemberListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${ProjectMemberDefaultAvailableOrderBy[0]}:`,
-        `${ProjectMemberDefaultAvailableOrderBy[0]}:DESC`,
-        `${ProjectMemberDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'joinedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             ProjectMemberListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            ProjectMemberListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

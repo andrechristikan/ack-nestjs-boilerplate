@@ -1,8 +1,6 @@
 import { WorkspaceAdminListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
-import {
-    WorkspaceDefaultAvailableSearch,
-    WorkspaceDefaultAvailableOrderBy,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceAdminListRequestSchema', () => {
     it('parses page, perPage, search, orderBy, and isPublic', () => {
@@ -10,7 +8,7 @@ describe('WorkspaceAdminListRequestSchema', () => {
             page: 1,
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             isPublic: 'true',
         });
 
@@ -18,7 +16,7 @@ describe('WorkspaceAdminListRequestSchema', () => {
             page: 1,
             perPage: 20,
             search: 'acme',
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
             isPublic: true,
         });
     });
@@ -49,53 +47,50 @@ describe('WorkspaceAdminListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
+    it('keeps the module search description', () => {
         expect(
             WorkspaceAdminListRequestSchema.shape.search.meta()?.description
         ).toContain(WorkspaceDefaultAvailableSearch.join(', '));
-        expect(
-            WorkspaceAdminListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(WorkspaceDefaultAvailableOrderBy.join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            WorkspaceAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumWorkspaceOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumWorkspaceOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                WorkspaceAdminListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             WorkspaceAdminListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = WorkspaceDefaultAvailableOrderBy[0];
-
-        expect(
-            WorkspaceAdminListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = WorkspaceDefaultAvailableOrderBy[0];
-        const last =
-            WorkspaceDefaultAvailableOrderBy[
-                WorkspaceDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            WorkspaceAdminListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${WorkspaceDefaultAvailableOrderBy[0]}:`,
-        `${WorkspaceDefaultAvailableOrderBy[0]}:DESC`,
-        `${WorkspaceDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             WorkspaceAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            WorkspaceAdminListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

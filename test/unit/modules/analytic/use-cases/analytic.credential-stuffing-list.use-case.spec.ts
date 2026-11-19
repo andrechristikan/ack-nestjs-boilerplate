@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticCredentialStuffingOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
+import { EnumAnalyticCredentialStuffingOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticCredentialStuffingListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -19,8 +20,6 @@ describe('AnalyticCredentialStuffingListUseCase', () => {
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const windowMs: number = 3600000;
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -63,21 +62,14 @@ describe('AnalyticCredentialStuffingListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the window and pagination to the domain', async () => {
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
-                data: [
-                    {
-                        ipAddress: '10.0.0.1',
-                        uniqueUsers: 5,
-                        failCount: 9,
-                    },
-                ],
+                data: [{ ipAddress: '1.1.1.1', uniqueUsers: 2, failCount: 3 }],
             };
             analyticFraudService.credentialStuffingList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                windowMs,
                 page: 1,
                 perPage: 20,
             });
@@ -85,22 +77,15 @@ describe('AnalyticCredentialStuffingListUseCase', () => {
             expect(result).toEqual(page);
             expect(
                 analyticFraudService.credentialStuffingList
-            ).toHaveBeenCalledWith(windowMs, pagination);
+            ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy }
+                {
+                    orderBy: AnalyticCredentialStuffingOrderBy,
+                    defaultOrderBy:
+                        EnumAnalyticCredentialStuffingOrderBy.mostUsers,
+                }
             );
-        });
-
-        it('passes null when windowMs is omitted', async () => {
-            const page = { ...offsetPage, data: [] };
-            analyticFraudService.credentialStuffingList.mockResolvedValue(page);
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(
-                analyticFraudService.credentialStuffingList
-            ).toHaveBeenCalledWith(null, pagination);
         });
     });
 });

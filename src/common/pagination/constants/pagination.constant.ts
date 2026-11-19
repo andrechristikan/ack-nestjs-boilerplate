@@ -48,9 +48,6 @@ export const PaginationFingerprintExcludedFields: readonly string[] = [
 export const PaginationFilterValueSeparator = ',';
 
 /** @public */
-export const PaginationOrderBySeparator = ':';
-
-/** @public */
 export const PaginationDefaultOrderBy: readonly IPaginationOrderBy[] =
     Object.freeze([
         Object.freeze({

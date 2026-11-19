@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
@@ -16,8 +16,8 @@ describe('AnalyticMemberRolesUseCase', () => {
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
-    const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
-        mock<AnalyticWorkspaceUserService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     let useCase: AnalyticMemberRolesUseCase;
 
@@ -28,8 +28,8 @@ describe('AnalyticMemberRolesUseCase', () => {
             providers: [
                 AnalyticMemberRolesUseCase,
                 {
-                    provide: AnalyticWorkspaceUserService,
-                    useValue: analyticWorkspaceUserService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
             ],
         }).compile();
@@ -39,7 +39,7 @@ describe('AnalyticMemberRolesUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticWorkspaceUserService.memberRoles.mockResolvedValue([
+            analyticWorkspaceService.memberRoles.mockResolvedValue([
                 { role: 'admin', count: 2 },
             ]);
 
@@ -48,9 +48,9 @@ describe('AnalyticMemberRolesUseCase', () => {
             expect(result).toEqual({
                 data: { roles: [{ role: 'admin', count: 2 }] },
             });
-            expect(
-                analyticWorkspaceUserService.memberRoles
-            ).toHaveBeenCalledWith('workspace-1');
+            expect(analyticWorkspaceService.memberRoles).toHaveBeenCalledWith(
+                'workspace-1'
+            );
         });
     });
 });

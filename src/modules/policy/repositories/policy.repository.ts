@@ -10,12 +10,6 @@ import { Injectable } from '@nestjs/common';
 export class PolicyRepository implements IPolicyRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
-    async findManyByRoleId(roleId: string): Promise<Policy[]> {
-        return this.databaseService.client.policy.findMany({
-            where: { roleId },
-        });
-    }
-
     async findOneByRoleIdAndId(
         roleId: string,
         id: string

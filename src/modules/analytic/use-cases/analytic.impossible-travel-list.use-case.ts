@@ -5,10 +5,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import type { IAnalyticImpossibleTravel } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { Injectable } from '@nestjs/common';
-import { AnalyticImpossibleTravelAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticImpossibleTravelOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticImpossibleTravelOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticImpossibleTravelListUseCase implements IAppUseCase<
@@ -17,7 +17,6 @@ export class AnalyticImpossibleTravelListUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly analyticAnomalyService: AnalyticAnomalyService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -26,17 +25,11 @@ export class AnalyticImpossibleTravelListUseCase implements IAppUseCase<
         query: AnalyticImpossibleTravelListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
+            orderBy: AnalyticImpossibleTravelOrderBy,
+            defaultOrderBy: EnumAnalyticImpossibleTravelOrderBy.highestValue,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
-        const range = this.analyticDateService.optionalRange(
-            query.startDate ?? null,
-            query.endDate ?? null
-        );
-        return this.analyticAnomalyService.impossibleTravelList(
-            range.startDate,
-            range.endDate,
-            params
-        );
+
+        return this.analyticAnomalyService.impossibleTravelList(params);
     }
 }

@@ -626,11 +626,16 @@ export class UserAuthService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
     ): Promise<IUserLoginMfaChallenge> {
-        const methods = await this.mfaService.getLoginMethods(userId);
+        const credentials =
+            await this.mfaPasskeyService.getCredentialsByUser(userId);
+        const methods = await this.mfaService.getLoginMethods(
+            userId,
+            credentials
+        );
         let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
         if (methods.includes(EnumMfaMethod.passkey)) {
             passkeyOptions =
-                await this.mfaPasskeyService.getAssertionOptions(userId);
+                await this.mfaPasskeyService.getAssertionOptions(credentials);
         }
         const token = await this.mfaChallengeService.createInTx(tx, {
             purpose: EnumMfaChallengePurpose.login,

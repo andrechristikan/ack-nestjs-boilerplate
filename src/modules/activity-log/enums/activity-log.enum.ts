@@ -20,3 +20,8 @@ export enum EnumActivityLogWorkspace {
     payload = 'payload',
     target = 'target',
 }
+
+/** @public */
+export enum EnumActivityLogOrderBy {
+    latest = 'latest',
+}

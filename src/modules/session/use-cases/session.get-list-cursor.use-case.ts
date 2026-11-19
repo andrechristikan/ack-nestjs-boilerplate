@@ -7,11 +7,12 @@ import type { ISessionList } from '@modules/session/interfaces/session.interface
 import { SessionService } from '@modules/session/services/session.service';
 import { Injectable } from '@nestjs/common';
 import {
-    SessionCursorAvailableOrderBy,
+    SessionCursorOrderBy,
     SessionSharedListCursorScope,
 } from '@modules/session/constants/session.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import { EnumSessionCursorOrderBy } from '@modules/session/enums/session.enum';
 
 @Injectable()
 export class SessionGetListCursorUseCase implements IAppUseCase<
@@ -30,7 +31,8 @@ export class SessionGetListCursorUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: SessionSharedListCursorScope,
-            availableOrderBy: SessionCursorAvailableOrderBy,
+            orderBy: SessionCursorOrderBy,
+            defaultOrderBy: EnumSessionCursorOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

@@ -63,7 +63,10 @@ export class NotificationSharedController {
         private readonly notificationUpdateUserSettingUseCase: NotificationUpdateUserSettingUseCase
     ) {}
 
-    @Doc({ summary: 'get all notifications for current user' })
+    @Doc({
+        summary: 'get all notifications for current user',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('notification.list', {
         schema: NotificationResponseSchema,
     })

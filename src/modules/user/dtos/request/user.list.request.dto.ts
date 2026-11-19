@@ -1,14 +1,11 @@
 import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import {
-    UserDefaultAvailableOrderBy,
-    UserDefaultAvailableSearch,
-} from '@modules/user/constants/user.list.constant';
+import { UserDefaultAvailableSearch } from '@modules/user/constants/user.list.constant';
 import { faker } from '@faker-js/faker';
 import { EnumUserStatus } from '@generated/prisma-client/client';
+import { EnumUserOrderBy } from '@modules/user/enums/user.enum';
 
 /** @public */
 export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
@@ -17,18 +14,11 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         example: '',
     }),
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(UserDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumUserOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${UserDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${UserDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumUserOrderBy).join(', ')}. An empty or absent value uses \`${EnumUserOrderBy.latest}\`.`,
+            example: EnumUserOrderBy.latest,
         }),
     status: z
         .string()

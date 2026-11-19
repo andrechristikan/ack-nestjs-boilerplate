@@ -10,7 +10,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
-    RoleDefaultAvailableOrderBy,
+    RoleOrderBy,
     RoleDefaultAvailableSearch,
     RoleSystemListCursorScope,
 } from '@modules/role/constants/role.list.constant';
@@ -23,6 +23,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RoleGetListCursorBySystemUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-system.use-case';
+import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 describe('RoleGetListCursorBySystemUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -118,7 +119,8 @@ describe('RoleGetListCursorBySystemUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: RoleSystemListCursorScope,
                 availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
+                orderBy: RoleOrderBy,
+                defaultOrderBy: EnumRoleOrderBy.latest,
             });
             expect(roleService.getListCursorBySystem).toHaveBeenCalledWith(
                 cursorPagination,

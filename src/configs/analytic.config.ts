@@ -6,20 +6,18 @@ export interface IConfigAnalytic {
         dashboardTtlInMs: number;
         anomalySummaryTtlInMs: number;
         fraudSummaryTtlInMs: number;
-        riskScoreTtlInMs: number;
+        liveSummaryTtlInMs: number;
         dashboardKeyPattern: string;
         dashboardPageKeyPattern: string;
         workspaceSummaryKeyPattern: string;
         anomalySummaryKeyPattern: string;
         fraudSummaryKeyPattern: string;
-        riskScoreKeyPattern: string;
         windowTokenPattern: string;
     };
     maxWindowInMs: number;
     anomaly: {
         minSample: number;
         lookbackInMs: number;
-        concurrency: number;
         impossibleTravel: {
             minDistanceKm: number;
             maxDeltaInMs: number;
@@ -93,14 +91,16 @@ export interface IConfigAnalytic {
             elevateMax: number;
         };
         riskScore: {
-            candidateLimit: number;
             lookbackInMs: number;
         };
         nearLockoutOffset: number;
-        concurrency: number;
     };
     project: {
         perWorkspaceLimit: number;
+    };
+    snapshot: {
+        writeBatchSize: number;
+        refreshIntervalInMs: number;
     };
 }
 
@@ -109,7 +109,7 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         dashboardTtlInMs: ms('30m'),
         anomalySummaryTtlInMs: ms('15m'),
         fraudSummaryTtlInMs: ms('15m'),
-        riskScoreTtlInMs: ms('15m'),
+        liveSummaryTtlInMs: ms('1m'),
         dashboardKeyPattern: 'Analytic:Dashboard:{metric}:{start}:{end}',
         dashboardPageKeyPattern:
             'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
@@ -117,14 +117,12 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
         anomalySummaryKeyPattern: 'Analytic:Anomaly:{signal}:{window}',
         fraudSummaryKeyPattern: 'Analytic:Fraud:{signal}:{window}',
-        riskScoreKeyPattern: 'Analytic:Fraud:Risk:{userId}',
         windowTokenPattern: '{start}:{end}',
     },
     maxWindowInMs: ms('90d'),
     anomaly: {
         minSample: 5,
         lookbackInMs: ms('30d'),
-        concurrency: 10,
         impossibleTravel: {
             minDistanceKm: 500,
             maxDeltaInMs: ms('1h'),
@@ -198,13 +196,15 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             elevateMax: 90,
         },
         riskScore: {
-            candidateLimit: 100,
             lookbackInMs: ms('24h'),
         },
-        concurrency: 10,
         nearLockoutOffset: 1,
     },
     project: {
         perWorkspaceLimit: 100,
+    },
+    snapshot: {
+        writeBatchSize: 1000,
+        refreshIntervalInMs: ms('15m'),
     },
 }));

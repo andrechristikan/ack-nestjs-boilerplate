@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import type { IAnalyticMetricRate } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticUsersMobileVerificationUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticMetricRate>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticUserService: AnalyticUserService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -23,11 +23,10 @@ export class AnalyticUsersMobileVerificationUseCase implements IAppUseCase<
             query.startDate ?? null,
             query.endDate ?? null
         );
-        const data =
-            await this.analyticDashboardService.usersMobileVerification(
-                range.startDate,
-                range.endDate
-            );
+        const data = await this.analyticUserService.usersMobileVerification(
+            range.startDate,
+            range.endDate
+        );
 
         return { data };
     }

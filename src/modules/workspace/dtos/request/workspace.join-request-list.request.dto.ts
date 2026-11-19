@@ -1,25 +1,17 @@
 import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
+import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 /** @public */
 export const WorkspaceJoinRequestListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
         orderBy: z
-            .union([
-                z.templateLiteral([
-                    z.enum(WorkspaceJoinRequestDefaultAvailableOrderBy),
-                    ':',
-                    z.enum(EnumPaginationOrderDirectionType),
-                ]),
-                z.literal(''),
-            ])
+            .union([z.enum(EnumWorkspaceJoinRequestOrderBy), z.literal('')])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceJoinRequestDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                example: `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                description: `Sort preset name. Available presets: ${Object.values(EnumWorkspaceJoinRequestOrderBy).join(', ')}. An empty or absent value uses \`${EnumWorkspaceJoinRequestOrderBy.latest}\`.`,
+                example: EnumWorkspaceJoinRequestOrderBy.latest,
             }),
         status: z
             .string()

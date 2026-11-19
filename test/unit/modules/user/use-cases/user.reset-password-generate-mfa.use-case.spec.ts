@@ -30,6 +30,9 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
         id: 'forgot-linden',
         userId: 'user-linden',
     } as IUserForgotPassword;
+    const credentials = [
+        { credentialId: 'credential-linden', transports: ['internal'] },
+    ];
     const passkeyOptions: PublicKeyCredentialRequestOptionsJSON = {
         challenge: 'challenge-linden',
         rpId: 'example.test',
@@ -40,6 +43,7 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
+        mfaPasskeyService.getCredentialsByUser.mockResolvedValue(credentials);
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);
         mfaChallengeService.create.mockResolvedValue({
             challengeToken: 'token-linden',
@@ -82,11 +86,18 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
             expect(userPasswordService.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
             );
-            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
                 'user-linden'
             );
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-linden',
+                credentials
+            );
             expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
-                'user-linden'
+                credentials
             );
             expect(mfaChallengeService.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.resetPassword,

@@ -35,14 +35,6 @@ export const UserNameSelect = {
 } satisfies Prisma.UserSelect;
 
 /** @public */
-export const UserAnalyticRefSelect = {
-    id: true,
-    email: true,
-    passwordAttempt: true,
-    passwordLockedUntil: true,
-} satisfies Prisma.UserSelect;
-
-/** @public */
 export const UserNotDeletedWhere = {
     deletedAt: null,
 } satisfies Prisma.UserWhereInput;

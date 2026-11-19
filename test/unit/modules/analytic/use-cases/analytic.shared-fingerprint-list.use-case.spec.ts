@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticSharedFingerprintAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-list.use-case';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticSharedFingerprintListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -85,7 +86,10 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
             ).toHaveBeenCalledWith(pagination);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy }
+                {
+                    orderBy: AnalyticSnapshotOrderBy,
+                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
+                }
             );
         });
     });

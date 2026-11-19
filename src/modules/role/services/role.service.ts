@@ -34,7 +34,6 @@ import type {
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -82,13 +81,6 @@ export class RoleService {
         );
     }
 
-    async assertExistsById(roleId: string): Promise<void> {
-        const roleExists = await this.roleRepository.existsById(roleId);
-        if (!roleExists) {
-            throw new RoleNotFoundException();
-        }
-    }
-
     /** Gates a write on a role: it exists, the actor does not hold it, and the actor outranks it. */
     async assertWritableByActor(
         roleId: string,
@@ -133,10 +125,11 @@ export class RoleService {
         return role;
     }
 
-    async getOneByUserId(userId: string): Promise<IRole> {
-        const role = await this.roleRepository.findOneByUserId(userId);
+    /** Reads the database directly, bypassing the role cache the guards use. */
+    async getOneWithPolicies(roleId: string): Promise<IRoleWithPolicies> {
+        const role = await this.roleRepository.findOneWithPoliciesById(roleId);
         if (!role) {
-            throw new UserNotFoundException();
+            throw new RoleNotFoundException();
         }
 
         return role;

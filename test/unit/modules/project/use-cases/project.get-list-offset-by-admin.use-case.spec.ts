@@ -12,12 +12,13 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
-    ProjectDefaultAvailableOrderBy,
+    ProjectOrderBy,
     ProjectDefaultAvailableSearch,
 } from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGetListOffsetByAdminUseCase } from '@modules/project/use-cases/project.get-list-offset-by-admin.use-case';
+import { EnumProjectOrderBy } from '@modules/project/enums/project.enum';
 
 describe('ProjectGetListOffsetByAdminUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
@@ -107,7 +108,8 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectDefaultAvailableOrderBy,
+                orderBy: ProjectOrderBy,
+                defaultOrderBy: EnumProjectOrderBy.latest,
             });
             expect(paginationFilterUtil.equalString).toHaveBeenCalledWith(
                 Prisma.ProjectScalarFieldEnum.workspaceId,

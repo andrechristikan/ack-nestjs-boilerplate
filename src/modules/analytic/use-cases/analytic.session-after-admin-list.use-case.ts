@@ -5,10 +5,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticSessionAfterAdmin } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { Injectable } from '@nestjs/common';
-import { AnalyticSessionAfterAdminAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSessionAfterAdminOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticSessionAfterAdminOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticSessionAfterAdminListUseCase implements IAppUseCase<
@@ -17,7 +17,6 @@ export class AnalyticSessionAfterAdminListUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly analyticFraudService: AnalyticFraudService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -26,17 +25,11 @@ export class AnalyticSessionAfterAdminListUseCase implements IAppUseCase<
         query: AnalyticSessionAfterAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
+            orderBy: AnalyticSessionAfterAdminOrderBy,
+            defaultOrderBy: EnumAnalyticSessionAfterAdminOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
-        const range = this.analyticDateService.requireRange(
-            query.startDate,
-            query.endDate
-        );
-        return this.analyticFraudService.sessionAfterAdminList(
-            range.startDate,
-            range.endDate,
-            params
-        );
+
+        return this.analyticFraudService.sessionAfterAdminList(params);
     }
 }

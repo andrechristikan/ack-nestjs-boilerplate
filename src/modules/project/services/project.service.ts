@@ -4,7 +4,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -68,25 +67,6 @@ export class ProjectService {
         const isPatternValid = this.slugRegex.test(slug);
 
         return slug.length <= this.slugMaxLength && isPatternValid;
-    }
-
-    async validateProjectGuard(
-        workspaceId: string,
-        projectId: string | null
-    ): Promise<Project> {
-        if (!projectId) {
-            throw new RequestContextMissingException('params.projectId');
-        }
-
-        const project = await this.projectRepository.findActiveByIdAndWorkspace(
-            projectId,
-            workspaceId
-        );
-        if (!project) {
-            throw new ProjectNotFoundException();
-        }
-
-        return project;
     }
 
     async getActiveByIdAndWorkspace(

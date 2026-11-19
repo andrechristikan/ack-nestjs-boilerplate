@@ -387,8 +387,8 @@ export class MigrationUserSeed
             await this.databaseService.withTransaction(
                 async tx => {
                     await tx.notificationDelivery.deleteMany({});
-                    await tx.notification.deleteMany({});
                     await tx.termPolicyRecipient.deleteMany({});
+                    await tx.notification.deleteMany({});
                     await tx.notificationUserSetting.deleteMany({});
                     await tx.projectMember.deleteMany({});
                     await tx.workspaceJoinRequest.deleteMany({});

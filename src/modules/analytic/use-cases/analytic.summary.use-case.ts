@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import type { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -13,7 +13,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticWorkspaceSummary>
 > {
     constructor(
-        private readonly analyticWorkspaceUserService: AnalyticWorkspaceUserService,
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -25,7 +25,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
             query.startDate ?? null,
             query.endDate ?? null
         );
-        const data = await this.analyticWorkspaceUserService.summary(
+        const data = await this.analyticWorkspaceService.summary(
             workspaceContext.workspace.id,
             range.startDate,
             range.endDate

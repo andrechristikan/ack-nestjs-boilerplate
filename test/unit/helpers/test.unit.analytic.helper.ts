@@ -1,46 +1,26 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
-import type {
-    IPaginationOrderBy,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
-import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
-import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticAnomalyRepository } from '@modules/analytic/repositories/analytic.anomaly.repository';
 import type { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
+import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
-import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
-import { DeviceAnalyticService } from '@modules/device/services/device.analytic.service';
-import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
-import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 
 export interface IAnalyticAnomalyServiceDoubles {
     analyticCache: MockProxy<AnalyticCache>;
     cacheService: MockProxy<CacheService>;
-    analyticDateService: MockProxy<AnalyticDateService>;
     analyticDateUtil: MockProxy<AnalyticDateUtil>;
-    analyticAnomalyUtil: MockProxy<AnalyticAnomalyUtil>;
-    analyticSortUtil: MockProxy<AnalyticSortUtil>;
     analyticFraudUtil: MockProxy<AnalyticFraudUtil>;
-    paginationOffsetUtil: MockProxy<PaginationOffsetUtil>;
     configService: MockProxy<ConfigService>;
-    helperArrayService: MockProxy<HelperArrayService>;
     helperDateService: MockProxy<HelperDateService>;
-    helperNumberService: MockProxy<HelperNumberService>;
-    sessionAnalyticService: MockProxy<SessionAnalyticService>;
-    userAnalyticService: MockProxy<UserAnalyticService>;
-    activityLogAnalyticService: MockProxy<ActivityLogAnalyticService>;
-    deviceAnalyticService: MockProxy<DeviceAnalyticService>;
+    featureFlagService: MockProxy<FeatureFlagService>;
+    analyticSnapshotService: MockProxy<AnalyticSnapshotService>;
+    analyticAnomalyRepository: MockProxy<AnalyticAnomalyRepository>;
 }
 
 export async function createAnalyticAnomalyService(
@@ -54,70 +34,27 @@ export async function createAnalyticAnomalyService(
             AnalyticAnomalyServiceClass,
             { provide: AnalyticCache, useValue: doubles.analyticCache },
             { provide: CacheService, useValue: doubles.cacheService },
-            {
-                provide: AnalyticDateService,
-                useValue: doubles.analyticDateService,
-            },
             { provide: AnalyticDateUtil, useValue: doubles.analyticDateUtil },
-            {
-                provide: AnalyticAnomalyUtil,
-                useValue: doubles.analyticAnomalyUtil,
-            },
-            { provide: AnalyticSortUtil, useValue: doubles.analyticSortUtil },
             {
                 provide: AnalyticFraudUtil,
                 useValue: doubles.analyticFraudUtil,
             },
-            {
-                provide: PaginationOffsetUtil,
-                useValue: doubles.paginationOffsetUtil,
-            },
             { provide: ConfigService, useValue: doubles.configService },
-            {
-                provide: HelperArrayService,
-                useValue: doubles.helperArrayService,
-            },
             { provide: HelperDateService, useValue: doubles.helperDateService },
             {
-                provide: HelperNumberService,
-                useValue: doubles.helperNumberService,
+                provide: FeatureFlagService,
+                useValue: doubles.featureFlagService,
             },
             {
-                provide: SessionAnalyticService,
-                useValue: doubles.sessionAnalyticService,
+                provide: AnalyticSnapshotService,
+                useValue: doubles.analyticSnapshotService,
             },
             {
-                provide: UserAnalyticService,
-                useValue: doubles.userAnalyticService,
-            },
-            {
-                provide: ActivityLogAnalyticService,
-                useValue: doubles.activityLogAnalyticService,
-            },
-            {
-                provide: DeviceAnalyticService,
-                useValue: doubles.deviceAnalyticService,
+                provide: AnalyticAnomalyRepository,
+                useValue: doubles.analyticAnomalyRepository,
             },
         ],
     }).compile();
 
     return module.get(AnalyticAnomalyServiceClass);
-}
-
-export function buildAnalyticSession(
-    id: string,
-    userId: string,
-    createdAt: Date,
-    geoLocation: GeoLocation | null,
-    userAgent: UserAgent
-): ISessionAnalyticSession {
-    return { id, userId, ipAddress: null, createdAt, geoLocation, userAgent };
-}
-
-export function buildAnalyticOffsetParams(
-    orderBy: IPaginationOrderBy[],
-    skip: number,
-    limit: number
-): IPaginationQueryOffsetParams {
-    return { orderBy, skip, limit };
 }

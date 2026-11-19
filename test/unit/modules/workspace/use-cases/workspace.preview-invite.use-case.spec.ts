@@ -10,7 +10,7 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
-import { UserService } from '@modules/user/services/user.service';
+import type { IWorkspaceInvitePreview } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
@@ -18,7 +18,6 @@ import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/work
 describe('WorkspacePreviewInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
-    const userService: MockProxy<UserService> = mock<UserService>();
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -52,6 +51,11 @@ describe('WorkspacePreviewInviteUseCase', () => {
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
+    const previewInvite: IWorkspaceInvitePreview = {
+        ...invite,
+        workspace,
+        invitedBy: { name: 'Jane Doe', username: 'jane', deletedAt: null },
+    };
     let useCase: WorkspacePreviewInviteUseCase;
 
     beforeEach(async () => {
@@ -64,7 +68,6 @@ describe('WorkspacePreviewInviteUseCase', () => {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
-                { provide: UserService, useValue: userService },
             ],
         }).compile();
 
@@ -72,8 +75,7 @@ describe('WorkspacePreviewInviteUseCase', () => {
     });
 
     describe('execute', () => {
-        it('validates the token, reads the workspace and inviter together, and maps the preview', async () => {
-            const inviter = { name: 'Jane Doe', username: 'jane' };
+        it('validates the token once and maps the preview from the invite it returns', async () => {
             const preview = {
                 workspaceName: 'Acme',
                 inviterName: 'Jane Doe',
@@ -81,12 +83,8 @@ describe('WorkspacePreviewInviteUseCase', () => {
                 expiredAt: invite.expiredAt,
             };
             workspaceInviteService.validateInviteToken.mockResolvedValue(
-                invite
+                previewInvite
             );
-            workspaceInviteService.getWorkspaceOfInvite.mockResolvedValue(
-                workspace
-            );
-            userService.getNameById.mockResolvedValue(inviter);
             workspaceInviteService.mapInvitePreview.mockReturnValue(preview);
 
             const result = await useCase.execute({
@@ -96,24 +94,16 @@ describe('WorkspacePreviewInviteUseCase', () => {
             expect(result).toEqual({ data: preview });
             expect(
                 workspaceInviteService.validateInviteToken
-            ).toHaveBeenCalledWith('raw-token');
-            expect(
-                workspaceInviteService.getWorkspaceOfInvite
-            ).toHaveBeenCalledWith(invite);
-            expect(userService.getNameById).toHaveBeenCalledWith('user-1');
+            ).toHaveBeenCalledExactlyOnceWith('raw-token');
             expect(
                 workspaceInviteService.mapInvitePreview
-            ).toHaveBeenCalledWith(workspace, invite, inviter);
+            ).toHaveBeenCalledExactlyOnceWith(previewInvite);
         });
 
-        it('throws WorkspaceInviteInvalidException when the invite workspace is not active', async () => {
-            workspaceInviteService.validateInviteToken.mockResolvedValue(
-                invite
-            );
-            workspaceInviteService.getWorkspaceOfInvite.mockRejectedValue(
+        it('throws WorkspaceInviteInvalidException and maps nothing when the token is not valid', async () => {
+            workspaceInviteService.validateInviteToken.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
-            userService.getNameById.mockResolvedValue(null);
 
             await expect(
                 useCase.execute({ inviteToken: 'raw-token' })

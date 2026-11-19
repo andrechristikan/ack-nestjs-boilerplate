@@ -10,16 +10,26 @@ import type { Workspace } from '@generated/prisma-client/client';
 import type {
     IWorkspaceCreate,
     IWorkspaceUpdate,
+    IWorkspaceWithJoinMembers,
+    IWorkspaceWithMembers,
+    IWorkspaceWithTransferMembers,
 } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceRepository {
-    findActiveById(workspaceId: string): Promise<Workspace | null>;
+    findActiveByIdWithMember(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceWithMembers | null>;
+    findActiveByIdWithJoinMembers(
+        workspaceId: string,
+        userId: string
+    ): Promise<IWorkspaceWithJoinMembers | null>;
+    findActiveByIdWithTransferMembers(
+        workspaceId: string,
+        targetUserId: string
+    ): Promise<IWorkspaceWithTransferMembers | null>;
     findActivePublicBySlug(slug: string): Promise<Workspace | null>;
     findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
-    countByOwnerInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[]
-    ): Promise<number>;
     findWithPaginationCursorByMember(
         workspaceIds: string[],
         { where, ...others }: IPaginationQueryCursorParams

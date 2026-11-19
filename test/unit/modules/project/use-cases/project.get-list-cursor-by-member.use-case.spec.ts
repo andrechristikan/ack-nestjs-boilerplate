@@ -11,7 +11,7 @@ import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
-    ProjectCursorAvailableOrderBy,
+    ProjectCursorOrderBy,
     ProjectDefaultAvailableSearch,
     ProjectUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
@@ -22,6 +22,7 @@ import {
     buildWorkspace,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumProjectCursorOrderBy } from '@modules/project/enums/project.enum';
 
 describe('ProjectGetListCursorByMemberUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
@@ -108,7 +109,8 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: ProjectUserListCursorScope,
                 availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectCursorAvailableOrderBy,
+                orderBy: ProjectCursorOrderBy,
+                defaultOrderBy: EnumProjectCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

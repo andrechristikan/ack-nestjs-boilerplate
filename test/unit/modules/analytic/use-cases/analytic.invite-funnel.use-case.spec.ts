@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
@@ -17,8 +17,8 @@ describe('AnalyticInviteFunnelUseCase', () => {
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
-    const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
-        mock<AnalyticWorkspaceUserService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -36,8 +36,8 @@ describe('AnalyticInviteFunnelUseCase', () => {
             providers: [
                 AnalyticInviteFunnelUseCase,
                 {
-                    provide: AnalyticWorkspaceUserService,
-                    useValue: analyticWorkspaceUserService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -52,7 +52,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceUserService.inviteFunnel.mockResolvedValue([
+            analyticWorkspaceService.inviteFunnel.mockResolvedValue([
                 { status: 'pending', count: 2 },
             ]);
 
@@ -64,9 +64,11 @@ describe('AnalyticInviteFunnelUseCase', () => {
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
             });
-            expect(
-                analyticWorkspaceUserService.inviteFunnel
-            ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
+            expect(analyticWorkspaceService.inviteFunnel).toHaveBeenCalledWith(
+                'workspace-1',
+                startDate,
+                endDate
+            );
         });
 
         it('passes the query dates to the range check', async () => {
@@ -74,7 +76,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceUserService.inviteFunnel.mockResolvedValue([]);
+            analyticWorkspaceService.inviteFunnel.mockResolvedValue([]);
 
             await useCase.execute(workspaceContext, { startDate, endDate });
 

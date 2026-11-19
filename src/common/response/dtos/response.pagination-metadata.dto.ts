@@ -1,10 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { z } from 'zod';
 import { ResponseMetadataSchema } from '@common/response/dtos/response.metadata.dto';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 /** @public */
 export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
@@ -80,22 +77,26 @@ export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
             'Indicates whether a previous page exists. Always false for cursor pagination.',
         example: false,
     }),
-    orderBy: z.array(z.string()).meta({
-        description:
-            'Active sort order applied to the query, in `field:direction` format.',
-        example: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+    orderBy: z.string().meta({
+        description: 'Name of the sort preset applied to the query.',
+        example: 'latest',
     }),
     availableSearch: z.array(z.string()).meta({
         description: 'Fields available for search.',
         example: ['name'],
     }),
     availableOrderBy: z.array(z.string()).meta({
-        description: 'Fields available for ordering.',
-        example: ['createdAt', 'updatedAt'],
+        description: 'Sort preset names the list accepts.',
+        example: ['latest', 'name'],
     }),
     type: z.enum(EnumPaginationType).meta({
         description: 'Pagination strategy used for this response.',
         example: EnumPaginationType.offset,
+    }),
+    computedAt: z.date().optional().meta({
+        description:
+            'When the stored result behind a generated list was computed. Absent before its first run and on any other list.',
+        example: faker.date.past(),
     }),
 });
 

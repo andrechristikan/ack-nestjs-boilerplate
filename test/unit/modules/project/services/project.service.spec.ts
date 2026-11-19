@@ -34,7 +34,6 @@ import { ProjectRepository } from '@modules/project/repositories/project.reposit
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import {
     buildUser,
-    expectRequestContextMissingWithKey,
     buildRequestContext,
     buildApiKeyContext,
     buildUserContext,
@@ -118,66 +117,6 @@ describe('ProjectService', () => {
             ],
         }).compile();
         service = module.get(ProjectService);
-    });
-
-    describe('validateProjectGuard', () => {
-        it('throws RequestContextMissingException when projectId is null', async () => {
-            let thrown: unknown;
-            try {
-                await service.validateProjectGuard(
-                    '507f1f77bcf86cd799439012',
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestContextMissingWithKey(thrown, 'params.projectId');
-            expect(
-                projectRepository.findActiveByIdAndWorkspace
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws ProjectNotFoundException when the repository finds no active project', async () => {
-            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
-                null
-            );
-
-            const rejection = service.validateProjectGuard(
-                '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439011'
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
-            });
-        });
-
-        it('returns the active project resolved by workspace and id', async () => {
-            const project = baseProject;
-            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
-                project
-            );
-
-            const result = await service.validateProjectGuard(
-                '507f1f77bcf86cd799439012',
-                '507f1f77bcf86cd799439011'
-            );
-
-            expect(result).toBe(project);
-            expect(
-                projectRepository.findActiveByIdAndWorkspace
-            ).toHaveBeenCalledWith(
-                '507f1f77bcf86cd799439011',
-                '507f1f77bcf86cd799439012'
-            );
-        });
     });
 
     describe('getActiveByIdAndWorkspace', () => {

@@ -5,7 +5,7 @@ import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/res
 /** @public */
 export const AnalyticAnomalyDeviceProliferationSummaryResponseSchema =
     AnalyticAnomalySummaryResponseSchema.extend({
-        meta: z
+        metadata: z
             .object({
                 avg: z.number().meta({
                     description: 'Mean of the scored buckets',

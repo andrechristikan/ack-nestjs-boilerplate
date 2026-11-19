@@ -3,6 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserNameSelect } from '@modules/user/constants/user.constant';
 
 /** @public */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
@@ -18,6 +19,18 @@ export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
 /** @public */
 export const WorkspaceJoinRequestNoncePattern = '{workspaceId}:{userId}';
+
+/** @public */
+export const WorkspaceInviteInviterSelect = {
+    ...UserNameSelect,
+    deletedAt: true,
+} satisfies Prisma.UserSelect;
+
+/** @public */
+export const WorkspaceInvitePreviewInclude = {
+    workspace: true,
+    invitedBy: { select: WorkspaceInviteInviterSelect },
+} satisfies Prisma.WorkspaceInviteInclude;
 
 /** @public */
 export const WorkspaceInviteUserListSelect = {
@@ -51,19 +64,10 @@ export const WorkspaceProtectedDocErrors: IDocResponseEntry[] = [
         statusCode: EnumWorkspaceStatusCodeError.notFound,
         messagePath: 'workspace.error.notFound',
     },
-];
-
-/** @public */
-export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
     {
         httpStatus: HttpStatus.UNAUTHORIZED,
         statusCode: EnumUserStatusCodeError.guardMissing,
         messagePath: 'user.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-        messagePath: 'workspace.error.guardMissing',
     },
     {
         httpStatus: HttpStatus.FORBIDDEN,
@@ -74,26 +78,7 @@ export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
 
 /** @public */
 export const WorkspaceRoleProtectedDocErrors: IDocResponseEntry[] = [
-    {
-        httpStatus: HttpStatus.UNAUTHORIZED,
-        statusCode: EnumUserStatusCodeError.guardMissing,
-        messagePath: 'user.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-        messagePath: 'workspace.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-        messagePath: 'workspace.error.memberGuardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-        messagePath: 'workspace.error.memberForbidden',
-    },
+    ...WorkspaceProtectedDocErrors,
     {
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumWorkspaceStatusCodeError.roleForbidden,

@@ -31,17 +31,13 @@ export class WorkspaceAcceptJoinRequestUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
-        const joinRequest =
-            await this.workspaceJoinRequestService.getPendingById(
-                workspaceJoinRequestId,
-                workspaceContext.workspace.id
-            );
 
         await this.workspaceJoinRequestService.acceptJoinRequest(
             requestContext,
             apiKeyContext,
             authContext,
-            joinRequest,
+            workspaceJoinRequestId,
+            workspaceContext.workspace.id,
             workspaceContext.workspace.name
         );
 

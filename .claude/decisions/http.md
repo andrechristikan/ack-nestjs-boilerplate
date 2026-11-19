@@ -91,6 +91,31 @@ Rule: `guards.md`, Guards.
 
 - A `:workspaceId` route param: every workspace-scoped path would carry the id, where a header lets a client switch its active workspace without rewriting a path.
 
+### A generated or config-windowed analytic route takes no window from the client
+
+Rule: `analytic.md`, On request or generated.
+
+- Reading the snapshot for the configured window and computing any other window on request: the expensive path stays reachable and two code paths are kept.
+- A client `windowMs` on an on-request signal: the signal runs on request because its index bounds it to the configured window, and a wider one is a scan.
+
+### A list sorts by a named preset the backend defines
+
+Rule: `pagination.md`.
+
+- `field:direction` from the client: the client must know the backend's fields and directions, and a default must be kept inside an allow-list beside it.
+- A `defaultOrderBy` of terms kept inside a field allow-list: two constants to keep in step where one constant names the presets.
+- A required `default` key in every constant: its name says nothing about the order, and the same terms under a second name (`latest`) duplicate it.
+- Preset names as plain keys of the constant: each name is a magic string, and the request DTO reaches the names only through a cast of `Object.keys`.
+- A metadata fallback (`''`, `[]`) when a paginated route left no store entry: it hides the route's missing store merge and answers a sort that never ran.
+- A runtime check of the default: a wrong default shows only on a request, as a 500.
+
+### A generated analytic list defaults to `value` desc through its `highestValue` preset as `defaultOrderBy`
+
+Rule: `pagination.md`.
+
+- The snapshot repository swapping in its own sort: the response metadata would name a sort the data does not follow.
+- The kit default, `createdAt` desc: `createdAt` is the write time of a row's batch, so the list runs in reverse write order, which says nothing about the signal.
+
 ## Response headers
 
 ### A content security policy on every response, with its own policy on the docs path

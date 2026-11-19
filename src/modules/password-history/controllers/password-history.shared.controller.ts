@@ -28,7 +28,10 @@ export class PasswordHistorySharedController {
         private readonly passwordHistoryGetListCursorUseCase: PasswordHistoryGetListCursorUseCase
     ) {}
 
-    @Doc({ summary: 'get all user password histories' })
+    @Doc({
+        summary: 'get all user password histories',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
     @ResponsePagination('passwordHistory.list', {
         schema: PasswordHistoryResponseSchema,
     })

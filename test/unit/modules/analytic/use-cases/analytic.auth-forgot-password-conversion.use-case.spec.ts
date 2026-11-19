@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 
 describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
             providers: [
                 AnalyticAuthForgotPasswordConversionUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,9 +42,11 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authForgotPasswordConversion.mockResolvedValue(
-                { created: 5, used: 2, rate: 0.4 }
-            );
+            analyticAuthService.authForgotPasswordConversion.mockResolvedValue({
+                created: 5,
+                used: 2,
+                rate: 0.4,
+            });
 
             const result = await useCase.execute({
                 startDate,
@@ -55,7 +57,7 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 data: { created: 5, used: 2, rate: 0.4 },
             });
             expect(
-                analyticDashboardService.authForgotPasswordConversion
+                analyticAuthService.authForgotPasswordConversion
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -63,9 +65,11 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authForgotPasswordConversion.mockResolvedValue(
-                { created: 5, used: 2, rate: 0.4 }
-            );
+            analyticAuthService.authForgotPasswordConversion.mockResolvedValue({
+                created: 5,
+                used: 2,
+                rate: 0.4,
+            });
 
             await useCase.execute({ startDate, endDate });
 

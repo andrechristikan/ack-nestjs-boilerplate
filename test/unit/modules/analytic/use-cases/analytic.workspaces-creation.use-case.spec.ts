@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/analytic.workspaces-creation.use-case';
 
 describe('AnalyticWorkspacesCreationUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticWorkspacesCreationUseCase', () => {
             providers: [
                 AnalyticWorkspacesCreationUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticWorkspacesCreationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesCreation.mockResolvedValue({
+            analyticWorkspaceService.workspacesCreation.mockResolvedValue({
                 count: 12,
             });
 
@@ -53,7 +53,7 @@ describe('AnalyticWorkspacesCreationUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.workspacesCreation
+                analyticWorkspaceService.workspacesCreation
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -61,7 +61,7 @@ describe('AnalyticWorkspacesCreationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.workspacesCreation.mockResolvedValue({
+            analyticWorkspaceService.workspacesCreation.mockResolvedValue({
                 count: 12,
             });
 

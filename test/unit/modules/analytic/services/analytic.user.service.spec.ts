@@ -1,0 +1,368 @@
+import { CacheService } from '@common/cache/services/cache.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticBlockedUsersCacheSchema,
+    AnalyticBucketsResultCacheSchema,
+    AnalyticMetricCountCacheSchema,
+    AnalyticMetricRateCacheSchema,
+    AnalyticMobileChurnCacheSchema,
+} from '@modules/analytic/constants/analytic.constant';
+import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
+import { AnalyticUserRepository } from '@modules/analytic/repositories/analytic.user.repository';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
+import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+
+describe('AnalyticUserService', () => {
+    const dashboardTtlInMs = 1800000;
+    const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>({
+        dashboardTtlInMs,
+    });
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
+        mock<AnalyticDateUtil>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
+    const analyticUserRepository: MockProxy<AnalyticUserRepository> =
+        mock<AnalyticUserRepository>();
+
+    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
+    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
+    const startToken = '2026-01-01T00:00:00.000Z';
+    const endToken = '2026-02-01T00:00:00.000Z';
+    const buckets = [{ key: 'a', count: 7 }];
+
+    let service: AnalyticUserService;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
+            date ? date.toISOString() : '_'
+        );
+        analyticCache.buildDashboardKey.mockImplementation(
+            (metric, start, end) => `${metric}:${start}:${end}`
+        );
+        cacheService.readThrough.mockImplementation(
+            async (_key, _schema, _ttlInMs, loader) => loader()
+        );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AnalyticUserService,
+                { provide: AnalyticCache, useValue: analyticCache },
+                { provide: CacheService, useValue: cacheService },
+                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: HelperNumberService, useValue: helperNumberService },
+                {
+                    provide: AnalyticUserRepository,
+                    useValue: analyticUserRepository,
+                },
+            ],
+        }).compile();
+
+        service = module.get(AnalyticUserService);
+    });
+
+    describe('usersRegistrations', () => {
+        it('wraps the registration count read through the dashboard cache', async () => {
+            analyticUserRepository.countRegistrations.mockResolvedValue(12);
+
+            const result = await service.usersRegistrations(startDate, endDate);
+
+            expect(result).toEqual({ count: 12 });
+            expect(
+                analyticUserRepository.countRegistrations
+            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersRegistrations}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersChurn', () => {
+        it('answers the deleted share of the users alive at the start', async () => {
+            analyticUserRepository.findChurnCounts.mockResolvedValue({
+                deleted: 4,
+                total: 10,
+            });
+            helperNumberService.percent.mockReturnValue(40);
+
+            const result = await service.usersChurn(startDate, endDate);
+
+            expect(result).toEqual({ count: 4, total: 10, rate: 40 });
+            expect(
+                analyticUserRepository.findChurnCounts
+            ).toHaveBeenCalledTimes(1);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 10);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersChurn}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersBlocked', () => {
+        it('returns the blocked trend and the standing count from one read', async () => {
+            analyticUserRepository.findBlockedCounts.mockResolvedValue({
+                trend: 3,
+                current: 5,
+            });
+
+            const result = await service.usersBlocked(startDate, endDate);
+
+            expect(result).toEqual({ trend: 3, current: 5 });
+            expect(
+                analyticUserRepository.findBlockedCounts
+            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersBlocked}:${startToken}:${endToken}`,
+                AnalyticBlockedUsersCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersSignUpWith', () => {
+        it('wraps the sign-up-with groups as buckets', async () => {
+            analyticUserRepository.groupSignUpWith.mockResolvedValue(buckets);
+
+            const result = await service.usersSignUpWith(startDate, endDate);
+
+            expect(result).toEqual({ buckets });
+            expect(analyticUserRepository.groupSignUpWith).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSignUpWith}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersSignUpFrom', () => {
+        it('wraps the sign-up-from groups as buckets', async () => {
+            analyticUserRepository.groupSignUpFrom.mockResolvedValue(buckets);
+
+            const result = await service.usersSignUpFrom(startDate, endDate);
+
+            expect(result).toEqual({ buckets });
+            expect(analyticUserRepository.groupSignUpFrom).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSignUpFrom}:${startToken}:${endToken}`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersEmailVerification', () => {
+        it('answers verified 3 of total 4 from two group rows', async () => {
+            analyticUserRepository.groupEmailVerification.mockResolvedValue([
+                { isVerified: true, count: 3 },
+                { isVerified: false, count: 1 },
+            ]);
+            helperNumberService.percent.mockReturnValue(75);
+
+            const result = await service.usersEmailVerification(
+                startDate,
+                endDate
+            );
+
+            expect(result).toEqual({ count: 3, total: 4, rate: 75 });
+            expect(
+                analyticUserRepository.groupEmailVerification
+            ).toHaveBeenCalledTimes(1);
+            expect(helperNumberService.percent).toHaveBeenCalledWith(3, 4);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersEmailVerification}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+
+        it('answers zero verified when only unverified rows exist', async () => {
+            analyticUserRepository.groupEmailVerification.mockResolvedValue([
+                { isVerified: false, count: 2 },
+            ]);
+            helperNumberService.percent.mockReturnValue(0);
+
+            const result = await service.usersEmailVerification(null, null);
+
+            expect(result).toEqual({ count: 0, total: 2, rate: 0 });
+        });
+    });
+
+    describe('usersMobileVerification', () => {
+        it('answers verified 1 of total 5 from two group rows', async () => {
+            analyticUserRepository.groupMobileVerification.mockResolvedValue([
+                { isVerified: false, count: 4 },
+                { isVerified: true, count: 1 },
+            ]);
+            helperNumberService.percent.mockReturnValue(20);
+
+            const result = await service.usersMobileVerification(
+                startDate,
+                endDate
+            );
+
+            expect(result).toEqual({ count: 1, total: 5, rate: 20 });
+            expect(helperNumberService.percent).toHaveBeenCalledWith(1, 5);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersMobileVerification}:${startToken}:${endToken}`,
+                AnalyticMetricRateCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersStatusDistribution', () => {
+        it('wraps the status groups as buckets', async () => {
+            analyticUserRepository.groupStatus.mockResolvedValue(buckets);
+
+            const result = await service.usersStatusDistribution();
+
+            expect(result).toEqual({ buckets });
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersStatus}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersCountryDistribution', () => {
+        it('wraps the country groups as buckets', async () => {
+            analyticUserRepository.groupCountry.mockResolvedValue(buckets);
+
+            const result = await service.usersCountryDistribution();
+
+            expect(result).toEqual({ buckets });
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersCountry}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersRoleDistribution', () => {
+        it('wraps the role groups as buckets', async () => {
+            analyticUserRepository.groupRole.mockResolvedValue(buckets);
+
+            const result = await service.usersRoleDistribution();
+
+            expect(result).toEqual({ buckets });
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersRole}:_:_`,
+                AnalyticBucketsResultCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersSelfDelete', () => {
+        it('counts self-delete activity in the range', async () => {
+            analyticUserRepository.countActivityByActions.mockResolvedValue(3);
+
+            const result = await service.usersSelfDelete(startDate, endDate);
+
+            expect(result).toEqual({ count: 3 });
+            expect(
+                analyticUserRepository.countActivityByActions
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userDeleteSelf],
+                startDate,
+                endDate
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersSelfDelete}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersClaimUsername', () => {
+        it('counts username-claim activity in the range', async () => {
+            analyticUserRepository.countActivityByActions.mockResolvedValue(2);
+
+            const result = await service.usersClaimUsername(startDate, endDate);
+
+            expect(result).toEqual({ count: 2 });
+            expect(
+                analyticUserRepository.countActivityByActions
+            ).toHaveBeenCalledWith(
+                [EnumActivityLogAction.userClaimUsername],
+                startDate,
+                endDate
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersClaimUsername}:${startToken}:${endToken}`,
+                AnalyticMetricCountCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+
+    describe('usersMobileChurn', () => {
+        it('maps one grouped read to added, updated, and deleted', async () => {
+            analyticUserRepository.groupActivityByAction.mockResolvedValue([
+                {
+                    action: EnumActivityLogAction.userUpdateMobileNumber,
+                    count: 2,
+                },
+                { action: EnumActivityLogAction.userAddMobileNumber, count: 1 },
+            ]);
+
+            const result = await service.usersMobileChurn(startDate, endDate);
+
+            expect(result).toEqual({ added: 1, updated: 2, deleted: 0 });
+            expect(
+                analyticUserRepository.groupActivityByAction
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                analyticUserRepository.groupActivityByAction
+            ).toHaveBeenCalledWith(
+                [
+                    EnumActivityLogAction.userAddMobileNumber,
+                    EnumActivityLogAction.userUpdateMobileNumber,
+                    EnumActivityLogAction.userDeleteMobileNumber,
+                ],
+                startDate,
+                endDate
+            );
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `${EnumAnalyticDashboardMetric.usersMobileChurn}:${startToken}:${endToken}`,
+                AnalyticMobileChurnCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+    });
+});

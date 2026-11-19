@@ -505,15 +505,6 @@ describe('UserService', () => {
         });
     });
 
-    describe('getNameById', () => {
-        it('delegates to the repository', async () => {
-            const ref = { name: 'Cobalt Reyes', username: 'cobaltReyes' };
-            userRepository.findNameById.mockResolvedValue(ref);
-
-            await expect(service.getNameById('user-cobalt')).resolves.toBe(ref);
-        });
-    });
-
     describe('createManyInTx', () => {
         const verification: IUserCreateVerification = {
             reference: 'ref-cobalt',
@@ -641,30 +632,6 @@ describe('UserService', () => {
                 'user-cobalt',
                 'workspace-cobalt'
             );
-        });
-    });
-
-    describe('getEmailByIdInTx', () => {
-        it('returns the email the repository reads on the given transaction', async () => {
-            userRepository.findEmailByIdInTx.mockResolvedValue(
-                'cobalt@example.com'
-            );
-
-            await expect(
-                service.getEmailByIdInTx(tx, 'user-cobalt')
-            ).resolves.toBe('cobalt@example.com');
-            expect(userRepository.findEmailByIdInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt'
-            );
-        });
-
-        it('returns null when the user has no row', async () => {
-            userRepository.findEmailByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.getEmailByIdInTx(tx, 'user-cobalt')
-            ).resolves.toBeNull();
         });
     });
 
@@ -1050,6 +1017,32 @@ describe('UserService', () => {
 
             await expect(
                 service.getOneWithRole('user-cobalt')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+                messagePath: 'user.error.notFound',
+            });
+        });
+    });
+
+    describe('getRoleById', () => {
+        it('returns the role the user holds', async () => {
+            const { policies: _policies, ...userRole } = role;
+            userRepository.findRoleById.mockResolvedValue(userRole);
+
+            const result = await service.getRoleById('user-cobalt');
+
+            expect(result).toBe(userRole);
+            expect(userRepository.findRoleById).toHaveBeenCalledWith(
+                'user-cobalt'
+            );
+        });
+
+        it('throws UserNotFoundException when the repository answers null', async () => {
+            userRepository.findRoleById.mockResolvedValue(null);
+
+            await expect(
+                service.getRoleById('user-cobalt')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,

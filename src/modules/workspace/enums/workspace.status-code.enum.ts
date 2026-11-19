@@ -23,8 +23,7 @@ export enum EnumWorkspaceStatusCodeError {
     slugInvalid = 51620,
     headerMissing = 51621,
     guardMissing = 51622,
-    memberGuardMissing = 51623,
-    memberAlreadyExists = 51624,
-    ownerTransferRequired = 51625,
-    transferTargetInactive = 51626,
+    memberAlreadyExists = 51623,
+    ownerTransferRequired = 51624,
+    transferTargetInactive = 51625,
 }

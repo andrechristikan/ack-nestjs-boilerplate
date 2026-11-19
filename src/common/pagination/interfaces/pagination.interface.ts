@@ -27,20 +27,35 @@ export interface IPaginationQuery {
     page: number;
     perPage: number;
     cursor?: string;
-    orderBy: IPaginationOrderBy[];
+    orderBy: string;
     availableSearch: readonly string[];
     availableOrderBy: readonly string[];
 }
 
-export interface IPaginationQueryOffsetOptions {
-    availableOrderBy: readonly string[];
+export type IPaginationOrderByTerm<TKey extends string> = {
+    [K in TKey]: Record<K, EnumPaginationOrderDirectionType>;
+}[TKey];
+
+export type IPaginationOrderByPresets<
+    TField extends string = string,
+    TName extends string = string,
+> = Readonly<Record<TName, readonly IPaginationOrderByTerm<TField>[]>>;
+
+export interface IPaginationQueryOffsetOptions<
+    T extends IPaginationOrderByPresets,
+> {
+    orderBy: T;
+    defaultOrderBy: Extract<keyof T, string>;
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
-export interface IPaginationQueryCursorOptions {
+export interface IPaginationQueryCursorOptions<
+    T extends IPaginationOrderByPresets,
+> {
     scope: string;
-    availableOrderBy: readonly string[];
+    orderBy: T;
+    defaultOrderBy: Extract<keyof T, string>;
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
@@ -204,3 +219,6 @@ export interface IPaginationQueryFilterResult<
 }
 
 export type IPaginationQueryPatch = Partial<IPaginationQuery>;
+
+export type IPaginationResponseState = IPaginationQueryPatch &
+    Pick<IPaginationQuery, 'orderBy' | 'availableOrderBy'>;

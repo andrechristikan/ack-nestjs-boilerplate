@@ -1,11 +1,11 @@
-import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
+import { EnumSessionCursorOrderBy } from '@modules/session/enums/session.enum';
 
 describe('SessionSharedListRequestSchema', () => {
     const query = {
         cursor: 'eyJpZCI6IjE2In0',
         perPage: 20,
-        orderBy: 'createdAt:desc',
+        orderBy: 'latest',
     };
 
     it('parses a query into exactly the declared fields', () => {
@@ -32,50 +32,44 @@ describe('SessionSharedListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             SessionSharedListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(SessionCursorAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumSessionCursorOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumSessionCursorOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                SessionSharedListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             SessionSharedListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = SessionCursorAvailableOrderBy[0];
-
-        expect(
-            SessionSharedListRequestSchema.safeParse({
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = SessionCursorAvailableOrderBy[0];
-        const last =
-            SessionCursorAvailableOrderBy[
-                SessionCursorAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            SessionSharedListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${SessionCursorAvailableOrderBy[0]}:`,
-        `${SessionCursorAvailableOrderBy[0]}:DESC`,
-        `${SessionCursorAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             SessionSharedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            SessionSharedListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

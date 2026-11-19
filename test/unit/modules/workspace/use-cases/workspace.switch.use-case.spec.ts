@@ -19,7 +19,7 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
 import {
     buildUser,
@@ -30,8 +30,6 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSwitchUseCase', () => {
-    const workspaceService: MockProxy<WorkspaceService> =
-        mock<WorkspaceService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -64,6 +62,11 @@ describe('WorkspaceSwitchUseCase', () => {
         role: EnumWorkspaceMemberRole.member,
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
+    const workspaceContext: IWorkspaceContext = {
+        workspaceId: 'workspace-1',
+        workspace,
+        workspaceMember,
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -83,7 +86,6 @@ describe('WorkspaceSwitchUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceSwitchUseCase,
-                { provide: WorkspaceService, useValue: workspaceService },
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
@@ -100,20 +102,13 @@ describe('WorkspaceSwitchUseCase', () => {
     describe('execute', () => {
         const body: WorkspaceSwitchRequestDto = { workspaceId: 'workspace-1' };
 
-        it('guards the workspace then the membership, then sets the last workspace and adds the switched entry on one tx', async () => {
+        it('guards the workspace and the membership in one call, then sets the last workspace and adds the switched entry on one tx', async () => {
             const callOrder: string[] = [];
-            workspaceService.validateWorkspaceGuard.mockImplementation(
+            workspaceMemberService.validateWorkspaceGuard.mockImplementation(
                 async () => {
-                    callOrder.push('workspaceGuard');
+                    callOrder.push('guard');
 
-                    return workspace;
-                }
-            );
-            workspaceMemberService.validateWorkspaceMemberGuard.mockImplementation(
-                async () => {
-                    callOrder.push('memberGuard');
-
-                    return workspaceMember;
+                    return workspaceContext;
                 }
             );
             userService.setLastWorkspaceInTx.mockImplementation(async () => {
@@ -134,17 +129,16 @@ describe('WorkspaceSwitchUseCase', () => {
 
             expect(result).toEqual({});
             expect(callOrder).toEqual([
-                'workspaceGuard',
-                'memberGuard',
+                'guard',
                 'setLastWorkspace',
                 'addEntry',
             ]);
             expect(
-                workspaceService.validateWorkspaceGuard
-            ).toHaveBeenCalledWith('workspace-1');
+                workspaceMemberService.validateWorkspaceGuard
+            ).toHaveBeenCalledTimes(1);
             expect(
-                workspaceMemberService.validateWorkspaceMemberGuard
-            ).toHaveBeenCalledWith('workspace-1', 'user-1');
+                workspaceMemberService.validateWorkspaceGuard
+            ).toHaveBeenCalledWith('workspace-1', 'user-1', []);
             expect(userService.setLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -165,8 +159,8 @@ describe('WorkspaceSwitchUseCase', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
-        it('stops before the membership guard when the workspace guard rejects', async () => {
-            workspaceService.validateWorkspaceGuard.mockRejectedValue(
+        it('opens no transaction when the workspace is not found', async () => {
+            workspaceMemberService.validateWorkspaceGuard.mockRejectedValue(
                 new WorkspaceNotFoundException()
             );
 
@@ -178,17 +172,11 @@ describe('WorkspaceSwitchUseCase', () => {
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(
-                workspaceMemberService.validateWorkspaceMemberGuard
-            ).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('opens no transaction when the membership guard rejects', async () => {
-            workspaceService.validateWorkspaceGuard.mockResolvedValue(
-                workspace
-            );
-            workspaceMemberService.validateWorkspaceMemberGuard.mockRejectedValue(
+        it('opens no transaction when the caller is no member', async () => {
+            workspaceMemberService.validateWorkspaceGuard.mockRejectedValue(
                 new WorkspaceMemberForbiddenException()
             );
 

@@ -1,8 +1,6 @@
 import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
-import {
-    ProjectDefaultAvailableSearch,
-    ProjectCursorAvailableOrderBy,
-} from '@modules/project/constants/project.list.constant';
+import { ProjectDefaultAvailableSearch } from '@modules/project/constants/project.list.constant';
+import { EnumProjectCursorOrderBy } from '@modules/project/enums/project.enum';
 
 describe('ProjectUserListRequestSchema', () => {
     it('parses cursor, perPage, search, and a string orderBy', () => {
@@ -10,14 +8,14 @@ describe('ProjectUserListRequestSchema', () => {
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'revamp',
-            orderBy: `${ProjectCursorAvailableOrderBy[0]}:asc`,
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'revamp',
-            orderBy: `${ProjectCursorAvailableOrderBy[0]}:asc`,
+            orderBy: 'latest',
         });
     });
 
@@ -33,52 +31,50 @@ describe('ProjectUserListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
+    it('keeps the module search description', () => {
         expect(
             ProjectUserListRequestSchema.shape.search.meta()?.description
         ).toContain(ProjectDefaultAvailableSearch.join(', '));
-        expect(
-            ProjectUserListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(ProjectCursorAvailableOrderBy.join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            ProjectUserListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumProjectCursorOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumProjectCursorOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                ProjectUserListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             ProjectUserListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = ProjectCursorAvailableOrderBy[0];
-
-        expect(
-            ProjectUserListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = ProjectCursorAvailableOrderBy[0];
-        const last =
-            ProjectCursorAvailableOrderBy[
-                ProjectCursorAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            ProjectUserListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${ProjectCursorAvailableOrderBy[0]}:`,
-        `${ProjectCursorAvailableOrderBy[0]}:DESC`,
-        `${ProjectCursorAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             ProjectUserListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            ProjectUserListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

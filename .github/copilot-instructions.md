@@ -13,18 +13,16 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @TermPolicyAcceptanceProtected(...)    // 4.  Term policy
 @PolicyProtected({...})                // 5.  CASL policy, admin routes
 @RoleProtected(...)                    // 6.  Role, admin routes
-@ProjectMemberProtected()              // 7.  Project membership
-@ProjectProtected()                    // 8.  Project exists
-@WorkspaceMemberProtected(...)         // 9.  Workspace membership; pass roles to also gate by role
-@WorkspaceProtected()                  // 10. Workspace exists
-@UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag; reads RequestActorStoreKey, so above JWT
-@RequestThrottle({ user: true })       // 13. Per-user throttle guard; runs after JWT
-@AuthJwtAccessProtected()              // 14. JWT; a social login guard sits above 12, so the flag runs first
-@ApiKeyProtected()                     // 15. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 16. Upload routes: multipart interceptor, then timeout
-@HttpCode(HttpStatus.OK)               // 17. @Post only
-@Get('/endpoint')                      // 18. HTTP method, always last
+@ProjectProtected(...)                 // 7.  Project and the caller's project member; pass roles to gate by role
+@WorkspaceProtected(...)               // 8.  Workspace and the caller's member; pass roles to gate by role
+@UserProtected()                       // 9.  User status
+@FeatureFlagProtected(...)             // 10. Feature flag; reads RequestActorStoreKey, so above JWT
+@RequestThrottle({ user: true })       // 11. Per-user throttle guard; runs after JWT
+@AuthJwtAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
+@ApiKeyProtected()                     // 13. API key; @ApiKeySystemProtected() on every system route
+@FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 14. Upload routes: multipart interceptor, then timeout
+@HttpCode(HttpStatus.OK)               // 15. @Post only
+@Get('/endpoint')                      // 16. HTTP method, always last
 ```
 
 `@RequestThrottle` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>[<Concern>]<Action>UseCase.execute(...);`: the use case builds every envelope, `{}` included.

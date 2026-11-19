@@ -1,3 +1,4 @@
+import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
@@ -8,6 +9,7 @@ import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
@@ -16,6 +18,7 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
         IRequestContext,
         IApiKeyContext,
         IAuthJwtAccessContext,
+        IUserContext,
         IWorkspaceContext,
         string,
         WorkspaceInviteResendRequestDto,
@@ -24,13 +27,15 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly userUtil: UserUtil
     ) {}
 
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
+        userContext: IUserContext,
         workspaceContext: IWorkspaceContext,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
@@ -41,13 +46,10 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
             workspaceContext.workspace.id
         );
 
-        const [inviterName, existingUser] = await Promise.all([
-            this.workspaceInviteService.getInviterName(
-                workspaceContext.workspace,
-                authContext.userId
-            ),
-            this.userService.getOneActiveByEmail(existing.email),
-        ]);
+        const inviterName = this.userUtil.getDisplayName(userContext.user);
+        const existingUser = await this.userService.getOneActiveByEmail(
+            existing.email
+        );
 
         const { invite } = await this.workspaceInviteService.resendInvite(
             requestContext,

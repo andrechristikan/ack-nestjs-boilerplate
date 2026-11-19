@@ -3,7 +3,7 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    ProjectMemberDefaultAvailableOrderBy,
+    ProjectMemberOrderBy,
     ProjectMemberUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -14,6 +14,7 @@ import type {
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumProjectMemberOrderBy } from '@modules/project/enums/project.enum';
 
 @Injectable()
 export class ProjectGetMembersListUseCase implements IAppUseCase<
@@ -32,7 +33,8 @@ export class ProjectGetMembersListUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: ProjectMemberUserListCursorScope,
-            availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+            orderBy: ProjectMemberOrderBy,
+            defaultOrderBy: EnumProjectMemberOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

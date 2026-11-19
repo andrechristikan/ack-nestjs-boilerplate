@@ -1,42 +1,44 @@
-import { AnalyticSessionAfterAdminAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import { EnumAnalyticSessionAfterAdminOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticSessionAfterAdminListRequestSchema', () => {
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-
-    it('parses page, perPage, orderBy, and the date range', () => {
+    it('parses page, perPage, and orderBy', () => {
         const result = AnalyticSessionAfterAdminListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:desc`,
-            startDate,
-            endDate,
+            orderBy: 'latest',
         });
     });
 
-    it('coerces ISO strings into Date values', () => {
-        const result = AnalyticSessionAfterAdminListRequestSchema.parse({
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-        });
+    it('parses an empty object', () => {
+        const result = AnalyticSessionAfterAdminListRequestSchema.parse({});
 
-        expect(result).toEqual({ startDate, endDate });
+        expect(result).toEqual({});
+    });
+
+    it('rejects windowMs and the date range', () => {
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                windowMs: 1000,
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                startDate: '2026-01-01T00:00:00.000Z',
+            }).success
+        ).toBe(false);
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
             AnalyticSessionAfterAdminListRequestSchema.parse({
-                startDate,
-                endDate,
+                page: 1,
                 extra: true,
             })
         ).toThrow();
@@ -46,68 +48,57 @@ describe('AnalyticSessionAfterAdminListRequestSchema', () => {
         expect(
             AnalyticSessionAfterAdminListRequestSchema.safeParse({
                 search: 'x',
-                startDate,
-                endDate,
             }).success
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             AnalyticSessionAfterAdminListRequestSchema.shape.orderBy.meta()
                 ?.description
-        ).toContain(AnalyticSessionAfterAdminAvailableOrderBy.join(', '));
+        ).toContain(
+            Object.values(EnumAnalyticSessionAfterAdminOrderBy).join(', ')
+        );
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumAnalyticSessionAfterAdminOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                    orderBy,
+                }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             AnalyticSessionAfterAdminListRequestSchema.safeParse({
-                startDate,
-                endDate,
                 orderBy: '',
             }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = AnalyticSessionAfterAdminAvailableOrderBy[0];
-
+    it.each([
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
+        'revokedAt',
+        'loginAt',
+    ])('rejects the orderBy %s', orderBy => {
         expect(
-            AnalyticSessionAfterAdminListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy: `${first}:asc`,
-            }).success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = AnalyticSessionAfterAdminAvailableOrderBy[0];
-        const last =
-            AnalyticSessionAfterAdminAvailableOrderBy[
-                AnalyticSessionAfterAdminAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            AnalyticSessionAfterAdminListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({ orderBy })
+                .success
         ).toBe(false);
     });
 
-    it.each([
-        'unknownField:asc',
-        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:`,
-        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:DESC`,
-        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:up`,
-    ])('rejects the orderBy %s', orderBy => {
+    it('rejects a repeated orderBy', () => {
         expect(
             AnalyticSessionAfterAdminListRequestSchema.safeParse({
-                startDate,
-                endDate,
-                orderBy,
+                orderBy: ['latest', 'latest'],
             }).success
         ).toBe(false);
     });

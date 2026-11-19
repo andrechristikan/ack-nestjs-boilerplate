@@ -1,21 +1,34 @@
-import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { AnalyticQueueFactory } from '@modules/analytic/factories/analytic.queue.factory';
+import { AnalyticQueue } from '@modules/analytic/queues/analytic.queue';
+import { EnumAnalyticQueue } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticAuthRepository } from '@modules/analytic/repositories/analytic.auth.repository';
+import { AnalyticApiKeyRepository } from '@modules/analytic/repositories/analytic.api-key.repository';
+import { AnalyticApiKeyService } from '@modules/analytic/services/analytic.api-key.service';
+import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
+import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
+import { AnalyticFraudRepository } from '@modules/analytic/repositories/analytic.fraud.repository';
+import { AnalyticAnomalyRepository } from '@modules/analytic/repositories/analytic.anomaly.repository';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
+import { AnalyticUserRepository } from '@modules/analytic/repositories/analytic.user.repository';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
+import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
+import { AnalyticTermPolicyRepository } from '@modules/analytic/repositories/analytic.term-policy.repository';
+import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
+import { AnalyticSnapshotRepository } from '@modules/analytic/repositories/analytic.snapshot.repository';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
-import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
+import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/analytic.workspace.repository';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
+import { AnalyticProjectRepository } from '@modules/analytic/repositories/analytic.project.repository';
+import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
-import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
-import { DeviceModule } from '@modules/device/device.module';
 import { MfaModule } from '@modules/mfa/mfa.module';
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
-import { ProjectModule } from '@modules/project/project.module';
-import { UserModule } from '@modules/user/user.module';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -23,32 +36,52 @@ import { Module } from '@nestjs/common';
     providers: [
         AnalyticCache,
         AnalyticDateUtil,
-        AnalyticAnomalyUtil,
         AnalyticFraudUtil,
         AnalyticBucketUtil,
-        AnalyticSortUtil,
+        AnalyticPipelineUtil,
         AnalyticDateService,
-        AnalyticDashboardService,
         AnalyticAnomalyService,
         AnalyticFraudService,
-        AnalyticWorkspaceUserService,
+        AnalyticSnapshotRepository,
+        AnalyticAnomalyRepository,
+        AnalyticFraudRepository,
+        AnalyticAuthRepository,
+        AnalyticUserRepository,
+        AnalyticDeviceRepository,
+        AnalyticApiKeyRepository,
+        AnalyticTermPolicyRepository,
+        AnalyticWorkspaceRepository,
+        AnalyticProjectRepository,
+        AnalyticSnapshotService,
+        AnalyticAuthService,
+        AnalyticUserService,
+        AnalyticDeviceService,
+        AnalyticApiKeyService,
+        AnalyticTermPolicyService,
+        AnalyticWorkspaceService,
+        AnalyticProjectService,
+        AnalyticQueue,
     ],
     exports: [
         AnalyticCache,
         AnalyticDateService,
-        AnalyticDashboardService,
         AnalyticAnomalyService,
         AnalyticFraudService,
-        AnalyticWorkspaceUserService,
+        AnalyticSnapshotService,
+        AnalyticAuthService,
+        AnalyticUserService,
+        AnalyticDeviceService,
+        AnalyticApiKeyService,
+        AnalyticTermPolicyService,
+        AnalyticWorkspaceService,
+        AnalyticProjectService,
     ],
     imports: [
-        ActivityLogModule,
-        UserModule,
-        DeviceModule,
         MfaModule,
-        PasswordHistoryModule,
-        WorkspaceModule,
-        ProjectModule,
+        BullModule.registerQueueAsync({
+            name: EnumAnalyticQueue.analytic,
+            useClass: AnalyticQueueFactory,
+        }),
     ],
 })
 export class AnalyticModule {}

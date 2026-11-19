@@ -81,21 +81,6 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async findOneByUserId(userId: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findFirst({
-            where: { users: { some: { id: userId, deletedAt: null } } },
-            select: RoleSelect,
-        });
-    }
-
-    async existsById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: { id },
-        });
-
-        return count > 0;
-    }
-
     async findOneByIdInTx(
         tx: IDatabaseTransactionClient,
         id: string

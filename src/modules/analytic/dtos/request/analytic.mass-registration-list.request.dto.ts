@@ -1,26 +1,18 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import { EnumAnalyticKeyCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 /** @public */
 export const AnalyticMassRegistrationListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
             orderBy: z
-                .union([
-                    z.templateLiteral([
-                        z.enum(AnalyticKeyCountAvailableOrderBy),
-                        ':',
-                        z.enum(EnumPaginationOrderDirectionType),
-                    ]),
-                    z.literal(''),
-                ])
+                .union([z.enum(EnumAnalyticKeyCountOrderBy), z.literal('')])
                 .optional()
                 .meta({
-                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticKeyCountAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticKeyCountAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-                    example: `${AnalyticKeyCountAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                    description: `Sort preset name. Available presets: ${Object.values(EnumAnalyticKeyCountOrderBy).join(', ')}. An empty or absent value uses \`${EnumAnalyticKeyCountOrderBy.mostCount}\`.`,
+                    example: EnumAnalyticKeyCountOrderBy.mostCount,
                 }),
         })
         .extend(AnalyticWindowRequestSchema.shape);

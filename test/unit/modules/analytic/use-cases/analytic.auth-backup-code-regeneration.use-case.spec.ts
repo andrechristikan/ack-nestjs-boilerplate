@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthBackupCodeRegenerationUseCase } from '@modules/analytic/use-cases/analytic.auth-backup-code-regeneration.use-case';
 
 describe('AnalyticAuthBackupCodeRegenerationUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthBackupCodeRegenerationUseCase', () => {
             providers: [
                 AnalyticAuthBackupCodeRegenerationUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,9 +42,9 @@ describe('AnalyticAuthBackupCodeRegenerationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authBackupCodeRegeneration.mockResolvedValue(
-                { count: 12 }
-            );
+            analyticAuthService.authBackupCodeRegeneration.mockResolvedValue({
+                count: 12,
+            });
 
             const result = await useCase.execute({
                 startDate,
@@ -53,7 +53,7 @@ describe('AnalyticAuthBackupCodeRegenerationUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.authBackupCodeRegeneration
+                analyticAuthService.authBackupCodeRegeneration
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -61,9 +61,9 @@ describe('AnalyticAuthBackupCodeRegenerationUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authBackupCodeRegeneration.mockResolvedValue(
-                { count: 12 }
-            );
+            analyticAuthService.authBackupCodeRegeneration.mockResolvedValue({
+                count: 12,
+            });
 
             await useCase.execute({ startDate, endDate });
 

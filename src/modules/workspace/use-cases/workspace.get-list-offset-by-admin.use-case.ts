@@ -6,13 +6,14 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
-    WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
+    WorkspaceOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumWorkspaceOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 @Injectable()
 export class WorkspaceGetListOffsetByAdminUseCase implements IAppUseCase<
@@ -31,7 +32,8 @@ export class WorkspaceGetListOffsetByAdminUseCase implements IAppUseCase<
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrderBy: WorkspaceDefaultAvailableOrderBy,
+            orderBy: WorkspaceOrderBy,
+            defaultOrderBy: EnumWorkspaceOrderBy.latest,
         });
         const isPublic = this.paginationFilterUtil.equalBoolean(
             Prisma.WorkspaceScalarFieldEnum.isPublic,

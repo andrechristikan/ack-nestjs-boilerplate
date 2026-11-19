@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthLockoutUseCase } from '@modules/analytic/use-cases/analytic.auth-lockout.use-case';
 
 describe('AnalyticAuthLockoutUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthLockoutUseCase', () => {
             providers: [
                 AnalyticAuthLockoutUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authLockout.mockResolvedValue({
+            analyticAuthService.authLockout.mockResolvedValue({
                 failed: 6,
                 maxAttempt: 3,
             });
@@ -50,7 +50,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
             const result = await useCase.execute({ startDate, endDate });
 
             expect(result).toEqual({ data: { failed: 6, maxAttempt: 3 } });
-            expect(analyticDashboardService.authLockout).toHaveBeenCalledWith(
+            expect(analyticAuthService.authLockout).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -60,7 +60,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authLockout.mockResolvedValue({
+            analyticAuthService.authLockout.mockResolvedValue({
                 failed: 6,
                 maxAttempt: 3,
             });

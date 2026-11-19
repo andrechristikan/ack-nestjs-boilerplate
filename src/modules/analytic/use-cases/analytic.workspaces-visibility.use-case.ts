@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import type { IAnalyticBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -10,11 +10,11 @@ export class AnalyticWorkspacesVisibilityUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticBucketsResult>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService
+        private readonly analyticWorkspaceService: AnalyticWorkspaceService
     ) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        const data = await this.analyticDashboardService.workspacesVisibility();
+        const data = await this.analyticWorkspaceService.workspacesVisibility();
 
         return { data };
     }

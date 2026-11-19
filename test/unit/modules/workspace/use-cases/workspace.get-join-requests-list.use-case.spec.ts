@@ -16,7 +16,7 @@ import {
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import {
-    WorkspaceJoinRequestDefaultAvailableOrderBy,
+    WorkspaceJoinRequestOrderBy,
     WorkspaceJoinRequestDefaultStatus,
     WorkspaceJoinRequestUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -28,6 +28,7 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
@@ -120,7 +121,8 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceJoinRequestUserListCursorScope,
-                availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
+                orderBy: WorkspaceJoinRequestOrderBy,
+                defaultOrderBy: EnumWorkspaceJoinRequestOrderBy.latest,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceJoinRequestScalarFieldEnum.status,

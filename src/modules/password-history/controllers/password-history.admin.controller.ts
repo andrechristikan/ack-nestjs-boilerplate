@@ -32,7 +32,11 @@ export class PasswordHistoryAdminController {
         private readonly passwordHistoryGetListOffsetByAdminUseCase: PasswordHistoryGetListOffsetByAdminUseCase
     ) {}
 
-    @Doc({ summary: 'get all user password histories' })
+    @Doc({
+        summary: 'get all user password histories',
+        description:
+            'orderBy presets: latest (createdAt descending, default), recentlyExpired (expiredAt descending).',
+    })
     @ResponsePagination('passwordHistory.list', {
         schema: PasswordHistoryResponseSchema,
     })

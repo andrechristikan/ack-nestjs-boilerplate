@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticUsersCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-country-distribution.use-case';
 
 describe('AnalyticUsersCountryDistributionUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     let useCase: AnalyticUsersCountryDistributionUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticUsersCountryDistributionUseCase', () => {
             providers: [
                 AnalyticUsersCountryDistributionUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
             ],
         }).compile();
@@ -29,11 +29,9 @@ describe('AnalyticUsersCountryDistributionUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.usersCountryDistribution.mockResolvedValue(
-                {
-                    buckets: [{ key: 'key-1', count: 7 }],
-                }
-            );
+            analyticUserService.usersCountryDistribution.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             const result = await useCase.execute();
 
@@ -41,7 +39,7 @@ describe('AnalyticUsersCountryDistributionUseCase', () => {
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
             expect(
-                analyticDashboardService.usersCountryDistribution
+                analyticUserService.usersCountryDistribution
             ).toHaveBeenCalledWith();
         });
     });

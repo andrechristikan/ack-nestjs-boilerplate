@@ -11,7 +11,7 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    ActivityLogDefaultAvailableOrderBy,
+    ActivityLogOrderBy,
     ActivityLogSharedUserListCursorScope,
 } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
@@ -20,6 +20,7 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogGetListCursorByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
@@ -88,7 +89,8 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
                 cursorQuery,
                 {
                     scope: ActivityLogSharedUserListCursorScope,
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                    orderBy: ActivityLogOrderBy,
+                    defaultOrderBy: EnumActivityLogOrderBy.latest,
                 }
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(

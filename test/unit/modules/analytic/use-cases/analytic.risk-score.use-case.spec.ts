@@ -33,6 +33,7 @@ describe('AnalyticRiskScoreUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
+            const computedAt = new Date('2026-03-01T00:15:00.000Z');
             analyticFraudService.riskScore.mockResolvedValue({
                 userId: 'user-1',
                 score: 42,
@@ -40,6 +41,7 @@ describe('AnalyticRiskScoreUseCase', () => {
                 contributingSignalCodes: [
                     EnumAnalyticFraudContributingSignal.sharedFingerprint,
                 ],
+                computedAt,
             });
 
             const result = await useCase.execute('user-1');
@@ -52,6 +54,7 @@ describe('AnalyticRiskScoreUseCase', () => {
                     contributingSignalCodes: [
                         EnumAnalyticFraudContributingSignal.sharedFingerprint,
                     ],
+                    computedAt,
                 },
             });
             expect(analyticFraudService.riskScore).toHaveBeenCalledWith(

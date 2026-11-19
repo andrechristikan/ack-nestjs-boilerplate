@@ -150,27 +150,48 @@ describe('MfaPasskeyService', () => {
         });
     });
 
+    describe('getCredentialsByUser', () => {
+        it('answers the credentials the repository finds for the user', async () => {
+            const credentials = [
+                { credentialId: 'credential-one', transports: ['internal'] },
+            ];
+            mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue(
+                credentials
+            );
+
+            await expect(
+                service.getCredentialsByUser('user-quartz')
+            ).resolves.toBe(credentials);
+
+            expect(
+                mfaPasskeyRepository.findCredentialsByUserId
+            ).toHaveBeenCalledWith('user-quartz');
+        });
+    });
+
     describe('getAssertionOptions', () => {
         const requestOptions = {
             challenge: 'challenge-quartz',
         } as PublicKeyCredentialRequestOptionsJSON;
 
-        it('passes the relying party, the required verification, and the passkeys of the user as allowed credentials to the library', async () => {
-            mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue([
-                { credentialId: 'credential-one', transports: ['internal'] },
-                { credentialId: 'credential-two', transports: [] },
-            ]);
+        it('passes the relying party, the required verification, and the given credentials as allowed credentials to the library without reading the repository', async () => {
             vi.mocked(generateAuthenticationOptions).mockResolvedValue(
                 requestOptions
             );
 
             await expect(
-                service.getAssertionOptions('user-quartz')
+                service.getAssertionOptions([
+                    {
+                        credentialId: 'credential-one',
+                        transports: ['internal'],
+                    },
+                    { credentialId: 'credential-two', transports: [] },
+                ])
             ).resolves.toBe(requestOptions);
 
             expect(
                 mfaPasskeyRepository.findCredentialsByUserId
-            ).toHaveBeenCalledWith('user-quartz');
+            ).not.toHaveBeenCalled();
             expect(generateAuthenticationOptions).toHaveBeenCalledWith({
                 rpID: 'example.test',
                 userVerification: 'required',
@@ -181,16 +202,13 @@ describe('MfaPasskeyService', () => {
             });
         });
 
-        it('allows no credential for a null user without reading the repository', async () => {
+        it('allows no credential for an empty list', async () => {
             vi.mocked(generateAuthenticationOptions).mockResolvedValue(
                 requestOptions
             );
 
-            await service.getAssertionOptions(null);
+            await service.getAssertionOptions([]);
 
-            expect(
-                mfaPasskeyRepository.findCredentialsByUserId
-            ).not.toHaveBeenCalled();
             expect(generateAuthenticationOptions).toHaveBeenCalledWith({
                 rpID: 'example.test',
                 userVerification: 'required',
@@ -1037,29 +1055,24 @@ describe('MfaPasskeyService', () => {
     });
 
     describe('assertHasPasskey', () => {
-        it('returns when the user holds a passkey', async () => {
-            mfaPasskeyRepository.existsByUserId.mockResolvedValue(true);
+        it('returns when the credentials are not empty, with no repository call', () => {
+            expect(() =>
+                service.assertHasPasskey([
+                    { credentialId: 'credential-quartz', transports: [] },
+                ])
+            ).not.toThrow();
 
-            await expect(
-                service.assertHasPasskey('user-quartz')
-            ).resolves.toBeUndefined();
-
-            expect(mfaPasskeyRepository.existsByUserId).toHaveBeenCalledWith(
-                'user-quartz'
-            );
+            expect(mfaPasskeyRepository.existsByUserId).not.toHaveBeenCalled();
         });
 
-        it('throws MfaMethodUnavailableException for a user without a passkey', async () => {
-            mfaPasskeyRepository.existsByUserId.mockResolvedValue(false);
-
-            await expect(
-                service.assertHasPasskey('user-quartz')
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.methodUnavailable,
-
-                module: 'mfa',
-                messagePath: 'mfa.error.methodUnavailable',
-            });
+        it('throws MfaMethodUnavailableException for an empty array, with no repository call', () => {
+            expect(() => service.assertHasPasskey([])).toThrowError(
+                expect.objectContaining({
+                    statusCode: EnumMfaStatusCodeError.methodUnavailable,
+                    messagePath: 'mfa.error.methodUnavailable',
+                })
+            );
+            expect(mfaPasskeyRepository.existsByUserId).not.toHaveBeenCalled();
         });
     });
 

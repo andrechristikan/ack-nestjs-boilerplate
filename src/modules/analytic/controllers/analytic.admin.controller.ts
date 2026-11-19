@@ -4,38 +4,34 @@ import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/anal
 import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
 import { AnalyticProjectsMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
 import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
-import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
-import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
-import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
-import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
 import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
 import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
-import { AnalyticSharedFingerprintListRequestSchema } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
-import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
+import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
 import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
 import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import { AnalyticSnapshotListRequestSchema } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
+import type { AnalyticSnapshotListRequestDto } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
 import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
 import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
 import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
 import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
-import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
-import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
 import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
 import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
 import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
 import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
-import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
-import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
-import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
-import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
 import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
 import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
-import { AnalyticDeviceProliferationListRequestSchema } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
-import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
-import { AnalyticLoginTimeAnomalyListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
-import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import type {
     IAnalyticAccountTakeover,
@@ -56,6 +52,7 @@ import type {
     IAnalyticForgotPasswordConversion,
     IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
+    IAnalyticFraudRiskScoreUser,
     IAnalyticFraudSummary,
     IAnalyticImpossibleTravel,
     IAnalyticLockoutMetrics,
@@ -75,6 +72,7 @@ import type {
     IAnalyticSessionAfterAdmin,
     IAnalyticSessionDeviceRatio,
     IAnalyticSharedFingerprint,
+    IAnalyticSnapshotBucketsResult,
     IAnalyticStatusCountList,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
@@ -90,6 +88,7 @@ import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dto
 import { AnalyticApiKeyLifecycleResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-lifecycle.response.dto';
 import { AnalyticBlockedUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.blocked-users.response.dto';
 import { AnalyticBucketsResponseSchema } from '@modules/analytic/dtos/response/analytic.buckets.response.dto';
+import { AnalyticSnapshotBucketsResponseSchema } from '@modules/analytic/dtos/response/analytic.snapshot-buckets.response.dto';
 import { AnalyticForgotPasswordConversionResponseSchema } from '@modules/analytic/dtos/response/analytic.forgot-password-conversion.response.dto';
 import { AnalyticLockoutResponseSchema } from '@modules/analytic/dtos/response/analytic.lockout.response.dto';
 import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
@@ -135,7 +134,10 @@ import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@module
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
-import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import {
+    AnalyticFraudRiskScoreResponseSchema,
+    AnalyticFraudRiskScoreUserResponseSchema,
+} from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
 import { AnalyticAccountTakeoverResponseSchema } from '@modules/analytic/dtos/response/analytic.account-takeover.response.dto';
 import { AnalyticBackupCodeNewDeviceResponseSchema } from '@modules/analytic/dtos/response/analytic.backup-code-new-device.response.dto';
 import { AnalyticCredentialStuffingResponseSchema } from '@modules/analytic/dtos/response/analytic.credential-stuffing.response.dto';
@@ -723,7 +725,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get concurrent session distribution' })
     @Response('analytic.authConcurrentSessions', {
-        schema: AnalyticBucketsResponseSchema,
+        schema: AnalyticSnapshotBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -737,7 +739,7 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/auth/concurrent-sessions')
     async authConcurrentSessions(): Promise<
-        IResponseReturn<IAnalyticBucketsResult>
+        IResponseReturn<IAnalyticSnapshotBucketsResult>
     > {
         return this.analyticAuthConcurrentSessionsUseCase.execute();
     }
@@ -758,8 +760,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/auth/sessions-geo')
     async authSessionsGeo(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticAuthSessionsGeoUseCase.execute(query);
     }
@@ -780,8 +782,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/auth/sessions-user-agent')
     async authSessionsUserAgent(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         return this.analyticAuthSessionsUserAgentUseCase.execute(query);
     }
@@ -1134,7 +1136,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get device per user distribution' })
     @Response('analytic.devicesPerUser', {
-        schema: AnalyticBucketsResponseSchema,
+        schema: AnalyticSnapshotBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1147,7 +1149,9 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/devices/per-user')
-    async devicesPerUser(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
+    async devicesPerUser(): Promise<
+        IResponseReturn<IAnalyticSnapshotBucketsResult>
+    > {
         return this.analyticDevicesPerUserUseCase.execute();
     }
 
@@ -1270,8 +1274,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/term-policies/time-to-accept')
     async termPoliciesTimeToAccept(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
         return this.analyticTermPoliciesTimeToAcceptUseCase.execute(query);
     }
@@ -1363,7 +1367,10 @@ export class AnalyticAdminController {
         return this.analyticWorkspacesJoinOutcomesUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get member counts per workspace' })
+    @Doc({
+        summary: 'admin get member counts per workspace',
+        description: 'orderBy presets: mostCount (count descending, default).',
+    })
     @ResponsePagination('analytic.workspacesMembershipList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
@@ -1385,7 +1392,10 @@ export class AnalyticAdminController {
         return this.analyticWorkspacesMembershipListUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get activity volume per workspace by date range' })
+    @Doc({
+        summary: 'admin get activity volume per workspace by date range',
+        description: 'orderBy presets: mostCount (count descending, default).',
+    })
     @ResponsePagination('analytic.workspacesActivityVolumeList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
@@ -1429,7 +1439,10 @@ export class AnalyticAdminController {
         return this.analyticProjectsCreationUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get member counts per project' })
+    @Doc({
+        summary: 'admin get member counts per project',
+        description: 'orderBy presets: mostCount (count descending, default).',
+    })
     @ResponsePagination('analytic.projectsMembershipList', {
         schema: AnalyticProjectCountResponseSchema,
     })
@@ -1466,14 +1479,17 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/credential-stuffing')
-    async credentialStuffing(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudCredentialStuffingSummary>> {
-        return this.analyticCredentialStuffingSummaryUseCase.execute(query);
+    async credentialStuffing(): Promise<
+        IResponseReturn<IAnalyticFraudCredentialStuffingSummary>
+    > {
+        return this.analyticCredentialStuffingSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all credential stuffing fraud detections' })
+    @Doc({
+        summary: 'admin get all credential stuffing fraud detections',
+        description:
+            'orderBy presets: mostUsers (uniqueUsers descending, default), mostFailures (failCount descending), ipAddress (ipAddress ascending).',
+    })
     @ResponsePagination('analytic.fraudCredentialStuffingList', {
         schema: AnalyticCredentialStuffingResponseSchema,
     })
@@ -1510,14 +1526,15 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/account-takeover')
-    async accountTakeover(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticAccountTakeoverSummaryUseCase.execute(query);
+    async accountTakeover(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+        return this.analyticAccountTakeoverSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all account takeover fraud detections' })
+    @Doc({
+        summary: 'admin get all account takeover fraud detections',
+        description:
+            'orderBy presets: latest (passwordChangedAt descending, default), userId (userId ascending).',
+    })
     @ResponsePagination('analytic.fraudAccountTakeoverList', {
         schema: AnalyticAccountTakeoverResponseSchema,
     })
@@ -1561,7 +1578,11 @@ export class AnalyticAdminController {
         return this.analyticMassRegistrationSummaryUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get all mass registration fraud detections' })
+    @Doc({
+        summary: 'admin get all mass registration fraud detections',
+        description:
+            'orderBy presets: mostCount (count descending, default), key (key ascending).',
+    })
     @ResponsePagination('analytic.fraudMassRegistrationList', {
         schema: AnalyticKeyCountResponseSchema,
     })
@@ -1609,6 +1630,8 @@ export class AnalyticAdminController {
 
     @Doc({
         summary: 'admin get all password reset enumeration fraud detections',
+        description:
+            'orderBy presets: mostCount (count descending, default), key (key ascending).',
     })
     @ResponsePagination('analytic.fraudPasswordResetEnumerationList', {
         schema: AnalyticKeyCountResponseSchema,
@@ -1652,6 +1675,8 @@ export class AnalyticAdminController {
 
     @Doc({
         summary: 'admin get all shared device fingerprint fraud detections',
+        description:
+            'orderBy presets: highestValue (userCount descending, default), key (fingerprint ascending).',
     })
     @ResponsePagination('analytic.fraudSharedFingerprintList', {
         schema: AnalyticSharedFingerprintResponseSchema,
@@ -1668,8 +1693,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/fraud/shared-fingerprint/list')
     async sharedFingerprintList(
-        @Query({ schema: AnalyticSharedFingerprintListRequestSchema })
-        query: AnalyticSharedFingerprintListRequestDto
+        @Query({ schema: AnalyticSnapshotListRequestSchema })
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
         return this.analyticSharedFingerprintListUseCase.execute(query);
     }
@@ -1689,15 +1714,14 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/session-after-admin')
-    async sessionAfterAdmin(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticSessionAfterAdminSummaryUseCase.execute(query);
+    async sessionAfterAdmin(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+        return this.analyticSessionAfterAdminSummaryUseCase.execute();
     }
 
     @Doc({
         summary: 'admin get all session after admin action fraud detections',
+        description:
+            'orderBy presets: latest (revokedAt descending, default), recentLogin (loginAt descending), userId (userId ascending).',
     })
     @ResponsePagination('analytic.fraudSessionAfterAdminList', {
         schema: AnalyticSessionAfterAdminResponseSchema,
@@ -1746,6 +1770,8 @@ export class AnalyticAdminController {
 
     @Doc({
         summary: 'admin get all forgot password token abuse fraud detections',
+        description:
+            'orderBy presets: mostTokens (tokenCount descending, default), userId (userId ascending).',
     })
     @ResponsePagination('analytic.fraudForgotPasswordTokenAbuseList', {
         schema: AnalyticForgotPasswordAbuseResponseSchema,
@@ -1790,7 +1816,11 @@ export class AnalyticAdminController {
         return this.analyticRefreshSpikeSummaryUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get all refresh token spike fraud detections' })
+    @Doc({
+        summary: 'admin get all refresh token spike fraud detections',
+        description:
+            'orderBy presets: mostCount (count descending, default), userId (userId ascending).',
+    })
     @ResponsePagination('analytic.fraudRefreshSpikeList', {
         schema: AnalyticUserCountResponseSchema,
     })
@@ -1827,15 +1857,16 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/backup-code-new-device')
-    async backupCodeNewDevice(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticBackupCodeNewDeviceSummaryUseCase.execute(query);
+    async backupCodeNewDevice(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticBackupCodeNewDeviceSummaryUseCase.execute();
     }
 
     @Doc({
         summary: 'admin get all backup code on new device fraud detections',
+        description:
+            'orderBy presets: latest (regeneratedAt descending, default), userId (userId ascending).',
     })
     @ResponsePagination('analytic.fraudBackupCodeNewDeviceList', {
         schema: AnalyticBackupCodeNewDeviceResponseSchema,
@@ -1880,7 +1911,11 @@ export class AnalyticAdminController {
         return this.analyticApiKeyBurstSummaryUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get all api key burst fraud detections' })
+    @Doc({
+        summary: 'admin get all api key burst fraud detections',
+        description:
+            'orderBy presets: mostCount (count descending, default), userId (userId ascending).',
+    })
     @ResponsePagination('analytic.fraudApiKeyBurstList', {
         schema: AnalyticUserCountResponseSchema,
     })
@@ -1902,7 +1937,11 @@ export class AnalyticAdminController {
         return this.analyticApiKeyBurstListUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin get all user fraud risk scores' })
+    @Doc({
+        summary: 'admin get all user fraud risk scores',
+        description:
+            'orderBy presets: highestValue (score descending, default), key (userId ascending).',
+    })
     @ResponsePagination('analytic.fraudRiskScoreList', {
         schema: AnalyticFraudRiskScoreResponseSchema,
     })
@@ -1926,7 +1965,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get fraud risk score of a user (report-only)' })
     @Response('analytic.fraudRiskScore', {
-        schema: AnalyticFraudRiskScoreResponseSchema,
+        schema: AnalyticFraudRiskScoreUserResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1942,7 +1981,7 @@ export class AnalyticAdminController {
     async riskScore(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
-    ): Promise<IResponseReturn<IAnalyticFraudRiskScore>> {
+    ): Promise<IResponseReturn<IAnalyticFraudRiskScoreUser>> {
         return this.analyticRiskScoreUseCase.execute(userId);
     }
 
@@ -1961,14 +2000,17 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/impossible-travel')
-    async impossibleTravel(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>> {
-        return this.analyticImpossibleTravelSummaryUseCase.execute(query);
+    async impossibleTravel(): Promise<
+        IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>
+    > {
+        return this.analyticImpossibleTravelSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all impossible travel anomaly detections' })
+    @Doc({
+        summary: 'admin get all impossible travel anomaly detections',
+        description:
+            "orderBy presets: highestValue (distanceKm descending, default), recent (the later session's creation time, descending), key (userId ascending).",
+    })
     @ResponsePagination('analytic.anomalyImpossibleTravelList', {
         schema: AnalyticImpossibleTravelResponseSchema,
     })
@@ -2005,14 +2047,17 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-spike-ip')
-    async loginSpikeIp(
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>> {
-        return this.analyticLoginSpikeIpSummaryUseCase.execute(query);
+    async loginSpikeIp(): Promise<
+        IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>
+    > {
+        return this.analyticLoginSpikeIpSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all login spike by ip anomaly detections' })
+    @Doc({
+        summary: 'admin get all login spike by ip anomaly detections',
+        description:
+            'orderBy presets: mostUsers (uniqueUsers descending, default), mostAttempts (attempts descending), ipAddress (ipAddress ascending).',
+    })
     @ResponsePagination('analytic.anomalyLoginSpikeIpList', {
         schema: AnalyticLoginSpikeIpResponseSchema,
     })
@@ -2055,7 +2100,11 @@ export class AnalyticAdminController {
         return this.analyticFailedLoginSpikeSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all failed login spike anomaly detections' })
+    @Doc({
+        summary: 'admin get all failed login spike anomaly detections',
+        description:
+            'orderBy presets: latest (createdAt descending, default), id (id descending).',
+    })
     @ResponsePagination('analytic.anomalyFailedLoginSpikeList', {
         schema: AnalyticNearLockoutResponseSchema,
     })
@@ -2098,7 +2147,11 @@ export class AnalyticAdminController {
         return this.analyticDeviceProliferationSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all device proliferation anomaly detections' })
+    @Doc({
+        summary: 'admin get all device proliferation anomaly detections',
+        description:
+            'orderBy presets: highestValue (deviceCount descending, default), key (userId ascending).',
+    })
     @ResponsePagination('analytic.anomalyDeviceProliferationList', {
         schema: AnalyticDeviceProliferationResponseSchema,
     })
@@ -2114,8 +2167,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/anomaly/device-proliferation/list')
     async deviceProliferationList(
-        @Query({ schema: AnalyticDeviceProliferationListRequestSchema })
-        query: AnalyticDeviceProliferationListRequestDto
+        @Query({ schema: AnalyticSnapshotListRequestSchema })
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         return this.analyticDeviceProliferationListUseCase.execute(query);
     }
@@ -2135,14 +2188,15 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-time')
-    async loginTime(
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticLoginTimeSummaryUseCase.execute(query);
+    async loginTime(): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
+        return this.analyticLoginTimeSummaryUseCase.execute();
     }
 
-    @Doc({ summary: 'admin get all login time anomaly detections' })
+    @Doc({
+        summary: 'admin get all login time anomaly detections',
+        description:
+            'orderBy presets: highestValue (historicalFrequencyPercent descending, default), key (userId ascending).',
+    })
     @ResponsePagination('analytic.anomalyLoginTimeList', {
         schema: AnalyticLoginTimeAnomalyResponseSchema,
     })
@@ -2158,8 +2212,8 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/anomaly/login-time/list')
     async loginTimeList(
-        @Query({ schema: AnalyticLoginTimeAnomalyListRequestSchema })
-        query: AnalyticLoginTimeAnomalyListRequestDto
+        @Query({ schema: AnalyticSnapshotListRequestSchema })
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
         return this.analyticLoginTimeListUseCase.execute(query);
     }

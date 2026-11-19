@@ -14,11 +14,12 @@ import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
-    ProjectMemberDefaultAvailableOrderBy,
+    ProjectMemberOrderBy,
     ProjectMemberUserListCursorScope,
 } from '@modules/project/constants/project.list.constant';
 import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
 import { buildProjectContext } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumProjectMemberOrderBy } from '@modules/project/enums/project.enum';
 
 describe('ProjectGetMembersListUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
@@ -117,7 +118,8 @@ describe('ProjectGetMembersListUseCase', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: ProjectMemberUserListCursorScope,
-                availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+                orderBy: ProjectMemberOrderBy,
+                defaultOrderBy: EnumProjectMemberOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

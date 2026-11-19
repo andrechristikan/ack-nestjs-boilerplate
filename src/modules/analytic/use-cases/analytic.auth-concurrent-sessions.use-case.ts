@@ -1,21 +1,18 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
-import type { IAnalyticBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
+import type { IAnalyticSnapshotBucketsResult } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class AnalyticAuthConcurrentSessionsUseCase implements IAppUseCase<
     [],
-    IResponseReturn<IAnalyticBucketsResult>
+    IResponseReturn<IAnalyticSnapshotBucketsResult>
 > {
-    constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService
-    ) {}
+    constructor(private readonly analyticAuthService: AnalyticAuthService) {}
 
-    async execute(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        const data =
-            await this.analyticDashboardService.authConcurrentSessions();
+    async execute(): Promise<IResponseReturn<IAnalyticSnapshotBucketsResult>> {
+        const data = await this.analyticAuthService.authConcurrentSessions();
 
         return { data };
     }

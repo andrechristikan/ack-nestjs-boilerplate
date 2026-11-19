@@ -1,5 +1,5 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import type { IAnalyticBlockedUsers } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -12,7 +12,7 @@ export class AnalyticUsersBlockedUseCase implements IAppUseCase<
     IResponseReturn<IAnalyticBlockedUsers>
 > {
     constructor(
-        private readonly analyticDashboardService: AnalyticDashboardService,
+        private readonly analyticUserService: AnalyticUserService,
         private readonly analyticDateService: AnalyticDateService
     ) {}
 
@@ -23,7 +23,7 @@ export class AnalyticUsersBlockedUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticBlockedUsers>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticDashboardService.usersBlocked(
+        const data = await this.analyticUserService.usersBlocked(
             range.startDate,
             range.endDate
         );

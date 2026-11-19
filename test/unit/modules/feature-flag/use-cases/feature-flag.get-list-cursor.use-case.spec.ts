@@ -9,13 +9,14 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
-    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagOrderBy,
     FeatureFlagDefaultAvailableSearch,
     FeatureFlagSystemListCursorScope,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGetListCursorUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-cursor.use-case';
+import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 describe('FeatureFlagGetListCursorUseCase', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -92,7 +93,8 @@ describe('FeatureFlagGetListCursorUseCase', () => {
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: FeatureFlagSystemListCursorScope,
                 availableSearch: FeatureFlagDefaultAvailableSearch,
-                availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+                orderBy: FeatureFlagOrderBy,
+                defaultOrderBy: EnumFeatureFlagOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

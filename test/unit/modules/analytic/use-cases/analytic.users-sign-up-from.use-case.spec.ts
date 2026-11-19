@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticUserService } from '@modules/analytic/services/analytic.user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticUsersSignUpFromUseCase } from '@modules/analytic/use-cases/analytic.users-sign-up-from.use-case';
 
 describe('AnalyticUsersSignUpFromUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticUserService: MockProxy<AnalyticUserService> =
+        mock<AnalyticUserService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticUsersSignUpFromUseCase', () => {
             providers: [
                 AnalyticUsersSignUpFromUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticUserService,
+                    useValue: analyticUserService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticUsersSignUpFromUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.usersSignUpFrom.mockResolvedValue({
+            analyticUserService.usersSignUpFrom.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -59,16 +59,17 @@ describe('AnalyticUsersSignUpFromUseCase', () => {
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
-            expect(
-                analyticDashboardService.usersSignUpFrom
-            ).toHaveBeenCalledWith(startDate, endDate);
+            expect(analyticUserService.usersSignUpFrom).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
         });
         it('passes null dates when the optional range is empty', async () => {
             analyticDateService.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardService.usersSignUpFrom.mockResolvedValue({
+            analyticUserService.usersSignUpFrom.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -79,9 +80,10 @@ describe('AnalyticUsersSignUpFromUseCase', () => {
                 null
             );
 
-            expect(
-                analyticDashboardService.usersSignUpFrom
-            ).toHaveBeenCalledWith(null, null);
+            expect(analyticUserService.usersSignUpFrom).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 });

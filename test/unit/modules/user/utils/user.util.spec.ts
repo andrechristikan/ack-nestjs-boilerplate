@@ -199,4 +199,18 @@ describe('UserUtil', () => {
             });
         });
     });
+
+    describe('getDisplayName', () => {
+        it('returns the name when it is set', () => {
+            expect(
+                util.getDisplayName({ name: 'Bramble', username: 'bramble' })
+            ).toBe('Bramble');
+        });
+
+        it('returns the username when the name is null', () => {
+            expect(
+                util.getDisplayName({ name: null, username: 'bramble' })
+            ).toBe('bramble');
+        });
+    });
 });

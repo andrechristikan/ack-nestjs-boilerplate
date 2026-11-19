@@ -23,6 +23,7 @@ import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-
 import type {
     IMfaBackupCodes,
     IMfaCheck,
+    IMfaPasskeyCredential,
     IMfaStatus,
     IMfaVerifyInput,
 } from '@modules/mfa/interfaces/mfa.interface';
@@ -286,12 +287,15 @@ export class MfaService {
     }
 
     /** Answers the methods a login can finish with: totp and passkey for the factors the mfa flag allows, backupCode while one is effective and codes remain; empty when MFA is off. */
-    async getLoginMethods(userId: string): Promise<EnumMfaMethod[]> {
-        const [mfa, hasTotp, hasPasskey] = await Promise.all([
+    async getLoginMethods(
+        userId: string,
+        passkeyCredentials: IMfaPasskeyCredential[]
+    ): Promise<EnumMfaMethod[]> {
+        const [mfa, hasTotp] = await Promise.all([
             this.mfaRepository.findOneByUserId(userId),
             this.mfaTotpService.existsConfirmed(userId),
-            this.mfaPasskeyService.existsByUser(userId),
         ]);
+        const hasPasskey = passkeyCredentials.length > 0;
         const [isTotpEffective, isPasskeyEffective] = await Promise.all([
             this.isFactorEffective(
                 hasTotp,

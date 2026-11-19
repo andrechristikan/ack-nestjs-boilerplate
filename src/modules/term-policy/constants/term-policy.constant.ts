@@ -23,15 +23,6 @@ export const TermPolicyRefSelect = {
 } as const;
 
 /** @public */
-export const TermPolicyAcceptanceAnalyticSelect = {
-    id: true,
-    userId: true,
-    termPolicyId: true,
-    acceptedAt: true,
-    termPolicy: { select: { publishedAt: true } },
-} as const;
-
-/** @public */
 export const TermPolicyAcceptanceInclude = {
     termPolicy: true,
     user: { select: UserRefSelect },

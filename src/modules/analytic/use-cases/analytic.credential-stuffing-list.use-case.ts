@@ -6,8 +6,9 @@ import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticCredentialStuffing } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticCredentialStuffingOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticCredentialStuffingOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticCredentialStuffingListUseCase implements IAppUseCase<
@@ -24,13 +25,11 @@ export class AnalyticCredentialStuffingListUseCase implements IAppUseCase<
         query: AnalyticCredentialStuffingListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy,
+            orderBy: AnalyticCredentialStuffingOrderBy,
+            defaultOrderBy: EnumAnalyticCredentialStuffingOrderBy.mostUsers,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.credentialStuffingList(
-            query.windowMs ?? null,
-            params
-        );
+        return this.analyticFraudService.credentialStuffingList(params);
     }
 }

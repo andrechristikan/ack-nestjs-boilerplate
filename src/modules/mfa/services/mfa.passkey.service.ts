@@ -194,15 +194,15 @@ export class MfaPasskeyService {
         );
     }
 
-    async getAssertionOptions(
-        userId: string | null
-    ): Promise<PublicKeyCredentialRequestOptionsJSON> {
-        let credentials: IMfaPasskeyCredential[] = [];
-        if (userId !== null) {
-            credentials =
-                await this.mfaPasskeyRepository.findCredentialsByUserId(userId);
-        }
+    async getCredentialsByUser(
+        userId: string
+    ): Promise<IMfaPasskeyCredential[]> {
+        return this.mfaPasskeyRepository.findCredentialsByUserId(userId);
+    }
 
+    async getAssertionOptions(
+        credentials: IMfaPasskeyCredential[]
+    ): Promise<PublicKeyCredentialRequestOptionsJSON> {
         return generateAuthenticationOptions({
             rpID: this.rpId,
             userVerification: 'required',
@@ -346,10 +346,8 @@ export class MfaPasskeyService {
         return this.mfaPasskeyRepository.existsByUserId(userId);
     }
 
-    async assertHasPasskey(userId: string): Promise<void> {
-        const hasPasskey =
-            await this.mfaPasskeyRepository.existsByUserId(userId);
-        if (!hasPasskey) {
+    assertHasPasskey(credentials: IMfaPasskeyCredential[]): void {
+        if (credentials.length === 0) {
             throw new MfaMethodUnavailableException();
         }
     }

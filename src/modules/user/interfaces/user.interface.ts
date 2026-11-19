@@ -37,7 +37,6 @@ import type {
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
-    UserAnalyticRefSelect,
     UserMobileNumberSummarySelect,
     UserNameSelect,
     UserRecipientSelect,
@@ -145,6 +144,10 @@ export interface IUserVerificationMobileCreate {
     otp: string;
     expiredInMinutes: number;
 }
+
+export type IUserVerificationWithUser = Prisma.VerificationGetPayload<{
+    include: { user: true };
+}>;
 
 export interface IUserVerificationEmailTarget {
     verification: Verification;
@@ -365,25 +368,6 @@ export interface IUserLoginMfaOutcome extends IUserLoginOutcomeBase {
 }
 
 export type IUserLoginOutcome = IUserLoginTokenOutcome | IUserLoginMfaOutcome;
-
-export interface IUserAnalyticGroupCount<T extends string = string> {
-    key: T;
-    count: number;
-}
-
-export type IUserAnalyticRef = Prisma.UserGetPayload<{
-    select: typeof UserAnalyticRefSelect;
-}>;
-
-export interface IUserForgotPasswordAnalyticUserCount {
-    userId: string;
-    count: number;
-}
-
-export interface IUserVerificationAnalyticUsedBucket {
-    isUsed: boolean;
-    count: number;
-}
 
 export interface IUserDeletePhotoPayload {
     userId: string;

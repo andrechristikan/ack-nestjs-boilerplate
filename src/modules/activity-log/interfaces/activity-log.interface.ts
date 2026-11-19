@@ -4,13 +4,8 @@ import type {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import type {
-    ActivityLog,
-    Prisma,
-    UserAgent,
-} from '@generated/prisma-client/client';
+import type { ActivityLog, UserAgent } from '@generated/prisma-client/client';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import {
@@ -87,26 +82,6 @@ export interface IActivityLogAnalyticActionCount {
     action: EnumActivityLogAction;
     count: number;
 }
-
-export interface IActivityLogIpGroup {
-    ipAddress: string;
-    count: number;
-}
-
-export interface IActivityLogUserGroup {
-    userId: string;
-    count: number;
-}
-
-export interface IActivityLogIpUserGroup {
-    ipAddress: string | null;
-    userId: string;
-    count: number;
-}
-
-export type IActivityLogAnalyticList = Prisma.ActivityLogGetPayload<{
-    select: typeof ActivityLogAnalyticListSelect;
-}>;
 
 export type IActivityLogActionContracts = Record<
     EnumActivityLogAction,

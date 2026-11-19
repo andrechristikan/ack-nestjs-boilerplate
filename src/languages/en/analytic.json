@@ -88,6 +88,12 @@
     "workspaceJoinOutcomes": "Workspace join outcomes retrieved successfully.",
     "workspaceMemberRoles": "Workspace member role breakdown retrieved successfully.",
     "workspaceActivity": "Workspace activity metrics retrieved successfully.",
+    "queue": {
+        "refreshSnapshot": "Refreshed the {signal} analytic snapshot.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists."
+        }
+    },
     "error": {
         "invalidDateRange": "The start date must be before the end date and the range cannot exceed the maximum window."
     }

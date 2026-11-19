@@ -5,10 +5,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
 import type { IAnalyticAccountTakeover } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { Injectable } from '@nestjs/common';
-import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticAccountTakeoverOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticAccountTakeoverOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticAccountTakeoverListUseCase implements IAppUseCase<
@@ -17,7 +17,6 @@ export class AnalyticAccountTakeoverListUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly analyticFraudService: AnalyticFraudService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -26,17 +25,11 @@ export class AnalyticAccountTakeoverListUseCase implements IAppUseCase<
         query: AnalyticAccountTakeoverListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
+            orderBy: AnalyticAccountTakeoverOrderBy,
+            defaultOrderBy: EnumAnalyticAccountTakeoverOrderBy.latest,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
-        const range = this.analyticDateService.requireRange(
-            query.startDate,
-            query.endDate
-        );
-        return this.analyticFraudService.accountTakeoverList(
-            range.startDate,
-            range.endDate,
-            params
-        );
+
+        return this.analyticFraudService.accountTakeoverList(params);
     }
 }

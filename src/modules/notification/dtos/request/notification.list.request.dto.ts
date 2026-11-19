@@ -1,25 +1,17 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
-import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
+import { EnumNotificationOrderBy } from '@modules/notification/enums/notification.enum';
 
 /** @public */
 export const NotificationListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
     orderBy: z
-        .union([
-            z.templateLiteral([
-                z.enum(NotificationDefaultAvailableOrderBy),
-                ':',
-                z.enum(EnumPaginationOrderDirectionType),
-            ]),
-            z.literal(''),
-        ])
+        .union([z.enum(EnumNotificationOrderBy), z.literal('')])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`${NotificationDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${NotificationDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
-            example: `${NotificationDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Sort preset name. Available presets: ${Object.values(EnumNotificationOrderBy).join(', ')}. An empty or absent value uses \`${EnumNotificationOrderBy.latest}\`.`,
+            example: EnumNotificationOrderBy.latest,
         }),
 });
 

@@ -1,15 +1,13 @@
 import { CountryListRequestSchema } from '@modules/country/dtos/request/country.list.request.dto';
-import {
-    CountryDefaultAvailableSearch,
-    CountryDefaultAvailableOrderBy,
-} from '@modules/country/constants/country.list.constant';
+import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
+import { EnumCountryOrderBy } from '@modules/country/enums/country.enum';
 
 describe('CountryListRequestSchema', () => {
     const payload = {
         cursor: 'eyJpZCI6IjE2In0',
         perPage: 20,
         search: 'Indonesia',
-        orderBy: 'name:desc',
+        orderBy: 'latest',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -39,52 +37,50 @@ describe('CountryListRequestSchema', () => {
         ).toThrow();
     });
 
-    it('keeps the module search and orderBy descriptions', () => {
+    it('keeps the module search description', () => {
         expect(
             CountryListRequestSchema.shape.search.meta()?.description
         ).toContain(CountryDefaultAvailableSearch.join(', '));
-        expect(
-            CountryListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(CountryDefaultAvailableOrderBy.join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it('keeps the preset names in the orderBy description', () => {
+        expect(
+            CountryListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(Object.values(EnumCountryOrderBy).join(', '));
+    });
+
+    it.each(Object.values(EnumCountryOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                CountryListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             CountryListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = CountryDefaultAvailableOrderBy[0];
-
-        expect(
-            CountryListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = CountryDefaultAvailableOrderBy[0];
-        const last =
-            CountryDefaultAvailableOrderBy[
-                CountryDefaultAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            CountryListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${CountryDefaultAvailableOrderBy[0]}:`,
-        `${CountryDefaultAvailableOrderBy[0]}:DESC`,
-        `${CountryDefaultAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(CountryListRequestSchema.safeParse({ orderBy }).success).toBe(
             false
         );
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            CountryListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
+        ).toBe(false);
     });
 });

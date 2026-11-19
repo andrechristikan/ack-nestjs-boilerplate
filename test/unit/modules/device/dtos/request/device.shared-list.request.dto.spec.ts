@@ -1,18 +1,18 @@
-import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
+import { EnumDeviceCursorOrderBy } from '@modules/device/enums/device.enum';
 
 describe('DeviceSharedListRequestSchema', () => {
     it('parses cursor, perPage, and orderBy', () => {
         const result = DeviceSharedListRequestSchema.parse({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: 'latest',
         });
     });
 
@@ -34,49 +34,44 @@ describe('DeviceSharedListRequestSchema', () => {
         ).toBe(false);
     });
 
-    it('keeps the module orderBy description', () => {
+    it('keeps the preset names in the orderBy description', () => {
         expect(
             DeviceSharedListRequestSchema.shape.orderBy.meta()?.description
-        ).toContain(DeviceCursorAvailableOrderBy.join(', '));
+        ).toContain(Object.values(EnumDeviceCursorOrderBy).join(', '));
     });
 
-    it('accepts an empty orderBy so the module default order applies', () => {
+    it.each(Object.values(EnumDeviceCursorOrderBy))(
+        'accepts the preset %s',
+        orderBy => {
+            expect(
+                DeviceSharedListRequestSchema.safeParse({ orderBy }).success
+            ).toBe(true);
+        }
+    );
+
+    it('accepts an empty orderBy so the default preset applies', () => {
         expect(
             DeviceSharedListRequestSchema.safeParse({ orderBy: '' }).success
         ).toBe(true);
     });
 
-    it('accepts a single orderBy built from the allow-list', () => {
-        const first = DeviceCursorAvailableOrderBy[0];
-
-        expect(
-            DeviceSharedListRequestSchema.safeParse({ orderBy: `${first}:asc` })
-                .success
-        ).toBe(true);
-    });
-
-    it('rejects a repeated orderBy built from the allow-list', () => {
-        const first = DeviceCursorAvailableOrderBy[0];
-        const last =
-            DeviceCursorAvailableOrderBy[
-                DeviceCursorAvailableOrderBy.length - 1
-            ];
-
-        expect(
-            DeviceSharedListRequestSchema.safeParse({
-                orderBy: [`${first}:asc`, `${last}:desc`],
-            }).success
-        ).toBe(false);
-    });
-
     it.each([
-        'unknownField:asc',
-        `${DeviceCursorAvailableOrderBy[0]}:`,
-        `${DeviceCursorAvailableOrderBy[0]}:DESC`,
-        `${DeviceCursorAvailableOrderBy[0]}:up`,
+        'unknownPreset',
+        'createdAt:desc',
+        'latest:asc',
+        'default',
+        'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
             DeviceSharedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
+
+    it('rejects a repeated orderBy', () => {
+        expect(
+            DeviceSharedListRequestSchema.safeParse({
+                orderBy: ['latest', 'latest'],
+            }).success
         ).toBe(false);
     });
 });

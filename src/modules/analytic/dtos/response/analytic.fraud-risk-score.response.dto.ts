@@ -34,3 +34,18 @@ export const AnalyticFraudRiskScoreResponseSchema = z.object({
 export type AnalyticFraudRiskScoreResponseDto = z.infer<
     typeof AnalyticFraudRiskScoreResponseSchema
 >;
+
+/** @public */
+export const AnalyticFraudRiskScoreUserResponseSchema =
+    AnalyticFraudRiskScoreResponseSchema.extend({
+        computedAt: z.date().nullable().meta({
+            description:
+                'When the risk score job last ran; null before the first run',
+            example: faker.date.recent(),
+        }),
+    });
+
+/** @public */
+export type AnalyticFraudRiskScoreUserResponseDto = z.infer<
+    typeof AnalyticFraudRiskScoreUserResponseSchema
+>;

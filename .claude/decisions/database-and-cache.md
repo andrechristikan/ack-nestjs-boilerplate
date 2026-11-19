@@ -28,11 +28,28 @@ Rule: `repository.md`, Schema.
 
 - An index kept for the seed's hard delete: the seed runs rarely and scans once, while the index costs a write on every login, refresh, and device touch.
 
-### A feature repository uses the Prisma builder only
+### An analytic repository uses the builder or one aggregation pipeline; a feature repository uses the builder
+
+Rule: `repository.md`, Queries; `analytic.md`, One statement.
+
+- The builder only, with a scalar copy for each value it cannot group by: a column per card, copied at create, kept only so the builder can reach it.
+- Several statements per computation, or rows grouped in the process: round trips, and the read loads the whole range into the API process.
+- A raw query or pipeline outside analytic: its result leaves the generated types and the select constants, so no type checks it.
+
+### A read of a parent and its children is one builder call
 
 Rule: `repository.md`, Queries.
 
-- A raw query or pipeline in a feature repository: its result leaves the generated types and the select constants, so no type checks it.
+- One MongoDB command through `aggregateRaw` in a feature repository: the generated types are lost on every read.
+- Removing repeated reads only: a parent and its child stay two calls a service stitches.
+- A `$facet` pipeline per offset list: the Prisma types are lost on every admin list, and the list needs its count either way.
+
+### A generated result is a row per item under a run id
+
+Rule: `analytic.md`.
+
+- One document per signal holding the item list: it is bounded by the document size, cut at a row cap, and sorted in memory.
+- Replacing rows inside one transaction: thousands of writes run against the transaction lifetime.
 
 ## Cache and Redis
 
@@ -106,6 +123,13 @@ Rule: `seeding.md`, Idempotency and reset.
 Rule: `guards.md`, Guards.
 
 - A cache in front of the workspace and project membership guards: a removed member would pass until the invalidation job ran, and the invalidation would span every membership flow.
+
+### The term-policy guard reads the published policies with the caller's acceptances in one call
+
+Rule: `guards.md`, Guards.
+
+- A `none` relation filter on the acceptances: its `$lookup` may scan every acceptance of a policy.
+- A cache of the published policies: a key, an effect, and an invalidation job for one small indexed read.
 
 ## Outage logging
 

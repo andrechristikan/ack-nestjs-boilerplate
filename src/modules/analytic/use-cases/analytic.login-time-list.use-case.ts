@@ -2,41 +2,34 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
+import type { AnalyticSnapshotListRequestDto } from '@modules/analytic/dtos/request/analytic.snapshot-list.request.dto';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import type { IAnalyticLoginTimeAnomaly } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { Injectable } from '@nestjs/common';
-import { AnalyticLoginTimeAnomalyAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 @Injectable()
 export class AnalyticLoginTimeListUseCase implements IAppUseCase<
-    [AnalyticLoginTimeAnomalyListRequestDto],
+    [AnalyticSnapshotListRequestDto],
     IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>
 > {
     constructor(
         private readonly analyticAnomalyService: AnalyticAnomalyService,
-        private readonly analyticDateService: AnalyticDateService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async execute(
-        query: AnalyticLoginTimeAnomalyListRequestDto
+        query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
+            orderBy: AnalyticSnapshotOrderBy,
+            defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
-        const range = this.analyticDateService.optionalRange(
-            query.startDate ?? null,
-            query.endDate ?? null
-        );
-        return this.analyticAnomalyService.loginTimeList(
-            range.startDate,
-            range.endDate,
-            params
-        );
+
+        return this.analyticAnomalyService.loginTimeList(params);
     }
 }

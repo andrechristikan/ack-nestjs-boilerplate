@@ -7,8 +7,9 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticUserCountOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticApiKeyBurstListUseCase } from '@modules/analytic/use-cases/analytic.api-key-burst-list.use-case';
+import { EnumAnalyticUserCountOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticApiKeyBurstListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
@@ -83,7 +84,10 @@ describe('AnalyticApiKeyBurstListUseCase', () => {
             );
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
+                {
+                    orderBy: AnalyticUserCountOrderBy,
+                    defaultOrderBy: EnumAnalyticUserCountOrderBy.mostCount,
+                }
             );
         });
 

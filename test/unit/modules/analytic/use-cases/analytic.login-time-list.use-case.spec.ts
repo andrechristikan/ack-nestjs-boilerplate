@@ -7,26 +7,19 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
-import { AnalyticLoginTimeAnomalyAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginTimeListUseCase } from '@modules/analytic/use-cases/analytic.login-time-list.use-case';
+import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticLoginTimeListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
         mock<AnalyticAnomalyService>();
-
-    const analyticDateService: MockProxy<AnalyticDateService> =
-        mock<AnalyticDateService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
-
-    const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
@@ -60,7 +53,6 @@ describe('AnalyticLoginTimeListUseCase', () => {
                     provide: AnalyticAnomalyService,
                     useValue: analyticAnomalyService,
                 },
-                { provide: AnalyticDateService, useValue: analyticDateService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -70,66 +62,36 @@ describe('AnalyticLoginTimeListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('hands the optional range and pagination to the domain', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate,
-                endDate,
-            });
+        it('hands pagination to the domain', async () => {
             const page = {
                 ...offsetPage,
                 data: [
                     {
                         userId: 'user-1',
                         lastHour: 3,
-                        historicalFrequencyPercent: 2,
+                        historicalFrequencyPercent: 0,
                     },
                 ],
             };
             analyticAnomalyService.loginTimeList.mockResolvedValue(page);
 
             const result = await useCase.execute({
-                startDate,
-                endDate,
                 page: 1,
                 perPage: 20,
             });
 
             expect(result).toEqual(page);
             expect(analyticAnomalyService.loginTimeList).toHaveBeenCalledWith(
-                startDate,
-                endDate,
                 pagination
             );
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
                 expect.anything(),
-                { availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy }
+                {
+                    orderBy: AnalyticSnapshotOrderBy,
+                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
+                }
             );
-        });
-
-        it('passes null dates when the optional range is empty', async () => {
-            analyticDateService.optionalRange.mockReturnValue({
-                startDate: null,
-                endDate: null,
-            });
-            const page = {
-                ...offsetPage,
-                data: [
-                    {
-                        userId: 'user-1',
-                        lastHour: 3,
-                        historicalFrequencyPercent: 2,
-                    },
-                ],
-            };
-            analyticAnomalyService.loginTimeList.mockResolvedValue(page);
-
-            await useCase.execute({ page: 1, perPage: 20 });
-
-            expect(analyticAnomalyService.loginTimeList).toHaveBeenCalledWith(
-                null,
-                null,
-                pagination
-            );
+            expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });
     });
 });

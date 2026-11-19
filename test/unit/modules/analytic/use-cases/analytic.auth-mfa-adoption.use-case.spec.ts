@@ -2,12 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
 
 describe('AnalyticAuthMfaAdoptionUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     let useCase: AnalyticAuthMfaAdoptionUseCase;
 
@@ -18,8 +18,8 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
             providers: [
                 AnalyticAuthMfaAdoptionUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
             ],
         }).compile();
@@ -29,7 +29,7 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDashboardService.authMfaAdoption.mockResolvedValue({
+            analyticAuthService.authMfaAdoption.mockResolvedValue({
                 enabled: 3,
                 total: 9,
                 rate: 0.33,
@@ -40,9 +40,7 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
             expect(result).toEqual({
                 data: { enabled: 3, total: 9, rate: 0.33 },
             });
-            expect(
-                analyticDashboardService.authMfaAdoption
-            ).toHaveBeenCalledWith();
+            expect(analyticAuthService.authMfaAdoption).toHaveBeenCalledWith();
         });
     });
 });

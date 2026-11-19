@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
+import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
@@ -17,8 +17,8 @@ describe('AnalyticSummaryUseCase', () => {
         buildWorkspace(),
         buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
     );
-    const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
-        mock<AnalyticWorkspaceUserService>();
+    const analyticWorkspaceService: MockProxy<AnalyticWorkspaceService> =
+        mock<AnalyticWorkspaceService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -36,8 +36,8 @@ describe('AnalyticSummaryUseCase', () => {
             providers: [
                 AnalyticSummaryUseCase,
                 {
-                    provide: AnalyticWorkspaceUserService,
-                    useValue: analyticWorkspaceUserService,
+                    provide: AnalyticWorkspaceService,
+                    useValue: analyticWorkspaceService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -52,7 +52,7 @@ describe('AnalyticSummaryUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceUserService.summary.mockResolvedValue({
+            analyticWorkspaceService.summary.mockResolvedValue({
                 memberCount: 3,
                 projectCount: 2,
                 activityCount: 9,
@@ -70,7 +70,7 @@ describe('AnalyticSummaryUseCase', () => {
             expect(result).toEqual({
                 data: { memberCount: 3, projectCount: 2, activityCount: 9 },
             });
-            expect(analyticWorkspaceUserService.summary).toHaveBeenCalledWith(
+            expect(analyticWorkspaceService.summary).toHaveBeenCalledWith(
                 'workspace-1',
                 startDate,
                 endDate
@@ -82,7 +82,7 @@ describe('AnalyticSummaryUseCase', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticWorkspaceUserService.summary.mockResolvedValue({
+            analyticWorkspaceService.summary.mockResolvedValue({
                 memberCount: 0,
                 projectCount: 0,
                 activityCount: 0,
@@ -94,7 +94,7 @@ describe('AnalyticSummaryUseCase', () => {
                 null,
                 null
             );
-            expect(analyticWorkspaceUserService.summary).toHaveBeenCalledWith(
+            expect(analyticWorkspaceService.summary).toHaveBeenCalledWith(
                 'workspace-1',
                 null,
                 null

@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AnalyticDashboardService } from '@modules/analytic/services/analytic.dashboard.service';
+import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticAuthMfaVerifySuccessUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-verify-success.use-case';
 
 describe('AnalyticAuthMfaVerifySuccessUseCase', () => {
-    const analyticDashboardService: MockProxy<AnalyticDashboardService> =
-        mock<AnalyticDashboardService>();
+    const analyticAuthService: MockProxy<AnalyticAuthService> =
+        mock<AnalyticAuthService>();
 
     const analyticDateService: MockProxy<AnalyticDateService> =
         mock<AnalyticDateService>();
@@ -26,8 +26,8 @@ describe('AnalyticAuthMfaVerifySuccessUseCase', () => {
             providers: [
                 AnalyticAuthMfaVerifySuccessUseCase,
                 {
-                    provide: AnalyticDashboardService,
-                    useValue: analyticDashboardService,
+                    provide: AnalyticAuthService,
+                    useValue: analyticAuthService,
                 },
                 { provide: AnalyticDateService, useValue: analyticDateService },
             ],
@@ -42,7 +42,7 @@ describe('AnalyticAuthMfaVerifySuccessUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authMfaVerifySuccess.mockResolvedValue({
+            analyticAuthService.authMfaVerifySuccess.mockResolvedValue({
                 count: 12,
             });
 
@@ -53,7 +53,7 @@ describe('AnalyticAuthMfaVerifySuccessUseCase', () => {
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
-                analyticDashboardService.authMfaVerifySuccess
+                analyticAuthService.authMfaVerifySuccess
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -61,7 +61,7 @@ describe('AnalyticAuthMfaVerifySuccessUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardService.authMfaVerifySuccess.mockResolvedValue({
+            analyticAuthService.authMfaVerifySuccess.mockResolvedValue({
                 count: 12,
             });
 

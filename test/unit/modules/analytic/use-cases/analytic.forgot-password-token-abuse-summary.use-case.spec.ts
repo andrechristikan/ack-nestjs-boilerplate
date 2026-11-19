@@ -32,7 +32,12 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudService.forgotPasswordTokenAbuseSummary.mockResolvedValue(
-                { count: 6, window: '24h' }
+                {
+                    count: 6,
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt: null,
+                }
             );
 
             const result = await useCase.execute({
@@ -42,7 +47,9 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
             expect(result).toEqual({
                 data: {
                     count: 6,
-                    window: '24h',
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt: null,
                 },
             });
             expect(
@@ -52,7 +59,12 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
 
         it('passes null when windowMs is omitted', async () => {
             analyticFraudService.forgotPasswordTokenAbuseSummary.mockResolvedValue(
-                { count: 0, window: null }
+                {
+                    count: 0,
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt: null,
+                }
             );
 
             await useCase.execute({});

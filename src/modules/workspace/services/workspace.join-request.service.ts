@@ -19,10 +19,7 @@ import {
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceJoinRequest,
-} from '@generated/prisma-client/client';
+import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -33,8 +30,6 @@ import { NotificationService } from '@modules/notification/services/notification
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IUserName } from '@modules/user/interfaces/user.interface';
-import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -45,9 +40,9 @@ import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/works
 import type {
     IWorkspaceJoinRequestCreate,
     IWorkspaceJoinRequestNotice,
+    IWorkspaceJoinable,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
-import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -63,11 +58,9 @@ export class WorkspaceJoinRequestService {
 
     constructor(
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly userService: UserService,
         private readonly notificationService: NotificationService,
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
@@ -145,25 +138,25 @@ export class WorkspaceJoinRequestService {
     async getJoinableWorkspace(
         userId: string,
         workspaceId: string
-    ): Promise<Workspace> {
-        const workspace =
-            await this.workspaceRepository.findActiveById(workspaceId);
-        if (!workspace) {
+    ): Promise<IWorkspaceJoinable> {
+        const row =
+            await this.workspaceRepository.findActiveByIdWithJoinMembers(
+                workspaceId,
+                userId
+            );
+        if (!row) {
             throw new WorkspaceNotFoundException();
-        } else if (!workspace.isPublic) {
+        } else if (!row.isPublic) {
             throw new WorkspaceNotPublicException();
         }
 
-        const existingMember =
-            await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
-                workspace.id,
-                userId
-            );
-        if (existingMember) {
+        const { members, ...workspace } = row;
+        const isMember = members.some(member => member.userId === userId);
+        if (isMember) {
             throw new WorkspaceJoinRequestAlreadyMemberException();
         }
 
-        return workspace;
+        return { workspace, reviewerIds: members.map(member => member.userId) };
     }
 
     /** Creates the pending request and adds one notification row per reviewer and the requester's activity entry in one transaction, dispatched after the commit. */
@@ -300,7 +293,8 @@ export class WorkspaceJoinRequestService {
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        joinRequest: WorkspaceJoinRequest,
+        workspaceJoinRequestId: string,
+        workspaceId: string,
         workspaceName: string
     ): Promise<void> {
         const reviewerId = authContext.userId;
@@ -308,6 +302,21 @@ export class WorkspaceJoinRequestService {
 
         try {
             await this.outboxService.withTransaction(async tx => {
+                const joinRequest =
+                    await this.workspaceJoinRequestRepository.findByIdAndWorkspaceInTx(
+                        tx,
+                        workspaceJoinRequestId,
+                        workspaceId
+                    );
+                if (!joinRequest) {
+                    throw new WorkspaceJoinRequestNotFoundException();
+                } else if (
+                    joinRequest.status !==
+                    EnumWorkspaceJoinRequestStatus.pending
+                ) {
+                    throw new WorkspaceJoinRequestAlreadyProcessedException();
+                }
+
                 const accepted =
                     await this.workspaceJoinRequestRepository.acceptInTx(
                         tx,
@@ -326,17 +335,11 @@ export class WorkspaceJoinRequestService {
                     EnumWorkspaceMemberRole.member,
                     reviewerId
                 );
-                const email = await this.userService.getEmailByIdInTx(
+                await this.workspaceInviteService.revokePendingByEmailInTx(
                     tx,
-                    joinRequest.userId
+                    joinRequest.workspaceId,
+                    joinRequest.user.email
                 );
-                if (email !== null) {
-                    await this.workspaceInviteService.revokePendingByEmailInTx(
-                        tx,
-                        joinRequest.workspaceId,
-                        email
-                    );
-                }
 
                 const effect = this.notificationService.notify(
                     EnumNotificationKind.workspaceJoinAccepted,
@@ -480,17 +483,6 @@ export class WorkspaceJoinRequestService {
             tx,
             workspaceId,
             userId
-        );
-    }
-
-    resolveRequesterName(requester: IUserName | null): string {
-        const name = requester?.name ?? requester?.username ?? null;
-        if (name !== null) {
-            return name;
-        }
-
-        return this.messageService.setMessage(
-            'workspace.joinRequest.requesterFallbackName'
         );
     }
 }

@@ -14,6 +14,7 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -49,18 +50,15 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { UserService } from '@modules/user/services/user.service';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type {
-    IUserName,
-    IUserSignUpWorkspaceInvite,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
@@ -69,10 +67,10 @@ import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/except
 import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteNotice,
+    IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
-import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import {
     buildUser,
     buildRequestContext,
@@ -85,18 +83,16 @@ import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feat
 describe('WorkspaceInviteService', () => {
     const workspaceInviteRepository: MockProxy<WorkspaceInviteRepository> =
         mock<WorkspaceInviteRepository>();
-    const workspaceRepository: MockProxy<WorkspaceRepository> =
-        mock<WorkspaceRepository>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const userService: MockProxy<UserService> = mock<UserService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -157,6 +153,12 @@ describe('WorkspaceInviteService', () => {
         acceptedAt: null,
         acceptedByUserId: null,
         nonce: pendingNonce,
+    };
+
+    const previewInvite: IWorkspaceInvitePreview = {
+        ...baseInvite,
+        workspace,
+        invitedBy: { name: 'Bramble', username: 'bramble', deletedAt: null },
     };
 
     const baseProject: Project = {
@@ -275,16 +277,15 @@ describe('WorkspaceInviteService', () => {
                     provide: WorkspaceInviteRepository,
                     useValue: workspaceInviteRepository,
                 },
-                { provide: WorkspaceRepository, useValue: workspaceRepository },
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: UserService, useValue: userService },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: UserUtil, useValue: userUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperHashService, useValue: helperHashService },
@@ -294,21 +295,6 @@ describe('WorkspaceInviteService', () => {
         }).compile();
 
         service = module.get(WorkspaceInviteService);
-    });
-
-    describe('getInviterName', () => {
-        it("resolves the inviter's name against the workspace", async () => {
-            const inviter: IUserName = {
-                name: 'Bramble',
-                username: 'bramble',
-            };
-            userService.getNameById.mockResolvedValue(inviter);
-
-            await expect(
-                service.getInviterName(workspace, 'user-1')
-            ).resolves.toBe('Bramble');
-            expect(userService.getNameById).toHaveBeenCalledWith('user-1');
-        });
     });
 
     describe('validateInviteToken', () => {
@@ -360,15 +346,37 @@ describe('WorkspaceInviteService', () => {
             );
         });
 
+        it('throws WorkspaceNotFoundException when the invite workspace is soft-deleted', async () => {
+            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
+                {
+                    ...previewInvite,
+                    workspace: {
+                        ...workspace,
+                        deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                    },
+                }
+            );
+
+            await expect(
+                service.validateInviteToken('raw-token')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                messagePath: 'workspace.error.notFound',
+            });
+        });
+
         it('returns the pending invite matching the token', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                baseInvite
+                previewInvite
             );
 
             const result = await service.validateInviteToken('raw-token');
 
-            expect(result).toBe(baseInvite);
+            expect(result).toBe(previewInvite);
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith(
@@ -426,7 +434,7 @@ describe('WorkspaceInviteService', () => {
         it('throws WorkspaceInviteInvalidException when the invite email does not match', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                { ...baseInvite, email: 'other@example.com' }
+                { ...previewInvite, email: 'other@example.com' }
             );
 
             await expect(
@@ -442,7 +450,7 @@ describe('WorkspaceInviteService', () => {
         it('returns the pending invite when its email matches', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                baseInvite
+                previewInvite
             );
 
             const result = await service.validateInviteForEmail(
@@ -450,7 +458,7 @@ describe('WorkspaceInviteService', () => {
                 'invitee@example.com'
             );
 
-            expect(result).toBe(baseInvite);
+            expect(result).toBe(previewInvite);
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledTimes(1);
@@ -476,7 +484,7 @@ describe('WorkspaceInviteService', () => {
         it('gates on the invitation flag and returns the pending invite of the sign-up email', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
-                baseInvite
+                previewInvite
             );
 
             const result = await service.getSignUpInvite(
@@ -484,7 +492,7 @@ describe('WorkspaceInviteService', () => {
                 'invitee@example.com'
             );
 
-            expect(result).toBe(baseInvite);
+            expect(result).toBe(previewInvite);
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith(
@@ -2095,100 +2103,34 @@ describe('WorkspaceInviteService', () => {
         });
     });
 
-    describe('getWorkspaceOfInvite', () => {
-        it('throws WorkspaceInviteInvalidException when the workspace is not active', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(null);
-
-            await expect(
-                service.getWorkspaceOfInvite(baseInvite)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteInvalidException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                messagePath: 'workspace.error.inviteInvalid',
-            });
-        });
-
-        it('returns the active workspace of the invite', async () => {
-            workspaceRepository.findActiveById.mockResolvedValue(workspace);
-
-            const result = await service.getWorkspaceOfInvite(baseInvite);
-
-            expect(result).toBe(workspace);
-            expect(workspaceRepository.findActiveById).toHaveBeenCalledWith(
-                'workspace-1'
-            );
-        });
-    });
-
     describe('mapInvitePreview', () => {
-        it('uses the inviter name when present', () => {
-            const inviter: IUserName = {
-                name: 'Jane Doe',
-                username: 'jane',
-            };
+        it('maps the inviter display name from the user util', () => {
+            userUtil.getDisplayName.mockReturnValue('Bramble');
 
-            const result = service.mapInvitePreview(
-                workspace,
-                baseInvite,
-                inviter
+            const result = service.mapInvitePreview(previewInvite);
+
+            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
+                previewInvite.invitedBy
             );
-
             expect(result).toEqual({
                 workspaceName: 'Acme',
-                inviterName: 'Jane Doe',
+                inviterName: 'Bramble',
                 workspaceRole: EnumWorkspaceMemberRole.member,
                 expiredAt: baseInvite.expiredAt,
             });
         });
 
-        it('falls back to the inviter username when the name is null', () => {
-            const inviter: IUserName = {
-                name: null,
-                username: 'jane',
-            };
+        it('answers the workspace name as the inviter name when the inviter is self-deleted', () => {
+            const result = service.mapInvitePreview({
+                ...previewInvite,
+                invitedBy: {
+                    ...previewInvite.invitedBy,
+                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                },
+            });
 
-            const result = service.mapInvitePreview(
-                workspace,
-                baseInvite,
-                inviter
-            );
-
-            expect(result.inviterName).toBe('jane');
-        });
-
-        it('falls back to the workspace name when the inviter is null', () => {
-            const result = service.mapInvitePreview(
-                workspace,
-                baseInvite,
-                null
-            );
-
+            expect(userUtil.getDisplayName).not.toHaveBeenCalled();
             expect(result.inviterName).toBe('Acme');
-        });
-    });
-
-    describe('resolveInviterName', () => {
-        it('returns the inviter name', () => {
-            expect(
-                service['resolveInviterName'](
-                    { name: 'Jane Doe', username: 'jane' },
-                    workspace
-                )
-            ).toBe('Jane Doe');
-        });
-
-        it('falls back to the inviter username when the name is null', () => {
-            expect(
-                service['resolveInviterName'](
-                    { name: null, username: 'jane' },
-                    workspace
-                )
-            ).toBe('jane');
-        });
-
-        it('falls back to the workspace name when the inviter is missing', () => {
-            expect(service['resolveInviterName'](null, workspace)).toBe('Acme');
         });
     });
 

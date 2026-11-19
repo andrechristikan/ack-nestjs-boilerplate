@@ -64,17 +64,11 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     workspaceId,
                     removed.userId
                 );
-                const email = await this.userService.getEmailByIdInTx(
+                await this.workspaceInviteService.revokePendingByEmailInTx(
                     tx,
-                    removed.userId
+                    workspaceId,
+                    removed.user.email
                 );
-                if (email !== null) {
-                    await this.workspaceInviteService.revokePendingByEmailInTx(
-                        tx,
-                        workspaceId,
-                        email
-                    );
-                }
                 await this.workspaceJoinRequestService.cancelPendingByUserInTx(
                     tx,
                     workspaceId,

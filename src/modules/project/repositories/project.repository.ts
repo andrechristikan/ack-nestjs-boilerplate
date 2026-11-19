@@ -12,6 +12,7 @@ import type { Project } from '@generated/prisma-client/client';
 import type {
     IProjectCreate,
     IProjectUpdate,
+    IProjectWithMembers,
 } from '@modules/project/interfaces/project.interface';
 import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -47,6 +48,26 @@ export class ProjectRepository implements IProjectRepository {
                 workspaceId,
                 deletedAt: null,
             },
+        });
+    }
+
+    async findActiveByIdAndWorkspaceWithMember(
+        projectId: string,
+        workspaceId: string,
+        userId: string
+    ): Promise<IProjectWithMembers | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(projectId);
+        if (!isValidId) {
+            return null;
+        }
+
+        return this.databaseService.client.project.findFirst({
+            where: {
+                id: projectId,
+                workspaceId,
+                deletedAt: null,
+            },
+            include: { members: { where: { userId }, take: 1 } },
         });
     }
 

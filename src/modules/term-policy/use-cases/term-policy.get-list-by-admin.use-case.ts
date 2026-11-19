@@ -6,14 +6,15 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
-    TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
+    TermPolicyOrderBy,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumTermPolicyOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 @Injectable()
 export class TermPolicyGetListByAdminUseCase implements IAppUseCase<
@@ -31,7 +32,8 @@ export class TermPolicyGetListByAdminUseCase implements IAppUseCase<
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
-            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+            orderBy: TermPolicyOrderBy,
+            defaultOrderBy: EnumTermPolicyOrderBy.latest,
         });
         const type = this.paginationFilterUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
