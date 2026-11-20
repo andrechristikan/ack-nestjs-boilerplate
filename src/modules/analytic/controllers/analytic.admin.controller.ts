@@ -109,10 +109,8 @@ import { AnalyticAnomalyLoginSpikeIpSummaryResponseSchema } from '@modules/analy
 import { AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-failed-login-spike-summary.response.dto';
 import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-device-proliferation-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import {
-    AnalyticFraudRiskScoreResponseSchema,
-    AnalyticFraudRiskScoreUserResponseSchema,
-} from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import { AnalyticFraudRiskScoreUserResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score-user.response.dto';
 import { AnalyticAccountTakeoverResponseSchema } from '@modules/analytic/dtos/response/analytic.account-takeover.response.dto';
 import { AnalyticCredentialStuffingResponseSchema } from '@modules/analytic/dtos/response/analytic.credential-stuffing.response.dto';
 import { AnalyticForgotPasswordAbuseResponseSchema } from '@modules/analytic/dtos/response/analytic.forgot-password-abuse.response.dto';
